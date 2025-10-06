@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório para Sede - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho para impressão -->
+    <div class="d-print-block text-center mb-4">
+        <h2 class="text-primary fw-bold">OBPC - O BRASIL PARA CRISTO</h2>
+        <h3>RELATÓRIO MENSAL OFICIAL</h3>
+        <p class="fw-bold">Mês: {{ "%02d"|format(mes) }}/{{ ano }}</p>
+    </div>
+
+    <!-- Controles (não imprime) -->
+    <div class="d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2><i class="fas fa-file-alt text-primary me-2"></i>Relatório para Sede - {{ "%02d"|format(mes) }}/{{ ano }}</h2>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex justify-content-end gap-2">
+                    <!-- Dropdown Período -->
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-calendar me-1"></i> Período
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for m in range(1, 13) %}
+                            <li><a class="dropdown-item {% if m == mes %}active{% endif %}" href="{{ url_for('financeiro.relatorio_sede', mes=m, ano=ano) }}">
+                                {{ "%02d"|format(m) }}/{{ ano }}
+                            </a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <!-- Botão Voltar -->
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar
+                    </a>
+                    
+                    <!-- Botões Principais -->
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('financeiro.relatorio_sede_pdf', mes=mes, ano=ano) }}" 
+                           class="btn btn-success" target="_blank" title="Gerar PDF Profissional">
+                            <i class="fas fa-file-pdf me-1"></i> PDF
+                        </a>
+                        <button onclick="window.print()" class="btn btn-primary" title="Imprimir Relatório">
+                            <i class="fas fa-print me-1"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relatório Oficial -->
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card">
+                <div class="card-body p-5">
+                    <!-- Cabeçalho Oficial -->
+                    <div class="text-center mb-4">
+                        <h3 class="fw-bold text-primary">OBPC - O BRASIL PARA CRISTO</h3>
+                        <h4 class="text-dark">RELATÓRIO MENSAL</h4>
+                        <hr class="border-primary border-2">
+                    </div>
+
+                    <!-- Dados da Igreja -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Cidade:</td>
+                                    <td>{{ dados_igreja.cidade }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Bairro:</td>
+                                    <td>{{ dados_igreja.bairro }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Mês/Ano:</td>
+                                    <td>{{ "%02d"|format(mes) }}/{{ ano }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td class="fw-bold">Dirigente:</td>
+                                    <td>{{ dados_igreja.dirigente }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Tesoureiro:</td>
+                                    <td>{{ dados_igreja.tesoureiro }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">Saldo Anterior:</td>
+                                    <td class="fw-bold">
+                                        {{ "R$ %.2f"|format(dados_igreja.saldo_anterior)|replace(".", ",") }}
+                                        <br><small class="text-muted">(Acumulado até {% if mes == 1 %}12/{{ ano-1 }}{% else %}{{ "%02d"|format(mes-1) }}/{{ ano }}{% endif %})</small>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Arrecadação -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold text-primary mb-3">
+                            <i class="fas fa-hand-holding-usd"></i> ARRECADAÇÃO DO MÊS
+                        </h5>
+                        
+                        <table class="table table-striped">
+                            <tr>
+                                <td class="fw-bold">Dízimos</td>
+                                <td class="text-end fw-bold text-success">
+                                    {{ "R$ %.2f"|format(totais.dizimos)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Ofertas Alçadas</td>
+                                <td class="text-end fw-bold text-success">
+                                    {{ "R$ %.2f"|format(totais.ofertas_alcadas)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Outras Ofertas</td>
+                                <td class="text-end fw-bold text-success">
+                                    {{ "R$ %.2f"|format(totais.outras_ofertas)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr class="table-success">
+                                <td class="fw-bold fs-5">TOTAL GERAL</td>
+                                <td class="text-end fw-bold fs-5">
+                                    {{ "R$ %.2f"|format(totais.total_geral)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Despesas -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold text-danger mb-3">
+                            <i class="fas fa-credit-card"></i> DESPESAS FINANCEIRAS DO MÊS
+                        </h5>
+                        
+                        <table class="table table-striped">
+                            <tr>
+                                <td class="fw-bold">Despesas Financeiras no Mês</td>
+                                <td class="text-end fw-bold text-danger">
+                                    {{ "R$ %.2f"|format(totais.despesas_financeiras)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Saldo -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold text-primary mb-3">
+                            <i class="fas fa-balance-scale"></i> SALDO DO MÊS
+                        </h5>
+                        
+                        <table class="table table-striped">
+                            <tr class="{% if totais.saldo_mes >= 0 %}table-success{% else %}table-danger{% endif %}">
+                                <td class="fw-bold fs-5">Saldo do Mês</td>
+                                <td class="text-end fw-bold fs-5">
+                                    {{ "R$ %.2f"|format(totais.saldo_mes)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Valor do Conselho -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold text-warning mb-3">
+                            <i class="fas fa-users"></i> VALOR DO CONSELHO ADMINISTRATIVO
+                        </h5>
+                        
+                        <table class="table table-striped">
+                            <tr>
+                                <td class="fw-bold">Valor a ser entregue à sede (10% do total arrecadado)</td>
+                                <td class="text-end fw-bold text-warning">
+                                    {{ "R$ %.2f"|format(totais.valor_conselho)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <!-- Lista de Envios -->
+                    <div class="mb-4">
+                        <h5 class="fw-bold text-info mb-3">
+                            <i class="fas fa-paper-plane"></i> LISTA DE ENVIOS À SEDE
+                        </h5>
+                        
+                        <table class="table table-striped">
+                            <tr>
+                                <td class="fw-bold">Oferta Voluntária Conchas</td>
+                                <td class="text-end fw-bold">
+                                    {{ "R$ %.2f"|format(envios.oferta_voluntaria_conchas)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Site</td>
+                                <td class="text-end fw-bold">
+                                    {{ "R$ %.2f"|format(envios.site)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Projeto Filipe</td>
+                                <td class="text-end fw-bold">
+                                    {{ "R$ %.2f"|format(envios.projeto_filipe)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Força para Viver</td>
+                                <td class="text-end fw-bold">
+                                    {{ "R$ %.2f"|format(envios.forca_para_viver)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="fw-bold">Contador Sede</td>
+                                <td class="text-end fw-bold">
+                                    {{ "R$ %.2f"|format(envios.contador_sede)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                            <tr class="table-info">
+                                <td class="fw-bold fs-5">TOTAL DE ENVIO SEDE</td>
+                                <td class="text-end fw-bold fs-5">
+                                    {{ "R$ %.2f"|format(total_envio_sede)|replace(".", ",") }}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <hr class="my-5">
+
+                    <!-- Assinaturas -->
+                    <div class="row mt-5">
+                        <div class="col-md-6 text-center">
+                            <div class="mb-5">
+                                <hr class="border-dark w-75 mx-auto">
+                                <p class="fw-bold">{{ dados_igreja.dirigente }}</p>
+                                <p class="small text-muted">DIRIGENTE</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <div class="mb-5">
+                                <hr class="border-dark w-75 mx-auto">
+                                <p class="fw-bold">{{ dados_igreja.tesoureiro }}</p>
+                                <p class="small text-muted">TESOUREIRO</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data e Local -->
+                    <div class="text-center mt-4">
+                        <p class="fw-bold">
+                            {{ dados_igreja.cidade }}, {{ data_geracao.strftime('%d de %B de %Y').replace('January', 'Janeiro').replace('February', 'Fevereiro').replace('March', 'Março').replace('April', 'Abril').replace('May', 'Maio').replace('June', 'Junho').replace('July', 'Julho').replace('August', 'Agosto').replace('September', 'Setembro').replace('October', 'Outubro').replace('November', 'Novembro').replace('December', 'Dezembro') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rodapé para impressão -->
+    <div class="d-print-block mt-3 text-center">
+        <hr>
+        <p class="text-muted small">
+            Sistema Administrativo OBPC - Relatório gerado em {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}
+        </p>
+    </div>
+</div>
+
+<style>
+@media print {
+    .d-print-none {
+        display: none !important;
+    }
+    
+    .d-print-block {
+        display: block !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    body {
+        font-size: 14px;
+        font-family: Arial, sans-serif;
+    }
+    
+    h2, h3, h4, h5, h6 {
+        color: #000 !important;
+    }
+    
+    .text-primary, .text-success, .text-danger, .text-warning, .text-info {
+        color: #000 !important;
+    }
+    
+    .table-success, .table-danger, .table-warning, .table-info {
+        background-color: #f8f9fa !important;
+    }
+    
+    .border-primary {
+        border-color: #000 !important;
+    }
+    
+    .border-dark {
+        border-color: #000 !important;
+    }
+    
+    hr {
+        border-color: #000 !important;
+    }
+    
+    .table {
+        font-size: 13px;
+    }
+    
+    .fs-5 {
+        font-size: 1.1rem !important;
+    }
+}
+</style>
+{% endblock %}

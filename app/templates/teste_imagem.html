@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste de Imagem</title>
+</head>
+<body>
+    <h1>Teste de Carregamento de Imagem</h1>
+    
+    <h2>Logo_IBPC.jpg:</h2>
+    <img src="{{ url_for('static', filename='Logo_IBPC.jpg') }}" alt="Logo IBPC" style="width: 100px; height: 100px; border: 1px solid red;">
+    
+    <h2>logo_obpc_novo.jpg:</h2>
+    <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" alt="Logo OBPC Novo" style="width: 100px; height: 100px; border: 1px solid blue;">
+    
+    <h2>images.jpg:</h2>
+    <img src="{{ url_for('static', filename='images.jpg') }}" alt="Images" style="width: 100px; height: 100px; border: 1px solid green;">
+    
+    <h2>Teste com caminho direto:</h2>
+    <img src="/static/Logo_IBPC.jpg" alt="Logo IBPC Direto" style="width: 100px; height: 100px; border: 1px solid orange;">
+</body>
+</html>

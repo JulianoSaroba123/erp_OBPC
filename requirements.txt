@@ -1,0 +1,22 @@
+# Sistema OBPC - Igreja O Brasil para Cristo
+# Dependências do projeto Flask
+
+Flask==3.0.0
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+Werkzeug==3.0.1
+reportlab==4.0.7
+pandas==2.1.4
+xlsxwriter==3.1.9
+requests==2.31.0
+Pillow==10.1.0
+
+# Para geração de executável
+pyinstaller==6.3.0
+
+# Para servidor de produção (opcional)
+gunicorn==21.2.0
+
+# Dependências de desenvolvimento (opcional)
+pytest==7.4.3
+pytest-flask==1.3.0

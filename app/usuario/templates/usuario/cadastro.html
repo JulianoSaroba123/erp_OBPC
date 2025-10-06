@@ -1,0 +1,151 @@
+{% extends "login_base.html" %}
+{% block content %}
+<style>
+  body, html {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+  
+  .cadastro-container {
+    background: linear-gradient(135deg, #228b22 0%, #1e3a8a 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  
+  .cadastro-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(34, 139, 34, 0.3);
+    overflow: hidden;
+    max-width: 450px;
+    width: 100%;
+  }
+  
+  .cadastro-header {
+    background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+    padding: 25px;
+    text-align: center;
+    color: white;
+  }
+  
+  .cadastro-header h1 {
+    margin: 0 0 5px 0;
+    font-size: 28px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  }
+  
+  .cadastro-header p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.9;
+  }
+  
+  .cadastro-body {
+    padding: 35px;
+  }
+  
+  .form-control {
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+  }
+  
+  .form-control:focus {
+    border-color: #ffd700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, #228b22 0%, #1e3a8a 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(34, 139, 34, 0.3);
+  }
+  
+  .form-select {
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+  }
+  
+  .form-select:focus {
+    border-color: #ffd700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+  }
+</style>
+
+<div class="cadastro-container">
+  <div class="cadastro-card">
+    <div class="cadastro-header">
+      <h1>OBPC</h1>
+      <p>Tietê-SP</p>
+    </div>
+    <div class="cadastro-body">
+      <h4 class="text-center mb-4" style="color: #228b22;">Novo Usuário</h4>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('usuario.cadastro') }}">
+        <div class="form-group mb-3">
+          <label for="nome" class="fw-semibold" style="color: #374151;">Nome completo</label>
+          <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite o nome completo" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="email" class="fw-semibold" style="color: #374151;">E-mail</label>
+          <input type="email" class="form-control" id="email" name="email" placeholder="exemplo@obpc.com" required>
+        </div>
+
+        <div class="form-group mb-3">
+          <label for="senha" class="fw-semibold" style="color: #374151;">Senha</label>
+          <input type="password" class="form-control" id="senha" name="senha" placeholder="Crie uma senha segura" required>
+        </div>
+
+        <div class="form-group mb-4">
+          <label for="perfil" class="fw-semibold" style="color: #374151;">Perfil</label>
+          <select class="form-select" id="perfil" name="perfil" required>
+            <option value="">Selecione o perfil</option>
+            <option value="Pastor">Pastor</option>
+            <option value="Secretário">Secretário</option>
+            <option value="Tesoureiro">Tesoureiro</option>
+            <option value="Obreiro">Obreiro</option>
+            <option value="Membro">Membro</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Criar Conta</button>
+      </form>
+
+      <div class="text-center mt-4">
+        <a href="{{ url_for('usuario.login') }}" style="color: #ffd700; text-decoration: none;">
+          <i class="fas fa-arrow-left me-1"></i>Voltar ao Login
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Evento - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Cabeçalho -->
+            <div class="row align-items-center mb-4">
+                <div class="col-md-6">
+                    <h2>
+                        <i class="fas fa-calendar-alt text-primary me-2"></i>
+                        Detalhes do Evento
+                    </h2>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('eventos.lista_eventos') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Voltar
+                        </a>
+                        <a href="{{ url_for('eventos.editar_evento', evento_id=evento.id) }}" class="btn btn-warning">
+                            <i class="fas fa-edit me-1"></i> Editar
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informações do Evento -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-calendar-check me-2"></i>
+                        {{ evento.titulo }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informações Básicas -->
+                        <div class="col-md-6 mb-4">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-info-circle me-1"></i> Informações Básicas
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <strong>Status:</strong><br>
+                                <span class="badge {{ evento.status_badge_class() }} fs-6">
+                                    {{ evento.status }}
+                                </span>
+                            </div>
+
+                            {% if evento.descricao %}
+                            <div class="mb-3">
+                                <strong>Descrição:</strong><br>
+                                <p class="text-muted mb-0">{{ evento.descricao }}</p>
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <strong>Data de Criação:</strong><br>
+                                <span class="text-muted">{{ evento.criado_em.strftime('%d/%m/%Y às %H:%M') }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Data, Hora e Local -->
+                        <div class="col-md-6 mb-4">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-clock me-1"></i> Data, Hora e Local
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <strong>Data/Hora Início:</strong><br>
+                                <span class="text-muted">{{ evento.data_inicio_formatada() }}</span>
+                            </div>
+
+                            {% if evento.data_fim %}
+                            <div class="mb-3">
+                                <strong>Data/Hora Fim:</strong><br>
+                                <span class="text-muted">{{ evento.data_fim_formatada() }}</span>
+                            </div>
+                            {% endif %}
+
+                            {% if evento.duracao_horas() > 0 %}
+                            <div class="mb-3">
+                                <strong>Duração:</strong><br>
+                                <span class="text-muted">{{ evento.duracao_horas() }} hora(s)</span>
+                            </div>
+                            {% endif %}
+
+                            {% if evento.local %}
+                            <div class="mb-3">
+                                <strong>Local:</strong><br>
+                                <span class="text-muted">{{ evento.local }}</span>
+                            </div>
+                            {% endif %}
+
+                            {% if evento.responsavel %}
+                            <div class="mb-3">
+                                <strong>Responsável:</strong><br>
+                                <span class="text-muted">{{ evento.responsavel }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ações -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <a href="{{ url_for('eventos.lista_eventos') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-list me-1"></i> Ver Todos os Eventos
+                            </a>
+                            <a href="{{ url_for('eventos.calendario_eventos') }}" class="btn btn-outline-info">
+                                <i class="fas fa-calendar me-1"></i> Ver Calendário
+                            </a>
+                        </div>
+                        <div>
+                            <a href="{{ url_for('eventos.editar_evento', evento_id=evento.id) }}" class="btn btn-warning">
+                                <i class="fas fa-edit me-1"></i> Editar Evento
+                            </a>
+                            <a href="{{ url_for('eventos.excluir_evento', evento_id=evento.id) }}" 
+                               class="btn btn-danger"
+                               onclick="return confirm('Tem certeza que deseja excluir o evento \'{{ evento.titulo }}\'?')">
+                                <i class="fas fa-trash me-1"></i> Excluir Evento
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.border-bottom {
+    border-bottom: 2px solid #dee2e6 !important;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.text-primary {
+    color: #0b1b3a !important;
+}
+
+.btn-primary {
+    background-color: #0b1b3a;
+    border-color: #0b1b3a;
+}
+
+.btn-primary:hover {
+    background-color: #081429;
+    border-color: #081429;
+}
+
+@media (max-width: 768px) {
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .d-flex.justify-content-between > div {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,231 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Lista de Membros{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho da página -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-dark mb-1">
+                        <i class="fas fa-users text-primary me-2"></i>
+                        Membros da Igreja
+                    </h2>
+                    <p class="text-muted">Gerencie os membros cadastrados na igreja</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('membros.novo_membro') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>
+                        Novo Membro
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card com a tabela -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-list text-secondary me-2"></i>
+                                Lista de Membros
+                            </h5>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <span class="badge bg-info fs-6">
+                                Total: {{ membros|length }} membros
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    {% if membros %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" class="border-0 fw-bold text-dark">
+                                        <i class="fas fa-user me-1"></i>
+                                        Nome
+                                    </th>
+                                    <th scope="col" class="border-0 fw-bold text-dark">
+                                        <i class="fas fa-phone me-1"></i>
+                                        Telefone
+                                    </th>
+                                    <th scope="col" class="border-0 fw-bold text-dark">
+                                        <i class="fas fa-envelope me-1"></i>
+                                        Email
+                                    </th>
+                                    <th scope="col" class="border-0 fw-bold text-dark text-center">
+                                        <i class="fas fa-check-circle me-1"></i>
+                                        Status
+                                    </th>
+                                    <th scope="col" class="border-0 fw-bold text-dark text-center">
+                                        <i class="fas fa-cog me-1"></i>
+                                        Ações
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for membro in membros %}
+                                <tr>
+                                    <td class="align-middle">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3">
+                                                {{ membro.nome[:2].upper() }}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0 text-dark">{{ membro.nome }}</h6>
+                                                {% if membro.cidade %}
+                                                <small class="text-muted">{{ membro.cidade }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="align-middle">
+                                        {% if membro.telefone %}
+                                            <span class="text-dark">{{ membro.telefone }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle">
+                                        {% if membro.email %}
+                                            <a href="mailto:{{ membro.email }}" class="text-primary text-decoration-none">
+                                                {{ membro.email }}
+                                            </a>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        {% if membro.status == 'Ativo' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>
+                                                Ativo
+                                            </span>
+                                        {% elif membro.status == 'Inativo' %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-pause me-1"></i>
+                                                Inativo
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                {{ membro.status }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('membros.editar_membro', id=membro.id) }}" 
+                                               class="btn btn-outline-primary btn-sm" 
+                                               title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" 
+                                                    class="btn btn-outline-danger btn-sm" 
+                                                    title="Excluir"
+                                                    onclick="confirmarExclusao({{ membro.id }}, '{{ membro.nome }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <!-- Estado vazio -->
+                    <div class="text-center py-5">
+                        <i class="fas fa-users text-muted" style="font-size: 4rem;"></i>
+                        <h4 class="text-muted mt-3">Nenhum membro cadastrado</h4>
+                        <p class="text-muted">Comece adicionando o primeiro membro da igreja</p>
+                        <a href="{{ url_for('membros.novo_membro') }}" class="btn btn-primary mt-3">
+                            <i class="fas fa-plus me-2"></i>
+                            Cadastrar Primeiro Membro
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div class="modal fade" id="modalExcluir" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o membro <strong id="nomeMembroExcluir"></strong>?</p>
+                <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    Cancelar
+                </button>
+                <a href="#" id="linkExcluir" class="btn btn-danger">
+                    <i class="fas fa-trash me-2"></i>
+                    Confirmar Exclusão
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.table th {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.btn-group .btn {
+    border-radius: 6px !important;
+    margin: 0 2px;
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+}
+</style>
+
+<script>
+function confirmarExclusao(id, nome) {
+    document.getElementById('nomeMembroExcluir').textContent = nome;
+    document.getElementById('linkExcluir').href = `/membros/excluir/${id}`;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalExcluir'));
+    modal.show();
+}
+</script>
+{% endblock %}

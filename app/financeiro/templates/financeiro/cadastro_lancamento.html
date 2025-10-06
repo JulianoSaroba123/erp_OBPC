@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}{% if lancamento %}Editar{% else %}Novo{% endif %} Lançamento - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{% if lancamento %}edit{% else %}plus{% endif %} me-2"></i>
+                        {% if lancamento %}Editar{% else %}Novo{% endif %} Lançamento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}">
+                        {% if lancamento %}
+                        <input type="hidden" name="id" value="{{ lancamento.id }}">
+                        {% endif %}
+                        
+                        <div class="row">
+                            <!-- Data do Lançamento -->
+                            <div class="col-md-6 mb-3">
+                                <label for="data" class="form-label">Data do Lançamento *</label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="data" 
+                                       name="data" 
+                                       value="{% if lancamento %}{{ lancamento.data.strftime('%Y-%m-%d') }}{% else %}{{ today.strftime('%Y-%m-%d') if today else '' }}{% endif %}"
+                                       required>
+                            </div>
+
+                            <!-- Tipo -->
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo" class="form-label">Tipo *</label>
+                                <select class="form-select" id="tipo" name="tipo" required>
+                                    <option value="">Selecione o tipo</option>
+                                    <option value="Entrada" {% if lancamento and lancamento.tipo == 'Entrada' %}selected{% endif %}>
+                                        <i class="fas fa-arrow-up"></i> Entrada
+                                    </option>
+                                    <option value="Saída" {% if lancamento and lancamento.tipo == 'Saída' %}selected{% endif %}>
+                                        <i class="fas fa-arrow-down"></i> Saída
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Categoria -->
+                            <div class="col-md-6 mb-3">
+                                <label for="categoria" class="form-label">Categoria *</label>
+                                <select class="form-select" id="categoria" name="categoria" required>
+                                    <option value="">Selecione a categoria</option>
+                                    
+                                    <!-- QR Code Pix Env -->
+                                    <optgroup label="💳 QR Code Pix Env">
+                                        <option value="DÍZIMO" {% if lancamento and lancamento.categoria == 'DÍZIMO' %}selected{% endif %}>DÍZIMO</option>
+                                        <option value="OFERTA" {% if lancamento and lancamento.categoria == 'OFERTA' %}selected{% endif %}>OFERTA</option>
+                                    </optgroup>
+                                    
+                                    <!-- Pix enviado -->
+                                    <optgroup label="📱 Pix enviado">
+                                        <option value="OFERTA OMN" {% if lancamento and lancamento.categoria == 'OFERTA OMN' %}selected{% endif %}>OFERTA OMN</option>
+                                    </optgroup>
+                                    
+                                    <!-- Rend da conta -->
+                                    <optgroup label="💰 Rend da conta">
+                                        <option value="RENDIMENTOS" {% if lancamento and lancamento.categoria == 'RENDIMENTOS' %}selected{% endif %}>RENDIMENTOS</option>
+                                        <option value="DESP. FIXAS" {% if lancamento and lancamento.categoria == 'DESP. FIXAS' %}selected{% endif %}>DESP. FIXAS</option>
+                                    </optgroup>
+                                    
+                                    <!-- Pix recebido -->
+                                    <optgroup label="📲 Pix recebido">
+                                        <option value="DESP. VARIAVEIS" {% if lancamento and lancamento.categoria == 'DESP. VARIAVEIS' %}selected{% endif %}>DESP. VARIAVEIS</option>
+                                    </optgroup>
+                                    
+                                    <!-- Vendas -->
+                                    <optgroup label="🛒 Vendas">
+                                        <option value="PREBENDA" {% if lancamento and lancamento.categoria == 'PREBENDA' %}selected{% endif %}>PREBENDA</option>
+                                        <option value="COMBUSTÍVEL" {% if lancamento and lancamento.categoria == 'COMBUSTÍVEL' %}selected{% endif %}>COMBUSTÍVEL</option>
+                                        <option value="REND.CONTA" {% if lancamento and lancamento.categoria == 'REND.CONTA' %}selected{% endif %}>REND.CONTA</option>
+                                        <option value="AJUDA CUSTO" {% if lancamento and lancamento.categoria == 'AJUDA CUSTO' %}selected{% endif %}>AJUDA CUSTO</option>
+                                        <option value="TRANSP VIEX" {% if lancamento and lancamento.categoria == 'TRANSP VIEX' %}selected{% endif %}>TRANSP VIEX</option>
+                                        <option value="CONTAS" {% if lancamento and lancamento.categoria == 'CONTAS' %}selected{% endif %}>CONTAS</option>
+                                    </optgroup>
+                                    
+                                    <!-- Dinheiro -->
+                                    <optgroup label="💵 Dinheiro">
+                                        <option value="CRÉDITO CARTÃO" {% if lancamento and lancamento.categoria == 'CRÉDITO CARTÃO' %}selected{% endif %}>CRÉDITO CARTÃO</option>
+                                    </optgroup>
+                                    
+                                    <!-- Desc. Tarifa -->
+                                    <optgroup label="📊 Desc. Tarifa">
+                                        <option value="DESC.CONTA" {% if lancamento and lancamento.categoria == 'DESC.CONTA' %}selected{% endif %}>DESC.CONTA</option>
+                                    </optgroup>
+                                </select>
+                                <div class="form-text">Selecione a categoria apropriada para o lançamento</div>
+                            </div>
+
+                            <!-- Valor -->
+                            <div class="col-md-6 mb-3">
+                                <label for="valor" class="form-label">Valor *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="valor" 
+                                           name="valor" 
+                                           value="{% if lancamento %}{{ '%.2f'|format(lancamento.valor)|replace('.', ',') }}{% endif %}"
+                                           placeholder="0,00"
+                                           required>
+                                </div>
+                                <div class="form-text">Use vírgula para separar os centavos (ex: 1.500,50)</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Conta -->
+                            <div class="col-md-6 mb-3">
+                                <label for="conta" class="form-label">Conta *</label>
+                                <select class="form-select" id="conta" name="conta" required>
+                                    <option value="">Selecione a conta</option>
+                                    <option value="Caixa" {% if lancamento and lancamento.conta == 'Caixa' %}selected{% endif %}>
+                                        💰 Caixa
+                                    </option>
+                                    <option value="Banco" {% if lancamento and lancamento.conta == 'Banco' %}selected{% endif %}>
+                                        🏦 Banco
+                                    </option>
+                                    <option value="Poupança" {% if lancamento and lancamento.conta == 'Poupança' %}selected{% endif %}>
+                                        💳 Poupança
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Descrição -->
+                            <div class="col-md-6 mb-3">
+                                <label for="descricao" class="form-label">Descrição</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="descricao" 
+                                       name="descricao" 
+                                       value="{{ lancamento.descricao if lancamento else '' }}"
+                                       placeholder="Breve descrição do lançamento">
+                            </div>
+                        </div>
+
+                        <!-- Observações -->
+                        <div class="mb-3">
+                            <label for="observacoes" class="form-label">Observações</label>
+                            <textarea class="form-control" 
+                                      id="observacoes" 
+                                      name="observacoes" 
+                                      rows="3" 
+                                      placeholder="Informações adicionais sobre o lançamento (opcional)">{{ lancamento.observacoes if lancamento else '' }}</textarea>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> 
+                                {% if lancamento %}Atualizar{% else %}Salvar{% endif %} Lançamento
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Card de Ajuda -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Dicas de Preenchimento</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-success"><i class="fas fa-arrow-up"></i> Entradas</h6>
+                            <ul class="small text-muted">
+                                <li>Dízimos e Ofertas</li>
+                                <li>Doações</li>
+                                <li>Eventos e Campanhas</li>
+                                <li>Rendimentos</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-danger"><i class="fas fa-arrow-down"></i> Saídas</h6>
+                            <ul class="small text-muted">
+                                <li>Despesas Operacionais</li>
+                                <li>Manutenção e Reformas</li>
+                                <li>Pagamentos a Fornecedores</li>
+                                <li>Combustível e Transporte</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Se estiver editando, configurar data padrão para hoje
+    {% if not lancamento %}
+    const dataInput = document.getElementById('data');
+    if (!dataInput.value) {
+        const hoje = new Date().toISOString().split('T')[0];
+        dataInput.value = hoje;
+    }
+    {% endif %}
+
+    // Mudança de cor do tipo e sugestão de categorias
+    const tipoSelect = document.getElementById('tipo');
+    const categoriaSelect = document.getElementById('categoria');
+    
+    tipoSelect.addEventListener('change', function() {
+        const card = this.closest('.card');
+        if (this.value === 'Entrada') {
+            card.querySelector('.card-header').className = 'card-header bg-success text-white';
+            // Sugerir categorias de entrada
+            mostrarCategoriasEntrada();
+        } else if (this.value === 'Saída') {
+            card.querySelector('.card-header').className = 'card-header bg-danger text-white';
+            // Sugerir categorias de saída
+            mostrarCategoriasSaida();
+        } else {
+            card.querySelector('.card-header').className = 'card-header';
+            mostrarTodasCategorias();
+        }
+    });
+    
+    function mostrarCategoriasEntrada() {
+        // Esconder optgroups de saída e mostrar de entrada
+        const optgroups = categoriaSelect.querySelectorAll('optgroup');
+        optgroups.forEach(group => {
+            const label = group.getAttribute('label');
+            if (label.includes('QR Code Pix Env') || label.includes('Pix enviado') || label.includes('Rend da conta')) {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        });
+    }
+    
+    function mostrarCategoriasSaida() {
+        // Esconder optgroups de entrada e mostrar de saída
+        const optgroups = categoriaSelect.querySelectorAll('optgroup');
+        optgroups.forEach(group => {
+            const label = group.getAttribute('label');
+            if (label.includes('Vendas') || label.includes('Dinheiro') || label.includes('Desc. Tarifa') || label.includes('Pix recebido')) {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+            }
+        });
+    }
+    
+    function mostrarTodasCategorias() {
+        // Mostrar todos os optgroups
+        const optgroups = categoriaSelect.querySelectorAll('optgroup');
+        optgroups.forEach(group => {
+            group.style.display = 'block';
+        });
+    }
+
+    // Trigger inicial se já tiver valor selecionado
+    if (tipoSelect.value) {
+        tipoSelect.dispatchEvent(new Event('change'));
+    }
+    
+    // Máscara de moeda brasileira para o campo valor
+    const valorInput = document.getElementById('valor');
+    
+    function formatarMoeda(valor) {
+        // Remove tudo que não é dígito
+        valor = valor.replace(/\D/g, '');
+        
+        // Se não tem nada, retorna vazio
+        if (valor === '') return '';
+        
+        // Converte para centavos
+        valor = parseInt(valor);
+        
+        // Converte para formato decimal
+        valor = (valor / 100).toFixed(2);
+        
+        // Adiciona separadores de milhares e vírgula decimal
+        valor = valor.replace('.', ',');
+        valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+        
+        return valor;
+    }
+    
+    function aplicarMascaraMoeda(input) {
+        const valorOriginal = input.value;
+        const valorFormatado = formatarMoeda(valorOriginal);
+        
+        if (valorOriginal !== valorFormatado) {
+            const posicaoAtual = input.selectionStart;
+            const diferencaTamanho = valorFormatado.length - valorOriginal.length;
+            
+            input.value = valorFormatado;
+            
+            // Ajusta a posição do cursor
+            const novaPosicao = posicaoAtual + diferencaTamanho;
+            input.setSelectionRange(novaPosicao, novaPosicao);
+        }
+    }
+    
+    // Aplicar máscara em tempo real
+    valorInput.addEventListener('input', function(e) {
+        aplicarMascaraMoeda(this);
+    });
+    
+    // Aplicar máscara quando o campo perde o foco
+    valorInput.addEventListener('blur', function(e) {
+        aplicarMascaraMoeda(this);
+        
+        // Se o campo está vazio, coloca 0,00
+        if (this.value === '') {
+            this.value = '0,00';
+        }
+    });
+    
+    // Aplicar máscara quando o campo ganha foco
+    valorInput.addEventListener('focus', function(e) {
+        // Se o valor é 0,00, limpa o campo
+        if (this.value === '0,00') {
+            this.value = '';
+        }
+    });
+    
+    // Aplicar máscara no valor inicial se existir
+    if (valorInput.value) {
+        aplicarMascaraMoeda(valorInput);
+    }
+});
+</script>
+{% endblock %}

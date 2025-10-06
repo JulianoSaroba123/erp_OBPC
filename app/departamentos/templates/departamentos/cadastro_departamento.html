@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+
+{% block titulo %}
+  {% if departamento %}Editar Departamento{% else %}Novo Departamento{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho da página -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-dark mb-1">
+                        <i class="fas fa-church text-primary me-2"></i>
+                        {% if departamento %}Editar Departamento{% else %}Novo Departamento{% endif %}
+                    </h2>
+                    <p class="text-muted">
+                        {% if departamento %}
+                            Edite as informações do departamento {{ departamento.nome }}
+                        {% else %}
+                            Preencha os dados para cadastrar um novo departamento
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('departamentos.lista_departamentos') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Voltar à Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="row justify-content-center">
+        <div class="col-xl-10">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-edit text-secondary me-2"></i>
+                        Informações do Departamento
+                    </h5>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('departamentos.salvar_departamento') }}" novalidate>
+                        {% if departamento %}
+                            <input type="hidden" name="id" value="{{ departamento.id }}">
+                        {% endif %}
+                        
+                        <!-- Dados Básicos -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Dados Básicos
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label for="nome" class="form-label fw-bold">
+                                    Nome do Departamento <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg" 
+                                       id="nome" 
+                                       name="nome" 
+                                       value="{{ departamento.nome if departamento else '' }}" 
+                                       required>
+                                <div class="form-text">Nome completo do departamento ou ministério</div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="status" class="form-label fw-bold">Status</label>
+                                <select class="form-select form-select-lg" id="status" name="status">
+                                    <option value="Ativo" {% if departamento and departamento.status == 'Ativo' %}selected{% elif not departamento %}selected{% endif %}>Ativo</option>
+                                    <option value="Inativo" {% if departamento and departamento.status == 'Inativo' %}selected{% endif %}>Inativo</option>
+                                    <option value="Em Formação" {% if departamento and departamento.status == 'Em Formação' %}selected{% endif %}>Em Formação</option>
+                                    <option value="Suspenso" {% if departamento and departamento.status == 'Suspenso' %}selected{% endif %}>Suspenso</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Liderança -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-crown me-2"></i>
+                                    Liderança
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="lider" class="form-label fw-bold">
+                                    <i class="fas fa-user-crown text-warning me-1"></i>
+                                    Líder Principal
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="lider" 
+                                       name="lider" 
+                                       value="{{ departamento.lider if departamento else '' }}"
+                                       placeholder="Nome do líder do departamento">
+                                <div class="form-text">Responsável principal pelo departamento</div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="vice_lider" class="form-label fw-bold">
+                                    <i class="fas fa-user-check text-info me-1"></i>
+                                    Vice-Líder
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="vice_lider" 
+                                       name="vice_lider" 
+                                       value="{{ departamento.vice_lider if departamento else '' }}"
+                                       placeholder="Nome do vice-líder">
+                                <div class="form-text">Segundo responsável do departamento</div>
+                            </div>
+                        </div>
+
+                        <!-- Contato -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-phone me-2"></i>
+                                    Informações de Contato
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                <label for="contato" class="form-label fw-bold">Contato</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="contato" 
+                                       name="contato" 
+                                       value="{{ departamento.contato if departamento else '' }}"
+                                       placeholder="Telefone, WhatsApp ou e-mail do departamento">
+                                <div class="form-text">Telefone, WhatsApp ou e-mail para contato com o departamento</div>
+                            </div>
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-align-left me-2"></i>
+                                    Descrição e Objetivos
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <label for="descricao" class="form-label fw-bold">Descrição</label>
+                                <textarea class="form-control" 
+                                          id="descricao" 
+                                          name="descricao" 
+                                          rows="5" 
+                                          placeholder="Descreva os objetivos, atividades e propósito do departamento...">{{ departamento.descricao if departamento else '' }}</textarea>
+                                <div class="form-text">Objetivos, atividades principais, propósito, horários de reunião, etc.</div>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('departamentos.lista_departamentos') }}" class="btn btn-secondary btn-lg">
+                                        <i class="fas fa-times me-2"></i>
+                                        Cancelar
+                                    </a>
+                                    
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-2"></i>
+                                        {% if departamento %}Atualizar Departamento{% else %}Cadastrar Departamento{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e0e6ed;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-green);
+    box-shadow: 0 0 0 0.2rem rgba(34, 139, 34, 0.15);
+}
+
+.form-control-lg {
+    padding: 1rem;
+    font-size: 1.1rem;
+}
+
+.text-primary {
+    color: var(--primary-green) !important;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-green), var(--primary-blue));
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(34, 139, 34, 0.3);
+}
+
+.btn-secondary {
+    border-radius: 8px;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+}
+
+h6.text-primary {
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.required-asterisk {
+    color: #dc3545;
+}
+
+.fa-user-crown {
+    color: #ffc107;
+}
+
+.fa-user-check {
+    color: #17a2b8;
+}
+
+/* Estilo para sugestões de departamentos comuns */
+.department-suggestions {
+    margin-top: 0.5rem;
+}
+
+.department-suggestions .badge {
+    margin: 0.2rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.department-suggestions .badge:hover {
+    transform: scale(1.05);
+}
+</style>
+
+<script>
+// Máscara para contato (telefone ou email)
+document.getElementById('contato').addEventListener('input', function(e) {
+    let value = e.target.value;
+    
+    // Se parece com telefone (apenas números), aplica máscara
+    if (/^\d+$/.test(value.replace(/\D/g, ''))) {
+        value = value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            value = value.replace(/(\d{2})(\d)/, '($1) $2');
+            value = value.replace(/(\d{5})(\d)/, '$1-$2');
+        }
+        e.target.value = value;
+    }
+});
+
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const nome = document.getElementById('nome').value.trim();
+    
+    if (!nome) {
+        e.preventDefault();
+        alert('Por favor, preencha o nome do departamento.');
+        document.getElementById('nome').focus();
+    }
+});
+
+// Sugestões de departamentos comuns
+document.addEventListener('DOMContentLoaded', function() {
+    const nomeInput = document.getElementById('nome');
+    const sugestoes = [
+        'Louvor e Adoração', 'Escola Bíblica Dominical', 'Ministério Infantil', 
+        'Ministério de Jovens', 'Ministério de Casais', 'Ministério de Mulheres',
+        'Ministério de Homens', 'Evangelismo', 'Discipulado', 'Células',
+        'Patrimônio', 'Comunicação', 'Recepção', 'Intercessão'
+    ];
+    
+    // Adicionar sugestões abaixo do campo nome
+    if (!document.querySelector('.department-suggestions')) {
+        const suggestionsDiv = document.createElement('div');
+        suggestionsDiv.className = 'department-suggestions';
+        suggestionsDiv.innerHTML = '<small class="text-muted">Sugestões: </small>';
+        
+        sugestoes.forEach(sugestao => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-light text-dark border';
+            badge.textContent = sugestao;
+            badge.onclick = () => {
+                nomeInput.value = sugestao;
+                nomeInput.focus();
+            };
+            suggestionsDiv.appendChild(badge);
+        });
+        
+        nomeInput.parentNode.appendChild(suggestionsDiv);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}{% if evento %}Editar Evento{% else %}Novo Evento{% endif %} - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Cabeçalho -->
+            <div class="row align-items-center mb-4">
+                <div class="col-md-6">
+                    <h2>
+                        <i class="fas fa-calendar-plus text-primary me-2"></i>
+                        {% if evento %}Editar Evento{% else %}Novo Evento{% endif %}
+                    </h2>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('eventos.lista_eventos') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informações do Evento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% if evento %}{{ url_for('eventos.salvar_evento') }}{% else %}{{ url_for('eventos.salvar_evento') }}{% endif %}" 
+                          novalidate class="needs-validation">
+                        
+                        {% if evento %}
+                        <input type="hidden" name="evento_id" value="{{ evento.id }}">
+                        {% endif %}
+
+                        <!-- Informações Básicas -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-edit me-1"></i> Informações Básicas
+                                </h6>
+                            </div>
+                            
+                            <!-- Título -->
+                            <div class="col-md-8 mb-3">
+                                <label for="titulo" class="form-label">
+                                    <i class="fas fa-heading me-1"></i> Título do Evento *
+                                </label>
+                                <input type="text" class="form-control" id="titulo" name="titulo" 
+                                       value="{{ evento.titulo if evento else '' }}" 
+                                       placeholder="Ex: Culto de Adoração, Escola Bíblica, Reunião de Oração..." 
+                                       required maxlength="100">
+                                <div class="invalid-feedback">
+                                    Por favor, informe o título do evento.
+                                </div>
+                            </div>
+
+                            <!-- Status -->
+                            <div class="col-md-4 mb-3">
+                                <label for="status" class="form-label">
+                                    <i class="fas fa-flag me-1"></i> Status
+                                </label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="Agendado" {% if evento and evento.status == 'Agendado' %}selected{% endif %}>Agendado</option>
+                                    <option value="Em Andamento" {% if evento and evento.status == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
+                                    <option value="Concluído" {% if evento and evento.status == 'Concluído' %}selected{% endif %}>Concluído</option>
+                                    <option value="Cancelado" {% if evento and evento.status == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                                    <option value="Adiado" {% if evento and evento.status == 'Adiado' %}selected{% endif %}>Adiado</option>
+                                </select>
+                            </div>
+
+                            <!-- Descrição -->
+                            <div class="col-12 mb-3">
+                                <label for="descricao" class="form-label">
+                                    <i class="fas fa-align-left me-1"></i> Descrição
+                                </label>
+                                <textarea class="form-control" id="descricao" name="descricao" 
+                                          rows="3" maxlength="500" 
+                                          placeholder="Descreva detalhes do evento, programação, objetivos...">{{ evento.descricao if evento else '' }}</textarea>
+                                <div class="form-text">Máximo 500 caracteres.</div>
+                            </div>
+                        </div>
+
+                        <!-- Data e Horário -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-clock me-1"></i> Data e Horário
+                                </h6>
+                            </div>
+
+                            <!-- Data Início -->
+                            <div class="col-md-3 mb-3">
+                                <label for="data_inicio" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i> Data Início *
+                                </label>
+                                <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
+                                       value="{{ evento.data_inicio.strftime('%Y-%m-%d') if evento and evento.data_inicio else '' }}" 
+                                       required>
+                                <div class="invalid-feedback">
+                                    Por favor, informe a data de início.
+                                </div>
+                            </div>
+
+                            <!-- Hora Início -->
+                            <div class="col-md-3 mb-3">
+                                <label for="hora_inicio" class="form-label">
+                                    <i class="fas fa-clock me-1"></i> Hora Início *
+                                </label>
+                                <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" 
+                                       value="{{ evento.data_inicio.strftime('%H:%M') if evento and evento.data_inicio else '' }}" 
+                                       required>
+                                <div class="invalid-feedback">
+                                    Por favor, informe a hora de início.
+                                </div>
+                            </div>
+
+                            <!-- Data Fim -->
+                            <div class="col-md-3 mb-3">
+                                <label for="data_fim" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i> Data Fim
+                                </label>
+                                <input type="date" class="form-control" id="data_fim" name="data_fim" 
+                                       value="{{ evento.data_fim.strftime('%Y-%m-%d') if evento and evento.data_fim else '' }}">
+                                <div class="form-text">Deixe em branco se for no mesmo dia.</div>
+                            </div>
+
+                            <!-- Hora Fim -->
+                            <div class="col-md-3 mb-3">
+                                <label for="hora_fim" class="form-label">
+                                    <i class="fas fa-clock me-1"></i> Hora Fim
+                                </label>
+                                <input type="time" class="form-control" id="hora_fim" name="hora_fim" 
+                                       value="{{ evento.data_fim.strftime('%H:%M') if evento and evento.data_fim else '' }}">
+                                <div class="form-text">Opcional.</div>
+                            </div>
+                        </div>
+
+                        <!-- Local e Responsável -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-map-marker-alt me-1"></i> Local e Responsabilidade
+                                </h6>
+                            </div>
+
+                            <!-- Local -->
+                            <div class="col-md-6 mb-3">
+                                <label for="local" class="form-label">
+                                    <i class="fas fa-map-marker-alt me-1"></i> Local do Evento
+                                </label>
+                                <input type="text" class="form-control" id="local" name="local" 
+                                       value="{{ evento.local if evento else '' }}" 
+                                       placeholder="Ex: Templo Principal, Salão Social, Auditório..."
+                                       maxlength="100">
+                            </div>
+
+                            <!-- Responsável -->
+                            <div class="col-md-6 mb-3">
+                                <label for="responsavel" class="form-label">
+                                    <i class="fas fa-user me-1"></i> Responsável
+                                </label>
+                                <input type="text" class="form-control" id="responsavel" name="responsavel" 
+                                       value="{{ evento.responsavel if evento else '' }}" 
+                                       placeholder="Nome do responsável pelo evento"
+                                       maxlength="100">
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('eventos.lista_eventos') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-times me-1"></i> Cancelar
+                                    </a>
+                                    <div>
+                                        {% if evento %}
+                                        <button type="button" class="btn btn-outline-danger me-2" 
+                                                onclick="confirmarExclusao()">
+                                            <i class="fas fa-trash me-1"></i> Excluir
+                                        </button>
+                                        {% endif %}
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save me-1"></i> 
+                                            {% if evento %}Atualizar{% else %}Cadastrar{% endif %} Evento
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Informações Adicionais -->
+            {% if evento %}
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Informações Adicionais
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Data de Criação:</strong><br>
+                            <span class="text-muted">{{ evento.criado_em.strftime('%d/%m/%Y às %H:%M') }}</span>
+                        </div>
+                        {% if evento.duracao_horas() > 0 %}
+                        <div class="col-md-4">
+                            <strong>Duração Estimada:</strong><br>
+                            <span class="text-muted">{{ evento.duracao_horas() }} hora(s)</span>
+                        </div>
+                        {% endif %}
+                        <div class="col-md-4">
+                            <strong>Status Atual:</strong><br>
+                            <span class="badge {{ evento.status_badge_class() }}">{{ evento.status }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+{% if evento %}
+<div class="modal fade" id="modalExclusao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o evento <strong>"{{ evento.titulo }}"</strong>?</p>
+                <p class="text-muted mb-0">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+                <a href="{{ url_for('eventos.excluir_evento', evento_id=evento.id) }}" class="btn btn-danger">
+                    <i class="fas fa-trash me-1"></i> Confirmar Exclusão
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Validação do formulário
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Validação de datas
+document.addEventListener('DOMContentLoaded', function() {
+    const dataInicio = document.getElementById('data_inicio');
+    const dataFim = document.getElementById('data_fim');
+    const horaInicio = document.getElementById('hora_inicio');
+    const horaFim = document.getElementById('hora_fim');
+
+    function validarDatas() {
+        if (dataInicio.value && dataFim.value) {
+            if (new Date(dataFim.value) < new Date(dataInicio.value)) {
+                dataFim.setCustomValidity('A data de fim deve ser igual ou posterior à data de início');
+            } else {
+                dataFim.setCustomValidity('');
+            }
+        }
+    }
+
+    function validarHorarios() {
+        if (dataInicio.value && dataFim.value && horaInicio.value && horaFim.value) {
+            const inicioDateTime = new Date(dataInicio.value + 'T' + horaInicio.value);
+            const fimDateTime = new Date(dataFim.value + 'T' + horaFim.value);
+            
+            if (fimDateTime <= inicioDateTime) {
+                horaFim.setCustomValidity('O horário de fim deve ser posterior ao horário de início');
+            } else {
+                horaFim.setCustomValidity('');
+            }
+        }
+    }
+
+    // Auto-preencher data fim se não informada
+    dataInicio.addEventListener('change', function() {
+        if (this.value && !dataFim.value) {
+            dataFim.value = this.value;
+        }
+        validarDatas();
+        validarHorarios();
+    });
+
+    dataFim.addEventListener('change', function() {
+        validarDatas();
+        validarHorarios();
+    });
+
+    horaInicio.addEventListener('change', validarHorarios);
+    horaFim.addEventListener('change', validarHorarios);
+});
+
+// Função para confirmar exclusão
+{% if evento %}
+function confirmarExclusao() {
+    var modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
+    modal.show();
+}
+{% endif %}
+
+// Contador de caracteres para descrição
+document.getElementById('descricao').addEventListener('input', function() {
+    const maxLength = 500;
+    const currentLength = this.value.length;
+    const formText = this.nextElementSibling;
+    
+    formText.textContent = `${currentLength}/${maxLength} caracteres`;
+    
+    if (currentLength > maxLength * 0.9) {
+        formText.classList.add('text-warning');
+    } else {
+        formText.classList.remove('text-warning');
+    }
+});
+</script>
+
+<style>
+.border-bottom {
+    border-bottom: 2px solid #dee2e6 !important;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0b1b3a;
+    box-shadow: 0 0 0 0.2rem rgba(11, 27, 58, 0.25);
+}
+
+.btn-primary {
+    background-color: #0b1b3a;
+    border-color: #0b1b3a;
+}
+
+.btn-primary:hover {
+    background-color: #081429;
+    border-color: #081429;
+}
+
+.text-primary {
+    color: #0b1b3a !important;
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0 10px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .d-flex.justify-content-between > div {
+        width: 100%;
+        text-align: center;
+    }
+}
+</style>
+{% endblock %}

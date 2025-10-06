@@ -1,0 +1,192 @@
+{% extends "login_base.html" %}
+{% block content %}
+<style>
+  /* Reset específico para a página de login */
+  body, html {
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+  
+  .login-container {
+    background: linear-gradient(135deg, #228b22 0%, #1e3a8a 100%);
+    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  
+  .login-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(34, 139, 34, 0.3);
+    overflow: hidden;
+    max-width: 400px;
+    width: 100%;
+    margin: auto;
+  }
+  
+  .login-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #5947ff 100%);
+    padding: 40px 30px;
+    text-align: center;
+    color: white;
+  }
+  
+  .logo-container {
+    margin-bottom: 15px;
+  }
+  
+  .logo-container img {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    object-fit: cover;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    display: block;
+    margin: 0 auto;
+  }
+  
+  /* Fallback caso a imagem não carregue */
+  .logo-container::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #228b22 0%, #1e3a8a 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    z-index: -1;
+  }
+  
+  .church-title {
+    margin: 10px 0 5px 0;
+    font-size: 28px;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  }
+  
+  .church-subtitle {
+    margin: 5px 0;
+    font-size: 14px;
+    opacity: 0.9;
+  }
+  
+  .logo-fallback {
+    display: none;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #228b22 0%, #1e3a8a 100%);
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+  }
+  
+  .login-body {
+    padding: 40px;
+  }
+  
+  .form-control {
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px 15px;
+    transition: all 0.3s ease;
+  }
+  
+  .form-control:focus {
+    border-color: #ffd700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, #228b22 0%, #1e3a8a 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(34, 139, 34, 0.3);
+  }
+  
+  .access-title {
+    color: #228b22;
+  }
+  
+  .form-label {
+    color: #374151;
+  }
+  
+  .register-link {
+    color: #1e3a8a;
+    text-decoration: none;
+  }
+  
+  .register-link:hover {
+    color: #1e40af;
+    text-decoration: underline;
+  }
+</style>
+
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="logo-container">
+        <img src="{{ url_for('static', filename='Logo_IBPC.jpg') }}" alt="Logo Igreja O Brasil para Cristo" 
+             onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='flex';" />
+        <div class="logo-fallback">
+          OBPC
+        </div>
+      </div>
+      <h1 class="church-title">OBPC</h1>
+      <p class="church-subtitle">Igreja O Brasil para Cristo</p>
+      
+    </div>
+    <div class="login-body">
+      <h4 class="text-center mb-4 access-title">Acesso ao Sistema</h4>
+      
+
+      
+      <form method="POST" action="{{ url_for('usuario.login') }}">
+        <div class="form-group mb-3">
+          <label for="email" class="fw-semibold form-label">E-mail</label>
+          <input type="email" class="form-control" id="email" name="email" placeholder="Digite seu e-mail" required>
+        </div>
+        <div class="form-group mb-4">
+          <label for="senha" class="fw-semibold form-label">Senha</label>
+          <input type="password" class="form-control" id="senha" name="senha" placeholder="Digite sua senha" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">Entrar no Sistema</button>
+      </form>
+      
+      <div class="text-center mt-4">
+        <a href="{{ url_for('usuario.cadastro') }}" class="register-link">
+          <i class="fas fa-user-plus me-1"></i>Criar nova conta
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

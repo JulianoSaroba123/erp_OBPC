@@ -1,0 +1,1125 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações do Sistema - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho -->
+            <div class="row align-items-center mb-4">
+                <div class="col-md-8">
+                    <h2><i class="fas fa-cog text-primary me-2"></i>Configurações do Sistema</h2>
+                    <p class="text-muted mb-0">Gerencie todas as configurações da igreja e do sistema</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="fazerBackup()">
+                            <i class="fas fa-download me-1"></i> Backup
+                        </button>
+                        <a href="{{ url_for('usuario.painel') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i> Voltar
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abas de Navegação -->
+            <div class="card">
+                <div class="card-header bg-primary text-white p-0">
+                    <ul class="nav nav-tabs nav-tabs-custom" id="configTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if aba_ativa == 'gerais' %}active{% endif %}" 
+                                    id="gerais-tab" data-bs-toggle="tab" data-bs-target="#gerais" 
+                                    type="button" role="tab">
+                                <i class="fas fa-church me-1"></i> Gerais
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if aba_ativa == 'financeiro' %}active{% endif %}" 
+                                    id="financeiro-tab" data-bs-toggle="tab" data-bs-target="#financeiro" 
+                                    type="button" role="tab">
+                                <i class="fas fa-coins me-1"></i> Financeiro
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if aba_ativa == 'relatorios' %}active{% endif %}" 
+                                    id="relatorios-tab" data-bs-toggle="tab" data-bs-target="#relatorios" 
+                                    type="button" role="tab">
+                                <i class="fas fa-file-pdf me-1"></i> Relatórios
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link {% if aba_ativa == 'layout' %}active{% endif %}" 
+                                    id="layout-tab" data-bs-toggle="tab" data-bs-target="#layout" 
+                                    type="button" role="tab">
+                                <i class="fas fa-palette me-1"></i> Layout
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="card-body">
+                    <div class="tab-content" id="configTabsContent">
+                        
+                        <!-- ABA GERAIS -->
+                        <div class="tab-pane fade {% if aba_ativa == 'gerais' %}show active{% endif %}" 
+                             id="gerais" role="tabpanel">
+                            <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="aba_ativa" value="gerais">
+                                
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                                            <i class="fas fa-info-circle me-2"></i>Dados Institucionais
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Nome da Igreja -->
+                                    <div class="col-md-8 mb-3">
+                                        <label for="nome_igreja" class="form-label">
+                                            <i class="fas fa-church me-1"></i> Nome da Igreja *
+                                        </label>
+                                        <input type="text" class="form-control" id="nome_igreja" name="nome_igreja" 
+                                               value="{{ config.nome_igreja }}" required>
+                                        <div class="invalid-feedback">Nome da igreja é obrigatório</div>
+                                    </div>
+
+                                    <!-- CNPJ -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="cnpj" class="form-label">
+                                            <i class="fas fa-id-card me-1"></i> CNPJ
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="cnpj" name="cnpj" 
+                                                   value="{{ config.cnpj or '' }}" placeholder="12.345.678/0001-90">
+                                            <button class="btn btn-outline-primary" type="button" id="buscarCnpj" title="Buscar dados por CNPJ">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">
+                                            <small class="text-muted">Digite o CNPJ e clique em buscar para preencher automaticamente</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Dirigente -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="dirigente" class="form-label">
+                                            <i class="fas fa-user-tie me-1"></i> Pastor/Dirigente
+                                        </label>
+                                        <input type="text" class="form-control" id="dirigente" name="dirigente" 
+                                               value="{{ config.dirigente or '' }}" placeholder="Nome do pastor responsável">
+                                    </div>
+
+                                    <!-- Tesoureiro -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="tesoureiro" class="form-label">
+                                            <i class="fas fa-calculator me-1"></i> Tesoureiro(a)
+                                        </label>
+                                        <input type="text" class="form-control" id="tesoureiro" name="tesoureiro" 
+                                               value="{{ config.tesoureiro or '' }}" placeholder="Nome do tesoureiro">
+                                    </div>
+
+                                    <!-- Cidade -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="cidade" class="form-label">
+                                            <i class="fas fa-map-marker-alt me-1"></i> Cidade *
+                                        </label>
+                                        <input type="text" class="form-control" id="cidade" name="cidade" 
+                                               value="{{ config.cidade }}" required>
+                                        <div class="invalid-feedback">Cidade é obrigatória</div>
+                                    </div>
+
+                                    <!-- Bairro -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="bairro" class="form-label">
+                                            <i class="fas fa-map me-1"></i> Bairro
+                                        </label>
+                                        <input type="text" class="form-control" id="bairro" name="bairro" 
+                                               value="{{ config.bairro or '' }}">
+                                    </div>
+
+                                    <!-- CEP -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="cep" class="form-label">
+                                            <i class="fas fa-map-pin me-1"></i> CEP
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="cep" name="cep" 
+                                                   value="{{ config.cep or '' }}" placeholder="12345-678">
+                                            <button class="btn btn-outline-primary" type="button" id="buscarCep" title="Buscar endereço por CEP">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <div class="form-text">
+                                            <small class="text-muted">Digite o CEP e clique em buscar para preencher automaticamente</small>
+                                        </div>
+                                    </div>
+
+                                    <!-- Endereço -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="endereco" class="form-label">
+                                            <i class="fas fa-home me-1"></i> Endereço
+                                        </label>
+                                        <input type="text" class="form-control" id="endereco" name="endereco" 
+                                               value="{{ config.endereco or '' }}" placeholder="Rua, número">
+                                    </div>
+
+                                    <!-- Telefone -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="telefone" class="form-label">
+                                            <i class="fas fa-phone me-1"></i> Telefone
+                                        </label>
+                                        <input type="tel" class="form-control" id="telefone" name="telefone" 
+                                               value="{{ config.telefone or '' }}" placeholder="(15) 1234-5678">
+                                    </div>
+
+                                    <!-- Email -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">
+                                            <i class="fas fa-envelope me-1"></i> E-mail
+                                        </label>
+                                        <input type="email" class="form-control" id="email" name="email" 
+                                               value="{{ config.email or '' }}" placeholder="contato@igreja.org.br">
+                                    </div>
+
+                                    <!-- Upload de Logo -->
+                                    <div class="col-12 mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-image me-1"></i> Logo da Igreja
+                                        </label>
+                                        <div class="row align-items-center">
+                                            <div class="col-md-3">
+                                                <img src="{{ url_for('static', filename=config.logo.replace('static/', '') if config.logo else 'logo_obpc_novo.jpg') }}" 
+                                                     alt="Logo da Igreja" class="img-fluid border rounded" style="max-height: 100px;">
+                                            </div>
+                                            <div class="col-md-9">
+                                                <input type="file" class="form-control" id="logo_upload" 
+                                                       accept="image/*" onchange="previewLogo(this)">
+                                                <small class="form-text text-muted" id="upload_status">
+                                                    Formatos aceitos: PNG, JPG, JPEG, GIF, SVG (máx. 2MB)
+                                                </small>
+                                                <div id="upload_progress" class="progress mt-2" style="display: none;">
+                                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                                         role="progressbar" style="width: 100%">
+                                                        Fazendo upload...
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- Botões de Ação -->
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-warning" onclick="resetarAba('gerais')">
+                                        <i class="fas fa-undo me-1"></i> Resetar
+                                    </button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save me-1"></i> Salvar Alterações
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- ABA FINANCEIRO -->
+                        <div class="tab-pane fade {% if aba_ativa == 'financeiro' %}show active{% endif %}" 
+                             id="financeiro" role="tabpanel">
+                            <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="aba_ativa" value="financeiro">
+                                
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                                            <i class="fas fa-university me-2"></i>Configurações Financeiras
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Banco Padrão -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="banco_padrao" class="form-label">
+                                            <i class="fas fa-university me-1"></i> Banco Padrão
+                                        </label>
+                                        <select class="form-select" id="banco_padrao" name="banco_padrao">
+                                            {% for banco in bancos_disponiveis %}
+                                            <option value="{{ banco }}" {% if config.banco_padrao == banco %}selected{% endif %}>
+                                                {{ banco }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- Percentual do Conselho -->
+                                    <div class="col-md-3 mb-3">
+                                        <label for="percentual_conselho" class="form-label">
+                                            <i class="fas fa-percentage me-1"></i> Percentual Conselho
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="percentual_conselho" 
+                                                   name="percentual_conselho" value="{{ config.percentual_conselho }}" 
+                                                   min="0" max="100" step="0.1">
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Saldo Inicial -->
+                                    <div class="col-md-3 mb-3">
+                                        <label for="saldo_inicial" class="form-label">
+                                            <i class="fas fa-dollar-sign me-1"></i> Saldo Inicial
+                                        </label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">R$</span>
+                                            <input type="number" class="form-control" id="saldo_inicial" 
+                                                   name="saldo_inicial" value="{{ config.saldo_inicial }}" 
+                                                   step="0.01" min="0">
+                                        </div>
+                                    </div>
+
+                                    <!-- Informações Adicionais -->
+                                    <div class="col-12 mb-3">
+                                        <div class="alert alert-info">
+                                            <h6><i class="fas fa-info-circle me-2"></i>Informações Importantes:</h6>
+                                            <ul class="mb-0">
+                                                <li><strong>Percentual do Conselho:</strong> Porcentagem automática repassada ao conselho em lançamentos específicos</li>
+                                                <li><strong>Saldo Inicial:</strong> Valor base para cálculos de relatórios financeiros</li>
+                                                <li><strong>Banco Padrão:</strong> Instituição financeira principal para relatórios</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- Botões de Ação -->
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-warning" onclick="resetarAba('financeiro')">
+                                        <i class="fas fa-undo me-1"></i> Resetar
+                                    </button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save me-1"></i> Salvar Alterações
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- ABA RELATÓRIOS -->
+                        <div class="tab-pane fade {% if aba_ativa == 'relatorios' %}show active{% endif %}" 
+                             id="relatorios" role="tabpanel">
+                            <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="aba_ativa" value="relatorios">
+                                
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                                            <i class="fas fa-file-pdf me-2"></i>Configurações de Relatórios
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Rodapé do Relatório -->
+                                    <div class="col-md-8 mb-3">
+                                        <label for="rodape_relatorio" class="form-label">
+                                            <i class="fas fa-text-width me-1"></i> Rodapé dos Relatórios *
+                                        </label>
+                                        <input type="text" class="form-control" id="rodape_relatorio" name="rodape_relatorio" 
+                                               value="{{ config.rodape_relatorio }}" required>
+                                        <div class="invalid-feedback">Rodapé é obrigatório</div>
+                                    </div>
+
+                                    <!-- Fonte Padrão -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="fonte_relatorio" class="form-label">
+                                            <i class="fas fa-font me-1"></i> Fonte Padrão
+                                        </label>
+                                        <select class="form-select" id="fonte_relatorio" name="fonte_relatorio">
+                                            {% for valor, nome in fontes_disponiveis %}
+                                            <option value="{{ valor }}" {% if config.fonte_relatorio == valor %}selected{% endif %}>
+                                                {{ nome }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- Campo Assinatura 1 -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="campo_assinatura_1" class="form-label">
+                                            <i class="fas fa-signature me-1"></i> Campo Assinatura 1
+                                        </label>
+                                        <input type="text" class="form-control" id="campo_assinatura_1" 
+                                               name="campo_assinatura_1" value="{{ config.campo_assinatura_1 or '' }}">
+                                    </div>
+
+                                    <!-- Campo Assinatura 2 -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="campo_assinatura_2" class="form-label">
+                                            <i class="fas fa-signature me-1"></i> Campo Assinatura 2
+                                        </label>
+                                        <input type="text" class="form-control" id="campo_assinatura_2" 
+                                               name="campo_assinatura_2" value="{{ config.campo_assinatura_2 or '' }}">
+                                    </div>
+
+                                    <!-- Exibir Logo -->
+                                    <div class="col-12 mb-3">
+                                        <div class="form-check">
+                                            <input type="checkbox" class="form-check-input" id="exibir_logo_relatorio" 
+                                                   name="exibir_logo_relatorio" {% if config.exibir_logo_relatorio %}checked{% endif %}>
+                                            <label class="form-check-label" for="exibir_logo_relatorio">
+                                                <i class="fas fa-image me-1"></i> Exibir logo da igreja nos relatórios
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Preview -->
+                                    <div class="col-12 mb-3">
+                                        <div class="alert alert-light border">
+                                            <h6><i class="fas fa-eye me-2"></i>Prévia do Rodapé:</h6>
+                                            <div class="text-center p-3 border-top border-bottom bg-white">
+                                                <small class="text-muted">{{ config.rodape_relatorio }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- Botões de Ação -->
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-warning" onclick="resetarAba('relatorios')">
+                                        <i class="fas fa-undo me-1"></i> Resetar
+                                    </button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save me-1"></i> Salvar Alterações
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- ABA LAYOUT -->
+                        <div class="tab-pane fade {% if aba_ativa == 'layout' %}show active{% endif %}" 
+                             id="layout" role="tabpanel">
+                            <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="aba_ativa" value="layout">
+                                
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                                            <i class="fas fa-palette me-2"></i>Aparência e Layout
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Tema -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="tema" class="form-label">
+                                            <i class="fas fa-moon me-1"></i> Tema
+                                        </label>
+                                        <select class="form-select" id="tema" name="tema">
+                                            {% for valor, nome in temas_disponiveis %}
+                                            <option value="{{ valor }}" {% if config.tema == valor %}selected{% endif %}>
+                                                {{ nome }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- Cor Principal -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="cor_principal" class="form-label">
+                                            <i class="fas fa-palette me-1"></i> Cor Principal
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" 
+                                                   id="cor_principal" name="cor_principal" value="{{ config.cor_principal }}">
+                                            <input type="text" class="form-control" value="{{ config.cor_principal }}" 
+                                                   readonly onclick="this.select()">
+                                        </div>
+                                    </div>
+
+                                    <!-- Cor Secundária -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="cor_secundaria" class="form-label">
+                                            <i class="fas fa-palette me-1"></i> Cor Secundária
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" 
+                                                   id="cor_secundaria" name="cor_secundaria" value="{{ config.cor_secundaria }}">
+                                            <input type="text" class="form-control" value="{{ config.cor_secundaria }}" 
+                                                   readonly onclick="this.select()">
+                                        </div>
+                                    </div>
+
+                                    <!-- Cor Destaque -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="cor_destaque" class="form-label">
+                                            <i class="fas fa-star me-1"></i> Cor Destaque
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="color" class="form-control form-control-color" 
+                                                   id="cor_destaque" name="cor_destaque" value="{{ config.cor_destaque }}">
+                                            <input type="text" class="form-control" value="{{ config.cor_destaque }}" 
+                                                   readonly onclick="this.select()">
+                                        </div>
+                                    </div>
+
+                                    <!-- Idioma -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="idioma" class="form-label">
+                                            <i class="fas fa-language me-1"></i> Idioma
+                                        </label>
+                                        <select class="form-select" id="idioma" name="idioma">
+                                            <option value="pt-BR" {% if config.idioma == 'pt-BR' %}selected{% endif %}>Português (Brasil)</option>
+                                            <option value="en-US" {% if config.idioma == 'en-US' %}selected{% endif %}>English (US)</option>
+                                            <option value="es-ES" {% if config.idioma == 'es-ES' %}selected{% endif %}>Español</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Fuso Horário -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="fuso_horario" class="form-label">
+                                            <i class="fas fa-clock me-1"></i> Fuso Horário
+                                        </label>
+                                        <select class="form-select" id="fuso_horario" name="fuso_horario">
+                                            <option value="America/Sao_Paulo" {% if config.fuso_horario == 'America/Sao_Paulo' %}selected{% endif %}>São Paulo (GMT-3)</option>
+                                            <option value="America/Manaus" {% if config.fuso_horario == 'America/Manaus' %}selected{% endif %}>Manaus (GMT-4)</option>
+                                            <option value="America/Rio_Branco" {% if config.fuso_horario == 'America/Rio_Branco' %}selected{% endif %}>Rio Branco (GMT-5)</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Mensagem do Painel -->
+                                    <div class="col-12 mb-3">
+                                        <label for="mensagem_painel" class="form-label">
+                                            <i class="fas fa-comment me-1"></i> Mensagem de Boas-vindas
+                                        </label>
+                                        <textarea class="form-control" id="mensagem_painel" name="mensagem_painel" 
+                                                  rows="3">{{ config.mensagem_painel or '' }}</textarea>
+                                    </div>
+
+                                    <!-- Configurações Avançadas -->
+                                    <div class="col-12 mb-3">
+                                        <h6 class="text-secondary border-bottom pb-2 mb-3">Configurações Avançadas</h6>
+                                        
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-check mb-2">
+                                                    <input type="checkbox" class="form-check-input" id="backup_automatico" 
+                                                           name="backup_automatico" {% if config.backup_automatico %}checked{% endif %}>
+                                                    <label class="form-check-label" for="backup_automatico">
+                                                        <i class="fas fa-database me-1"></i> Backup automático diário
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check mb-2">
+                                                    <input type="checkbox" class="form-check-input" id="notificacoes_email" 
+                                                           name="notificacoes_email" {% if config.notificacoes_email %}checked{% endif %}>
+                                                    <label class="form-check-label" for="notificacoes_email">
+                                                        <i class="fas fa-envelope me-1"></i> Notificações por email
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Preview das Cores -->
+                                    <div class="col-12 mb-3">
+                                        <div class="alert alert-light border">
+                                            <h6><i class="fas fa-eye me-2"></i>Prévia das Cores:</h6>
+                                            <div class="d-flex gap-3 mt-2">
+                                                <div class="text-center">
+                                                    <div class="color-preview" style="background-color: {{ config.cor_principal }}; width: 60px; height: 40px; border-radius: 5px; border: 1px solid #ddd;"></div>
+                                                    <small>Principal</small>
+                                                </div>
+                                                <div class="text-center">
+                                                    <div class="color-preview" style="background-color: {{ config.cor_secundaria }}; width: 60px; height: 40px; border-radius: 5px; border: 1px solid #ddd;"></div>
+                                                    <small>Secundária</small>
+                                                </div>
+                                                <div class="text-center">
+                                                    <div class="color-preview" style="background-color: {{ config.cor_destaque }}; width: 60px; height: 40px; border-radius: 5px; border: 1px solid #ddd;"></div>
+                                                    <small>Destaque</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-4">
+
+                                <!-- Botões de Ação -->
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-warning" onclick="resetarAba('layout')">
+                                        <i class="fas fa-undo me-1"></i> Resetar
+                                    </button>
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save me-1"></i> Salvar Alterações
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts JavaScript -->
+<script>
+// Validação de formulários
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+
+// Função para resetar configurações de uma aba
+function resetarAba(aba) {
+    if (confirm(`Tem certeza que deseja resetar as configurações da aba "${aba.toUpperCase()}" para os valores padrão?`)) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("configuracoes.resetar_configuracoes") }}';
+        
+        var inputAba = document.createElement('input');
+        inputAba.type = 'hidden';
+        inputAba.name = 'aba';
+        inputAba.value = aba;
+        
+        form.appendChild(inputAba);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Função para fazer backup
+function fazerBackup() {
+    if (confirm('Deseja gerar um backup completo do sistema?')) {
+        fetch('{{ url_for("configuracoes.fazer_backup") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Backup criado com sucesso: ' + data.filename);
+            } else {
+                alert('Erro ao criar backup: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao processar solicitação de backup');
+        });
+    }
+}
+
+// Preview e upload da logo
+function previewLogo(input) {
+    console.log('previewLogo chamada', input);
+    
+    if (!input.files || !input.files[0]) {
+        console.log('Nenhum arquivo selecionado');
+        return;
+    }
+    
+    const file = input.files[0];
+    console.log('Arquivo selecionado:', file.name, 'Tamanho:', file.size, 'Tipo:', file.type);
+    
+    // Verificar tamanho do arquivo (máx. 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Arquivo muito grande! O tamanho máximo é 2MB.');
+        input.value = '';
+        return;
+    }
+    
+    // Verificar tipo do arquivo
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+        alert('Formato de arquivo não permitido! Use PNG, JPG, JPEG, GIF ou SVG.');
+        input.value = '';
+        return;
+    }
+    
+    // Preview da imagem
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = document.querySelector('img[alt="Logo da Igreja"]');
+        if (img) {
+            console.log('Atualizando preview da imagem');
+            img.src = e.target.result;
+        } else {
+            console.log('Elemento img não encontrado');
+        }
+    };
+    reader.readAsDataURL(file);
+    
+    // Fazer upload do arquivo
+    console.log('Iniciando upload...');
+    uploadLogo(file);
+}
+
+// Função para fazer upload da logo
+function uploadLogo(file) {
+    console.log('uploadLogo chamada com arquivo:', file.name);
+    
+    const formData = new FormData();
+    formData.append('logo', file);
+    
+    // Mostrar indicador de carregamento
+    const uploadInput = document.getElementById('logo_upload');
+    const statusElement = document.getElementById('upload_status');
+    const progressElement = document.getElementById('upload_progress');
+    
+    if (statusElement) {
+        statusElement.innerHTML = '<i class="fas fa-spinner fa-spin text-primary"></i> Fazendo upload...';
+    }
+    
+    if (progressElement) {
+        progressElement.style.display = 'block';
+    }
+    
+    if (uploadInput) {
+        uploadInput.disabled = true;
+    }
+    
+    const uploadUrl = '{{ url_for("configuracoes.upload_logo") }}';
+    console.log('URL de upload:', uploadUrl);
+    
+    fetch(uploadUrl, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        console.log('Resposta recebida:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Dados recebidos:', data);
+        
+        // Restaurar estado original
+        if (uploadInput) {
+            uploadInput.disabled = false;
+        }
+        
+        if (progressElement) {
+            progressElement.style.display = 'none';
+        }
+        
+        if (data.success) {
+            console.log('Upload bem-sucedido!');
+            
+            // Atualizar status
+            if (statusElement) {
+                statusElement.innerHTML = '<i class="fas fa-check text-success"></i> Logo atualizada com sucesso!';
+                setTimeout(() => {
+                    statusElement.innerHTML = 'Formatos aceitos: PNG, JPG, JPEG, GIF, SVG (máx. 2MB)';
+                }, 3000);
+            }
+            
+            // Mostrar mensagem de sucesso
+            showAlert('success', data.message);
+            
+            // Atualizar src da imagem com o novo caminho
+            const img = document.querySelector('img[alt="Logo da Igreja"]');
+            if (img && data.logo_path) {
+                const newSrc = '{{ url_for("static", filename="") }}' + data.logo_path.replace('static/', '');
+                console.log('Atualizando src da imagem para:', newSrc);
+                img.src = newSrc;
+            }
+        } else {
+            console.log('Erro no upload:', data.message);
+            
+            // Atualizar status
+            if (statusElement) {
+                statusElement.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> ' + data.message;
+                setTimeout(() => {
+                    statusElement.innerHTML = 'Formatos aceitos: PNG, JPG, JPEG, GIF, SVG (máx. 2MB)';
+                }, 5000);
+            }
+            
+            showAlert('danger', data.message);
+            
+            // Reverter imagem em caso de erro
+            const img = document.querySelector('img[alt="Logo da Igreja"]');
+            if (img) {
+                // Recarregar a imagem original
+                img.src = '{{ url_for("static", filename=config.logo.replace("static/", "") if config.logo else "logo_obpc_novo.jpg") }}';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+        
+        // Restaurar estado original
+        if (uploadInput) {
+            uploadInput.disabled = false;
+        }
+        
+        if (progressElement) {
+            progressElement.style.display = 'none';
+        }
+        
+        if (statusElement) {
+            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Erro de conexão';
+            setTimeout(() => {
+                statusElement.innerHTML = 'Formatos aceitos: PNG, JPG, JPEG, GIF, SVG (máx. 2MB)';
+            }, 5000);
+        }
+        
+        showAlert('danger', 'Erro ao fazer upload da logo: ' + error.message);
+        
+        // Reverter imagem em caso de erro
+        const img = document.querySelector('img[alt="Logo da Igreja"]');
+        if (img) {
+            // Recarregar a imagem original
+            img.src = '{{ url_for("static", filename=config.logo.replace("static/", "") if config.logo else "logo_obpc_novo.jpg") }}';
+        }
+    });
+}
+
+// Função auxiliar para mostrar alertas
+function showAlert(type, message) {
+    console.log('Mostrando alerta:', type, message);
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show mt-3`;
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check' : type === 'danger' ? 'exclamation-triangle' : 'info'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Inserir alerta no topo da seção ativa
+    const activeTab = document.querySelector('.tab-pane.active');
+    if (activeTab) {
+        activeTab.insertBefore(alertDiv, activeTab.firstChild);
+    } else {
+        // Fallback para o container principal
+        const container = document.querySelector('.container-fluid');
+        if (container) {
+            container.insertBefore(alertDiv, container.firstChild);
+        }
+    }
+    
+    // Remover alerta após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+
+// Atualizar preview das cores em tempo real
+document.addEventListener('DOMContentLoaded', function() {
+    const colorInputs = ['cor_principal', 'cor_secundaria', 'cor_destaque'];
+    
+    colorInputs.forEach(function(inputId) {
+        const colorInput = document.getElementById(inputId);
+        const textInput = colorInput.nextElementSibling;
+        
+        colorInput.addEventListener('change', function() {
+            textInput.value = this.value;
+            // Atualizar preview se existir
+            updateColorPreview();
+        });
+    });
+});
+
+function updateColorPreview() {
+    const previews = document.querySelectorAll('.color-preview');
+    const colors = [
+        document.getElementById('cor_principal').value,
+        document.getElementById('cor_secundaria').value,
+        document.getElementById('cor_destaque').value
+    ];
+    
+    previews.forEach(function(preview, index) {
+        if (colors[index]) {
+            preview.style.backgroundColor = colors[index];
+        }
+    });
+}
+
+// Máscara para CNPJ
+document.getElementById('cnpj').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 14) {
+        value = value.replace(/(\d{2})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d)/, '$1.$2');
+        value = value.replace(/(\d{3})(\d)/, '$1/$2');
+        value = value.replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    e.target.value = value;
+});
+
+// Máscara para telefone
+document.getElementById('telefone').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 11) {
+        if (value.length <= 10) {
+            value = value.replace(/(\d{2})(\d)/, '($1) $2');
+            value = value.replace(/(\d{4})(\d)/, '$1-$2');
+        } else {
+            value = value.replace(/(\d{2})(\d)/, '($1) $2');
+            value = value.replace(/(\d{5})(\d)/, '$1-$2');
+        }
+    }
+    e.target.value = value;
+});
+
+// Máscara para CEP
+document.getElementById('cep').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 8) {
+        value = value.replace(/(\d{5})(\d)/, '$1-$2');
+    }
+    e.target.value = value;
+});
+
+// Busca automática por CNPJ
+document.getElementById('buscarCnpj').addEventListener('click', function() {
+    const cnpjInput = document.getElementById('cnpj');
+    const cnpj = cnpjInput.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    
+    if (cnpj.length !== 14) {
+        alert('CNPJ deve ter 14 dígitos');
+        cnpjInput.focus();
+        return;
+    }
+    
+    // Mostrar loading
+    const button = this;
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    // Fazer requisição
+    fetch(`{{ url_for('configuracoes.buscar_cnpj', cnpj='') }}${cnpj}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Preencher campos automaticamente
+                if (data.nome_igreja) document.getElementById('nome_igreja').value = data.nome_igreja;
+                if (data.cnpj) document.getElementById('cnpj').value = formatarCnpj(data.cnpj);
+                if (data.endereco) document.getElementById('endereco').value = data.endereco;
+                if (data.bairro) document.getElementById('bairro').value = data.bairro;
+                if (data.cidade) document.getElementById('cidade').value = data.cidade;
+                if (data.cep) document.getElementById('cep').value = formatarCep(data.cep);
+                if (data.telefone) document.getElementById('telefone').value = data.telefone;
+                if (data.email) document.getElementById('email').value = data.email;
+                
+                // Mostrar mensagem de sucesso
+                showAlert('success', 'Dados preenchidos automaticamente com sucesso!');
+            } else {
+                showAlert('danger', data.message || 'Erro ao buscar dados do CNPJ');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showAlert('danger', 'Erro ao consultar CNPJ');
+        })
+        .finally(() => {
+            // Restaurar botão
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        });
+});
+
+// Busca automática por CEP
+document.getElementById('buscarCep').addEventListener('click', function() {
+    const cepInput = document.getElementById('cep');
+    const cep = cepInput.value.replace(/\D/g, ''); // Remove caracteres não numéricos
+    
+    if (cep.length !== 8) {
+        alert('CEP deve ter 8 dígitos');
+        cepInput.focus();
+        return;
+    }
+    
+    // Mostrar loading
+    const button = this;
+    const originalHtml = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
+    
+    // Fazer requisição
+    fetch(`{{ url_for('configuracoes.buscar_cep', cep='') }}${cep}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Preencher campos automaticamente
+                if (data.cep) document.getElementById('cep').value = formatarCep(data.cep);
+                if (data.endereco) document.getElementById('endereco').value = data.endereco;
+                if (data.bairro) document.getElementById('bairro').value = data.bairro;
+                if (data.cidade) document.getElementById('cidade').value = data.cidade;
+                
+                // Mostrar mensagem de sucesso
+                showAlert('success', 'Endereço preenchido automaticamente com sucesso!');
+            } else {
+                showAlert('danger', data.message || 'Erro ao buscar dados do CEP');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            showAlert('danger', 'Erro ao consultar CEP');
+        })
+        .finally(() => {
+            // Restaurar botão
+            button.innerHTML = originalHtml;
+            button.disabled = false;
+        });
+});
+
+// Funções auxiliares para formatação
+function formatarCnpj(cnpj) {
+    return cnpj.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+}
+
+function formatarCep(cep) {
+    return cep.replace(/(\d{5})(\d{3})/, '$1-$2');
+}
+
+// Função para mostrar alertas
+function showAlert(type, message) {
+    // Remover alertas existentes
+    const existingAlerts = document.querySelectorAll('.alert-dismissible');
+    existingAlerts.forEach(alert => alert.remove());
+    
+    // Criar novo alerta
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Inserir no topo do conteúdo
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+
+<style>
+/* Customizações das abas */
+.nav-tabs-custom {
+    border-bottom: none;
+}
+
+.nav-tabs-custom .nav-link {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    margin-right: 2px;
+    border-radius: 0;
+    padding: 12px 20px;
+    font-weight: 500;
+}
+
+.nav-tabs-custom .nav-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.nav-tabs-custom .nav-link.active {
+    background: white;
+    color: #0b1b3a;
+    border-bottom: 3px solid #FFD700;
+}
+
+/* Estilo dos formulários */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0b1b3a;
+    box-shadow: 0 0 0 0.2rem rgba(11, 27, 58, 0.25);
+}
+
+.btn-success {
+    background-color: #228B22;
+    border-color: #228B22;
+}
+
+.btn-success:hover {
+    background-color: #1a691a;
+    border-color: #1a691a;
+}
+
+.text-primary {
+    color: #0b1b3a !important;
+}
+
+.border-bottom {
+    border-bottom: 2px solid #dee2e6 !important;
+}
+
+/* Preview das cores */
+.color-preview {
+    transition: all 0.3s ease;
+}
+
+.color-preview:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .nav-tabs-custom .nav-link {
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+    
+    .color-preview {
+        width: 40px !important;
+        height: 30px !important;
+    }
+    
+    .d-flex.gap-3 {
+        gap: 1rem !important;
+    }
+}
+
+/* Cards e alertas */
+.alert {
+    border-radius: 8px;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+}
+
+.card-header {
+    border-bottom: none;
+    border-radius: 8px 8px 0 0 !important;
+}
+</style>
+{% endblock %}
