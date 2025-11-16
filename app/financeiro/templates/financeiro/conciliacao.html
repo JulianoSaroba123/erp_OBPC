@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Conciliação - Financeiro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-balance-scale me-2"></i>Conciliação de Extratos</h4>
+        </div>
+        <div class="card-body">
+            <p>Esta tela mostra lançamentos importados (origem='importado') e lançamentos do sistema (origem='manual') que ainda não foram conciliados.</p>
+
+            <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}">
+                <button class="btn btn-success me-2" type="submit">Conciliar Automaticamente</button>
+                <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">Voltar</a>
+            </form>
+
+            <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}" class="mt-3">
+                <div class="row g-2 align-items-end">
+                    <div class="col-auto">
+                        <label class="form-label">Dias janela</label>
+                        <input type="number" name="days_window" value="{{ params.days_window if params else 2 }}" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label">Tolerância valor (%)</label>
+                        <input type="number" step="0.01" name="value_tol_pct" value="{{ params.value_tol_pct if params else 0.02 }}" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-auto">
+                        <label class="form-label">Descrição limiar</label>
+                        <input type="number" step="0.01" name="desc_thresh" value="{{ params.desc_thresh if params else 0.35 }}" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary btn-sm">Gerar Sugestões</button>
+                    </div>
+                </div>
+            </form>
+
+            <hr>
+            {% if historicos %}
+            <div class="mb-3">
+                <h5>Histórico de conciliações</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead><tr><th>ID</th><th>Data</th><th>Usuário</th><th>Conciliados</th><th>Pendentes</th><th>Observação</th><th></th></tr></thead>
+                        <tbody>
+                            {% for h in historicos %}
+                            <tr>
+                                <td>{{ h.id }}</td>
+                                <td>{{ h.data_conciliacao.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ h.usuario }}</td>
+                                <td>{{ h.total_conciliados }}</td>
+                                <td>{{ h.total_pendentes }}</td>
+                                <td>{{ h.observacao }}</td>
+                                <td>
+                                    <form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" onsubmit="return confirm('Deseja realmente desfazer a conciliação #{{ h.id }}?')">
+                                        <button class="btn btn-sm btn-warning">Desfazer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+            <h5>Importados pendentes</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>ID</th><th>Data</th><th>Descrição</th><th>Valor</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for l in importados %}
+                        <tr>
+                            <td>{{ l.id }}</td>
+                            <td>{{ l.data or '-' }}</td>
+                            <td>{{ l.descricao }}</td>
+                            <td>R$ {{ '%.2f'|format(l.valor) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if sugestoes %}
+            <hr />
+            <h5>Sugestões de Conciliação</h5>
+            <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}">
+                <input type="hidden" name="pairs" id="pairs-field" />
+            </form>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr><th></th><th>Score</th><th>Imp ID</th><th>Man ID</th><th>Data Imp</th><th>Data Man</th><th>Valor Imp</th><th>Valor Man</th><th>Desc Imp</th><th>Desc Man</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for s in sugestoes %}
+                        <tr>
+                            <td><input type="checkbox" class="pair-checkbox" data-imp="{{ s.imp_id }}" data-man="{{ s.man_id }}" /></td>
+                            <td>{{ s.score }}</td>
+                            <td>{{ s.imp_id }}</td>
+                            <td>{{ s.man_id }}</td>
+                            <td>{{ s.imp.data or '-' }}</td>
+                            <td>{{ s.man.data or '-' }}</td>
+                            <td>R$ {{ '%.2f'|format(s.imp.valor) }}</td>
+                            <td>R$ {{ '%.2f'|format(s.man.valor) }}</td>
+                            <td>{{ s.imp.descricao }}</td>
+                            <td>{{ s.man.descricao }}</td>
+                            <td>
+                                <form method="post" action="{{ url_for('financeiro.conciliacao_aceitar') }}">
+                                    <input type="hidden" name="imp_id" value="{{ s.imp_id }}" />
+                                    <input type="hidden" name="man_id" value="{{ s.man_id }}" />
+                                    <button class="btn btn-sm btn-success">Aceitar</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-2">
+                <button id="aceitar-selecionados" class="btn btn-primary btn-sm">Aceitar selecionados</button>
+                <button id="exportar-selecionados" class="btn btn-outline-secondary btn-sm ms-2">Exportar selecionados (CSV)</button>
+            </div>
+                {% endif %}
+                <script>
+                    document.addEventListener('DOMContentLoaded', function(){
+                        const btn = document.getElementById('aceitar-selecionados');
+                        if(!btn) return;
+                        btn.addEventListener('click', function(e){
+                            e.preventDefault();
+                            const checkboxes = document.querySelectorAll('.pair-checkbox');
+                            const pairs = [];
+                            checkboxes.forEach(cb => {
+                                if(cb.checked){
+                                    pairs.push({imp_id: parseInt(cb.getAttribute('data-imp')), man_id: parseInt(cb.getAttribute('data-man'))});
+                                }
+                            });
+                            if(pairs.length === 0){
+                                alert('Selecione ao menos um par.');
+                                return;
+                            }
+                            // preencher campo hidden e submeter
+                            const field = document.getElementById('pairs-field');
+                            field.value = JSON.stringify(pairs);
+                            document.getElementById('aceitar-todos-form').submit();
+                        });
+                        // exportar selecionados
+                        const btnExport = document.getElementById('exportar-selecionados');
+                        if(btnExport){
+                            btnExport.addEventListener('click', function(e){
+                                e.preventDefault();
+                                const checkboxes = document.querySelectorAll('.pair-checkbox');
+                                const pairs = [];
+                                checkboxes.forEach(cb => {
+                                    if(cb.checked){
+                                        pairs.push({imp_id: parseInt(cb.getAttribute('data-imp')), man_id: parseInt(cb.getAttribute('data-man')), score: cb.closest('tr').querySelectorAll('td')[1].innerText});
+                                    }
+                                });
+                                if(pairs.length === 0){
+                                    alert('Selecione ao menos um par para exportar.');
+                                    return;
+                                }
+                                // criar form temporário para enviar e baixar CSV
+                                const form = document.createElement('form');
+                                form.method = 'post';
+                                form.action = "{{ url_for('financeiro.conciliacao_export_pairs') }}";
+                                form.style.display = 'none';
+                                const input = document.createElement('input');
+                                input.type = 'hidden';
+                                input.name = 'pairs';
+                                input.value = JSON.stringify(pairs);
+                                form.appendChild(input);
+                                document.body.appendChild(form);
+                                form.submit();
+                                document.body.removeChild(form);
+                            });
+                        }
+                    });
+                </script>
+
+
+            <h5 class="mt-4">Lançamentos do Sistema pendentes</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>ID</th><th>Data</th><th>Descrição</th><th>Valor</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for l in manuais %}
+                        <tr>
+                            <td>{{ l.id }}</td>
+                            <td>{{ l.data or '-' }}</td>
+                            <td>{{ l.descricao }}</td>
+                            <td>R$ {{ '%.2f'|format(l.valor) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Usuário{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Novo Usuário
+                    </h2>
+                    <p class="text-muted mb-0">Criar novo usuário no sistema</p>
+                </div>
+                <a href="{{ url_for('usuario.lista_usuarios') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    Voltar à Lista
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-circle me-2"></i>
+                        Dados do Novo Usuário
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="formNovoUsuario">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nome" class="form-label">
+                                        <i class="fas fa-user me-1"></i>
+                                        Nome Completo *
+                                    </label>
+                                    <input type="text" class="form-control" id="nome" name="nome" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        <i class="fas fa-envelope me-1"></i>
+                                        Email *
+                                    </label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="senha" class="form-label">
+                                        <i class="fas fa-lock me-1"></i>
+                                        Senha *
+                                    </label>
+                                    <input type="password" class="form-control" id="senha" name="senha" minlength="6" required>
+                                    <small class="form-text text-muted">Mínimo 6 caracteres</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="confirmar_senha" class="form-label">
+                                        <i class="fas fa-lock me-1"></i>
+                                        Confirmar Senha *
+                                    </label>
+                                    <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" minlength="6" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="nivel_acesso" class="form-label">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Nível de Acesso *
+                            </label>
+                            <select class="form-select" id="nivel_acesso" name="nivel_acesso" required>
+                                <option value="">Selecione o nível de acesso</option>
+                                
+                                {% if current_user.nivel_acesso == 'master' %}
+                                <option value="master" data-description="Acesso total ao sistema">Master - Acesso Total</option>
+                                {% endif %}
+                                
+                                {% if current_user.nivel_acesso in ['master', 'administrador'] %}
+                                <option value="administrador" data-description="Gerencia usuários e tem acesso a todos os módulos">Administrador - Gerência Geral</option>
+                                {% endif %}
+                                
+                                {% if current_user.nivel_acesso in ['master', 'administrador'] %}
+                                <option value="tesoureiro" data-description="Acesso apenas ao módulo financeiro">Tesoureiro - Apenas Financeiro</option>
+                                <option value="secretario" data-description="Acesso aos módulos de secretaria, membros e obreiros">Secretário - Secretaria e Membros</option>
+                                <option value="midia" data-description="Acesso aos módulos de mídia e departamentos">Mídia - Departamentos e Mídia</option>
+                                <option value="membro" data-description="Acesso apenas a eventos e dashboard">Membro - Apenas Consulta</option>
+                                {% endif %}
+                            </select>
+                            <div id="descricaoNivel" class="mt-2 text-muted small"></div>
+                        </div>
+
+                        <!-- Resumo de Permissões -->
+                        <div class="card bg-light mb-4" id="resumoPermissoes" style="display: none;">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Permissões deste Nível
+                                </h6>
+                            </div>
+                            <div class="card-body" id="listaPermissoes">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('usuario.lista_usuarios') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus me-1"></i>
+                                Criar Usuário
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação de senhas
+document.getElementById('confirmar_senha').addEventListener('input', function() {
+    const senha = document.getElementById('senha').value;
+    const confirmar = this.value;
+    
+    if (senha !== confirmar) {
+        this.setCustomValidity('As senhas não conferem');
+        this.classList.add('is-invalid');
+    } else {
+        this.setCustomValidity('');
+        this.classList.remove('is-invalid');
+        this.classList.add('is-valid');
+    }
+});
+
+// Mostrar permissões baseado no nível selecionado
+document.getElementById('nivel_acesso').addEventListener('change', function() {
+    const nivel = this.value;
+    const descricao = this.selectedOptions[0]?.getAttribute('data-description') || '';
+    
+    document.getElementById('descricaoNivel').textContent = descricao;
+    
+    const permissoes = {
+        'master': [
+            'Acesso total ao sistema',
+            'Gerenciar todos os usuários',
+            'Acessar todas as configurações',
+            'Ver todos os relatórios',
+            'Excluir dados do sistema'
+        ],
+        'administrador': [
+            'Gerenciar usuários (exceto master)',
+            'Acessar todos os módulos',
+            'Ver relatórios gerais',
+            'Configurar sistema',
+            'Dashboard administrativo'
+        ],
+        'tesoureiro': [
+            'Módulo Financeiro completo',
+            'Relatórios financeiros',
+            'Conciliação bancária',
+            'Dashboard e eventos (consulta)'
+        ],
+        'secretario': [
+            'Módulo Secretaria completo',
+            'Módulo Membros',
+            'Módulo Obreiros',
+            'Atas e ofícios',
+            'Dashboard e eventos (consulta)'
+        ],
+        'midia': [
+            'Módulo Mídia completo',
+            'Módulo Departamentos',
+            'Certificados e carteiras',
+            'Agenda semanal',
+            'Dashboard e eventos (consulta)'
+        ],
+        'membro': [
+            'Dashboard (consulta)',
+            'Eventos (consulta)',
+            'Acesso limitado apenas para visualização'
+        ]
+    };
+    
+    if (nivel && permissoes[nivel]) {
+        const lista = permissoes[nivel].map(p => `<li class="small">${p}</li>`).join('');
+        document.getElementById('listaPermissoes').innerHTML = `<ul class="mb-0">${lista}</ul>`;
+        document.getElementById('resumoPermissoes').style.display = 'block';
+    } else {
+        document.getElementById('resumoPermissoes').style.display = 'none';
+    }
+});
+
+// Validação do formulário
+document.getElementById('formNovoUsuario').addEventListener('submit', function(e) {
+    const senha = document.getElementById('senha').value;
+    const confirmar = document.getElementById('confirmar_senha').value;
+    
+    if (senha !== confirmar) {
+        e.preventDefault();
+        alert('As senhas não conferem!');
+        return;
+    }
+    
+    if (senha.length < 6) {
+        e.preventDefault();
+        alert('A senha deve ter pelo menos 6 caracteres!');
+        return;
+    }
+});
+</script>
+{% endblock %}

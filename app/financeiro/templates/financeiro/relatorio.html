@@ -95,7 +95,13 @@
                                 {{ lancamento.valor_formatado }}
                             </td>
                             <td>{{ lancamento.conta }}</td>
-                            <td>{{ lancamento.observacoes or '-' }}</td>
+                            <td>
+                                {% if lancamento.observacoes and lancamento.observacoes != 'None' and lancamento.observacoes.strip() %}
+                                    {{ lancamento.observacoes }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

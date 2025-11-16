@@ -1,0 +1,258 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if ata %}Editar Ata{% else %}Nova Ata{% endif %} - Sistema OBPC
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-0">
+                <div class="card-header" style="background-color: #0b1b3a; color: white;">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>
+                        {% if ata %}Editar Ata de Reunião{% else %}Nova Ata de Reunião{% endif %}
+                    </h4>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('atas.salvar_ata') }}">
+                        {% if ata %}
+                            <input type="hidden" name="ata_id" value="{{ ata.id }}">
+                        {% endif %}
+                        
+                        <!-- Informações Básicas -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary border-bottom pb-2">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Informações da Reunião
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Título -->
+                            <div class="col-md-8 mb-3">
+                                <label for="titulo" class="form-label fw-bold">
+                                    <i class="fas fa-heading me-1"></i>
+                                    Título da Reunião *
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg" 
+                                       id="titulo" 
+                                       name="titulo" 
+                                       placeholder="Ex: Reunião Ordinária de Diretoria"
+                                       value="{{ ata.titulo if ata else '' }}" 
+                                       required>
+                                <div class="form-text">Título descritivo da reunião ou assembleia</div>
+                            </div>
+
+                            <!-- Data -->
+                            <div class="col-md-4 mb-3">
+                                <label for="data" class="form-label fw-bold">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    Data da Reunião *
+                                </label>
+                                <input type="date" 
+                                       class="form-control form-control-lg" 
+                                       id="data" 
+                                       name="data" 
+                                       value="{{ ata.data.strftime('%Y-%m-%d') if ata and ata.data else '' }}" 
+                                       required>
+                                <div class="form-text">Data em que a reunião foi realizada</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Local -->
+                            <div class="col-md-6 mb-3">
+                                <label for="local" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    Local da Reunião
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="local" 
+                                       name="local" 
+                                       placeholder="Ex: Templo Central, Sala de Reuniões..."
+                                       value="{{ ata.local if ata else '' }}">
+                                <div class="form-text">Local onde a reunião foi realizada</div>
+                            </div>
+
+                            <!-- Responsável -->
+                            <div class="col-md-6 mb-3">
+                                <label for="responsavel" class="form-label fw-bold">
+                                    <i class="fas fa-user me-1"></i>
+                                    Responsável pela Reunião
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="responsavel" 
+                                       name="responsavel" 
+                                       placeholder="Ex: Pastor João Silva, Diretor..."
+                                       value="{{ ata.responsavel if ata else '' }}">
+                                <div class="form-text">Pessoa que conduziu ou presidiu a reunião</div>
+                            </div>
+                        </div>
+
+                        <!-- Descrição/Conteúdo -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary border-bottom pb-2">
+                                    <i class="fas fa-file-text me-2"></i>
+                                    Conteúdo da Ata
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12 mb-4">
+                                <label for="descricao" class="form-label fw-bold">
+                                    <i class="fas fa-edit me-1"></i>
+                                    Descrição da Reunião
+                                </label>
+                                <textarea class="form-control" 
+                                          id="descricao" 
+                                          name="descricao" 
+                                          rows="12" 
+                                          placeholder="Descreva aqui o conteúdo da reunião, decisões tomadas, pontos discutidos, etc...">{{ ata.descricao if ata else '' }}</textarea>
+                                <div class="form-text">
+                                    Descreva detalhadamente os assuntos tratados, decisões tomadas e outros pontos relevantes da reunião.
+                                    Este conteúdo aparecerá no PDF da ata.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('atas.lista_atas') }}" class="btn btn-secondary btn-lg">
+                                        <i class="fas fa-times me-2"></i>
+                                        Cancelar
+                                    </a>
+                                    
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-success btn-lg">
+                                            <i class="fas fa-save me-2"></i>
+                                            {% if ata %}Atualizar Ata{% else %}Salvar Ata{% endif %}
+                                        </button>
+                                        
+                                        {% if ata %}
+                                            <a href="{{ url_for('atas.gerar_pdf_ata', id=ata.id) }}" 
+                                               class="btn btn-danger btn-lg">
+                                                <i class="fas fa-file-pdf me-2"></i>
+                                                Gerar PDF
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e0e6ed;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0b1b3a;
+    box-shadow: 0 0 0 0.2rem rgba(11, 27, 58, 0.15);
+}
+
+.form-control-lg {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    border-radius: 8px;
+}
+
+.form-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.text-primary {
+    color: #0b1b3a !important;
+}
+
+h5.border-bottom {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef !important;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 200px;
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+</style>
+
+<script>
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const titulo = document.getElementById('titulo').value.trim();
+    const data = document.getElementById('data').value.trim();
+    
+    if (!titulo) {
+        e.preventDefault();
+        alert('Por favor, preencha o título da reunião.');
+        document.getElementById('titulo').focus();
+        return;
+    }
+    
+    if (!data) {
+        e.preventDefault();
+        alert('Por favor, selecione a data da reunião.');
+        document.getElementById('data').focus();
+        return;
+    }
+});
+
+// Auto-resize do textarea
+document.getElementById('descricao').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = (this.scrollHeight) + 'px';
+});
+</script>
+{% endblock %}

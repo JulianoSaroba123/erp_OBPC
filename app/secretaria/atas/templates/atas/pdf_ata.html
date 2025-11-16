@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ata de Reunião - {{ ata.titulo }}</title>
+    <style>
+        body { 
+            font-family: 'Times New Roman', serif; 
+            margin: 40px; 
+            color: #000; 
+            line-height: 1.6;
+        }
+        
+        h3, h4 { 
+            text-align: center; 
+            margin: 0; 
+            font-weight: bold;
+        }
+        
+        h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        h4 {
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+        
+        .titulo-ata {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            text-decoration: underline;
+        }
+        
+        p { 
+            text-align: justify; 
+            line-height: 1.5; 
+            font-size: 14px; 
+            margin: 8px 0;
+        }
+        
+        .info-reuniao {
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        
+        .conteudo-ata {
+            margin: 20px 0;
+            text-align: justify;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        footer { 
+            margin-top: 50px; 
+            text-align: center; 
+            font-size: 13px; 
+            color: #000;
+        }
+        
+        .assinatura {
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .linha-assinatura {
+            border-bottom: 1px solid #000;
+            width: 300px;
+            margin: 0 auto 5px auto;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #000;
+            margin: 15px 0;
+        }
+        
+        .cabecalho {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
+            display: block;
+        }
+        
+        .data-local {
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        
+        .data-local span {
+            margin-right: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="cabecalho">
+        {% if config.logo and config.exibir_logo_relatorio %}
+            <img src="{{ (base_url or request.url_root) }}{{ config.logo }}" alt="Logo da Igreja" class="logo">
+        {% endif %}
+        <h3>{{ config.nome_igreja }}</h3>
+        <h4>{{ config.endereco_completo() if config.endereco_completo() else 'Endereço não informado' }}</h4>
+        {% if config.cnpj %}
+            <h4>CNPJ: {{ config.cnpj_formatado() }}</h4>
+        {% endif %}
+        <hr>
+        <div class="titulo-ata">ATA DE REUNIÃO</div>
+    </div>
+    
+    <div class="info-reuniao">
+        <p><strong>Título:</strong> {{ ata.titulo }}</p>
+        
+        <div class="data-local">
+            <span><strong>Data:</strong> {{ ata.data.strftime('%d/%m/%Y') if ata.data else 'Não informada' }}</span>
+            {% if ata.local %}
+                <span><strong>Local:</strong> {{ ata.local }}</span>
+            {% endif %}
+        </div>
+        
+        {% if ata.responsavel %}
+            <p><strong>Responsável:</strong> {{ ata.responsavel }}</p>
+        {% endif %}
+    </div>
+    
+    <hr>
+    
+    <div class="conteudo-ata">
+        {% if ata.descricao %}
+            {% for paragrafo in ata.descricao.split('\n') %}
+                {% if paragrafo.strip() %}
+                    <p>{{ paragrafo.strip() }}</p>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <p>Conteúdo da reunião não informado.</p>
+        {% endif %}
+    </div>
+    
+    <footer>
+        <div class="assinatura">
+            <div class="linha-assinatura"></div>
+            <p>{{ config.presidente or 'Pastor Dirigente' }}<br><strong>Dirigente</strong></p>
+        </div>
+        
+        <div class="assinatura">
+            <div class="linha-assinatura"></div>
+            <p>{{ config.primeiro_tesoureiro or 'Tesoureiro' }}<br><strong>Tesoureiro</strong></p>
+        </div>
+        
+        <div class="assinatura">
+            <div class="linha-assinatura"></div>
+            <p>{{ ata.responsavel if ata.responsavel else 'Responsável' }}<br><strong>Presidente da Reunião</strong></p>
+        </div>
+        
+        <p style="margin-top: 40px; font-size: 12px; color: #666;">
+            <em>Ata gerada automaticamente pelo Sistema OBPC em {{ data_geracao }}</em>
+        </p>
+    </footer>
+</body>
+</html>

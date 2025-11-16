@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block title %}Inventário Patrimonial - Sistema OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-boxes me-2"></i>
+                            Inventário Patrimonial
+                        </h4>
+                        <div>
+                            <a href="{{ url_for('inventario.gerar_pdf_inventario') }}" class="btn btn-light btn-sm me-2">
+                                <i class="fas fa-file-pdf me-1"></i>
+                                PDF Completo
+                            </a>
+                            <a href="{{ url_for('inventario.novo_item') }}" class="btn btn-light btn-sm">
+                                <i class="fas fa-plus me-1"></i>
+                                Novo Item
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filtros Avançados -->
+                    <div class="card mb-4 bg-light">
+                        <div class="card-body">
+                            <form method="GET" action="{{ url_for('inventario.lista_itens') }}">
+                                <div class="row g-3">
+                                    <!-- Busca -->
+                                    <div class="col-md-4">
+                                        <label for="busca" class="form-label fw-bold">
+                                            <i class="fas fa-search me-1"></i>
+                                            Buscar Item
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="busca"
+                                               name="busca" 
+                                               placeholder="Código, nome, descrição..."
+                                               value="{{ busca if busca else '' }}">
+                                    </div>
+
+                                    <!-- Categoria -->
+                                    <div class="col-md-3">
+                                        <label for="categoria" class="form-label fw-bold">
+                                            <i class="fas fa-tag me-1"></i>
+                                            Categoria
+                                        </label>
+                                        <select class="form-select" id="categoria" name="categoria">
+                                            <option value="">Todas</option>
+                                            {% for cat in categorias %}
+                                                <option value="{{ cat }}" {% if categoria_selecionada == cat %}selected{% endif %}>
+                                                    {{ cat }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- Estado -->
+                                    <div class="col-md-2">
+                                        <label for="estado" class="form-label fw-bold">
+                                            <i class="fas fa-star me-1"></i>
+                                            Estado
+                                        </label>
+                                        <select class="form-select" id="estado" name="estado">
+                                            <option value="">Todos</option>
+                                            {% for est in estados %}
+                                                <option value="{{ est }}" {% if estado_selecionado == est %}selected{% endif %}>
+                                                    {{ est }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+
+                                    <!-- Status -->
+                                    <div class="col-md-2">
+                                        <label for="ativo" class="form-label fw-bold">
+                                            <i class="fas fa-toggle-on me-1"></i>
+                                            Status
+                                        </label>
+                                        <select class="form-select" id="ativo" name="ativo">
+                                            <option value="">Todos</option>
+                                            <option value="true" {% if ativo_selecionado == 'true' %}selected{% endif %}>Ativos</option>
+                                            <option value="false" {% if ativo_selecionado == 'false' %}selected{% endif %}>Inativos</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Botão -->
+                                    <div class="col-md-1">
+                                        <label class="form-label">&nbsp;</label>
+                                        <div class="d-grid">
+                                            <button class="btn btn-success" type="submit" title="Filtrar">
+                                                <i class="fas fa-filter"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {% if busca or categoria_selecionada or estado_selecionado or ativo_selecionado %}
+                                    <div class="row mt-2">
+                                        <div class="col-12">
+                                            <a href="{{ url_for('inventario.lista_itens') }}" class="btn btn-outline-secondary btn-sm">
+                                                <i class="fas fa-times me-1"></i>
+                                                Limpar Filtros
+                                            </a>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Estatísticas -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-boxes fa-2x mb-2"></i>
+                                    <h5>{{ total_itens }}</h5>
+                                    <p class="mb-0">Total de Itens</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                    <h5>{{ itens_ativos }}</h5>
+                                    <p class="mb-0">Itens Ativos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-dollar-sign fa-2x mb-2"></i>
+                                    <h5>R$ {{ "%.2f"|format(valor_total) }}</h5>
+                                    <p class="mb-0">Valor Total</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-search fa-2x mb-2"></i>
+                                    <h5>{{ itens|length }}</h5>
+                                    <p class="mb-0">Resultados</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Itens -->
+                    {% if itens %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th><i class="fas fa-barcode me-1"></i>Código</th>
+                                        <th><i class="fas fa-box me-1"></i>Item</th>
+                                        <th><i class="fas fa-tag me-1"></i>Categoria</th>
+                                        <th><i class="fas fa-dollar-sign me-1"></i>Valor</th>
+                                        <th><i class="fas fa-star me-1"></i>Estado</th>
+                                        <th><i class="fas fa-map-marker-alt me-1"></i>Local</th>
+                                        <th><i class="fas fa-toggle-on me-1"></i>Status</th>
+                                        <th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in itens %}
+                                    <tr class="{% if not item.ativo %}table-secondary{% endif %}">
+                                        <td>
+                                            <span class="badge bg-dark">{{ item.codigo }}</span>
+                                        </td>
+                                        <td>
+                                            <div>
+                                                <strong>{{ item.nome }}</strong>
+                                                {% if item.responsavel %}
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-user me-1"></i>
+                                                        {{ item.responsavel }}
+                                                    </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ item.categoria }}</span>
+                                        </td>
+                                        <td>
+                                            {% if item.valor_aquisicao %}
+                                                <strong>R$ {{ "%.2f"|format(item.valor_aquisicao) }}</strong>
+                                                {% if item.data_aquisicao %}
+                                                    <br>
+                                                    <small class="text-muted">{{ item.data_aquisicao.strftime('%d/%m/%Y') }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.estado_conservacao == 'Excelente' %}
+                                                <span class="badge bg-success">{{ item.estado_conservacao }}</span>
+                                            {% elif item.estado_conservacao == 'Bom' %}
+                                                <span class="badge bg-primary">{{ item.estado_conservacao }}</span>
+                                            {% elif item.estado_conservacao == 'Regular' %}
+                                                <span class="badge bg-warning text-dark">{{ item.estado_conservacao }}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ item.estado_conservacao }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.localizacao %}
+                                                <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                                {{ item.localizacao }}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.ativo %}
+                                                <span class="badge bg-success">Ativo</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Inativo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <!-- Visualizar -->
+                                                <a href="{{ url_for('inventario.visualizar_item', id=item.id) }}" 
+                                                   class="btn btn-sm btn-outline-info"
+                                                   title="Visualizar Detalhes">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+
+                                                <!-- Editar -->
+                                                <a href="{{ url_for('inventario.editar_item', id=item.id) }}" 
+                                                   class="btn btn-sm btn-outline-primary"
+                                                   title="Editar Item">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+
+                                                <!-- Gerar PDF do item -->
+                                                <a href="{{ url_for('inventario.gerar_pdf_item', id=item.id) }}"
+                                                   class="btn btn-sm btn-outline-danger"
+                                                   title="Gerar PDF" target="_blank">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </a>
+
+                                                <!-- Status (estado de conservação) -->
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                                            data-bs-toggle="dropdown" title="Alterar Estado">
+                                                        <i class="fas fa-cog"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        {% for estado_opcao in estados %}
+                                                        <li>
+                                                            <form method="POST" action="{{ url_for('inventario.atualizar_estado', id=item.id) }}" style="display: inline;">
+                                                                <input type="hidden" name="estado" value="{{ estado_opcao }}">
+                                                                <button type="submit" class="dropdown-item">{{ estado_opcao }}</button>
+                                                            </form>
+                                                        </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+
+                                                <!-- Inativar/Ativar -->
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-warning" 
+                                                        onclick="confirmarInativacao({{ item.id }}, '{{ item.nome }}', {{ item.ativo|lower }})"
+                                                        title="{% if item.ativo %}Inativar{% else %}Ativar{% endif %}">
+                                                    <i class="fas fa-toggle-{% if item.ativo %}off{% else %}on{% endif %}"></i>
+                                                </button>
+
+                                                <!-- Excluir -->
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-danger" 
+                                                        onclick="confirmarExclusao({{ item.id }}, '{{ item.nome }}')"
+                                                        title="Excluir Item">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-boxes fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">
+                                {% if busca or categoria_selecionada or estado_selecionado or ativo_selecionado %}
+                                    Nenhum item encontrado com os filtros aplicados
+                                {% else %}
+                                    Nenhum item no inventário
+                                {% endif %}
+                            </h5>
+                            <p class="text-muted">
+                                {% if busca or categoria_selecionada or estado_selecionado or ativo_selecionado %}
+                                    Tente ajustar os filtros de busca ou 
+                                    <a href="{{ url_for('inventario.lista_itens') }}">visualize todos os itens</a>
+                                {% else %}
+                                    Comece adicionando o primeiro item ao inventário
+                                {% endif %}
+                            </p>
+                            <a href="{{ url_for('inventario.novo_item') }}" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>
+                                Cadastrar Primeiro Item
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalExclusao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o item <strong id="nomeItem"></strong>?</p>
+                <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formExclusao" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>
+                        Excluir Item
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Inativação -->
+<div class="modal fade" id="modalInativacao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-toggle-off me-2"></i>
+                    Alterar Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" title="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja <strong id="acaoStatus"></strong> o item <strong id="nomeItemStatus"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formInativacao" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-toggle-on me-2"></i>
+                        <span id="textoAcao">Confirmar</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarExclusao(id, nome) {
+    document.getElementById('nomeItem').textContent = nome;
+    document.getElementById('formExclusao').action = '/secretaria/inventario/excluir/' + id;
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
+    modal.show();
+}
+
+function confirmarInativacao(id, nome, ativo) {
+    const acao = ativo ? 'inativar' : 'ativar';
+    document.getElementById('acaoStatus').textContent = acao;
+    document.getElementById('nomeItemStatus').textContent = nome;
+    document.getElementById('textoAcao').textContent = acao.charAt(0).toUpperCase() + acao.slice(1);
+    document.getElementById('formInativacao').action = '/secretaria/inventario/inativar/' + id;
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalInativacao'));
+    modal.show();
+}
+</script>
+{% endblock %}

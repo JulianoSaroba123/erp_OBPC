@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash
-from flask_login import login_user, logout_user, login_required
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify
+from flask_login import login_user, logout_user, login_required, current_user
 from app.extensoes import db
-from app.usuario.usuario_model import Usuario
+from app.usuario.usuario_model import Usuario, NivelAcesso
+from app.utils.auth_decorators import requer_gerencia_usuarios, requer_nivel_acesso
+from datetime import datetime
 
 # Blueprint do módulo de usuário
 usuario_bp = Blueprint("usuario", __name__, template_folder="templates")
@@ -22,14 +24,27 @@ def login():
     if request.method == "POST":
         email = request.form.get("email")
         senha = request.form.get("senha")
+        lembrar = request.form.get("lembrar")  # Checkbox "lembrar de mim"
 
         usuario = Usuario.query.filter_by(email=email).first()
 
         if usuario and usuario.check_senha(senha):
             if usuario.ativo:
-                login_user(usuario)
-                flash("Login realizado com sucesso!", "success")
-                return redirect(url_for("usuario.painel"))  # painel principal
+                # Atualizar último login
+                usuario.ultimo_login = datetime.now()
+                db.session.commit()
+                
+                # Login com sessão persistente se marcou "lembrar"
+                login_user(usuario, remember=bool(lembrar))
+                flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")
+                
+                # Verificar se há uma URL de destino (next)
+                next_page = request.args.get('next')
+                if next_page:
+                    return redirect(next_page)
+                
+                # Redirecionar baseado no nível de acesso
+                return redirect(url_for(usuario.get_menu_principal()))
             else:
                 flash("Usuário desativado. Contate o administrador.", "danger")
         else:
@@ -79,4 +94,223 @@ def cadastro():
 @usuario_bp.route("/painel")
 @login_required
 def painel():
-    return render_template("painel.html")
+    # Buscar dados para o painel
+    try:
+        from app.eventos.eventos_model import Evento
+        proximos_eventos = Evento.eventos_proximos(3)
+        total_eventos_proximos = len(proximos_eventos)
+    except Exception as e:
+        proximos_eventos = []
+        total_eventos_proximos = 0
+    
+    return render_template("painel.html", 
+                         proximos_eventos=proximos_eventos,
+                         total_eventos_proximos=total_eventos_proximos)
+
+# ---------- GERENCIAMENTO DE USUÁRIOS ----------
+@usuario_bp.route("/usuarios")
+@requer_gerencia_usuarios
+def lista_usuarios():
+    """Lista todos os usuários para administração"""
+    usuarios = Usuario.query.order_by(Usuario.nome).all()
+    return render_template("usuario/lista_usuarios.html", usuarios=usuarios)
+
+@usuario_bp.route("/usuarios/novo", methods=["GET", "POST"])
+@requer_gerencia_usuarios
+def novo_usuario():
+    """Criar novo usuário"""
+    if request.method == "POST":
+        nome = request.form.get("nome")
+        email = request.form.get("email")
+        senha = request.form.get("senha")
+        nivel_acesso = request.form.get("nivel_acesso")
+
+        # Validações
+        if not all([nome, email, senha, nivel_acesso]):
+            flash("Todos os campos são obrigatórios!", "danger")
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+
+        # Verificar se já existe usuário com esse email
+        existente = Usuario.query.filter_by(email=email).first()
+        if existente:
+            flash("Já existe um usuário com este e-mail!", "warning")
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+
+        # Verificar se pode criar usuário com esse nível
+        if not pode_criar_nivel(current_user.nivel_acesso, nivel_acesso):
+            flash("Você não pode criar usuários com este nível de acesso!", "danger")
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+
+        # Criar novo usuário
+        novo_usuario = Usuario(
+            nome=nome,
+            email=email,
+            nivel_acesso=nivel_acesso,
+            criado_por=current_user.id,
+            perfil=nivel_acesso.title()  # Manter compatibilidade
+        )
+        novo_usuario.set_senha(senha)
+
+        db.session.add(novo_usuario)
+        db.session.commit()
+
+        flash(f"Usuário {nome} criado com sucesso!", "success")
+        return redirect(url_for("usuario.lista_usuarios"))
+
+    return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+
+@usuario_bp.route("/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
+@requer_gerencia_usuarios
+def editar_usuario(user_id):
+    """Editar usuário existente"""
+    usuario = Usuario.query.get_or_404(user_id)
+    
+    # Master não pode ser editado por outros
+    if usuario.nivel_acesso == 'master' and current_user.nivel_acesso != 'master':
+        flash("Apenas usuários master podem editar outros masters!", "danger")
+        return redirect(url_for("usuario.lista_usuarios"))
+    
+    if request.method == "POST":
+        nome = request.form.get("nome")
+        email = request.form.get("email")
+        nivel_acesso = request.form.get("nivel_acesso")
+        ativo = request.form.get("ativo") == "on"
+        nova_senha = request.form.get("nova_senha")
+
+        # Validações
+        if not all([nome, email, nivel_acesso]):
+            flash("Nome, email e nível são obrigatórios!", "danger")
+            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+
+        # Verificar email único (exceto o próprio usuário)
+        existente = Usuario.query.filter_by(email=email).first()
+        if existente and existente.id != usuario.id:
+            flash("Já existe outro usuário com este e-mail!", "warning")
+            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+
+        # Verificar se pode alterar para esse nível
+        if not pode_criar_nivel(current_user.nivel_acesso, nivel_acesso):
+            flash("Você não pode definir este nível de acesso!", "danger")
+            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+
+        # Atualizar dados
+        usuario.nome = nome
+        usuario.email = email
+        usuario.nivel_acesso = nivel_acesso
+        usuario.ativo = ativo
+        usuario.perfil = nivel_acesso.title()  # Manter compatibilidade
+
+        # Alterar senha se informada
+        if nova_senha:
+            usuario.set_senha(nova_senha)
+
+        db.session.commit()
+        flash(f"Usuário {nome} atualizado com sucesso!", "success")
+        return redirect(url_for("usuario.lista_usuarios"))
+
+    return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+
+@usuario_bp.route("/usuarios/<int:user_id>/toggle-status", methods=["POST"])
+@requer_gerencia_usuarios
+def toggle_status_usuario(user_id):
+    """Ativar/desativar usuário"""
+    usuario = Usuario.query.get_or_404(user_id)
+    
+    # Master não pode ser desativado
+    if usuario.nivel_acesso == 'master':
+        return jsonify({"success": False, "message": "Usuários master não podem ser desativados!"})
+    
+    # Não pode desativar a si mesmo
+    if usuario.id == current_user.id:
+        return jsonify({"success": False, "message": "Você não pode desativar sua própria conta!"})
+    
+    usuario.ativo = not usuario.ativo
+    db.session.commit()
+    
+    status = "ativado" if usuario.ativo else "desativado"
+    return jsonify({"success": True, "message": f"Usuário {status} com sucesso!", "ativo": usuario.ativo})
+
+@usuario_bp.route("/usuarios/<int:user_id>/excluir", methods=["POST"])
+@requer_nivel_acesso('master')
+def excluir_usuario(user_id):
+    """Excluir usuário (apenas master)"""
+    usuario = Usuario.query.get_or_404(user_id)
+    
+    # Master não pode ser excluído
+    if usuario.nivel_acesso == 'master':
+        return jsonify({"success": False, "message": "Usuários master não podem ser excluídos!"})
+    
+    # Não pode excluir a si mesmo
+    if usuario.id == current_user.id:
+        return jsonify({"success": False, "message": "Você não pode excluir sua própria conta!"})
+    
+    nome = usuario.nome
+    db.session.delete(usuario)
+    db.session.commit()
+    
+    return jsonify({"success": True, "message": f"Usuário {nome} excluído com sucesso!"})
+
+def pode_criar_nivel(nivel_criador, nivel_novo):
+    """Verifica se um nível pode criar outro nível"""
+    hierarquia = {
+        'master': ['master', 'administrador', 'tesoureiro', 'secretario', 'midia', 'membro'],
+        'administrador': ['administrador', 'tesoureiro', 'secretario', 'midia', 'membro'],
+        'tesoureiro': [],
+        'secretario': [],
+        'midia': [],
+        'membro': []
+    }
+    return nivel_novo in hierarquia.get(nivel_criador, [])
+
+# ---------- ROTA DE PERFIL DO USUÁRIO ----------
+@usuario_bp.route("/perfil", methods=["GET", "POST"])
+@login_required
+def perfil():
+    """Perfil do usuário logado"""
+    if request.method == "POST":
+        nome = request.form.get("nome")
+        email = request.form.get("email")
+        senha_atual = request.form.get("senha_atual")
+        nova_senha = request.form.get("nova_senha")
+        confirmar_senha = request.form.get("confirmar_senha")
+
+        # Validações básicas
+        if not all([nome, email]):
+            flash("Nome e email são obrigatórios!", "danger")
+            return render_template("usuario/perfil.html")
+
+        # Verificar email único (exceto o próprio usuário)
+        existente = Usuario.query.filter_by(email=email).first()
+        if existente and existente.id != current_user.id:
+            flash("Já existe outro usuário com este e-mail!", "warning")
+            return render_template("usuario/perfil.html")
+
+        # Atualizar dados básicos
+        current_user.nome = nome
+        current_user.email = email
+
+        # Alterar senha se informada
+        if nova_senha:
+            if not senha_atual:
+                flash("Informe a senha atual para alterar a senha!", "danger")
+                return render_template("usuario/perfil.html")
+            
+            if not current_user.check_senha(senha_atual):
+                flash("Senha atual incorreta!", "danger")
+                return render_template("usuario/perfil.html")
+            
+            if nova_senha != confirmar_senha:
+                flash("A confirmação da nova senha não confere!", "danger")
+                return render_template("usuario/perfil.html")
+            
+            if len(nova_senha) < 6:
+                flash("A nova senha deve ter pelo menos 6 caracteres!", "danger")
+                return render_template("usuario/perfil.html")
+            
+            current_user.set_senha(nova_senha)
+
+        db.session.commit()
+        flash("Perfil atualizado com sucesso!", "success")
+        return redirect(url_for("usuario.perfil"))
+
+    return render_template("usuario/perfil.html")

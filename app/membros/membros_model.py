@@ -15,6 +15,7 @@ class Membro(db.Model):
     data_nascimento = db.Column(db.Date)
     data_batismo = db.Column(db.Date)
     status = db.Column(db.String(20), default='Ativo')
+    tipo = db.Column(db.String(20), default='Membro')  # Membro, Obreiro, Lider
     observacoes = db.Column(db.Text)
     data_cadastro = db.Column(db.DateTime, default=datetime.utcnow)
     

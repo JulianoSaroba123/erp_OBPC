@@ -34,7 +34,7 @@
       --primary-blue: #1e3a8a;           /* Azul real forte */
       --secondary-blue: #3b82f6;         /* Azul secundário */
       --light-blue: #dbeafe;             /* Azul claro para fundos */
-      --yellow: #ffd700;                 /* Amarelo dourado */
+      --yellow: #FF6B35;                 /* Laranja vibrante para destaque */
       --light-yellow: #fff9c4;           /* Amarelo claro */
       --dark-green: #006400;             /* Verde escuro */
       --white: #ffffff;                  /* Branco puro */
@@ -70,6 +70,44 @@
       transition: all 0.3s ease;
       z-index: 1000;
       box-shadow: 4px 0 20px rgba(34, 139, 34, 0.3);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Container para o conteúdo rolável da sidebar */
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 10px;
+    }
+
+    /* Botão de logout fixo no final */
+    .sidebar-logout {
+      margin-top: auto;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Estilizar scrollbar da sidebar */
+    .sidebar::-webkit-scrollbar,
+    .sidebar-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track,
+    .sidebar-content::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb,
+    .sidebar-content::-webkit-scrollbar-thumb {
+      background: var(--yellow);
+      border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover,
+    .sidebar-content::-webkit-scrollbar-thumb:hover {
+      background: #FFD700;
     }
 
     .sidebar.collapsed {
@@ -90,11 +128,78 @@
       display: none;
     }
 
+    /* Estilos para submenu - FORÇADO */
+    .menu-group {
+      position: relative !important;
+    }
+
+    .sidebar .submenu {
+      display: none !important;
+      margin-left: 20px !important;
+      border-left: 2px solid rgba(255, 107, 53, 0.3) !important;
+      background: rgba(0,0,0,0.3) !important;
+      border-radius: 4px !important;
+      margin-top: 5px !important;
+      padding: 5px 0 !important;
+    }
+
+    .sidebar .menu-group:hover .submenu,
+    .sidebar .submenu.show {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .submenu-arrow {
+      transition: transform 0.3s ease !important;
+      margin-left: auto !important;
+      font-size: 12px !important;
+    }
+
+    .submenu-item {
+      padding: 8px 15px !important;
+      font-size: 13px !important;
+      color: #bbb !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      border-left: none !important;
+    }
+
+    .submenu-item:hover {
+      background: rgba(255, 107, 53, 0.15) !important;
+      color: var(--yellow) !important;
+      transform: translateX(3px) !important;
+    }
+
+    .sidebar.collapsed .submenu {
+      display: none;
+    }
+
     .sidebar .logo {
       text-align: center;
-      padding: 25px 20px;
+      padding: 20px 15px;
       border-bottom: 2px solid var(--yellow);
-      background: rgba(255, 215, 0, 0.1);
+      background: rgba(255, 107, 53, 0.1);
+    }
+
+    .sidebar .logo img {
+      max-width: 120px;
+      max-height: 120px;
+      border-radius: 50%;
+      margin-bottom: 10px;
+      border: 3px solid var(--yellow);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    .sidebar.collapsed .logo img {
+      max-width: 60px;
+      max-height: 60px;
+      margin-bottom: 5px;
     }
 
     .sidebar .logo h2 {
@@ -124,13 +229,13 @@
     }
 
     .sidebar a:hover {
-      background: rgba(255, 215, 0, 0.2);
+      background: rgba(255, 107, 53, 0.2);
       border-left-color: var(--yellow);
       transform: translateX(5px);
     }
 
     .sidebar a.active {
-      background: linear-gradient(90deg, var(--yellow), #ffd700);
+      background: linear-gradient(90deg, var(--yellow), #FF4500);
       border-left-color: var(--yellow);
       box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
     }
@@ -292,17 +397,111 @@
   <!-- MENU LATERAL -->
   <div class="sidebar" id="sidebar">
     <div class="logo">
+      <img src="{{ url_for('static', filename='Logo_OBPC.jpg') }}" alt="Logo OBPC" 
+           onerror="this.style.display='none';" />
       <h2>OBPC</h2>
       <p>Tietê-SP</p>
     </div>
-    <a href="{{ url_for('usuario.painel') }}" class="active"><i class="fa-solid fa-house"></i><span>Painel</span></a>
-    <a href="{{ url_for('membros.lista_membros') }}"><i class="fa-solid fa-users"></i><span>Membros</span></a>
-    <a href="{{ url_for('obreiros.lista_obreiros') }}"><i class="fa-solid fa-user-tie"></i><span>Obreiros</span></a>
-    <a href="{{ url_for('departamentos.lista_departamentos') }}"><i class="fa-solid fa-church"></i><span>Departamentos</span></a>
-    <a href="{{ url_for('financeiro.lista_lancamentos') }}"><i class="fa-solid fa-coins"></i><span>Financeiro</span></a>
-    <a href="{{ url_for('eventos.lista_eventos') }}"><i class="fa-solid fa-calendar-days"></i><span>Eventos</span></a>
-    <a href="{{ url_for('configuracoes.configuracoes') }}"><i class="fa-solid fa-gear"></i><span>Configurações</span></a>
-    <a href="{{ url_for('usuario.logout') }}" class="mt-auto"><i class="fa-solid fa-right-from-bracket"></i><span>Sair</span></a>
+    
+    <div class="sidebar-content">
+      <!-- Dashboard - Todos podem ver -->
+      <a href="{{ url_for('usuario.painel') }}" class="active"><i class="fa-solid fa-house"></i><span>Painel</span></a>
+      
+      <!-- Gerenciamento de Usuários - Apenas Admin e Master -->
+      {% if current_user.is_authenticated and current_user.pode_gerenciar_usuarios() %}
+      <a href="{{ url_for('usuario.lista_usuarios') }}"><i class="fa-solid fa-users-gear"></i><span>Gerenciar Usuários</span></a>
+      {% endif %}
+      
+      <!-- Submenu Secretaria - Secretários, Admins e Master -->
+      {% if current_user.is_authenticated and current_user.tem_acesso_secretaria() %}
+      <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-building"></i><span>Secretaria</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <div class="submenu">
+          {% if current_user.tem_acesso_membros() %}
+          <a href="{{ url_for('membros.lista_membros') }}" class="submenu-item">
+            <i class="fas fa-users"></i><span>Membros</span>
+          </a>
+          <a href="{{ url_for('membros.lista_lideres') }}" class="submenu-item">
+            <i class="fas fa-crown"></i><span>Líderes</span>
+          </a>
+          {% endif %}
+          <a href="{{ url_for('atas.lista_atas') }}" class="submenu-item">
+            <i class="fas fa-file-alt"></i><span>Atas de Reunião</span>
+          </a>
+          <a href="{{ url_for('inventario.lista_itens') }}" class="submenu-item">
+            <i class="fas fa-boxes"></i><span>Inventário</span>
+          </a>
+          <a href="{{ url_for('oficios.lista_oficios') }}" class="submenu-item">
+            <i class="fas fa-file-signature"></i><span>Ofícios de Solicitação</span>
+          </a>
+          {% if current_user.tem_acesso_obreiros() %}
+          <a href="{{ url_for('participacao.listar_participacoes') }}" class="submenu-item">
+            <i class="fa-solid fa-handshake"></i><span>Participação de Obreiros</span>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Departamentos - Mídia, Admins e Master -->
+      {% if current_user.is_authenticated and current_user.tem_acesso_departamentos() %}
+      <a href="{{ url_for('departamentos.lista_departamentos') }}"><i class="fa-solid fa-church"></i><span>Departamentos</span></a>
+      {% endif %}
+      
+      <!-- Agenda Pastoral - Secretários, Admins e Master -->
+      {% if current_user.is_authenticated and current_user.tem_acesso_secretaria() %}
+      <a href="{{ url_for('escala_ministerial.listar_escalas') }}"><i class="fas fa-calendar-check"></i><span>Agenda Pastoral</span></a>
+      {% endif %}
+      
+      <!-- Submenu Financeiro - Tesoureiros, Admins e Master -->
+      {% if current_user.is_authenticated and current_user.tem_acesso_financeiro() %}
+      <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <div class="submenu">
+          <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="submenu-item">
+            <i class="fas fa-list"></i><span>Lista de Lançamentos</span>
+          </a>
+          <a href="{{ url_for('financeiro.dashboard_conciliacao') }}" class="submenu-item">
+            <i class="fas fa-chart-line"></i><span>Dashboard Conciliação</span>
+          </a>
+          <a href="{{ url_for('financeiro.importar_extrato') }}" class="submenu-item">
+            <i class="fas fa-upload"></i><span>Importar Extrato</span>
+          </a>
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Menu Mídia - Mídia, Admins e Master -->
+      {% if current_user.is_authenticated and current_user.tem_acesso_midia() %}
+      <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-bullhorn"></i><span>Mídia</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <div class="submenu">
+          <a href="{{ url_for('midia.listar_agenda') }}" class="submenu-item">
+            <i class="fas fa-calendar-week"></i><span>Agenda Semanal</span>
+          </a>
+          <a href="{{ url_for('midia.listar_certificados') }}" class="submenu-item">
+            <i class="fas fa-certificate"></i><span>Certificados</span>
+          </a>
+          <a href="{{ url_for('midia.listar_carteiras') }}" class="submenu-item">
+            <i class="fas fa-id-card"></i><span>Carteira de Membro</span>
+          </a>
+        </div>
+      </div>
+      {% endif %}
+      
+      <!-- Eventos - Todos podem ver -->
+      <a href="{{ url_for('eventos.lista_eventos') }}"><i class="fa-solid fa-calendar-days"></i><span>Eventos</span></a>
+      
+      <!-- Configurações - Apenas Admins e Master -->
+      {% if current_user.is_authenticated and current_user.tem_acesso_configuracoes() %}
+      <a href="{{ url_for('configuracoes.configuracoes') }}"><i class="fa-solid fa-gear"></i><span>Configurações</span></a>
+      {% endif %}
+      
+      <!-- Perfil do Usuário - Todos -->
+      <a href="{{ url_for('usuario.perfil') }}"><i class="fa-solid fa-user-circle"></i><span>Meu Perfil</span></a>
+    </div>
+    
+    <a href="{{ url_for('usuario.logout') }}" class="sidebar-logout"><i class="fa-solid fa-right-from-bracket"></i><span>Sair</span></a>
   </div>
 
   <!-- CONTEÚDO PRINCIPAL -->
@@ -312,6 +511,9 @@
       <div>
         <i class="fa-solid fa-user-circle text-primary me-2"></i>
         <span>{{ current_user.nome if current_user.is_authenticated else '' }}</span>
+        {% if current_user.is_authenticated %}
+        <small class="text-muted ms-2">({{ current_user.get_nome_nivel() }})</small>
+        {% endif %}
       </div>
     </div>
 
@@ -347,6 +549,36 @@
         icon.className = 'fas fa-chevron-right';
       } else {
         icon.className = 'fas fa-chevron-left';
+      }
+    }
+    
+    function toggleSubmenu(element) {
+      console.log('toggleSubmenu chamado', element);
+      
+      const menuGroup = element.closest('.menu-group');
+      const submenu = menuGroup.querySelector('.submenu');
+      const arrow = element.querySelector('.submenu-arrow');
+      
+      console.log('menuGroup:', menuGroup);
+      console.log('submenu:', submenu);
+      console.log('arrow:', arrow);
+      
+      // Toggle submenu visibility
+      if (submenu.classList.contains('show')) {
+        submenu.classList.remove('show');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+        console.log('Submenu fechado');
+      } else {
+        // Fechar outros submenus primeiro
+        document.querySelectorAll('.submenu.show').forEach(s => {
+          s.classList.remove('show');
+          const otherArrow = s.parentElement.querySelector('.submenu-arrow');
+          if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
+        });
+        
+        submenu.classList.add('show');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        console.log('Submenu aberto');
       }
     }
     

@@ -10,7 +10,7 @@ Rotas para gerenciamento das configurações do sistema
 
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app.extensoes import db
 from app.configuracoes.configuracoes_model import Configuracao
 import os
@@ -62,14 +62,20 @@ def salvar_configuracoes():
             # Dados Institucionais
             config.nome_igreja = request.form.get('nome_igreja', '').strip()
             config.cnpj = request.form.get('cnpj', '').strip()
-            config.dirigente = request.form.get('dirigente', '').strip()
-            config.tesoureiro = request.form.get('tesoureiro', '').strip()
             config.cidade = request.form.get('cidade', '').strip()
             config.bairro = request.form.get('bairro', '').strip()
             config.endereco = request.form.get('endereco', '').strip()
             config.cep = request.form.get('cep', '').strip()
             config.telefone = request.form.get('telefone', '').strip()
             config.email = request.form.get('email', '').strip()
+            
+            # Diretoria da Igreja
+            config.presidente = request.form.get('presidente', '').strip()
+            config.vice_presidente = request.form.get('vice_presidente', '').strip()
+            config.primeiro_secretario = request.form.get('primeiro_secretario', '').strip()
+            config.segundo_secretario = request.form.get('segundo_secretario', '').strip()
+            config.primeiro_tesoureiro = request.form.get('primeiro_tesoureiro', '').strip()
+            config.segundo_tesoureiro = request.form.get('segundo_tesoureiro', '').strip()
             
             # Validações básicas
             if not config.nome_igreja:
@@ -239,8 +245,13 @@ def resetar_configuracoes():
             config.telefone = '(15) 1234-5678'
             config.email = 'contato@obpc.org.br'
             config.cnpj = ''
-            config.dirigente = ''
-            config.tesoureiro = ''
+            # Resetar diretoria
+            config.presidente = 'Pastor Dirigente'
+            config.vice_presidente = 'Vice Presidente'
+            config.primeiro_secretario = '1º Secretário'
+            config.segundo_secretario = '2º Secretário'
+            config.primeiro_tesoureiro = '1º Tesoureiro'
+            config.segundo_tesoureiro = '2º Tesoureiro'
             
         elif aba == 'financeiro':
             config.banco_padrao = 'Caixa Econômica Federal'
@@ -411,3 +422,90 @@ def buscar_cep(cep):
     except Exception as e:
         current_app.logger.error(f'Erro ao buscar CEP: {str(e)}')
         return jsonify({'success': False, 'message': 'Erro interno do servidor'})
+
+
+@configuracoes_bp.route('/limpar-dados-sistema', methods=['GET', 'POST'])
+@login_required
+def limpar_dados_sistema():
+    """Limpa todos os dados do sistema - Só pastor pode acessar"""
+    
+    # Verificar se usuário é pastor
+    if current_user.perfil != 'Pastor':
+        flash('Acesso negado. Apenas pastores podem limpar dados do sistema.', 'danger')
+        return redirect(url_for('configuracoes.configuracoes'))
+    
+    if request.method == 'GET':
+        # Exibir página de confirmação
+        return render_template('configuracoes/limpar_dados.html')
+    
+    # POST - Processar limpeza
+    senha_confirmacao = request.form.get('senha_confirmacao', '').strip()
+    confirmacao_texto = request.form.get('confirmacao_texto', '').strip()
+    
+    # Validar senha
+    if not current_user.check_senha(senha_confirmacao):
+        flash('Senha incorreta!', 'danger')
+        return render_template('configuracoes/limpar_dados.html')
+    
+    # Validar texto de confirmação
+    if confirmacao_texto.upper() != 'LIMPAR TUDO':
+        flash('Texto de confirmação incorreto! Digite exatamente: LIMPAR TUDO', 'danger')
+        return render_template('configuracoes/limpar_dados.html')
+    
+    try:
+        # Importar todos os modelos
+        from app.financeiro.financeiro_model import Lancamento
+        from app.membros.membros_model import Membro
+        from app.obreiros.obreiros_model import Obreiro
+        from app.departamentos.departamentos_model import Departamento, CronogramaDepartamento, AulaDepartamento
+        from app.eventos.eventos_model import Evento
+        from app.secretaria.atas.atas_model import Ata
+        from app.secretaria.inventario.inventario_model import ItemInventario
+        from app.secretaria.oficios.oficios_model import Oficio
+        from app.secretaria.participacao.participacao_model import ParticipacaoObreiro
+        from app.midia.midia_model import AgendaSemanal, Certificado, CarteiraMembro
+        from app.escala_ministerial.escala_model import EscalaMinisterial
+        
+        # Limpar todas as tabelas (exceto usuários e configurações)
+        tabelas_para_limpar = [
+            Lancamento,
+            Membro,
+            Obreiro,
+            Departamento,
+            CronogramaDepartamento,
+            AulaDepartamento,
+            Evento,
+            Ata,
+            ItemInventario,
+            Oficio,
+            ParticipacaoObreiro,
+            AgendaSemanal,
+            Certificado,
+            CarteiraMembro,
+            EscalaMinisterial
+        ]
+        
+        total_registros_removidos = 0
+        
+        for modelo in tabelas_para_limpar:
+            try:
+                count = modelo.query.count()
+                modelo.query.delete()
+                total_registros_removidos += count
+                current_app.logger.info(f'Removidos {count} registros de {modelo.__tablename__}')
+            except Exception as e:
+                current_app.logger.error(f'Erro ao limpar {modelo.__tablename__}: {str(e)}')
+        
+        # Confirmar transação
+        db.session.commit()
+        
+        flash(f'Sistema limpo com sucesso! {total_registros_removidos} registros removidos.', 'success')
+        current_app.logger.warning(f'SISTEMA LIMPO pelo usuário {current_user.nome} ({current_user.email})')
+        
+        return redirect(url_for('configuracoes.configuracoes'))
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Erro ao limpar sistema: {str(e)}')
+        flash(f'Erro ao limpar sistema: {str(e)}', 'danger')
+        return render_template('configuracoes/limpar_dados.html')

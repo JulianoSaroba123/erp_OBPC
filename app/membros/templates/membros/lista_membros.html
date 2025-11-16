@@ -39,10 +39,96 @@
                         </div>
                         <div class="col-md-6 text-end">
                             <span class="badge bg-info fs-6">
-                                Total: {{ membros|length }} membros
+                                Exibindo: {{ membros|length }} de {{ total_membros }} membros
                             </span>
                         </div>
                     </div>
+                </div>
+
+                <!-- Filtros Avançados -->
+                <div class="card-body border-bottom bg-light">
+                    <form method="GET" action="{{ url_for('membros.lista_membros') }}">
+                        <div class="row g-3">
+                            <!-- Busca por texto -->
+                            <div class="col-md-6">
+                                <label for="busca" class="form-label fw-bold">
+                                    <i class="fas fa-search me-1"></i>
+                                    Buscar por Nome, Email ou Telefone
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="busca"
+                                           name="busca" 
+                                           placeholder="Digite nome, email ou telefone..."
+                                           value="{{ busca if busca else '' }}">
+                                    <button class="btn btn-primary" type="submit" title="Buscar">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Filtro por tipo -->
+                            <div class="col-md-4">
+                                <label for="tipo" class="form-label fw-bold">
+                                    <i class="fas fa-filter me-1"></i>
+                                    Filtrar por Tipo
+                                </label>
+                                <select class="form-select" id="tipo" name="tipo" onchange="this.form.submit()">
+                                    <option value="Todos" {% if not tipo_filtro or tipo_filtro == 'Todos' %}selected{% endif %}>
+                                        Todos ({{ total_membros }})
+                                    </option>
+                                    <option value="Membro" {% if tipo_filtro == 'Membro' %}selected{% endif %}>
+                                        Membros ({{ total_membros_simples }})
+                                    </option>
+                                    <option value="Obreiro" {% if tipo_filtro == 'Obreiro' %}selected{% endif %}>
+                                        Obreiros ({{ total_obreiros }})
+                                    </option>
+                                    <option value="Lider" {% if tipo_filtro == 'Lider' %}selected{% endif %}>
+                                        Líderes ({{ total_lideres }})
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- Botões de ação -->
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-flex gap-2">
+                                    {% if busca or (tipo_filtro and tipo_filtro != 'Todos') %}
+                                        <a href="{{ url_for('membros.lista_membros') }}" 
+                                           class="btn btn-outline-secondary" 
+                                           title="Limpar filtros">
+                                            <i class="fas fa-times"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estatísticas rápidas -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-users me-1"></i>
+                                        Total: {{ total_membros }}
+                                    </span>
+                                    <span class="badge bg-primary">
+                                        <i class="fas fa-user me-1"></i>
+                                        Membros: {{ total_membros_simples }}
+                                    </span>
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-user-tie me-1"></i>
+                                        Obreiros: {{ total_obreiros }}
+                                    </span>
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-crown me-1"></i>
+                                        Líderes: {{ total_lideres }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
                 </div>
                 
                 <div class="card-body p-0">
@@ -54,6 +140,10 @@
                                     <th scope="col" class="border-0 fw-bold text-dark">
                                         <i class="fas fa-user me-1"></i>
                                         Nome
+                                    </th>
+                                    <th scope="col" class="border-0 fw-bold text-dark">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Tipo
                                     </th>
                                     <th scope="col" class="border-0 fw-bold text-dark">
                                         <i class="fas fa-phone me-1"></i>
@@ -88,6 +178,24 @@
                                                 {% endif %}
                                             </div>
                                         </div>
+                                    </td>
+                                    <td class="align-middle">
+                                        {% if membro.tipo == 'Obreiro' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-user-tie me-1"></i>
+                                                Obreiro
+                                            </span>
+                                        {% elif membro.tipo == 'Lider' %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-crown me-1"></i>
+                                                Líder
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-primary">
+                                                <i class="fas fa-user me-1"></i>
+                                                Membro
+                                            </span>
+                                        {% endif %}
                                     </td>
                                     <td class="align-middle">
                                         {% if membro.telefone %}
@@ -145,13 +253,30 @@
                     {% else %}
                     <!-- Estado vazio -->
                     <div class="text-center py-5">
-                        <i class="fas fa-users text-muted" style="font-size: 4rem;"></i>
-                        <h4 class="text-muted mt-3">Nenhum membro cadastrado</h4>
-                        <p class="text-muted">Comece adicionando o primeiro membro da igreja</p>
-                        <a href="{{ url_for('membros.novo_membro') }}" class="btn btn-primary mt-3">
-                            <i class="fas fa-plus me-2"></i>
-                            Cadastrar Primeiro Membro
-                        </a>
+                        <i class="fas fa-users text-muted fa-4x mb-3"></i>
+                        {% if busca or (tipo_filtro and tipo_filtro != 'Todos') %}
+                            <h4 class="text-muted">Nenhum membro encontrado</h4>
+                            <p class="text-muted">
+                                {% if busca and tipo_filtro and tipo_filtro != 'Todos' %}
+                                    Nenhum resultado para "{{ busca }}" no tipo "{{ tipo_filtro }}"
+                                {% elif busca %}
+                                    Nenhum resultado para "{{ busca }}"
+                                {% else %}
+                                    Nenhum membro do tipo "{{ tipo_filtro }}" encontrado
+                                {% endif %}
+                            </p>
+                            <a href="{{ url_for('membros.lista_membros') }}" class="btn btn-secondary mt-3">
+                                <i class="fas fa-times me-2"></i>
+                                Limpar Filtros
+                            </a>
+                        {% else %}
+                            <h4 class="text-muted">Nenhum membro cadastrado</h4>
+                            <p class="text-muted">Comece adicionando o primeiro membro da igreja</p>
+                            <a href="{{ url_for('membros.novo_membro') }}" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus me-2"></i>
+                                Cadastrar Primeiro Membro
+                            </a>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>

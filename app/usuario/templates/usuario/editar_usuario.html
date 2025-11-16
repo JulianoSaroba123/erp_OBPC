@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Usuário{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-user-edit me-2"></i>
+                        Editar Usuário
+                    </h2>
+                    <p class="text-muted mb-0">Editar informações do usuário {{ usuario.nome }}</p>
+                </div>
+                <a href="{{ url_for('usuario.lista_usuarios') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    Voltar à Lista
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-circle me-2"></i>
+                        Dados do Usuário
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="formEditarUsuario">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nome" class="form-label">
+                                        <i class="fas fa-user me-1"></i>
+                                        Nome Completo *
+                                    </label>
+                                    <input type="text" class="form-control" id="nome" name="nome" 
+                                           value="{{ usuario.nome }}" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        <i class="fas fa-envelope me-1"></i>
+                                        Email *
+                                    </label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="{{ usuario.email }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nivel_acesso" class="form-label">
+                                        <i class="fas fa-shield-alt me-1"></i>
+                                        Nível de Acesso *
+                                    </label>
+                                    <select class="form-select" id="nivel_acesso" name="nivel_acesso" required>
+                                        <option value="">Selecione o nível de acesso</option>
+                                        
+                                        {% if current_user.nivel_acesso == 'master' %}
+                                        <option value="master" {% if usuario.nivel_acesso == 'master' %}selected{% endif %}>
+                                            Master - Acesso Total
+                                        </option>
+                                        {% endif %}
+                                        
+                                        {% if current_user.nivel_acesso in ['master', 'administrador'] %}
+                                        <option value="administrador" {% if usuario.nivel_acesso == 'administrador' %}selected{% endif %}>
+                                            Administrador - Gerência Geral
+                                        </option>
+                                        {% endif %}
+                                        
+                                        {% if current_user.nivel_acesso in ['master', 'administrador'] %}
+                                        <option value="tesoureiro" {% if usuario.nivel_acesso == 'tesoureiro' %}selected{% endif %}>
+                                            Tesoureiro - Apenas Financeiro
+                                        </option>
+                                        <option value="secretario" {% if usuario.nivel_acesso == 'secretario' %}selected{% endif %}>
+                                            Secretário - Secretaria e Membros
+                                        </option>
+                                        <option value="midia" {% if usuario.nivel_acesso == 'midia' %}selected{% endif %}>
+                                            Mídia - Departamentos e Mídia
+                                        </option>
+                                        <option value="membro" {% if usuario.nivel_acesso == 'membro' %}selected{% endif %}>
+                                            Membro - Apenas Consulta
+                                        </option>
+                                        {% endif %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ativo" class="form-label">
+                                        <i class="fas fa-toggle-on me-1"></i>
+                                        Status da Conta
+                                    </label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="ativo" name="ativo" 
+                                               {% if usuario.ativo %}checked{% endif %}>
+                                        <label class="form-check-label" for="ativo">
+                                            Conta Ativa
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="nova_senha" class="form-label">
+                                <i class="fas fa-lock me-1"></i>
+                                Nova Senha (opcional)
+                            </label>
+                            <input type="password" class="form-control" id="nova_senha" name="nova_senha" minlength="6">
+                            <small class="form-text text-muted">Deixe em branco para manter a senha atual. Mínimo 6 caracteres.</small>
+                        </div>
+
+                        <!-- Informações Adicionais -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Informações Adicionais
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Criado em:</small>
+                                        <div>
+                                            {% if usuario.criado_em %}
+                                                {{ usuario.criado_em.strftime('%d/%m/%Y às %H:%M') }}
+                                            {% else %}
+                                                <span class="text-muted">Data não registrada</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Criado por:</small>
+                                        <div>
+                                            {% if usuario.criador %}
+                                                {{ usuario.criador.nome }}
+                                            {% else %}
+                                                <span class="text-muted">Sistema</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Último login:</small>
+                                        <div>
+                                            {% if usuario.ultimo_login %}
+                                                {{ usuario.ultimo_login.strftime('%d/%m/%Y às %H:%M') }}
+                                            {% else %}
+                                                <span class="text-muted">Nunca fez login</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">ID do usuário:</small>
+                                        <div>{{ usuario.id }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('usuario.lista_usuarios') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-1"></i>
+                                Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Validação do formulário
+document.getElementById('formEditarUsuario').addEventListener('submit', function(e) {
+    const nome = document.getElementById('nome').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const nivel_acesso = document.getElementById('nivel_acesso').value;
+    
+    if (!nome || !email || !nivel_acesso) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos obrigatórios!');
+        return;
+    }
+    
+    const nova_senha = document.getElementById('nova_senha').value;
+    if (nova_senha && nova_senha.length < 6) {
+        e.preventDefault();
+        alert('A nova senha deve ter pelo menos 6 caracteres!');
+        return;
+    }
+});
+
+// Confirmar alteração de nível críticos
+document.getElementById('nivel_acesso').addEventListener('change', function() {
+    const nivel_original = '{{ usuario.nivel_acesso }}';
+    const nivel_novo = this.value;
+    
+    if (nivel_original === 'master' && nivel_novo !== 'master') {
+        if (!confirm('ATENÇÃO: Você está removendo privilégios de MASTER! Esta ação pode ser irreversível. Tem certeza?')) {
+            this.value = nivel_original;
+        }
+    }
+    
+    if (nivel_original !== 'master' && nivel_novo === 'master') {
+        if (!confirm('ATENÇÃO: Você está concedendo privilégios de MASTER! Esta pessoa terá acesso total ao sistema. Confirma?')) {
+            this.value = nivel_original;
+        }
+    }
+});
+</script>
+{% endblock %}

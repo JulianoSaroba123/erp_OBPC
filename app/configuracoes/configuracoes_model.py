@@ -31,6 +31,14 @@ class Configuracao(db.Model):
     email = db.Column(db.String(100), nullable=True)
     logo = db.Column(db.String(255), nullable=True, default='static/logo_obpc_novo.jpg')
     
+    # Diretoria da Igreja
+    presidente = db.Column(db.String(100), nullable=True)  # Pastor Dirigente
+    vice_presidente = db.Column(db.String(100), nullable=True)  # Pastora
+    primeiro_secretario = db.Column(db.String(100), nullable=True)  # 1º Secretário
+    segundo_secretario = db.Column(db.String(100), nullable=True)  # 2º Secretário
+    primeiro_tesoureiro = db.Column(db.String(100), nullable=True)  # 1º Tesoureiro
+    segundo_tesoureiro = db.Column(db.String(100), nullable=True)  # 2º Tesoureiro
+    
     # Configurações Financeiras
     banco_padrao = db.Column(db.String(100), nullable=True, default='Caixa Econômica Federal')
     percentual_conselho = db.Column(db.Float, nullable=False, default=10.0)
@@ -47,7 +55,7 @@ class Configuracao(db.Model):
     tema = db.Column(db.String(20), nullable=False, default='escuro')
     cor_principal = db.Column(db.String(7), nullable=False, default='#0b1b3a')
     cor_secundaria = db.Column(db.String(7), nullable=False, default='#228B22')
-    cor_destaque = db.Column(db.String(7), nullable=False, default='#FFD700')
+    cor_destaque = db.Column(db.String(7), nullable=False, default="#3553FF")
     mensagem_painel = db.Column(db.Text, nullable=True, default='Bem-vindo ao Sistema Administrativo da Igreja O Brasil para Cristo')
     
     # Configurações Adicionais
@@ -81,6 +89,13 @@ class Configuracao(db.Model):
                 cnpj='12.345.678/0001-90',
                 dirigente='Pastor João Silva',
                 tesoureiro='Maria Santos',
+                # Diretoria
+                presidente='Pastor João Silva',
+                vice_presidente='Pastora Ana Silva',
+                primeiro_secretario='José dos Santos',
+                segundo_secretario='Maria da Silva',
+                primeiro_tesoureiro='Carlos Oliveira',
+                segundo_tesoureiro='Ana Santos',
                 banco_padrao='Caixa Econômica Federal',
                 percentual_conselho=10.0,
                 saldo_inicial=0.0,

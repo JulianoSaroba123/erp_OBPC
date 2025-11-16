@@ -36,6 +36,7 @@
 .table-financial .col-valor { min-width: 110px; }
 .table-financial .col-conta { min-width: 100px; }
 .table-financial .col-observacoes { min-width: 150px; }
+.table-financial .col-comprovante { min-width: 100px; }
 .table-financial .col-acoes { min-width: 80px; }
 
 /* Scrollbar customizada */
@@ -122,14 +123,50 @@
                             </a>
                         </div>
                         
-                        <!-- Botão Novo Lançamento -->
+                        <!-- Botões Ações -->
                         <a href="{{ url_for('financeiro.novo_lancamento') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-1"></i> Novo
+                        </a>
+                        <a href="{{ url_for('financeiro.importar_extrato') }}" class="btn btn-outline-secondary ms-2">
+                            <i class="fas fa-file-import me-1"></i> Importar
+                        </a>
+                        <a href="{{ url_for('financeiro.conciliacao') }}" class="btn btn-outline-success ms-2">
+                            <i class="fas fa-balance-scale me-1"></i> Conciliar
                         </a>
                     </div>
                 </div>
             </div>
 
+            <!-- Indicadores de Conciliação -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-history fa-2x mb-2"></i>
+                            <h5>{{ conciliacao_info.total_conciliados if conciliacao_info else 0 }}</h5>
+                            <p class="mb-0">Total Conciliados (últ.)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <i class="fas fa-clock fa-2x mb-2"></i>
+                            <h5>{{ conciliacao_info.total_pendentes if conciliacao_info else 0 }}</h5>
+                            <p class="mb-0">Pendentes (últ.)</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-secondary text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calendar-alt fa-2x mb-2"></i>
+                            <h6 class="mb-0">{% if conciliacao_info and conciliacao_info.ultima_data %}{{ conciliacao_info.ultima_data.strftime('%d/%m/%Y %H:%M') }}{% else %}-{% endif %}</h6>
+                            <p class="mb-0">Última Conciliação</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <!-- Cards com Totais -->
             <div class="row mb-4">
                 <div class="col-md-3">
@@ -411,6 +448,7 @@
                                     <th class="col-valor"><i class="fas fa-dollar-sign me-1"></i>Valor</th>
                                     <th class="col-conta"><i class="fas fa-wallet me-1"></i>Conta</th>
                                     <th class="col-observacoes">Observações</th>
+                                    <th class="col-comprovante"><i class="fas fa-paperclip me-1"></i>Comprovante</th>
                                     <th class="col-acoes">Ações</th>
                                 </tr>
                             </thead>
@@ -434,12 +472,29 @@
                                         <i class="{{ lancamento.conta_icon }}"></i> {{ lancamento.conta }}
                                     </td>
                                     <td>
-                                        {% if lancamento.observacoes %}
+                                        {% if lancamento.observacoes and lancamento.observacoes != 'None' and lancamento.observacoes.strip() %}
                                         <span data-bs-toggle="tooltip" title="{{ lancamento.observacoes }}">
                                             {{ lancamento.observacoes[:30] }}{% if lancamento.observacoes|length > 30 %}...{% endif %}
                                         </span>
                                         {% else %}
                                         -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if lancamento.tem_comprovante() %}
+                                        <a href="{{ lancamento.comprovante }}" target="_blank" 
+                                           class="btn btn-sm btn-outline-info" 
+                                           title="Ver comprovante: {{ lancamento.nome_arquivo_comprovante() }}">
+                                            {% if lancamento.is_comprovante_imagem() %}
+                                                <i class="fas fa-image"></i>
+                                            {% elif lancamento.is_comprovante_pdf() %}
+                                                <i class="fas fa-file-pdf"></i>
+                                            {% else %}
+                                                <i class="fas fa-paperclip"></i>
+                                            {% endif %}
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>

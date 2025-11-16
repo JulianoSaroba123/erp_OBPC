@@ -46,7 +46,7 @@
                 </div>
                 
                 <div class="card-body p-0">
-                    {% if departamentos %}
+                    {% if departamentos and departamentos|length > 0 %}
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
@@ -62,6 +62,10 @@
                                     <th scope="col" class="border-0 fw-bold text-dark">
                                         <i class="fas fa-phone me-1"></i>
                                         Contato
+                                    </th>
+                                    <th scope="col" class="border-0 fw-bold text-dark text-center">
+                                        <i class="fas fa-graduation-cap me-1"></i>
+                                        Ensino
                                     </th>
                                     <th scope="col" class="border-0 fw-bold text-dark text-center">
                                         <i class="fas fa-check-circle me-1"></i>
@@ -114,6 +118,19 @@
                                         {% endif %}
                                     </td>
                                     <td class="align-middle text-center">
+                                        {% if departamento.possui_aulas %}
+                                            <span class="badge bg-primary">
+                                                <i class="fas fa-graduation-cap me-1"></i>
+                                                Com Aulas
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">
+                                                <i class="fas fa-times me-1"></i>
+                                                Sem Aulas
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="align-middle text-center">
                                         {% if departamento.status == 'Ativo' %}
                                             <span class="badge bg-success">
                                                 <i class="fas fa-check me-1"></i>
@@ -137,6 +154,16 @@
                                     </td>
                                     <td class="align-middle text-center">
                                         <div class="btn-group" role="group">
+                                            {% if departamento.cronograma_mensal %}
+                                            <button type="button" 
+                                                    class="btn btn-outline-info btn-sm" 
+                                                    title="Ver Cronograma"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#cronograma{{ departamento.id }}"
+                                                    aria-expanded="false">
+                                                <i class="fas fa-calendar-alt"></i>
+                                            </button>
+                                            {% endif %}
                                             <a href="{{ url_for('departamentos.editar_departamento', id=departamento.id) }}" 
                                                class="btn btn-outline-primary btn-sm" 
                                                title="Editar">
@@ -154,6 +181,33 @@
                                         </div>
                                     </td>
                                 </tr>
+                                
+                                <!-- Linha do cronograma (expansível) -->
+                                {% if departamento.cronograma_mensal %}
+                                <tr class="collapse" id="cronograma{{ departamento.id }}">
+                                    <td colspan="6" class="border-0 bg-light">
+                                        <div class="p-3">
+                                            <h6 class="text-primary mb-2">
+                                                <i class="fas fa-calendar-alt me-2"></i>
+                                                Cronograma Mensal de Atividades
+                                            </h6>
+                                            <div class="text-muted">
+                                                {{ departamento.cronograma_mensal|nl2br|safe }}
+                                            </div>
+                                            {% if departamento.possui_aulas and departamento.planejamento_aulas %}
+                                            <hr class="my-3">
+                                            <h6 class="text-success mb-2">
+                                                <i class="fas fa-graduation-cap me-2"></i>
+                                                Planejamento de Aulas
+                                            </h6>
+                                            <div class="text-muted">
+                                                {{ departamento.planejamento_aulas|nl2br|safe }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -243,6 +297,32 @@
 
 .empty-state-icon i {
     color: #dee2e6;
+}
+
+/* Estilos para seção de cronograma */
+.collapse td {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.cronograma-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+}
+
+.cronograma-section h6 {
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 0.5rem;
+}
+
+.text-muted pre {
+    font-family: inherit;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .fa-user-crown {

@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventário Patrimonial - Sistema OBPC</title>
+
+  <!-- Favicon da Igreja OBPC -->
+  <link rel="icon" type="image/x-icon" href="/static/logo_obpc.ico">
+  <link rel="shortcut icon" href="/static/logo_obpc.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/Logo_IBPC.jpg">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+  <!-- Estilo Customizado -->
+  <style>
+    /* Reset global para evitar overflow */
+    * {
+      box-sizing: border-box;
+    }
+    
+    html {
+      overflow-x: hidden;
+      width: 100%;
+    }
+
+    /* Paleta de Cores OBPC - Igreja O Brasil para Cristo */
+    :root {
+      --primary-green: #228b22;           /* Verde vibrante principal */
+      --primary-blue: #1e3a8a;           /* Azul real forte */
+      --secondary-blue: #3b82f6;         /* Azul secundário */
+      --light-blue: #dbeafe;             /* Azul claro para fundos */
+      --yellow: #FF6B35;                 /* Laranja vibrante para destaque */
+      --light-yellow: #fff9c4;           /* Amarelo claro */
+      --dark-green: #006400;             /* Verde escuro */
+      --white: #ffffff;                  /* Branco puro */
+      --light-gray: #f8fafc;             /* Cinza muito claro */
+      --text-dark: #1f2937;               /* Texto escuro */
+      --text-gray: #6b7280;               /* Texto cinza */
+      --success: #059669;                 /* Verde para sucesso */
+      --warning: #d97706;                 /* Laranja para avisos */
+      --danger: #dc2626;                  /* Vermelho para erros */
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, var(--light-blue) 0%, var(--light-gray) 100%);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 240px;
+      background: linear-gradient(180deg, var(--dark-green) 0%, var(--primary-green) 100%);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      z-index: 1000;
+      box-shadow: 4px 0 20px rgba(34, 139, 34, 0.3);
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Container para o conteúdo rolável da sidebar */
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: 10px;
+    }
+
+    /* Botão de logout fixo no final */
+    .sidebar-logout {
+      margin-top: auto;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* Estilizar scrollbar da sidebar */
+    .sidebar::-webkit-scrollbar,
+    .sidebar-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track,
+    .sidebar-content::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar::-webkit-scrollbar-thumb,
+    .sidebar-content::-webkit-scrollbar-thumb {
+      background: var(--yellow);
+      border-radius: 3px;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb:hover,
+    .sidebar-content::-webkit-scrollbar-thumb:hover {
+      background: #FFD700;
+    }
+
+    .sidebar.collapsed {
+      width: 60px;
+    }
+
+    .sidebar.collapsed .logo h2 {
+      font-size: 16px !important;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+
+    .sidebar.collapsed .logo p {
+      display: none;
+    }
+
+    .sidebar.collapsed a span {
+      display: none;
+    }
+
+    /* Estilos para submenu - FORÇADO */
+    .menu-group {
+      position: relative !important;
+    }
+
+    .sidebar .submenu {
+      display: none !important;
+      margin-left: 20px !important;
+      border-left: 2px solid rgba(255, 107, 53, 0.3) !important;
+      background: rgba(0,0,0,0.3) !important;
+      border-radius: 4px !important;
+      margin-top: 5px !important;
+      padding: 5px 0 !important;
+    }
+
+    .sidebar .menu-group:hover .submenu,
+    .sidebar .submenu.show {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+    
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .submenu-arrow {
+      transition: transform 0.3s ease !important;
+      margin-left: auto !important;
+      font-size: 12px !important;
+    }
+
+    .submenu-item {
+      padding: 8px 15px !important;
+      font-size: 13px !important;
+      color: #bbb !important;
+      margin: 0 !important;
+      border-radius: 0 !important;
+      border-left: none !important;
+    }
+
+    .submenu-item:hover {
+      background: rgba(255, 107, 53, 0.15) !important;
+      color: var(--yellow) !important;
+      transform: translateX(3px) !important;
+    }
+
+    .sidebar.collapsed .submenu {
+      display: none;
+    }
+
+    .sidebar .logo {
+      text-align: center;
+      padding: 20px 15px;
+      border-bottom: 2px solid var(--yellow);
+      background: rgba(255, 107, 53, 0.1);
+    }
+
+    .sidebar .logo img {
+      max-width: 120px;
+      max-height: 120px;
+      border-radius: 50%;
+      margin-bottom: 10px;
+      border: 3px solid var(--yellow);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+
+    .sidebar.collapsed .logo img {
+      max-width: 60px;
+      max-height: 60px;
+      margin-bottom: 5px;
+    }
+
+    .sidebar .logo h2 {
+      color: var(--yellow) !important;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      font-size: 28px !important;
+      letter-spacing: 2px;
+    }
+
+    .sidebar .logo p {
+      color: #e2e8f0 !important;
+      font-size: 11px !important;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.3s;
+      font-size: 15px;
+      border-left: 4px solid transparent;
+    }
+
+    .sidebar a:hover {
+      background: rgba(255, 107, 53, 0.2);
+      border-left-color: var(--yellow);
+      transform: translateX(5px);
+    }
+
+    .sidebar a.active {
+      background: linear-gradient(90deg, var(--yellow), #FF4500);
+      border-left-color: var(--yellow);
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    .sidebar a i {
+      width: 20px;
+      text-align: center;
+    }
+
+    .content {
+      margin-left: 240px;
+      padding: 20px;
+      transition: margin-left 0.3s ease;
+      min-width: 0;
+      width: calc(100vw - 240px);
+      max-width: calc(100vw - 240px);
+      overflow-x: visible;
+      box-sizing: border-box;
+    }
+
+    .content.expanded {
+      margin-left: 60px;
+      width: calc(100vw - 60px);
+      max-width: calc(100vw - 60px);
+    }
+
+    .sidebar-toggle {
+      position: fixed;
+      top: 75px;
+      left: 250px;
+      z-index: 1000;
+      background: var(--primary-green);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 0 5px 5px 0;
+      cursor: pointer;
+      transition: left 0.3s ease;
+      box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+    }
+
+    .sidebar-toggle.collapsed {
+      left: 70px;
+    }
+
+    .sidebar-toggle:hover {
+      background: var(--dark-green);
+    }
+
+    .navbar-top {
+      background: linear-gradient(90deg, var(--white), var(--light-blue));
+      box-shadow: 0 4px 20px rgba(34, 139, 34, 0.1);
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      border-bottom: 3px solid var(--yellow);
+      z-index: 5;
+    }
+
+    .navbar-top h5 {
+      margin: 0;
+      font-weight: 600;
+      color: var(--primary-green);
+    }
+
+    footer {
+      text-align: center;
+      font-size: 14px;
+      color: #777;
+      margin-top: 20px;
+    }
+
+    /* Estilos específicos para tabelas */
+    .container-fluid {
+      max-width: 100%;
+      padding-left: 15px;
+      padding-right: 15px;
+    }
+    
+    .table-responsive {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Garantir que cards ocupem toda a largura disponível */
+    .card {
+      width: 100%;
+      max-width: 100%;
+    }
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 70px;
+        overflow: hidden;
+      }
+      .sidebar a span {
+        display: none;
+      }
+      .sidebar .logo h2 {
+        font-size: 18px !important;
+      }
+      .sidebar .logo p {
+        display: none;
+      }
+      .content {
+        margin-left: 70px;
+        width: calc(100vw - 70px);
+      }
+    }
+
+    @media (max-width: 576px) {
+      .sidebar {
+        transform: translateX(-100%);
+        width: 240px;
+      }
+      .sidebar.show {
+        transform: translateX(0);
+      }
+      .content {
+        margin-left: 0;
+        width: 100vw;
+      }
+      .mobile-toggle {
+        display: block !important;
+      }
+    }
+
+    .mobile-toggle {
+      display: none;
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
+      background: var(--primary-green);
+      color: white;
+      border: none;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Botão Mobile para Sidebar -->
+  <button class="mobile-toggle" onclick="toggleSidebar()">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <!-- Botão Toggle Desktop para Sidebar -->
+  <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebarDesktop()" title="Recolher/Expandir Menu">
+    <i class="fas fa-chevron-left" id="toggleIcon"></i>
+  </button>
+
+  <!-- MENU LATERAL -->
+  <div class="sidebar" id="sidebar">
+    <div class="logo">
+      <img src="/static/Logo_OBPC.jpg" alt="Logo OBPC" 
+           onerror="this.style.display='none';" />
+      <h2>OBPC</h2>
+      <p>Tietê-SP</p>
+    </div>
+    
+    <div class="sidebar-content">
+      <!-- Dashboard - Todos podem ver -->
+      <a href="/painel" class="active"><i class="fa-solid fa-house"></i><span>Painel</span></a>
+      
+      <!-- Gerenciamento de Usuários - Apenas Admin e Master -->
+      
+      <a href="/usuarios"><i class="fa-solid fa-users-gear"></i><span>Gerenciar Usuários</span></a>
+      
+      
+      <!-- Submenu Secretaria - Secretários, Admins e Master -->
+      
+      <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-building"></i><span>Secretaria</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <div class="submenu">
+          
+          <a href="/membros" class="submenu-item">
+            <i class="fas fa-users"></i><span>Membros</span>
+          </a>
+          <a href="/lideres" class="submenu-item">
+            <i class="fas fa-crown"></i><span>Líderes</span>
+          </a>
+          
+          <a href="/secretaria/atas" class="submenu-item">
+            <i class="fas fa-file-alt"></i><span>Atas de Reunião</span>
+          </a>
+          <a href="/secretaria/inventario" class="submenu-item">
+            <i class="fas fa-boxes"></i><span>Inventário</span>
+          </a>
+          <a href="/secretaria/oficios/" class="submenu-item">
+            <i class="fas fa-file-signature"></i><span>Ofícios de Solicitação</span>
+          </a>
+          
+          <a href="/secretaria/participacao/" class="submenu-item">
+            <i class="fa-solid fa-handshake"></i><span>Participação de Obreiros</span>
+          </a>
+          
+        </div>
+      </div>
+      
+      
+      <!-- Departamentos - Mídia, Admins e Master -->
+      
+      <a href="/departamentos"><i class="fa-solid fa-church"></i><span>Departamentos</span></a>
+      
+      
+      <!-- Agenda Pastoral - Secretários, Admins e Master -->
+      
+      <a href="/escala-ministerial/"><i class="fas fa-calendar-check"></i><span>Agenda Pastoral</span></a>
+      
+      
+      <!-- Submenu Financeiro - Tesoureiros, Admins e Master -->
+      
+      <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <div class="submenu">
+          <a href="/financeiro" class="submenu-item">
+            <i class="fas fa-list"></i><span>Lista de Lançamentos</span>
+          </a>
+          <a href="/financeiro/conciliacao/dashboard" class="submenu-item">
+            <i class="fas fa-chart-line"></i><span>Dashboard Conciliação</span>
+          </a>
+          <a href="/financeiro/importar" class="submenu-item">
+            <i class="fas fa-upload"></i><span>Importar Extrato</span>
+          </a>
+        </div>
+      </div>
+      
+      
+      <!-- Menu Mídia - Mídia, Admins e Master -->
+      
+      <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-bullhorn"></i><span>Mídia</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <div class="submenu">
+          <a href="/midia/agenda/" class="submenu-item">
+            <i class="fas fa-calendar-week"></i><span>Agenda Semanal</span>
+          </a>
+          <a href="/midia/certificados/" class="submenu-item">
+            <i class="fas fa-certificate"></i><span>Certificados</span>
+          </a>
+          <a href="/midia/carteiras/" class="submenu-item">
+            <i class="fas fa-id-card"></i><span>Carteira de Membro</span>
+          </a>
+        </div>
+      </div>
+      
+      
+      <!-- Eventos - Todos podem ver -->
+      <a href="/eventos/"><i class="fa-solid fa-calendar-days"></i><span>Eventos</span></a>
+      
+      <!-- Configurações - Apenas Admins e Master -->
+      
+      <a href="/configuracoes/"><i class="fa-solid fa-gear"></i><span>Configurações</span></a>
+      
+      
+      <!-- Perfil do Usuário - Todos -->
+      <a href="/perfil"><i class="fa-solid fa-user-circle"></i><span>Meu Perfil</span></a>
+    </div>
+    
+    <a href="/logout" class="sidebar-logout"><i class="fa-solid fa-right-from-bracket"></i><span>Sair</span></a>
+  </div>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <div class="content">
+    <div class="navbar-top">
+      <h5>Painel Administrativo OBPC</h5>
+      <div>
+        <i class="fa-solid fa-user-circle text-primary me-2"></i>
+        <span>Administrador OBPC</span>
+        
+        <small class="text-muted ms-2">(Master)</small>
+        
+      </div>
+    </div>
+
+    <main>
+      
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-boxes me-2"></i>
+                            Inventário Patrimonial
+                        </h4>
+                        <div>
+                            <a href="/secretaria/inventario/pdf" class="btn btn-light btn-sm me-2">
+                                <i class="fas fa-file-pdf me-1"></i>
+                                PDF Completo
+                            </a>
+                            <a href="/secretaria/inventario/novo" class="btn btn-light btn-sm">
+                                <i class="fas fa-plus me-1"></i>
+                                Novo Item
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filtros Avançados -->
+                    <div class="card mb-4 bg-light">
+                        <div class="card-body">
+                            <form method="GET" action="/secretaria/inventario">
+                                <div class="row g-3">
+                                    <!-- Busca -->
+                                    <div class="col-md-4">
+                                        <label for="busca" class="form-label fw-bold">
+                                            <i class="fas fa-search me-1"></i>
+                                            Buscar Item
+                                        </label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="busca"
+                                               name="busca" 
+                                               placeholder="Código, nome, descrição..."
+                                               value="">
+                                    </div>
+
+                                    <!-- Categoria -->
+                                    <div class="col-md-3">
+                                        <label for="categoria" class="form-label fw-bold">
+                                            <i class="fas fa-tag me-1"></i>
+                                            Categoria
+                                        </label>
+                                        <select class="form-select" id="categoria" name="categoria">
+                                            <option value="">Todas</option>
+                                            
+                                        </select>
+                                    </div>
+
+                                    <!-- Estado -->
+                                    <div class="col-md-2">
+                                        <label for="estado" class="form-label fw-bold">
+                                            <i class="fas fa-star me-1"></i>
+                                            Estado
+                                        </label>
+                                        <select class="form-select" id="estado" name="estado">
+                                            <option value="">Todos</option>
+                                            
+                                        </select>
+                                    </div>
+
+                                    <!-- Status -->
+                                    <div class="col-md-2">
+                                        <label for="ativo" class="form-label fw-bold">
+                                            <i class="fas fa-toggle-on me-1"></i>
+                                            Status
+                                        </label>
+                                        <select class="form-select" id="ativo" name="ativo">
+                                            <option value="">Todos</option>
+                                            <option value="true" >Ativos</option>
+                                            <option value="false" >Inativos</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Botão -->
+                                    <div class="col-md-1">
+                                        <label class="form-label">&nbsp;</label>
+                                        <div class="d-grid">
+                                            <button class="btn btn-success" type="submit" title="Filtrar">
+                                                <i class="fas fa-filter"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Estatísticas -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-boxes fa-2x mb-2"></i>
+                                    <h5></h5>
+                                    <p class="mb-0">Total de Itens</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                    <h5></h5>
+                                    <p class="mb-0">Itens Ativos</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-dollar-sign fa-2x mb-2"></i>
+                                    <h5>R$ 0.00</h5>
+                                    <p class="mb-0">Valor Total</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-info text-white">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-search fa-2x mb-2"></i>
+                                    <h5>0</h5>
+                                    <p class="mb-0">Resultados</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Itens -->
+                    
+                        <div class="text-center py-5">
+                            <i class="fas fa-boxes fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">
+                                
+                                    Nenhum item no inventário
+                                
+                            </h5>
+                            <p class="text-muted">
+                                
+                                    Comece adicionando o primeiro item ao inventário
+                                
+                            </p>
+                            <a href="/secretaria/inventario/novo" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>
+                                Cadastrar Primeiro Item
+                            </a>
+                        </div>
+                    
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="modalExclusao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Confirmar Exclusão
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir o item <strong id="nomeItem"></strong>?</p>
+                <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formExclusao" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>
+                        Excluir Item
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Inativação -->
+<div class="modal fade" id="modalInativacao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-toggle-off me-2"></i>
+                    Alterar Status
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" title="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja <strong id="acaoStatus"></strong> o item <strong id="nomeItemStatus"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formInativacao" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-toggle-on me-2"></i>
+                        <span id="textoAcao">Confirmar</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarExclusao(id, nome) {
+    document.getElementById('nomeItem').textContent = nome;
+    document.getElementById('formExclusao').action = '/secretaria/inventario/excluir/' + id;
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalExclusao'));
+    modal.show();
+}
+
+function confirmarInativacao(id, nome, ativo) {
+    const acao = ativo ? 'inativar' : 'ativar';
+    document.getElementById('acaoStatus').textContent = acao;
+    document.getElementById('nomeItemStatus').textContent = nome;
+    document.getElementById('textoAcao').textContent = acao.charAt(0).toUpperCase() + acao.slice(1);
+    document.getElementById('formInativacao').action = '/secretaria/inventario/inativar/' + id;
+    
+    var modal = new bootstrap.Modal(document.getElementById('modalInativacao'));
+    modal.show();
+}
+</script>
+
+    </main>
+
+    <footer>
+      Sistema Administrativo OBPC © 
+    </footer>
+  </div>
+
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('show');
+    }
+    
+    function toggleSidebarDesktop() {
+      const sidebar = document.getElementById('sidebar');
+      const content = document.querySelector('.content');
+      const toggle = document.getElementById('sidebarToggle');
+      const icon = document.getElementById('toggleIcon');
+      
+      sidebar.classList.toggle('collapsed');
+      content.classList.toggle('expanded');
+      toggle.classList.toggle('collapsed');
+      
+      if (sidebar.classList.contains('collapsed')) {
+        icon.className = 'fas fa-chevron-right';
+      } else {
+        icon.className = 'fas fa-chevron-left';
+      }
+    }
+    
+    function toggleSubmenu(element) {
+      console.log('toggleSubmenu chamado', element);
+      
+      const menuGroup = element.closest('.menu-group');
+      const submenu = menuGroup.querySelector('.submenu');
+      const arrow = element.querySelector('.submenu-arrow');
+      
+      console.log('menuGroup:', menuGroup);
+      console.log('submenu:', submenu);
+      console.log('arrow:', arrow);
+      
+      // Toggle submenu visibility
+      if (submenu.classList.contains('show')) {
+        submenu.classList.remove('show');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+        console.log('Submenu fechado');
+      } else {
+        // Fechar outros submenus primeiro
+        document.querySelectorAll('.submenu.show').forEach(s => {
+          s.classList.remove('show');
+          const otherArrow = s.parentElement.querySelector('.submenu-arrow');
+          if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
+        });
+        
+        submenu.classList.add('show');
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        console.log('Submenu aberto');
+      }
+    }
+    
+    // Fechar sidebar ao clicar fora dela em mobile
+    document.addEventListener('click', function(event) {
+      const sidebar = document.getElementById('sidebar');
+      const toggle = document.querySelector('.mobile-toggle');
+      
+      if (window.innerWidth <= 576) {
+        if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+          sidebar.classList.remove('show');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

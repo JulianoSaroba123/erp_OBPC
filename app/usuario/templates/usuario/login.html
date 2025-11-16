@@ -42,8 +42,8 @@
   }
   
   .logo-container img {
-    width: 70px;
-    height: 70px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     border: 3px solid rgba(255, 255, 255, 0.3);
     object-fit: cover;
@@ -87,8 +87,8 @@
   
   .logo-fallback {
     display: none;
-    width: 70px;
-    height: 70px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
     background: linear-gradient(135deg, #228b22 0%, #1e3a8a 100%);
     align-items: center;
@@ -97,12 +97,12 @@
     border: 3px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     color: white;
-    font-size: 18px;
+    font-size: 24px;
     font-weight: bold;
   }
   
   .login-body {
-    padding: 40px;
+    padding: 30px;
   }
   
   .form-control {
@@ -113,8 +113,8 @@
   }
   
   .form-control:focus {
-    border-color: #ffd700;
-    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.1);
+    border-color: #FF6B35;
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
   }
   
   .btn-primary {
@@ -154,8 +154,8 @@
   <div class="login-card">
     <div class="login-header">
       <div class="logo-container">
-        <img src="{{ url_for('static', filename='Logo_IBPC.jpg') }}" alt="Logo Igreja O Brasil para Cristo" 
-             onerror="this.style.display='none'; document.querySelector('.logo-fallback').style.display='flex';" />
+        <img src="{{ url_for('static', filename='Logo_OBPC.jpg') }}" alt="Logo Igreja O Brasil para Cristo" 
+             onerror="this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}'" />
         <div class="logo-fallback">
           OBPC
         </div>
@@ -178,6 +178,14 @@
           <label for="senha" class="fw-semibold form-label">Senha</label>
           <input type="password" class="form-control" id="senha" name="senha" placeholder="Digite sua senha" required>
         </div>
+        
+        <div class="form-check mb-4">
+          <input class="form-check-input" type="checkbox" id="lembrar" name="lembrar" value="1">
+          <label class="form-check-label" for="lembrar">
+            Lembrar de mim por 7 dias
+          </label>
+        </div>
+        
         <button type="submit" class="btn btn-primary w-100">Entrar no Sistema</button>
       </form>
       

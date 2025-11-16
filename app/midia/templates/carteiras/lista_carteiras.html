@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Carteiras de Membro - OBPC{% endblock %}
+
+{% block content %}
+<style>
+  .dashboard-card {
+    background: linear-gradient(135deg, white 0%, #f8fafc 100%);
+    border-radius: 20px;
+    border: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #FF6B35, #FF4500);
+  }
+  
+  .dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(34, 139, 34, 0.2);
+  }
+  
+  .dashboard-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    font-size: 24px;
+    color: white;
+  }
+  
+  .icon-active { background: linear-gradient(135deg, #228b22, #1e3a8a); }
+  .icon-inactive { background: linear-gradient(135deg, #6b7280, #9ca3af); }
+  .icon-total { background: linear-gradient(135deg, #FF6B35, #FF4500); }
+
+  .foto-placeholder {
+    width: 40px;
+    height: 40px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+  }
+
+  .badge {
+    font-size: 0.75em;
+  }
+
+  .table th {
+    border-top: none;
+  }
+</style>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-id-card text-primary me-2"></i>Carteiras de Membro</h2>
+                    <p class="text-muted mb-0">Gestão de carteirinhas de identificação dos membros</p>
+                </div>
+                <a href="{{ url_for('midia.nova_carteira') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Nova Carteira
+                </a>
+            </div>
+
+            <!-- Cards de Estatísticas -->
+            {% if carteiras %}
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="card dashboard-card shadow p-4 text-center">
+                        <div class="dashboard-icon icon-active">
+                            <i class="fas fa-user-check"></i>
+                        </div>
+                        <h6 class="fw-semibold text-muted mb-2">Membros Ativos</h6>
+                        <h4 class="fw-bold" style="color: #0d5450;">{{ carteiras | selectattr('situacao', 'equalto', 'Ativo') | list | length }}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card dashboard-card shadow p-4 text-center">
+                        <div class="dashboard-icon icon-inactive">
+                            <i class="fas fa-user-times"></i>
+                        </div>
+                        <h6 class="fw-semibold text-muted mb-2">Membros Inativos</h6>
+                        <h4 class="fw-bold" style="color: #0d5450;">{{ carteiras | selectattr('situacao', 'equalto', 'Inativo') | list | length }}</h4>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card dashboard-card shadow p-4 text-center">
+                        <div class="dashboard-icon icon-total">
+                            <i class="fas fa-id-card"></i>
+                        </div>
+                        <h6 class="fw-semibold text-muted mb-2">Total de Carteiras</h6>
+                        <h4 class="fw-bold" style="color: #0d5450;">{{ carteiras | length }}</h4>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Situação</label>
+                            <select name="situacao" class="form-select">
+                                <option value="">Todas as situações</option>
+                                {% for sit in situacoes %}
+                                <option value="{{ sit }}" {% if sit == situacao_atual %}selected{% endif %}>
+                                    {{ sit }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Nome do Membro</label>
+                            <input type="text" name="nome" class="form-control" 
+                                   value="{{ nome_atual or '' }}" placeholder="Buscar por nome...">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Número da Carteira</label>
+                            <input type="text" name="numero" class="form-control" 
+                                   value="{{ numero_atual or '' }}" placeholder="Ex: 1001">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-filter me-1"></i> Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de Carteiras -->
+            {% if carteiras %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Nº Carteira</th>
+                                    <th>Foto</th>
+                                    <th>Nome</th>
+                                    <th>Nascimento</th>
+                                    <th>Batismo</th>
+                                    <th>Situação</th>
+                                    <th>Emissão</th>
+                                    <th width="150">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for carteira in carteiras %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-primary">{{ carteira.numero_carteira }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if carteira.foto_caminho %}
+                                        <img src="{{ url_for('static', filename=carteira.foto_caminho) }}" 
+                                             alt="Foto" class="foto-mini rounded-circle" 
+                                             width="40" height="40" style="object-fit: cover; cursor: pointer;"
+                                             onclick="mostrarFoto('{{ url_for('static', filename=carteira.foto_caminho) }}', '{{ carteira.nome_completo }}')">
+                                        {% else %}
+                                        <div class="foto-placeholder rounded-circle d-flex align-items-center justify-content-center">
+                                            <i class="fas fa-user text-muted"></i>
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ carteira.nome_completo }}</strong>
+                                        {% if carteira.observacoes %}
+                                        <br><small class="text-muted" title="{{ carteira.observacoes }}">
+                                            {{ carteira.observacoes[:30] }}{% if carteira.observacoes|length > 30 %}...{% endif %}
+                                        </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if carteira.data_nascimento %}
+                                        {{ carteira.data_nascimento.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if carteira.data_batismo %}
+                                        {{ carteira.data_batismo.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if carteira.situacao == 'Ativo' %}bg-success
+                                            {% elif carteira.situacao == 'Inativo' %}bg-secondary
+                                            {% else %}bg-warning{% endif %}">
+                                            {{ carteira.situacao }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if carteira.data_emissao %}
+                                        {{ carteira.data_emissao.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('midia.carteira_pdf', carteira_id=carteira.id) }}" 
+                                               class="btn btn-outline-info" title="Visualizar" target="_blank">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('midia.carteira_pdf', carteira_id=carteira.id) }}" 
+                                               class="btn btn-outline-success" title="Baixar PDF" target="_blank">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
+                                            <a href="{{ url_for('midia.editar_carteira', carteira_id=carteira.id) }}" 
+                                               class="btn btn-outline-primary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{{ url_for('midia.excluir_carteira', carteira_id=carteira.id) }}" 
+                                               class="btn btn-outline-danger" title="Excluir"
+                                               onclick="return confirm('Confirma exclusão da carteira de {{ carteira.nome_completo }}?')">>
+                                                <i class="fas fa-trash"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-id-card text-muted" style="font-size: 3rem;"></i>
+                    <h4 class="mt-3 text-muted">Nenhuma carteira encontrada</h4>
+                    <p class="text-muted">
+                        {% if situacao_atual or nome_atual or numero_atual %}
+                        Não há carteiras para os filtros aplicados.
+                        {% else %}
+                        Não há carteiras cadastradas ainda.
+                        {% endif %}
+                    </p>
+                    <a href="{{ url_for('midia.nova_carteira') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> Criar Primeira Carteira
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para visualizar foto -->
+<div class="modal fade" id="modalFoto" tabindex="-1" aria-labelledby="modalFotoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalFotoLabel">Foto do Membro</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="fotoAmpliada" src="" alt="Foto do membro" class="img-fluid rounded" style="max-height: 400px;">
+                <h6 id="nomeMembro" class="mt-3 text-muted"></h6>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function mostrarFoto(urlFoto, nomeMembro) {
+    document.getElementById('fotoAmpliada').src = urlFoto;
+    document.getElementById('nomeMembro').textContent = nomeMembro;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalFoto'));
+    modal.show();
+}
+</script>
+
+{% endblock %}

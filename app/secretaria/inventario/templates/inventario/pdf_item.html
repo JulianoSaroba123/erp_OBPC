@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Item {{ item.codigo }}</title>
+    <style>
+        body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; margin: 2cm; }
+        .cabecalho { text-align: center; margin-bottom: 20px; }
+        .logo { width: 120px; height: 120px; margin: 0 auto; display: block; }
+        .titulo { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 10px; }
+        .info { margin-top: 20px; }
+        .info table { width: 100%; border-collapse: collapse; }
+        .info td { padding: 8px; border: 1px solid #ddd; vertical-align: top; }
+        .rodape { margin-top: 30px; text-align: center; font-size: 9pt; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="cabecalho">
+        {% if config and config.logo and config.exibir_logo_relatorio %}
+            <img src="{{ (base_url or request.url_root) }}{{ config.logo }}" alt="Logo" class="logo">
+        {% endif %}
+    </div>
+
+    <div class="titulo">FICHA DO ITEM - INVENTÁRIO PATRIMONIAL</div>
+
+    <div class="info">
+        <table>
+            <tr>
+                <td><strong>Código</strong></td>
+                <td>{{ item.codigo }}</td>
+            </tr>
+            <tr>
+                <td><strong>Nome</strong></td>
+                <td>{{ item.nome }}</td>
+            </tr>
+            <tr>
+                <td><strong>Categoria</strong></td>
+                <td>{{ item.categoria }}</td>
+            </tr>
+            <tr>
+                <td><strong>Descrição</strong></td>
+                <td>{{ item.descricao or '-' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Valor de Aquisição</strong></td>
+                <td>{% if item.valor_aquisicao %}R$ {{ "%.2f"|format(item.valor_aquisicao) }}{% else %}-{% endif %}</td>
+            </tr>
+            <tr>
+                <td><strong>Data de Aquisição</strong></td>
+                <td>{{ item.data_aquisicao.strftime('%d/%m/%Y') if item.data_aquisicao else '-' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Estado de Conservação</strong></td>
+                <td>{{ item.estado_conservacao or '-' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Localização</strong></td>
+                <td>{{ item.localizacao or '-' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Responsável</strong></td>
+                <td>{{ item.responsavel or '-' }}</td>
+            </tr>
+            <tr>
+                <td><strong>Observações</strong></td>
+                <td>{{ item.observacoes or '-' }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="rodape">PDF gerado em {{ data_geracao }}</div>
+</body>
+</html>

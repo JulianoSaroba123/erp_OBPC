@@ -6,7 +6,7 @@
 <div class="container-fluid">
     <!-- Cabeçalho para impressão -->
     <div class="d-print-block text-center mb-4">
-        <h2 class="text-primary">OBPC - O Brasil para Cristo</h2>
+        
         <h3>Tietê - SP</h3>
         <h4 class="mt-3">RELATÓRIO DE CAIXA INTERNO</h4>
         <p class="text-muted">
@@ -43,10 +43,14 @@
                     </a>
                     
                     <!-- Botões Principais -->
-                    <div class="btn-group" role="group">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('financeiro.relatorio_caixa_preview', mes=mes, ano=ano) }}" 
+                           class="btn btn-outline-primary" target="_blank" title="Visualizar Relatório">
+                            <i class="fas fa-eye me-1"></i> Visualizar
+                        </a>
                         <a href="{{ url_for('financeiro.relatorio_caixa_pdf', mes=mes, ano=ano) }}" 
                            class="btn btn-success" target="_blank" title="Gerar PDF Profissional">
-                            <i class="fas fa-file-pdf me-1"></i> PDF
+                            <i class="fas fa-file-pdf me-1"></i> PDF Caixa
                         </a>
                         <button onclick="window.print()" class="btn btn-primary" title="Imprimir Relatório">
                             <i class="fas fa-print me-1"></i> Imprimir
@@ -78,26 +82,26 @@
                             <table class="table table-sm">
                                 <tr>
                                     <td><strong>Total Entradas Banco:</strong></td>
-                                    <td class="text-end text-primary fw-bold">
-                                        {{ "R$ %.2f"|format(totais.entradas_banco)|replace(".", ",") }}
+                                    <td class="text-end fw-bold {{ totais.entradas_banco|valor_negativo_vermelho or 'text-primary' }}">
+                                        {{ totais.entradas_banco|valor_com_cor|safe }}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td><strong>Total Entradas Dinheiro:</strong></td>
-                                    <td class="text-end text-primary fw-bold">
-                                        {{ "R$ %.2f"|format(totais.entradas_dinheiro)|replace(".", ",") }}
+                                    <td class="text-end fw-bold {{ totais.entradas_dinheiro|valor_negativo_vermelho or 'text-primary' }}">
+                                        {{ totais.entradas_dinheiro|valor_com_cor|safe }}
                                     </td>
                                 </tr>
                                 <tr>
                                     <td><strong>Total Entradas PIX:</strong></td>
-                                    <td class="text-end text-primary fw-bold">
-                                        {{ "R$ %.2f"|format(totais.entradas_pix)|replace(".", ",") }}
+                                    <td class="text-end fw-bold {{ totais.entradas_pix|valor_negativo_vermelho or 'text-primary' }}">
+                                        {{ totais.entradas_pix|valor_com_cor|safe }}
                                     </td>
                                 </tr>
                                 <tr class="table-light">
                                     <td><strong>TOTAL ENTRADAS:</strong></td>
-                                    <td class="text-end text-primary fw-bold fs-5">
-                                        {{ "R$ %.2f"|format(totais.total_entradas)|replace(".", ",") }}
+                                    <td class="text-end fw-bold fs-5 {{ totais.total_entradas|valor_negativo_vermelho or 'text-primary' }}">
+                                        {{ totais.total_entradas|valor_com_cor|safe }}
                                     </td>
                                 </tr>
                             </table>
@@ -109,8 +113,8 @@
                             <table class="table table-sm">
                                 <tr>
                                     <td>Dízimos Banco:</td>
-                                    <td class="text-end text-success fw-bold">
-                                        {{ "R$ %.2f"|format(totais.dizimos_banco)|replace(".", ",") }}
+                                    <td class="text-end fw-bold {{ totais.dizimos_banco|valor_negativo_vermelho or 'text-success' }}">
+                                        {{ totais.dizimos_banco|valor_com_cor|safe }}
                                     </td>
                                 </tr>
                                 <tr>
@@ -205,21 +209,21 @@
                             <table class="table table-sm">
                                 <tr>
                                     <td><strong>Saldo Anterior:</strong></td>
-                                    <td class="text-end fw-bold">
-                                        {{ "R$ %.2f"|format(totais.saldo_anterior)|replace(".", ",") }}
+                                    <td class="text-end fw-bold {{ totais.saldo_anterior|valor_negativo_vermelho }}">
+                                        {{ totais.saldo_anterior|valor_com_cor|safe }}
                                         <br><small class="text-muted">(Acumulado até {% if mes == 1 %}12/{{ ano-1 }}{% else %}{{ "%02d"|format(mes-1) }}/{{ ano }}{% endif %})</small>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td><strong>Saldo do Mês:</strong></td>
-                                    <td class="text-end {% if totais.saldo_mes >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
-                                        {{ "R$ %.2f"|format(totais.saldo_mes)|replace(".", ",") }}
+                                    <td class="text-end fw-bold {{ totais.saldo_mes|valor_negativo_vermelho or 'text-success' }}">
+                                        {{ totais.saldo_mes|valor_com_cor|safe }}
                                     </td>
                                 </tr>
                                 <tr class="table-secondary">
                                     <td><strong>SALDO ACUMULADO:</strong></td>
-                                    <td class="text-end {% if totais.saldo_acumulado >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold fs-5">
-                                        {{ "R$ %.2f"|format(totais.saldo_acumulado)|replace(".", ",") }}
+                                    <td class="text-end fw-bold fs-5 {{ totais.saldo_acumulado|valor_negativo_vermelho or 'text-success' }}">
+                                        {{ totais.saldo_acumulado|valor_com_cor|safe }}
                                     </td>
                                 </tr>
                             </table>
@@ -261,11 +265,11 @@
         <div class="row text-center">
             <div class="col-6">
                 <p class="mb-1"><strong>_________________________________</strong></p>
-                <p class="small">Tesoureiro: Maria Santos</p>
+                <p class="small">Tesoureiro: {{ dados_igreja.tesoureiro }}</p>
             </div>
             <div class="col-6">
                 <p class="mb-1"><strong>_________________________________</strong></p>
-                <p class="small">Dirigente: Pastor João Silva</p>
+                <p class="small">Dirigente: {{ dados_igreja.dirigente }}</p>
             </div>
         </div>
         <p class="text-center text-muted small mt-3">

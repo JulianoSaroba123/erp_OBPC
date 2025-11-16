@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Certificado - {{ certificado.tipo_certificado }}{% endblock %}
+
+{% block content %}
+<div class="certificate-container" style="background: #f5f5f5; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center;">
+    <div class="certificate-page" style="
+        width: 842px; 
+        height: 595px; 
+        background: white; 
+        box-shadow: 0 0 30px rgba(0,0,0,0.2);
+        position: relative;
+        overflow: hidden;
+        font-family: 'Times New Roman', serif;
+        border-radius: 8px;
+    ">
+        
+        <!-- Bordas decorativas duplas - AZUIS como no modelo -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+            <!-- Borda externa azul -->
+            <div style="
+                position: absolute; 
+                top: 15px; 
+                left: 15px; 
+                right: 15px; 
+                bottom: 15px; 
+                border: 4px solid #000000;
+                border-radius: 15px;
+            "></div>
+            
+            <!-- Borda interna azul -->
+            <div style="
+                position: absolute; 
+                top: 30px; 
+                left: 30px; 
+                right: 30px; 
+                bottom: 30px; 
+                border: 2px solid #000000;
+                border-radius: 10px;
+            "></div>
+        </div>
+
+        <!-- Conteúdo do certificado -->
+        <div style="position: relative; z-index: 1; padding: 50px 60px; height: 100%; display: flex; flex-direction: column;">
+            
+            <!-- Logo da igreja no centro - MAIOR -->
+            <div style="text-align: center; margin: 10px 0 25px 0;">
+                <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
+                     alt="Logo da Igreja" 
+                     style="height: 140px; max-width: 200px; object-fit: contain;"
+                     onerror="this.style.display='none'">
+            </div>
+
+            <!-- Título CERTIFICADO - AZUL -->
+            <div style="text-align: center; margin: 20px 0 15px 0;">
+                <h2 style="
+                    color: #000000;
+                    font-size: 42px;
+                    font-weight: bold;
+                    margin: 0;
+                    letter-spacing: 2px;
+                    text-transform: uppercase;
+                ">CERTIFICADO</h2>
+                
+                <!-- Linha decorativa AZUL -->
+                <div style="
+                    width: 120px; 
+                    height: 3px; 
+                    background: #000000; 
+                    margin: 8px auto 12px auto;
+                "></div>
+                
+                <h3 style="
+                    color: #000000; 
+                    font-size: 16px; 
+                    margin: 0;
+                    font-weight: normal;
+                    letter-spacing: 1.5px;
+                    text-transform: uppercase;
+                ">DE {{ certificado.tipo_certificado }}</h3>
+            </div>
+
+            <!-- Texto principal do certificado - PRETO -->
+            <div style="text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <p style="
+                    color: #000; 
+                    font-size: 14px; 
+                    line-height: 1.5; 
+                    margin-bottom: 25px;
+                    text-align: justify;
+                    text-justify: inter-word;
+                ">
+                    Certificamos que <strong style="color: #1e40af; font-size: 14px; text-decoration: underline;">{{ certificado.nome_pessoa }}</strong>
+                    {% if certificado.tipo_certificado == 'Batismo' %}
+                    foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo, em {{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê.
+                    {% elif certificado.tipo_certificado == 'Apresentação' %}
+                    foi apresentado(a) ao Senhor Jesus Cristo, em {{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê{% if certificado.padrinhos %}, 
+                    sendo acompanhado(a) pelos padrinhos: <strong style="color: #1e40af;">{{ certificado.padrinhos }}</strong>{% endif %}.
+                    {% endif %}
+                </p>
+
+                <!-- Espaço para nome (linha pontilhada) -->
+                <div style="text-align: center; margin: 20px 0;">
+                    <div style="
+                        border-bottom: 1px dotted #666;
+                        width: 250px;
+                        margin: 0 auto 5px auto;
+                        height: 15px;
+                    "></div>
+                    <p style="color: #666; font-size: 11px; margin: 0; font-style: italic;">
+                        Assinatura
+                    </p>
+                </div>
+
+                <!-- Versículo bíblico - FUNDO AZUL CLARO -->
+                <div style="
+                    background: #eff6ff;
+                    border-left: 3px solid #000000;
+                    padding: 12px 15px;
+                    margin: 15px 0;
+                    border-radius: 0 3px 3px 0;
+                ">
+                    {% if certificado.tipo_certificado == 'Batismo' %}
+                    <p style="color: #000000; font-size: 12px; font-style: italic; margin: 0; line-height: 1.4; text-align: center;">
+                        <em>"Portanto, vão e façam discípulos de todas as nações, batizando-os em nome do Pai e do Filho e do Espírito Santo."</em>
+                    </p>
+                    <p style="color: #000000; font-size: 11px; font-weight: bold; margin: 3px 0 0 0; text-align: center;">
+                        Mateus 28:19
+                    </p>
+                    {% elif certificado.tipo_certificado == 'Apresentação' %}
+                    <p style="color: #000000; font-size: 12px; font-style: italic; margin: 0; line-height: 1.4; text-align: center;">
+                        <em>"Deixem vir a mim as crianças, não as impeçam; pois o Reino dos céus pertence aos que são semelhantes a elas."</em>
+                    </p>
+                    <p style="color: #000000; font-size: 11px; font-weight: bold; margin: 3px 0 0 0; text-align: center;">
+                        Mateus 19:14
+                    </p>
+                    {% endif %}
+                </div>
+                
+                <!-- Endereço discreto no rodapé -->
+                <div style="text-align: center; margin-top: 20px;">
+                    <p style="color: #666; font-size: 10px; margin: 0;">
+                        IGREJA O BRASIL PARA CRISTO - RUA EGÍDIO MÓDULO, 261 - TIETÊ/SP
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botões de ação -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+        <a href="{{ url_for('midia.listar_certificados') }}" 
+           class="btn btn-outline-primary me-3"
+           style="text-decoration: none;">
+            <i class="fas fa-arrow-left me-2"></i>Voltar
+        </a>
+        
+        <button onclick="window.print()" 
+                class="btn btn-primary"
+                style="background: #1e40af; border: none;">
+            <i class="fas fa-print me-2"></i>Imprimir
+        </button>
+    </div>
+</div>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .certificate-container,
+    .certificate-container * {
+        visibility: visible;
+    }
+    
+    .certificate-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        display: block !important;
+    }
+    
+    .certificate-page {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid;
+        border-radius: 0 !important;
+    }
+    
+    .btn {
+        display: none !important;
+    }
+}
+
+@page {
+    size: A4 landscape;
+    margin: 0.5in;
+}
+
+/* Melhorar legibilidade */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+</style>
+
+<script>
+// Formatação de data em português
+window.addEventListener('beforeprint', function() {
+    document.title = 'Certificado de {{ certificado.tipo_certificado }} - {{ certificado.nome_pessoa }}';
+});
+</script>
+{% endblock %}

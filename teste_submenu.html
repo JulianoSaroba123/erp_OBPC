@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Submenu</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial; 
+            background: #2d5a27; 
+            color: white; 
+            padding: 20px;
+        }
+        
+        .menu-group {
+            position: relative;
+            margin: 10px 0;
+        }
+
+        .menu-group > a {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: #1a4d16;
+            text-decoration: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .submenu {
+            display: none !important;
+            margin-left: 20px;
+            border-left: 2px solid rgba(255, 107, 53, 0.3);
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+
+        .submenu.show {
+            display: block !important;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .submenu-item {
+            display: block;
+            padding: 8px 15px;
+            font-size: 13px;
+            color: #bbb;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .submenu-item:hover {
+            background: rgba(255, 107, 53, 0.15);
+            color: #ffd700;
+        }
+        
+        .submenu-arrow {
+            margin-left: auto;
+            transition: transform 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 Teste do Submenu Secretaria</h1>
+    
+    <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)">
+            <span>📋 Secretaria</span>
+            <span class="submenu-arrow">⮟</span>
+        </a>
+        <div class="submenu">
+            <a href="#" class="submenu-item">👥 Membros</a>
+            <a href="#" class="submenu-item">👔 Obreiros</a>
+            <a href="#" class="submenu-item">👑 Líderes</a>
+            <a href="#" class="submenu-item">📄 Atas de Reunião</a>
+            <a href="#" class="submenu-item">📦 Inventário</a>
+            <a href="#" class="submenu-item">📋 Ofícios de Solicitação</a>
+            <a href="#" class="submenu-item">🤝 Participação de Obreiros</a>
+        </div>
+    </div>
+    
+    <div class="menu-group">
+        <a href="#" onclick="toggleSubmenu(this)">
+            <span>💰 Financeiro</span>
+            <span class="submenu-arrow">⮟</span>
+        </a>
+        <div class="submenu">
+            <a href="#" class="submenu-item">⚙️ Despesas Fixas</a>
+            <a href="#" class="submenu-item">📊 Relatórios</a>
+        </div>
+    </div>
+
+    <div id="debug" style="margin-top: 20px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 5px;">
+        <h3>🐛 Debug Log:</h3>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+
+        function toggleSubmenu(element) {
+            log('toggleSubmenu chamado');
+            
+            const menuGroup = element.closest('.menu-group');
+            const submenu = menuGroup.querySelector('.submenu');
+            const arrow = element.querySelector('.submenu-arrow');
+            
+            log('menuGroup encontrado: ' + (menuGroup ? 'SIM' : 'NÃO'));
+            log('submenu encontrado: ' + (submenu ? 'SIM' : 'NÃO'));
+            log('arrow encontrado: ' + (arrow ? 'SIM' : 'NÃO'));
+            
+            if (!submenu) {
+                log('❌ ERRO: Submenu não encontrado!');
+                return;
+            }
+            
+            // Toggle submenu visibility
+            if (submenu.classList.contains('show')) {
+                submenu.classList.remove('show');
+                if (arrow) arrow.style.transform = 'rotate(0deg)';
+                log('✅ Submenu FECHADO');
+            } else {
+                // Fechar outros submenus primeiro
+                document.querySelectorAll('.submenu.show').forEach(s => {
+                    s.classList.remove('show');
+                    const otherArrow = s.parentElement.querySelector('.submenu-arrow');
+                    if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
+                });
+                
+                submenu.classList.add('show');
+                if (arrow) arrow.style.transform = 'rotate(180deg)';
+                log('✅ Submenu ABERTO');
+            }
+        }
+        
+        log('Script carregado. Pronto para teste!');
+    </script>
+</body>
+</html>

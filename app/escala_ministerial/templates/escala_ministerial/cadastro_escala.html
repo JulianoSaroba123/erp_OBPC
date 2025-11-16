@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}{% if escala %}Editar{% else %}Nova{% endif %} Agenda Pastoral - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-people-group text-primary me-2"></i>
+                        {% if escala %}Editar{% else %}Nova{% endif %} Agenda Pastoral
+                    </h2>
+                    <p class="text-muted mb-0">Defina os responsáveis pelos ministérios no evento</p>
+                </div>
+                <a href="{{ url_for('escala_ministerial.listar_escalas') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar
+                </a>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('escala_ministerial.salvar_escala') }}" novalidate>
+                        {% if escala %}
+                            <input type="hidden" name="escala_id" value="{{ escala.id }}">
+                        {% endif %}
+                        
+                        <div class="row g-3">
+                            <!-- Primeira linha: Evento e Data -->
+                            <div class="col-md-8">
+                                <label for="evento_id" class="form-label">Evento da Agenda <span class="text-danger">*</span></label>
+                                <select class="form-select" id="evento_id" name="evento_id">
+                                    <option value="">Selecione um evento da agenda semanal</option>
+                                    {% for evento in eventos %}
+                                        <option value="{{ evento.id }}" 
+                                                {% if escala and escala.evento_id == evento.id %}selected{% endif %}>
+                                            {{ evento.titulo }} - {{ evento.data_evento.strftime('%d/%m/%Y') }}
+                                            {% if evento.horario %}
+                                                às {{ evento.horario.strftime('%H:%M') }}
+                                            {% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Ou deixe em branco e preencha manualmente os dados abaixo</div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="data_evento" class="form-label">Data do Evento <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="data_evento" name="data_evento" 
+                                       value="{% if escala and escala.data_evento %}{{ escala.data_evento.strftime('%Y-%m-%d') }}{% endif %}" required>
+                            </div>
+                            
+                            <!-- Campo para título manual -->
+                            <div class="col-md-12">
+                                <label for="titulo_evento" class="form-label">Título do Evento</label>
+                                <input type="text" class="form-control" id="titulo_evento" name="titulo_evento" 
+                                       value="{{ escala.titulo_evento if escala else '' }}" 
+                                       placeholder="Ex: Culto de Domingo, Oração, Estudo Bíblico...">
+                                <div class="form-text">Será preenchido automaticamente ao selecionar um evento da agenda</div>
+                            </div>
+
+                            <!-- Linha de ministérios 1 -->
+                            <div class="col-md-6">
+                                <label for="pregador" class="form-label">
+                                    <i class="fas fa-microphone me-1 text-primary"></i>Pregador
+                                </label>
+                                <input type="text" class="form-control" id="pregador" name="pregador" 
+                                       value="{{ escala.pregador if escala else '' }}" 
+                                       placeholder="Nome do pregador">
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="dirigente" class="form-label">
+                                    <i class="fas fa-user-tie me-1 text-primary"></i>Dirigente
+                                </label>
+                                <input type="text" class="form-control" id="dirigente" name="dirigente" 
+                                       value="{{ escala.dirigente if escala else '' }}" 
+                                       placeholder="Nome do dirigente">
+                            </div>
+
+                            <!-- Linha de ministérios 2 -->
+                            <div class="col-md-4">
+                                <label for="louvor" class="form-label">
+                                    <i class="fas fa-music me-1 text-primary"></i>Louvor
+                                </label>
+                                <input type="text" class="form-control" id="louvor" name="louvor" 
+                                       value="{{ escala.louvor if escala else '' }}" 
+                                       placeholder="Responsável pelo louvor">
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="intercessor" class="form-label">
+                                    <i class="fas fa-praying-hands me-1 text-primary"></i>Intercessor
+                                </label>
+                                <input type="text" class="form-control" id="intercessor" name="intercessor" 
+                                       value="{{ escala.intercessor if escala else '' }}" 
+                                       placeholder="Responsável pela oração">
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="diaconia" class="form-label">
+                                    <i class="fas fa-hands-helping me-1 text-primary"></i>Diaconia
+                                </label>
+                                <input type="text" class="form-control" id="diaconia" name="diaconia" 
+                                       value="{{ escala.diaconia if escala else '' }}" 
+                                       placeholder="Responsável pela diaconia">
+                            </div>
+
+                            <!-- Observações -->
+                            <div class="col-md-12">
+                                <label for="observacoes" class="form-label">
+                                    <i class="fas fa-sticky-note me-1 text-primary"></i>Observações
+                                </label>
+                                <textarea class="form-control" id="observacoes" name="observacoes" rows="3" 
+                                          placeholder="Observações adicionais sobre a escala...">{{ escala.observacoes if escala else '' }}</textarea>
+                            </div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>
+                                    {% if escala %}Atualizar{% else %}Salvar{% endif %} Agenda
+                                </button>
+                                <a href="{{ url_for('escala_ministerial.listar_escalas') }}" class="btn btn-outline-secondary ms-2">
+                                    <i class="fas fa-times me-1"></i>Cancelar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Autocomplete para seleção de evento
+document.getElementById('evento_id').addEventListener('change', function() {
+    const eventoId = this.value;
+    
+    if (eventoId) {
+        // Buscar dados do evento via AJAX
+        fetch(`/escala/api/evento/${eventoId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('data_evento').value = data.evento.data_evento;
+                    document.getElementById('titulo_evento').value = data.evento.titulo;
+                }
+            })
+            .catch(error => console.error('Erro ao buscar evento:', error));
+    }
+});
+
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const dataEvento = document.getElementById('data_evento').value;
+    
+    if (!dataEvento) {
+        e.preventDefault();
+        alert('A data do evento é obrigatória!');
+        document.getElementById('data_evento').focus();
+        return false;
+    }
+});
+</script>
+
+<style>
+.form-label {
+    font-weight: 600;
+    color: #1e3a8a;
+}
+
+.form-label i {
+    width: 16px;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.btn-primary {
+    background-color: #1e3a8a;
+    border-color: #1e3a8a;
+}
+
+.btn-primary:hover {
+    background-color: #1e40af;
+    border-color: #1e40af;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+}
+</style>
+{% endblock %}

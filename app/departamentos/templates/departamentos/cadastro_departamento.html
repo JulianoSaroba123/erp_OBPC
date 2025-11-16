@@ -45,7 +45,7 @@
                 </div>
                 
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('departamentos.salvar_departamento') }}" novalidate>
+                    <form method="POST" action="{{ url_for('departamentos.salvar_departamento') }}" enctype="multipart/form-data" novalidate>
                         {% if departamento %}
                             <input type="hidden" name="id" value="{{ departamento.id }}">
                         {% endif %}
@@ -170,6 +170,83 @@
                             </div>
                         </div>
 
+                        <!-- Cronograma de Atividades Detalhado -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    Cronograma de Atividades
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <label class="form-label fw-bold mb-0">Atividades Programadas</label>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="adicionarCronograma()">
+                                        <i class="fas fa-plus me-1"></i>Adicionar Atividade
+                                    </button>
+                                </div>
+                                
+                                <div id="cronogramas-container" class="border rounded p-3 bg-light">
+                                    <!-- Cronogramas existentes serão carregados aqui -->
+                                    <div class="text-muted text-center" id="cronogramas-vazio">
+                                        <i class="fas fa-calendar-plus fa-2x mb-2"></i>
+                                        <p>Nenhuma atividade programada ainda.<br>Clique em "Adicionar Atividade" para começar.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sistema de Aulas Detalhado -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-graduation-cap me-2"></i>
+                                    Sistema de Ensino
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-12">
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="possui_aulas" 
+                                           name="possui_aulas"
+                                           {% if departamento and departamento.possui_aulas %}checked{% endif %}
+                                           onchange="toggleSistemaAulas()">
+                                    <label class="form-check-label fw-bold" for="possui_aulas">
+                                        <i class="fas fa-chalkboard-teacher me-2"></i>
+                                        Este departamento oferece aulas/cursos
+                                    </label>
+                                </div>
+                                
+                                <div id="aulas-section" style="display: {% if departamento and departamento.possui_aulas %}block{% else %}none{% endif %};">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <label class="form-label fw-bold mb-0">Aulas Oferecidas</label>
+                                        <button type="button" class="btn btn-sm btn-outline-success" onclick="adicionarAula()">
+                                            <i class="fas fa-plus me-1"></i>Adicionar Aula
+                                        </button>
+                                    </div>
+                                    
+                                    <div id="aulas-container" class="border rounded p-3 bg-light">
+                                        <!-- Aulas existentes serão carregadas aqui -->
+                                        <div class="text-muted text-center" id="aulas-vazio">
+                                            <i class="fas fa-book-open fa-2x mb-2"></i>
+                                            <p>Nenhuma aula cadastrada ainda.<br>Clique em "Adicionar Aula" para começar.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Compatibilidade com campos antigos (ocultos) -->
+                        <input type="hidden" id="cronograma_mensal" name="cronograma_mensal" value="{{ departamento.cronograma_mensal if departamento else '' }}">
+                        <input type="hidden" id="planejamento_aulas" name="planejamento_aulas" value="{{ departamento.planejamento_aulas if departamento else '' }}">
+
                         <!-- Botões de Ação -->
                         <div class="row">
                             <div class="col-12">
@@ -270,6 +347,77 @@ h6.text-primary {
 .department-suggestions .badge:hover {
     transform: scale(1.05);
 }
+
+/* Animações para o campo de planejamento */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#planejamento-container {
+    transition: all 0.3s ease;
+}
+
+/* Estilo para campos de aulas */
+.form-check-input:checked {
+    background-color: #0b1b3a;
+    border-color: #0b1b3a;
+}
+
+.form-check-input:focus {
+    border-color: #0b1b3a;
+    box-shadow: 0 0 0 0.25rem rgba(11, 27, 58, 0.25);
+}
+
+/* Estilos para cronogramas e aulas dinâmicos */
+.cronograma-item, .aula-item {
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.cronograma-item:hover, .aula-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+.cronograma-item h6, .aula-item h6 {
+    font-size: 0.9rem;
+}
+
+#cronogramas-container, #aulas-container {
+    min-height: 120px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+#cronogramas-vazio, #aulas-vazio {
+    transition: all 0.3s ease;
+}
+
+/* Animação para novos itens */
+.cronograma-item[data-temp="true"], .aula-item[data-temp="true"] {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cores específicas para cronogramas e aulas */
+.cronograma-item {
+    border-left: 4px solid #0b1b3a;
+}
+
+.aula-item {
+    border-left: 4px solid #28a745;
+}
 </style>
 
 <script>
@@ -327,6 +475,253 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         nomeInput.parentNode.appendChild(suggestionsDiv);
+    }
+});
+
+// ============================================================================
+// FUNÇÕES PARA GERENCIAR CRONOGRAMAS
+// ============================================================================
+
+function adicionarCronograma() {
+    const container = document.getElementById('cronogramas-container');
+    const vazioDiv = document.getElementById('cronogramas-vazio');
+    
+    const cronogramaHtml = `
+        <div class="cronograma-item border rounded p-3 mb-3 bg-white" data-temp="true">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="text-primary mb-0">
+                    <i class="fas fa-calendar-day me-2"></i>Nova Atividade
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerCronograma(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label">Data</label>
+                    <input type="date" class="form-control form-control-sm cronograma-data" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Horário</label>
+                    <input type="text" class="form-control form-control-sm cronograma-horario" placeholder="Ex: 19h30">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Título *</label>
+                    <input type="text" class="form-control form-control-sm cronograma-titulo" placeholder="Ex: Reunião de Planejamento" required>
+                </div>
+            </div>
+            
+            <div class="row g-2 mt-2">
+                <div class="col-md-6">
+                    <label class="form-label">Local</label>
+                    <input type="text" class="form-control form-control-sm cronograma-local" placeholder="Ex: Sala de reuniões">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Responsável</label>
+                    <input type="text" class="form-control form-control-sm cronograma-responsavel" placeholder="Ex: João Silva">
+                </div>
+            </div>
+            
+            <div class="row g-2 mt-2">
+                <div class="col-md-8">
+                    <label class="form-label">Descrição</label>
+                    <textarea class="form-control form-control-sm cronograma-descricao" rows="2" placeholder="Descreva a atividade..."></textarea>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input cronograma-painel" type="checkbox">
+                        <label class="form-check-label">
+                            <i class="fas fa-eye me-1"></i>Exibir no Painel
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (vazioDiv) {
+        vazioDiv.style.display = 'none';
+    }
+    
+    container.insertAdjacentHTML('beforeend', cronogramaHtml);
+}
+
+function removerCronograma(button) {
+    const cronogramaItem = button.closest('.cronograma-item');
+    const container = document.getElementById('cronogramas-container');
+    
+    cronogramaItem.remove();
+    
+    // Se não há mais cronogramas, mostrar mensagem vazia
+    const cronogramas = container.querySelectorAll('.cronograma-item');
+    if (cronogramas.length === 0) {
+        document.getElementById('cronogramas-vazio').style.display = 'block';
+    }
+}
+
+// ============================================================================
+// FUNÇÕES PARA GERENCIAR AULAS
+// ============================================================================
+
+function adicionarAula() {
+    const container = document.getElementById('aulas-container');
+    const vazioDiv = document.getElementById('aulas-vazio');
+    
+    const aulaHtml = `
+        <div class="aula-item border rounded p-3 mb-3 bg-white" data-temp="true">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h6 class="text-success mb-0">
+                    <i class="fas fa-graduation-cap me-2"></i>Nova Aula/Curso
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerAula(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label">Título da Aula *</label>
+                    <input type="text" class="form-control form-control-sm aula-titulo" placeholder="Ex: Curso de Discipulado" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Professora/Instrutor</label>
+                    <input type="text" class="form-control form-control-sm aula-professora" placeholder="Ex: Maria Santos">
+                </div>
+            </div>
+            
+            <div class="row g-2 mt-2">
+                <div class="col-md-3">
+                    <label class="form-label">Dia da Semana</label>
+                    <select class="form-select form-select-sm aula-dia-semana">
+                        <option value="">Selecione...</option>
+                        <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Horário</label>
+                    <input type="text" class="form-control form-control-sm aula-horario" placeholder="Ex: 19h30 às 21h">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Local</label>
+                    <input type="text" class="form-control form-control-sm aula-local" placeholder="Ex: Sala de aulas">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Máx. Alunos</label>
+                    <input type="number" class="form-control form-control-sm aula-max-alunos" placeholder="Ex: 20">
+                </div>
+            </div>
+            
+            <div class="row g-2 mt-2">
+                <div class="col-md-3">
+                    <label class="form-label">Data Início</label>
+                    <input type="date" class="form-control form-control-sm aula-data-inicio">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Data Fim</label>
+                    <input type="date" class="form-control form-control-sm aula-data-fim">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Material Necessário</label>
+                    <input type="text" class="form-control form-control-sm aula-material" placeholder="Ex: Bíblia, caderno">
+                </div>
+            </div>
+            
+            <div class="row g-2 mt-2">
+                <div class="col-md-6">
+                    <label class="form-label">Descrição</label>
+                    <textarea class="form-control form-control-sm aula-descricao" rows="2" placeholder="Descreva o conteúdo e objetivos da aula..."></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">
+                        <i class="fas fa-paperclip me-1"></i>Anexar Arquivo
+                    </label>
+                    <input type="file" class="form-control form-control-sm aula-arquivo" 
+                           accept=".pdf,.doc,.docx,.txt,.jpg,.png" 
+                           title="Anexe materiais didáticos, apostilas, etc.">
+                    <small class="text-muted">PDF, DOC, TXT, JPG (máx. 5MB)</small>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input aula-painel" type="checkbox">
+                        <label class="form-check-label">
+                            <i class="fas fa-chalkboard me-1"></i>Exibir no Painel
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (vazioDiv) {
+        vazioDiv.style.display = 'none';
+    }
+    
+    container.insertAdjacentHTML('beforeend', aulaHtml);
+}
+
+function removerAula(button) {
+    const aulaItem = button.closest('.aula-item');
+    const container = document.getElementById('aulas-container');
+    
+    aulaItem.remove();
+    
+    // Se não há mais aulas, mostrar mensagem vazia
+    const aulas = container.querySelectorAll('.aula-item');
+    if (aulas.length === 0) {
+        document.getElementById('aulas-vazio').style.display = 'block';
+    }
+}
+
+// ============================================================================
+// FUNÇÕES DE CARREGAMENTO (PARA EDIÇÃO)
+// ============================================================================
+
+function carregarCronogramasExistentes(departamentoId) {
+    // Esta função será implementada quando tivermos dados existentes
+    console.log('Carregando cronogramas existentes para departamento:', departamentoId);
+}
+
+function carregarAulasExistentes(departamentoId) {
+    // Esta função será implementada quando tivermos dados existentes
+    console.log('Carregando aulas existentes para departamento:', departamentoId);
+}
+
+// Função para mostrar/ocultar seção de aulas
+function toggleSistemaAulas() {
+    const checkbox = document.getElementById('possui_aulas');
+    const section = document.getElementById('aulas-section');
+    
+    if (checkbox.checked) {
+        section.style.display = 'block';
+        section.style.animation = 'fadeIn 0.3s ease-in';
+    } else {
+        section.style.display = 'none';
+        // Limpar aulas ao desmarcar
+        document.getElementById('aulas-container').innerHTML = `
+            <div class="text-muted text-center" id="aulas-vazio">
+                <i class="fas fa-book-open fa-2x mb-2"></i>
+                <p>Nenhuma aula cadastrada ainda.<br>Clique em "Adicionar Aula" para começar.</p>
+            </div>
+        `;
+    }
+}
+
+// Verificar estado inicial ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    toggleSistemaAulas();
+    
+    // Carregar cronogramas e aulas existentes se estivermos editando
+    const departamentoId = document.querySelector('input[name="id"]')?.value;
+    if (departamentoId) {
+        carregarCronogramasExistentes(departamentoId);
+        carregarAulasExistentes(departamentoId);
     }
 });
 </script>

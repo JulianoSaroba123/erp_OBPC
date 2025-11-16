@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Extrato Bancário{% endblock %}
+
+{% block content %}
+<!-- CACHE_BREAKER_1730549947 -->
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Importar Extrato Bancário</h3>
+                </div>
+                <div class="card-body">
+                    <form id="formImportar" action="{{ url_for('financeiro.importar_extrato') }}" method="post" enctype="multipart/form-data">
+                        <!-- Área de Upload -->
+                        <div id="uploadArea" class="upload-area text-center p-4 mb-3" style="border: 2px dashed #ccc; border-radius: 8px; cursor: pointer;" onclick="document.getElementById('arquivo').click()">
+                            <i class="fas fa-upload fa-3x text-muted mb-3"></i>
+                            <h4>Clique aqui para selecionar o arquivo</h4>
+                            <p class="text-muted">Formatos aceitos: .xlsx, .xls, .csv, .txt, .ofx</p>
+                            <input type="file" id="arquivo" name="arquivo" accept=".xlsx,.xls,.csv,.txt,.ofx" style="display: none;" onchange="arquivoSelecionado()" required>
+                        </div>
+
+                        <!-- Informações do Arquivo (Oculto inicialmente) -->
+                        <div id="fileInfo" class="d-none">
+                            <div class="alert alert-success">
+                                <h5><i class="fas fa-file"></i> Arquivo Selecionado</h5>
+                                <p><strong>Nome:</strong> <span id="fileName"></span></p>
+                                <p><strong>Tamanho:</strong> <span id="fileSize"></span></p>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="limparArquivo()">
+                                    <i class="fas fa-times"></i> Remover Arquivo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Configurações de Importação -->
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="tipo_arquivo">Tipo de Arquivo</label>
+                                    <select class="form-control" id="tipo_arquivo" name="tipo_arquivo" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="extrato_bb">Extrato Banco do Brasil (.xlsx)</option>
+                                        <option value="extrato_itau">Extrato Itaú (.xlsx)</option>
+                                        <option value="extrato_caixa">Extrato Caixa (.xlsx)</option>
+                                        <option value="extrato_bradesco">Extrato Bradesco (.xlsx)</option>
+                                        <option value="extrato_santander">Extrato Santander (.xlsx)</option>
+                                        <option value="extrato_pagbank">Extrato PagBank (.csv)</option>
+                                        <option value="ofx_generico">Arquivo OFX (.ofx)</option>
+                                        <option value="csv_generico">CSV Genérico (.csv)</option>
+                                        <option value="txt_generico">TXT Genérico (.txt)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="mes_referencia">Mês de Referência</label>
+                                    <input type="month" class="form-control" id="mes_referencia" name="mes_referencia" value="{{ request.args.get('mes', '') }}" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Opções Avançadas -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="ignorar_duplicatas" name="ignorar_duplicatas" checked>
+                                        <label class="form-check-label" for="ignorar_duplicatas">
+                                            Ignorar duplicatas
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="categorizar_automatico" name="categorizar_automatico">
+                                        <label class="form-check-label" for="categorizar_automatico">
+                                            Categorização automática
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="backup_antes" name="backup_antes" checked>
+                                        <label class="form-check-label" for="backup_antes">
+                                            Backup antes da importação
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <button type="submit" id="btnImportar" class="btn btn-primary" disabled>
+                                    <i class="fas fa-upload"></i> Importar Extrato
+                                </button>
+                                <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i> Cancelar
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Barra de Progresso (Oculta inicialmente) -->
+                    <div id="progressContainer" class="d-none mt-4">
+                        <div class="progress">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <p id="progressText" class="text-center mt-2">Processando...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instruções -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title">Instruções de Importação</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Formatos Suportados:</h6>
+                            <ul>
+                                <li><strong>Excel (.xlsx, .xls):</strong> Extratos bancários padrão</li>
+                                <li><strong>CSV (.csv):</strong> Dados separados por vírgula</li>
+                                <li><strong>TXT (.txt):</strong> Arquivo de texto delimitado</li>
+                                <li><strong>OFX (.ofx):</strong> Formato Open Financial Exchange</li>
+                                <li><strong>PagBank (.csv):</strong> Extrato PagBank em formato CSV</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Dicas Importantes:</h6>
+                            <ul>
+                                <li>Certifique-se de que o arquivo está no formato correto</li>
+                                <li>Verifique se o mês de referência está correto</li>
+                                <li>A categorização automática usa regras predefinidas</li>
+                                <li>O backup é recomendado para maior segurança</li>
+                                <li><strong>PagBank:</strong> Use o extrato em CSV exportado da plataforma</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// JAVASCRIPT INLINE LIMPO E SIMPLES
+function arquivoSelecionado() {
+    console.log('ARQUIVO SELECIONADO!');
+    
+    var input = document.getElementById('arquivo');
+    var file = input.files[0];
+    
+    if (file) {
+        console.log('Arquivo:', file.name);
+        
+        // Mostrar nome e tamanho
+        document.getElementById('fileName').innerHTML = file.name;
+        document.getElementById('fileSize').innerHTML = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+        
+        // Esconder upload, mostrar info
+        document.getElementById('uploadArea').style.display = 'none';
+        document.getElementById('fileInfo').classList.remove('d-none');
+        
+        // Habilitar botão
+        document.getElementById('btnImportar').disabled = false;
+        
+        console.log('SUCESSO!');
+    } else {
+        console.log('Nenhum arquivo');
+    }
+}
+
+function limparArquivo() {
+    console.log('Limpando arquivo');
+    
+    document.getElementById('arquivo').value = '';
+    document.getElementById('uploadArea').style.display = 'block';
+    document.getElementById('fileInfo').classList.add('d-none');
+    document.getElementById('btnImportar').disabled = true;
+    
+    console.log('Limpo!');
+}
+
+// Submissão do formulário
+document.getElementById('formImportar').addEventListener('submit', function(e) {
+    var progressContainer = document.getElementById('progressContainer');
+    var progressBar = document.getElementById('progressBar');
+    var progressText = document.getElementById('progressText');
+    
+    progressContainer.classList.remove('d-none');
+    progressText.innerHTML = 'Enviando arquivo...';
+    
+    // Simular progresso
+    var progress = 0;
+    var interval = setInterval(function() {
+        progress += 10;
+        progressBar.style.width = progress + '%';
+        
+        if (progress >= 90) {
+            clearInterval(interval);
+            progressText.innerHTML = 'Processando dados...';
+        }
+    }, 200);
+});
+
+console.log('JavaScript carregado com sucesso!');
+</script>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "midia/base_midia.html" %}
+
+{% block title %}Visualizar Item da Agenda{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-calendar-week text-primary me-2"></i>
+                    {{ item.titulo }}
+                </h1>
+                <div>
+                    <a href="{{ url_for('midia.listar_agenda') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>Voltar
+                    </a>
+                    <a href="{{ url_for('midia.agenda_pdf') }}?semana={{ item.data_evento.isocalendar()[1] }}&ano={{ item.data_evento.year }}" 
+                       class="btn btn-success" target="_blank">
+                        <i class="fas fa-file-pdf me-2"></i>Baixar PDF
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conteúdo do Item -->
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-5" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+                    
+                    <!-- Header do Item -->
+                    <div class="text-center mb-5">
+                        <h2 class="display-5 fw-bold text-primary mb-3">{{ item.titulo }}</h2>
+                        <div class="border-top border-primary mx-auto" style="width: 200px; border-width: 3px !important;"></div>
+                    </div>
+
+                    <!-- Informações Principais -->
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <div class="bg-white p-4 rounded shadow-sm h-100">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-calendar me-2"></i>Data e Horário
+                                </h5>
+                                <p class="mb-2">
+                                    <strong>Data:</strong> 
+                                    {{ item.data_evento.strftime('%d/%m/%Y') }} 
+                                    ({{ item.data_evento.strftime('%A')|replace('Monday','Segunda')|replace('Tuesday','Terça')|replace('Wednesday','Quarta')|replace('Thursday','Quinta')|replace('Friday','Sexta')|replace('Saturday','Sábado')|replace('Sunday','Domingo') }})
+                                </p>
+                                {% if item.horario %}
+                                <p class="mb-0">
+                                    <strong>Horário:</strong> {{ item.horario.strftime('%H:%M') }}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="bg-white p-4 rounded shadow-sm h-100">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-tag me-2"></i>Classificação
+                                </h5>
+                                {% if item.tipo_evento %}
+                                <p class="mb-2">
+                                    <strong>Tipo:</strong> 
+                                    <span class="badge bg-info">{{ item.tipo_evento }}</span>
+                                </p>
+                                {% endif %}
+                                {% if item.prioridade %}
+                                <p class="mb-0">
+                                    <strong>Prioridade:</strong> 
+                                    {% if item.prioridade == 'Alta' %}
+                                        <span class="badge bg-danger">{{ item.prioridade }}</span>
+                                    {% elif item.prioridade == 'Média' %}
+                                        <span class="badge bg-warning">{{ item.prioridade }}</span>
+                                    {% else %}
+                                        <span class="badge bg-success">{{ item.prioridade }}</span>
+                                    {% endif %}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Descrição -->
+                    {% if item.descricao %}
+                    <div class="mb-4">
+                        <div class="bg-white p-4 rounded shadow-sm">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-align-left me-2"></i>Descrição
+                            </h5>
+                            <p class="mb-0 lh-lg">{{ item.descricao }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Local e Responsável -->
+                    <div class="row g-4 mb-4">
+                        {% if item.local %}
+                        <div class="col-md-6">
+                            <div class="bg-white p-4 rounded shadow-sm h-100">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-map-marker-alt me-2"></i>Local
+                                </h5>
+                                <p class="mb-0">{{ item.local }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if item.responsavel %}
+                        <div class="col-md-6">
+                            <div class="bg-white p-4 rounded shadow-sm h-100">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-user me-2"></i>Responsável
+                                </h5>
+                                <p class="mb-0">{{ item.responsavel }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Observações -->
+                    {% if item.observacoes %}
+                    <div class="mb-4">
+                        <div class="bg-light p-4 rounded border-start border-primary border-4">
+                            <h5 class="text-primary mb-3">
+                                <i class="fas fa-sticky-note me-2"></i>Observações
+                            </h5>
+                            <p class="mb-0 fst-italic">{{ item.observacoes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Status -->
+                    <div class="text-center mt-5">
+                        <div class="bg-white p-3 rounded shadow-sm d-inline-block">
+                            <strong>Status: </strong>
+                            {% if item.ativo %}
+                                <span class="badge bg-success fs-6">
+                                    <i class="fas fa-check me-1"></i>Ativo
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary fs-6">
+                                    <i class="fas fa-times me-1"></i>Inativo
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Data de criação -->
+                    <div class="text-center mt-4">
+                        <small class="text-muted">
+                            Criado em: {{ item.created_at.strftime('%d/%m/%Y às %H:%M') }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .btn, .navbar, .sidebar {
+        display: none !important;
+    }
+    .container-fluid {
+        padding: 0 !important;
+    }
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+}
+</style>
+{% endblock %}

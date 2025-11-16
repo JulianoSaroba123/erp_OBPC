@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if item %}Editar Item{% else %}Novo Item{% endif %} - Inventário OBPC
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-box me-2"></i>
+                        {% if item %}Editar Item do Inventário{% else %}Novo Item do Inventário{% endif %}
+                    </h4>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('inventario.cadastrar_item') }}">
+                        {% if item %}
+                            <input type="hidden" name="item_id" value="{{ item.id }}">
+                        {% endif %}
+                        
+                        <!-- Informações Básicas -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-success border-bottom pb-2">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Informações Básicas
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Código -->
+                            <div class="col-md-4 mb-3">
+                                <label for="codigo" class="form-label fw-bold">
+                                    <i class="fas fa-barcode me-1"></i>
+                                    Código do Item *
+                                </label>
+                                <input type="text" class="form-control" id="codigo" name="codigo" value="{{ proximo_codigo }}" readonly required>
+                                <div class="form-text">Código único para identificação</div>
+                            </div>
+
+                            <!-- Nome -->
+                            <div class="col-md-8 mb-3">
+                                <label for="nome" class="form-label fw-bold">
+                                    <i class="fas fa-box me-1"></i>
+                                    Nome do Item *
+                                </label>
+                                <input type="text" 
+                                       class="form-control form-control-lg" 
+                                       id="nome" 
+                                       name="nome" 
+                                       placeholder="Ex: Mesa de escritório, Notebook Dell..."
+                                       value="{{ item.nome if item else '' }}" 
+                                       autocomplete="off"
+                                       required>
+                                <div class="form-text">Nome descritivo do item</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Categoria -->
+                            <div class="col-md-6 mb-3">
+                                <label for="categoria" class="form-label fw-bold">
+                                    <i class="fas fa-tag me-1"></i>
+                                    Categoria *
+                                </label>
+                                <select class="form-select" id="categoria" name="categoria" required>
+                                    <option value="">Selecione uma categoria</option>
+                                    {% for cat in categorias %}
+                                        <option value="{{ cat }}">{{ cat }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Categoria do patrimônio</div>
+                            </div>
+
+                            <!-- Estado de Conservação -->
+                            <div class="col-md-6 mb-3">
+                                <label for="estado_conservacao" class="form-label fw-bold">
+                                    <i class="fas fa-star me-1"></i>
+                                    Estado de Conservação
+                                </label>
+                                <select class="form-select" id="estado_conservacao" name="estado_conservacao" required>
+                                    <option value="">Selecione o estado</option>
+                                    {% for est in estados %}
+                                        <option value="{{ est }}">{{ est }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Condição atual do item</div>
+                            </div>
+                        </div>
+
+                        <!-- Valores e Datas -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-success border-bottom pb-2">
+                                    <i class="fas fa-dollar-sign me-2"></i>
+                                    Informações Financeiras
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Valor de Aquisição -->
+                            <div class="col-md-6 mb-3">
+                                <label for="valor_aquisicao" class="form-label fw-bold">
+                                    <i class="fas fa-dollar-sign me-1"></i>
+                                    Valor de Aquisição
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="number" 
+                                           class="form-control" 
+                                           id="valor_aquisicao" 
+                                           name="valor_aquisicao" 
+                                           step="0.01"
+                                           placeholder="0,00"
+                                           value="{{ item.valor_aquisicao if item and item.valor_aquisicao else '' }}">
+                                </div>
+                                <div class="form-text">Valor pago na aquisição do item</div>
+                            </div>
+
+                            <!-- Data de Aquisição -->
+                            <div class="col-md-6 mb-3">
+                                <label for="data_aquisicao" class="form-label fw-bold">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    Data de Aquisição
+                                </label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="data_aquisicao" 
+                                       name="data_aquisicao" 
+                                       value="{{ item.data_aquisicao.strftime('%Y-%m-%d') if item and item.data_aquisicao else '' }}">
+                                <div class="form-text">Data de compra ou doação</div>
+                            </div>
+                        </div>
+
+                        <!-- Localização e Responsável -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-success border-bottom pb-2">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    Localização e Responsabilidade
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Localização -->
+                            <div class="col-md-6 mb-3">
+                                <label for="localizacao" class="form-label fw-bold">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    Localização Atual
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="localizacao" 
+                                       name="localizacao" 
+                                       placeholder="Ex: Secretaria, Salão Principal, Sala 1..."
+                                       value="{{ item.localizacao if item else '' }}">
+                                <div class="form-text">Onde o item está localizado</div>
+                            </div>
+
+                            <!-- Responsável -->
+                            <div class="col-md-6 mb-3">
+                                <label for="responsavel" class="form-label fw-bold">
+                                    <i class="fas fa-user me-1"></i>
+                                    Responsável pelo Item
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="responsavel" 
+                                       name="responsavel" 
+                                       placeholder="Ex: João Silva, Secretaria..."
+                                       value="{{ item.responsavel if item else '' }}">
+                                <div class="form-text">Pessoa responsável pela conservação</div>
+                            </div>
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="descricao" class="form-label fw-bold">
+                                    <i class="fas fa-file-text me-1"></i>
+                                    Descrição Detalhada
+                                </label>
+                                <textarea class="form-control" 
+                                          id="descricao" 
+                                          name="descricao" 
+                                          rows="4" 
+                                          placeholder="Descreva características específicas, modelo, marca, número de série, etc...">{{ item.descricao if item else '' }}</textarea>
+                                <div class="form-text">Informações detalhadas sobre o item</div>
+                            </div>
+                        </div>
+
+                        <!-- Observações -->
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="observacoes" class="form-label fw-bold">
+                                    <i class="fas fa-comment me-1"></i>
+                                    Observações Gerais
+                                </label>
+                                <textarea class="form-control" 
+                                          id="observacoes" 
+                                          name="observacoes" 
+                                          rows="3" 
+                                          placeholder="Observações adicionais, histórico de reparos, etc...">{{ item.observacoes if item else '' }}</textarea>
+                                <div class="form-text">Informações complementares</div>
+                            </div>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="row">
+                            <div class="col-12 mb-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="ativo" 
+                                           name="ativo" 
+                                           {% if not item or item.ativo %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold" for="ativo">
+                                        <i class="fas fa-toggle-on me-1"></i>
+                                        Item Ativo no Inventário
+                                    </label>
+                                    <div class="form-text">Desmarque para inativar o item sem excluí-lo</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{{ url_for('inventario.lista_itens') }}" class="btn btn-secondary btn-lg">
+                                        <i class="fas fa-times me-2"></i>
+                                        Cancelar
+                                    </a>
+                                    
+                                    <button type="submit" class="btn btn-success btn-lg">
+                                        <i class="fas fa-save me-2"></i>
+                                        {% if item %}Atualizar Item{% else %}Cadastrar Item{% endif %}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1px solid #e0e6ed;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.15);
+}
+
+.form-control-lg {
+    font-size: 1.1rem;
+    padding: 0.75rem 1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.1rem;
+    border-radius: 8px;
+}
+
+.form-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+h5.border-bottom {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef !important;
+}
+
+.form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.input-group-text {
+    background-color: #e9ecef;
+    border-color: #e0e6ed;
+}
+</style>
+
+<script>
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const codigo = document.getElementById('codigo').value.trim();
+    const nome = document.getElementById('nome').value.trim();
+    const categoria = document.getElementById('categoria').value;
+    
+    if (!codigo) {
+        e.preventDefault();
+        alert('Por favor, preencha o código do item.');
+        document.getElementById('codigo').focus();
+        return;
+    }
+    
+    if (!nome) {
+        e.preventDefault();
+        alert('Por favor, preencha o nome do item.');
+        document.getElementById('nome').focus();
+        return;
+    }
+    
+    if (!categoria) {
+        e.preventDefault();
+        alert('Por favor, selecione uma categoria.');
+        document.getElementById('categoria').focus();
+        return;
+    }
+});
+
+// Formatação automática do código (maiúsculo)
+document.getElementById('codigo').addEventListener('input', function(e) {
+    e.target.value = e.target.value.toUpperCase();
+});
+
+// Auto-resize das textareas
+document.querySelectorAll('textarea').forEach(function(textarea) {
+    textarea.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+});
+</script>
+{% endblock %}

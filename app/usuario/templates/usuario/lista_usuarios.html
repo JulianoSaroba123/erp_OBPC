@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Gerenciar Usuários
+                    </h2>
+                    <p class="text-muted mb-0">Controle de acesso e permissões do sistema</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('usuario.novo_usuario') }}" class="btn btn-success">
+                        <i class="fas fa-plus me-1"></i>
+                        Novo Usuário
+                    </a>
+                    <a href="{{ url_for('usuario.painel') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Voltar ao Painel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ usuarios|length }}</h4>
+                            <small>Total de Usuários</small>
+                        </div>
+                        <i class="fas fa-users fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ usuarios|selectattr('ativo')|list|length }}</h4>
+                            <small>Usuários Ativos</small>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ usuarios|rejectattr('ativo')|list|length }}</h4>
+                            <small>Usuários Inativos</small>
+                        </div>
+                        <i class="fas fa-times-circle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4 class="mb-0">{{ usuarios|selectattr('nivel_acesso', 'equalto', 'administrador')|list|length + usuarios|selectattr('nivel_acesso', 'equalto', 'master')|list|length }}</h4>
+                            <small>Administradores</small>
+                        </div>
+                        <i class="fas fa-user-shield fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Usuários -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                Lista de Usuários
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="tabelaUsuarios">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Nível de Acesso</th>
+                            <th>Status</th>
+                            <th>Último Login</th>
+                            <th>Criado Por</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr data-user-id="{{ usuario.id }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 0.8rem;">
+                                        {{ usuario.nome[0].upper() }}
+                                    </div>
+                                    <strong>{{ usuario.nome }}</strong>
+                                </div>
+                            </td>
+                            <td>{{ usuario.email }}</td>
+                            <td>
+                                {% set cores_nivel = {
+                                    'master': 'danger',
+                                    'administrador': 'primary', 
+                                    'tesoureiro': 'success',
+                                    'secretario': 'info',
+                                    'midia': 'warning',
+                                    'membro': 'secondary'
+                                } %}
+                                <span class="badge bg-{{ cores_nivel.get(usuario.nivel_acesso, 'secondary') }}">
+                                    {{ usuario.get_nome_nivel() }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if usuario.ativo %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if usuario.ultimo_login %}
+                                    <small>{{ usuario.ultimo_login.strftime('%d/%m/%Y às %H:%M') }}</small>
+                                {% else %}
+                                    <small class="text-muted">Nunca</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if usuario.criador %}
+                                    <small>{{ usuario.criador.nome }}</small>
+                                {% else %}
+                                    <small class="text-muted">Sistema</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('usuario.editar_usuario', user_id=usuario.id) }}" 
+                                       class="btn btn-outline-primary btn-sm" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    
+                                    {% if usuario.nivel_acesso != 'master' and usuario.id != current_user.id %}
+                                    <button class="btn btn-outline-{{ 'danger' if usuario.ativo else 'success' }} btn-sm" 
+                                            onclick="toggleStatus({{ usuario.id }})" title="{{ 'Desativar' if usuario.ativo else 'Ativar' }}">
+                                        <i class="fas fa-{{ 'ban' if usuario.ativo else 'check' }}"></i>
+                                    </button>
+                                    {% endif %}
+                                    
+                                    {% if current_user.nivel_acesso == 'master' and usuario.nivel_acesso != 'master' and usuario.id != current_user.id %}
+                                    <button class="btn btn-outline-danger btn-sm" 
+                                            onclick="excluirUsuario({{ usuario.id }}, '{{ usuario.nome }}')" title="Excluir">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleStatus(userId) {
+    if (confirm('Tem certeza que deseja alterar o status deste usuário?')) {
+        fetch(`/usuario/usuarios/${userId}/toggle-status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao alterar status do usuário');
+        });
+    }
+}
+
+function excluirUsuario(userId, nome) {
+    if (confirm(`Tem certeza que deseja EXCLUIR o usuário "${nome}"?\n\nEsta ação não pode ser desfeita!`)) {
+        fetch(`/usuario/usuarios/${userId}/excluir`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao excluir usuário');
+        });
+    }
+}
+
+// Filtro de pesquisa na tabela
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'form-control mb-3';
+    searchInput.placeholder = 'Pesquisar usuários...';
+    
+    const cardBody = document.querySelector('.card-body');
+    cardBody.insertBefore(searchInput, cardBody.firstChild);
+    
+    searchInput.addEventListener('keyup', function() {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#tabelaUsuarios tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

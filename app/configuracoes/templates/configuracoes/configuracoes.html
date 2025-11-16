@@ -17,6 +17,13 @@
                         <button type="button" class="btn btn-outline-info btn-sm" onclick="fazerBackup()">
                             <i class="fas fa-download me-1"></i> Backup
                         </button>
+                        {% if current_user.perfil == 'Pastor' %}
+                        <a href="{{ url_for('configuracoes.limpar_dados_sistema') }}" 
+                           class="btn btn-outline-danger btn-sm" 
+                           title="Limpar todos os dados do sistema">
+                            <i class="fas fa-trash-alt me-1"></i> Limpar Sistema
+                        </a>
+                        {% endif %}
                         <a href="{{ url_for('usuario.painel') }}" class="btn btn-outline-secondary btn-sm">
                             <i class="fas fa-arrow-left me-1"></i> Voltar
                         </a>
@@ -104,22 +111,68 @@
                                         </div>
                                     </div>
 
-                                    <!-- Dirigente -->
-                                    <div class="col-md-6 mb-3">
-                                        <label for="dirigente" class="form-label">
-                                            <i class="fas fa-user-tie me-1"></i> Pastor/Dirigente
-                                        </label>
-                                        <input type="text" class="form-control" id="dirigente" name="dirigente" 
-                                               value="{{ config.dirigente or '' }}" placeholder="Nome do pastor responsável">
+                                    <!-- Seção da Diretoria -->
+                                    <div class="col-12 mb-4">
+                                        <hr>
+                                        <h5 class="mb-3"><i class="fas fa-users me-2 text-primary"></i>Diretoria da Igreja</h5>
                                     </div>
 
-                                    <!-- Tesoureiro -->
+                                    <!-- Presidente (Pastor Dirigente) -->
                                     <div class="col-md-6 mb-3">
-                                        <label for="tesoureiro" class="form-label">
-                                            <i class="fas fa-calculator me-1"></i> Tesoureiro(a)
+                                        <label for="presidente" class="form-label">
+                                            <i class="fas fa-crown me-1"></i> Presidente (Pastor Dirigente)
                                         </label>
-                                        <input type="text" class="form-control" id="tesoureiro" name="tesoureiro" 
-                                               value="{{ config.tesoureiro or '' }}" placeholder="Nome do tesoureiro">
+                                        <input type="text" class="form-control" id="presidente" name="presidente" 
+                                               value="{{ config.presidente or '' }}" placeholder="Nome do presidente">
+                                    </div>
+
+                                    <!-- Vice-Presidente (Pastora) -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="vice_presidente" class="form-label">
+                                            <i class="fas fa-user-shield me-1"></i> Vice-Presidente (Pastora)
+                                        </label>
+                                        <input type="text" class="form-control" id="vice_presidente" name="vice_presidente" 
+                                               value="{{ config.vice_presidente or '' }}" placeholder="Nome do vice-presidente">
+                                    </div>
+
+                                    <!-- 1º Secretário -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="primeiro_secretario" class="form-label">
+                                            <i class="fas fa-pen me-1"></i> 1º Secretário(a)
+                                        </label>
+                                        <input type="text" class="form-control" id="primeiro_secretario" name="primeiro_secretario" 
+                                               value="{{ config.primeiro_secretario or '' }}" placeholder="Nome do 1º secretário">
+                                    </div>
+
+                                    <!-- 2º Secretário -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="segundo_secretario" class="form-label">
+                                            <i class="fas fa-pen-nib me-1"></i> 2º Secretário(a)
+                                        </label>
+                                        <input type="text" class="form-control" id="segundo_secretario" name="segundo_secretario" 
+                                               value="{{ config.segundo_secretario or '' }}" placeholder="Nome do 2º secretário">
+                                    </div>
+
+                                    <!-- 1º Tesoureiro -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="primeiro_tesoureiro" class="form-label">
+                                            <i class="fas fa-coins me-1"></i> 1º Tesoureiro(a)
+                                        </label>
+                                        <input type="text" class="form-control" id="primeiro_tesoureiro" name="primeiro_tesoureiro" 
+                                               value="{{ config.primeiro_tesoureiro or '' }}" placeholder="Nome do 1º tesoureiro">
+                                    </div>
+
+                                    <!-- 2º Tesoureiro -->
+                                    <div class="col-md-6 mb-3">
+                                        <label for="segundo_tesoureiro" class="form-label">
+                                            <i class="fas fa-wallet me-1"></i> 2º Tesoureiro(a)
+                                        </label>
+                                        <input type="text" class="form-control" id="segundo_tesoureiro" name="segundo_tesoureiro" 
+                                               value="{{ config.segundo_tesoureiro or '' }}" placeholder="Nome do 2º tesoureiro">
+                                    </div>
+
+                                    <div class="col-12 mb-3">
+                                        <hr>
                                     </div>
 
                                     <!-- Cidade -->
@@ -1048,7 +1101,7 @@ function showAlert(type, message) {
 .nav-tabs-custom .nav-link.active {
     background: white;
     color: #0b1b3a;
-    border-bottom: 3px solid #FFD700;
+    border-bottom: 3px solid #FF6B35;
 }
 
 /* Estilo dos formulários */

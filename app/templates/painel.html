@@ -19,7 +19,7 @@
     left: 0;
     right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #ffd700, #ffb347);
+    background: linear-gradient(90deg, #FF6B35, #FF4500);
   }
   
   .dashboard-card:hover {
@@ -41,7 +41,7 @@
   
   .icon-members { background: linear-gradient(135deg, #228b22, #1e3a8a); }
   .icon-workers { background: linear-gradient(135deg, #059669, #10b981); }
-  .icon-finance { background: linear-gradient(135deg, #ffd700, #ffb347); }
+  .icon-finance { background: linear-gradient(135deg, #FF6B35, #FF4500); }
   .icon-events { background: linear-gradient(135deg, #dc2626, #ef4444); }
   
   .activity-card {
@@ -52,8 +52,8 @@
   }
   
   .activity-card:hover {
-    border-color: #ffd700;
-    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.1);
+    border-color: #FF6B35;
+    box-shadow: 0 5px 15px rgba(255, 107, 53, 0.1);
   }
 </style>
 
@@ -86,15 +86,7 @@
       </div>
     </div>
 
-    <div class="col-md-3">
-      <div class="card dashboard-card shadow p-4 text-center">
-        <div class="dashboard-icon icon-finance">
-          <i class="fa-solid fa-coins"></i>
-        </div>
-        <h6 class="fw-semibold text-muted mb-2">Saldo Atual</h6>
-        <h4 class="fw-bold" style="color: #0d5450;">R$ 7.250,00</h4>
-      </div>
-    </div>
+    
 
     <div class="col-md-3">
       <div class="card dashboard-card shadow p-4 text-center">
@@ -102,7 +94,7 @@
           <i class="fa-solid fa-calendar-days"></i>
         </div>
         <h6 class="fw-semibold text-muted mb-2">Próximos Eventos</h6>
-        <h4 class="fw-bold" style="color: #0d5450;">3</h4>
+        <h4 class="fw-bold" style="color: #0d5450;">{{ total_eventos_proximos }}</h4>
       </div>
     </div>
   </div>
@@ -110,6 +102,41 @@
   <div class="mt-5">
     <h5 class="fw-semibold" style="color: #0d5450; border-left: 4px solid #eab308; padding-left: 15px;">Últimas Atividades</h5>
     <p class="text-muted mb-4">Esta área será usada para listar lançamentos, eventos e notificações da igreja.</p>
+
+    <!-- Próximos Eventos -->
+    {% if proximos_eventos %}
+    <div class="mb-4">
+      <h6 class="fw-semibold text-muted mb-3">
+        <i class="fas fa-calendar-alt me-2"></i>Próximos Eventos
+      </h6>
+      {% for evento in proximos_eventos %}
+      <div class="card activity-card shadow-sm mb-2">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-light p-3 me-3" style="background: linear-gradient(135deg, #dc2626, #ef4444) !important;">
+              <i class="fa-solid fa-calendar text-white"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <p class="mb-1 fw-semibold" style="color: #374151;">{{ evento.titulo }}</p>
+                  <p class="mb-0 text-muted small">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ evento.data_inicio.strftime('%d/%m/%Y às %H:%M') if evento.data_inicio else 'Data não definida' }}
+                    {% if evento.local %}
+                    <br><i class="fas fa-map-marker-alt me-1"></i>{{ evento.local }}
+                    {% endif %}
+                  </p>
+                </div>
+                <span class="badge bg-primary">{{ evento.status or 'Agendado' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
     <div class="card activity-card shadow-sm">
       <div class="card-body">

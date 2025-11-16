@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Limpar Dados do Sistema{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="card-title mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        ATENÇÃO: Limpeza Completa do Sistema
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger" role="alert">
+                        <h5><i class="fas fa-skull-crossbones me-2"></i>OPERAÇÃO IRREVERSÍVEL!</h5>
+                        <p class="mb-0">Esta ação irá <strong>APAGAR PERMANENTEMENTE</strong> todos os dados do sistema:</p>
+                        <ul class="mt-3 mb-0">
+                            <li><strong>Todos os lançamentos financeiros</strong></li>
+                            <li><strong>Todos os membros cadastrados</strong></li>
+                            <li><strong>Todos os obreiros</strong></li>
+                            <li><strong>Todos os departamentos</strong></li>
+                            <li><strong>Todos os eventos</strong></li>
+                            <li><strong>Todas as atas</strong></li>
+                            <li><strong>Todo o inventário</strong></li>
+                            <li><strong>Todos os ofícios</strong></li>
+                            <li><strong>Todos os certificados de mídia</strong></li>
+                            <li><strong>Toda a agenda pastoral</strong></li>
+                        </ul>
+                        <p class="mt-3 mb-0"><small><em>Os dados de usuários e configurações do sistema serão mantidos.</em></small></p>
+                    </div>
+
+                    <form method="POST" onsubmit="return confirmarLimpeza()" class="mt-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="senha_confirmacao" class="form-label">
+                                        <i class="fas fa-key me-1"></i>Confirme sua senha:
+                                    </label>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="senha_confirmacao" 
+                                           name="senha_confirmacao" 
+                                           required 
+                                           placeholder="Digite sua senha">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="confirmacao_texto" class="form-label">
+                                        <i class="fas fa-edit me-1"></i>Digite exatamente: <code>LIMPAR TUDO</code>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="confirmacao_texto" 
+                                           name="confirmacao_texto" 
+                                           required 
+                                           placeholder="LIMPAR TUDO"
+                                           autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('configuracoes.configuracoes') }}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt me-2"></i>CONFIRMAR LIMPEZA
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4 border-warning">
+                <div class="card-header bg-warning">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Quando usar esta funcionalidade?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Início de novo período:</strong> Para começar um novo ano eclesiástico</li>
+                        <li><strong>Troca de gestão:</strong> Quando há mudança completa na liderança</li>
+                        <li><strong>Migração de sistema:</strong> Para importar dados de outro sistema</li>
+                        <li><strong>Testes:</strong> Para ambiente de demonstração ou treinamento</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarLimpeza() {
+    const senha = document.getElementById('senha_confirmacao').value;
+    const texto = document.getElementById('confirmacao_texto').value;
+    
+    if (!senha) {
+        alert('Por favor, digite sua senha.');
+        return false;
+    }
+    
+    if (texto !== 'LIMPAR TUDO') {
+        alert('Por favor, digite exatamente: LIMPAR TUDO');
+        return false;
+    }
+    
+    return confirm('TEM CERTEZA ABSOLUTA? Esta ação NÃO PODE ser desfeita!\n\nTodos os dados serão perdidos permanentemente.');
+}
+</script>
+{% endblock %}

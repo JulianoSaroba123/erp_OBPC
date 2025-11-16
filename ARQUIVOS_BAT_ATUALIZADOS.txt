@@ -1,0 +1,74 @@
+📁 ARQUIVOS .BAT DO SISTEMA OBPC
+===========================================
+
+✅ ARQUIVOS ATUALIZADOS/CRIADOS:
+
+🔧 InstalarOBPC.bat
+   • Para: Instalação inicial do sistema
+   • Usa: instalador_profissional.py
+   • Função: Configura tudo pela primeira vez
+   • Execução: Duplo clique para instalar
+
+🚀 ExecutarOBPC.bat  
+   • Para: Executar o sistema no dia-a-dia
+   • Usa: run.py ou iniciar_obpc_silencioso.py
+   • Função: Inicia servidor e abre navegador
+   • Execução: Duplo clique para usar sistema
+
+🔇 ExecutarOBPC_Silencioso.bat
+   • Para: Execução sem console visível
+   • Usa: pythonw + iniciar_obpc_silencioso.py
+   • Função: Execução em background
+   • Execução: Para uso como serviço
+
+===========================================
+
+📋 FLUXO DE USO:
+
+1️⃣ PRIMEIRA VEZ:
+   - Execute: InstalarOBPC.bat
+   - Aguarde instalação completa
+   - Sistema criará banco e configurações
+
+2️⃣ USO DIÁRIO:
+   - Execute: ExecutarOBPC.bat
+   - Sistema abre automaticamente no navegador
+   - Login: admin@obpc.com / 123456
+
+3️⃣ MODO SILENCIOSO:
+   - Execute: ExecutarOBPC_Silencioso.bat
+   - Roda em background sem console
+
+===========================================
+
+🔗 ATALHOS CRIADOS:
+
+📌 Área de Trabalho:
+   • "Sistema OBPC.lnk" → ExecutarOBPC.bat
+
+🗂️ Menu Iniciar:
+   • "Sistema OBPC" (se instalado)
+
+===========================================
+
+💡 MELHORIAS IMPLEMENTADAS:
+
+✅ Verificação automática de Python
+✅ Detecção de sistema instalado
+✅ Abertura automática do navegador
+✅ Tratamento de erros melhorado
+✅ Interface visual otimizada
+✅ Suporte a porta alternativa
+✅ Status em tempo real
+✅ Links de suporte incluídos
+✅ Integração com instaladores
+
+===========================================
+
+🎯 Para usar agora:
+   Execute: ExecutarOBPC.bat
+
+🛠️ Para reinstalar:
+   Execute: InstalarOBPC.bat
+
+===========================================

@@ -85,6 +85,44 @@
                         </div>
                         
                         <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label for="tipo" class="form-label fw-bold">
+                                    Tipo <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select form-select-lg" id="tipo" name="tipo" onchange="toggleTipoAreas()">
+                                    <option value="Membro" {% if membro and membro.tipo == 'Membro' %}selected{% elif not membro %}selected{% endif %}>Membro</option>
+                                    <option value="Obreiro" {% if membro and membro.tipo == 'Obreiro' %}selected{% endif %}>Obreiro</option>
+                                    <option value="Lider" {% if membro and membro.tipo == 'Lider' %}selected{% endif %}>Líder de Departamento</option>
+                                </select>
+                                <div class="form-text">Função do membro na igreja</div>
+                            </div>
+                            
+                            <div class="col-md-8">
+                                <!-- Área condicional para Obreiros -->
+                                <div id="area-obreiro" style="display: none;">
+                                    <label class="form-label fw-bold text-info">
+                                        <i class="fas fa-user-tie me-1"></i>
+                                        Informações de Obreiro
+                                    </label>
+                                    <div class="alert alert-info mb-0">
+                                        <small>Este membro será incluído na lista de obreiros da igreja.</small>
+                                    </div>
+                                </div>
+                                
+                                <!-- Área condicional para Líderes -->
+                                <div id="area-lider" style="display: none;">
+                                    <label class="form-label fw-bold text-warning">
+                                        <i class="fas fa-crown me-1"></i>
+                                        Informações de Líder
+                                    </label>
+                                    <div class="alert alert-warning mb-0">
+                                        <small>Este membro será incluído na lista de líderes de departamento.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
                             <div class="col-md-6">
                                 <label for="telefone" class="form-label fw-bold">Telefone</label>
                                 <input type="tel" 
@@ -348,6 +386,24 @@ h6.text-primary {
 </style>
 
 <script>
+// Função para mostrar/ocultar áreas baseado no tipo
+function toggleTipoAreas() {
+    const tipoSelect = document.getElementById('tipo');
+    const areaObreiro = document.getElementById('area-obreiro');
+    const areaLider = document.getElementById('area-lider');
+    
+    // Esconder todas as áreas primeiro
+    areaObreiro.style.display = 'none';
+    areaLider.style.display = 'none';
+    
+    // Mostrar área apropriada baseado na seleção
+    if (tipoSelect.value === 'Obreiro') {
+        areaObreiro.style.display = 'block';
+    } else if (tipoSelect.value === 'Lider') {
+        areaLider.style.display = 'block';
+    }
+}
+
 // Máscara para telefone
 document.getElementById('telefone').addEventListener('input', function(e) {
     let value = e.target.value.replace(/\D/g, '');

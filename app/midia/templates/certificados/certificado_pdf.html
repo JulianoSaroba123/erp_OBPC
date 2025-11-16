@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificado - {{ certificado.tipo_certificado }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: 'Times New Roman', serif;
+            margin: 0;
+            padding: 20px;
+            background: white;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .certificate-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            border: 8px solid #1e40af;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #fefefe 0%, #f8fafc 100%);
+            position: relative;
+            min-height: 600px;
+        }
+        
+        .certificate-container::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            border: 2px solid #3b82f6;
+            border-radius: 15px;
+            pointer-events: none;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .certificate-title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #1e40af;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            letter-spacing: 4px;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: #64748b;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        
+        .content {
+            text-align: center;
+            margin: 40px 0;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .event-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e293b;
+            margin: 30px 0;
+            text-decoration: underline;
+            text-decoration-color: #3b82f6;
+        }
+        
+        .participant-name {
+            font-size: 32px;
+            font-weight: bold;
+            color: #1e40af;
+            margin: 30px 0;
+            padding: 15px;
+            border-bottom: 3px solid #3b82f6;
+            display: inline-block;
+            min-width: 400px;
+        }
+        
+        .description {
+            font-size: 16px;
+            margin: 25px 0;
+            line-height: 1.8;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .details {
+            display: flex;
+            justify-content: space-around;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+        
+        .detail-item {
+            text-align: center;
+            margin: 10px;
+            min-width: 150px;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #1e293b;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .detail-value {
+            font-size: 16px;
+            color: #3b82f6;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+        
+        .signatures {
+            margin-top: 80px;
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .signature {
+            text-align: center;
+            width: 200px;
+        }
+        
+        .signature-line {
+            border-top: 2px solid #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .signature-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #64748b;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .decorative-element {
+            position: absolute;
+            opacity: 0.1;
+            font-size: 200px;
+            color: #3b82f6;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            
+            .certificate-container {
+                border: 8px solid #1e40af;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate-container">
+        <!-- Elemento decorativo de fundo -->
+        <div class="decorative-element">🏆</div>
+        
+        <!-- Cabeçalho -->
+        <div class="header">
+            <h1 class="certificate-title">CERTIFICADO</h1>
+            <p class="subtitle">de Participação</p>
+        </div>
+        
+        <!-- Conteúdo Principal -->
+        <div class="content">
+            <div class="event-title">{{ certificado.tipo_certificado }}</div>
+            
+            <div style="margin: 40px 0; font-size: 18px;">
+                Certificamos que
+            </div>
+            
+            <div class="participant-name">
+                {{ certificado.nome_pessoa or '_' * 30 }}
+            </div>
+            
+            <div style="margin: 30px 0; font-size: 16px;">
+                participou do evento acima mencionado
+            </div>
+            
+            <!-- Detalhes do Evento -->
+            <div class="details">
+                {% if certificado.data_evento %}
+                <div class="detail-item">
+                    <div class="detail-label">Data do Evento</div>
+                    <div class="detail-value">{{ certificado.data_evento.strftime('%d/%m/%Y') }}</div>
+                </div>
+                {% endif %}
+                
+                {% if certificado.carga_horaria %}
+                <div class="detail-item">
+                    <div class="detail-label">Carga Horária</div>
+                    <div class="detail-value">{{ certificado.carga_horaria }}h</div>
+                </div>
+                {% endif %}
+                
+                {% if certificado.pastor_responsavel %}
+                <div class="detail-item">
+                    <div class="detail-label">Pastor</div>
+                    <div class="detail-value">{{ certificado.pastor_responsavel }}</div>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if certificado.observacoes %}
+            <div class="description" style="margin-top: 30px; font-style: italic; font-size: 14px;">
+                {{ certificado.observacoes }}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Assinaturas -->
+        <div class="signatures">
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-label">Responsável</div>
+            </div>
+            <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-label">Coordenação</div>
+            </div>
+        </div>
+        
+        <!-- Rodapé -->
+        <div class="footer">
+            <p>Emitido em {{ certificado.data_criacao.strftime('%d de %B de %Y') if certificado.data_criacao else 'N/A' }}</p>
+            <p>Sistema OBPC - Organização Batista Pró-Comunhão</p>
+        </div>
+    </div>
+
+    <script>
+        // Auto-print quando abrir o PDF
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

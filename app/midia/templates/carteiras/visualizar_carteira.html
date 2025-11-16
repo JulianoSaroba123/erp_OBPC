@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carteira de Membro - {{ carteira.nome_completo }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+            padding: 15px;
+            background: #f0f0f0;
+        }
+        
+        .carteira {
+            background: white;
+            border: 3px solid #0b1b3a;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 320px;
+            min-height: 200px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+        .carteira::before {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            border: 1px solid #ffd700;
+            border-radius: 10px;
+            pointer-events: none;
+        }
+        
+        .cabecalho {
+            text-align: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #0b1b3a;
+            padding-bottom: 10px;
+        }
+        
+        .logo {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 5px;
+            border-radius: 50%;
+            display: block;
+            object-fit: cover;
+            border: 2px solid #ffd700;
+        }
+        
+        .logo-placeholder {
+            width: 50px;
+            height: 50px;
+            margin: 0 auto 5px;
+            background: #0b1b3a;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .igreja-nome {
+            font-weight: bold;
+            font-size: 14px;
+            color: #0b1b3a;
+            margin: 5px 0;
+        }
+        
+        .tipo-documento {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .conteudo {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+        
+        .foto-container {
+            flex-shrink: 0;
+        }
+        
+        .foto {
+            width: 80px;
+            height: 100px;
+            border: 2px solid #0b1b3a;
+            border-radius: 5px;
+            object-fit: cover;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .dados {
+            flex: 1;
+            font-size: 11px;
+        }
+        
+        .campo {
+            margin-bottom: 8px;
+        }
+        
+        .campo-label {
+            font-weight: bold;
+            color: #0b1b3a;
+            display: block;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        
+        .campo-valor {
+            color: #333;
+            word-break: break-word;
+        }
+        
+        .numero-carteira {
+            background: #0b1b3a;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 10px;
+            display: inline-block;
+        }
+        
+        .rodape {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 9px;
+            color: #666;
+        }
+        
+        .validade {
+            color: #0b1b3a;
+            font-weight: bold;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .carteira {
+                box-shadow: none;
+                border: 2px solid #000;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="carteira">
+        <div class="cabecalho">
+            <img src="{{ url_for('static', filename='Logo_OBPC.jpg') }}" alt="Logo OBPC" class="logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="logo-placeholder" style="display: none;">OBPC</div>
+            <div class="igreja-nome">Igreja OBPC - Tietê/SP</div>
+            <div class="tipo-documento">Carteira de Identificação</div>
+        </div>
+        
+        <div class="conteudo">
+            <div class="foto-container">
+                {% if carteira.foto_caminho %}
+                <img src="{{ url_for('static', filename=carteira.foto_caminho) }}" 
+                     alt="Foto do membro" class="foto">
+                {% else %}
+                <div class="foto">
+                    SEM<br>FOTO
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="dados">
+                <div class="campo">
+                    <span class="campo-label">Número da Carteira</span>
+                    <span class="numero-carteira">{{ carteira.numero_carteira }}</span>
+                </div>
+                
+                <div class="campo">
+                    <span class="campo-label">Nome</span>
+                    <div class="campo-valor">{{ carteira.nome_completo }}</div>
+                </div>
+                
+                {% if carteira.data_nascimento %}
+                <div class="campo">
+                    <span class="campo-label">Nascimento</span>
+                    <div class="campo-valor">{{ carteira.data_nascimento.strftime('%d/%m/%Y') }}</div>
+                </div>
+                {% endif %}
+                
+                {% if carteira.data_batismo %}
+                <div class="campo">
+                    <span class="campo-label">Batismo</span>
+                    <div class="campo-valor">{{ carteira.data_batismo.strftime('%d/%m/%Y') }}</div>
+                </div>
+                {% endif %}
+                
+                {% if carteira.cargo_funcao %}
+                <div class="campo">
+                    <span class="campo-label">Cargo/Função</span>
+                    <div class="campo-valor">{{ carteira.cargo_funcao }}</div>
+                </div>
+                {% endif %}
+                
+                {% if carteira.telefone %}
+                <div class="campo">
+                    <span class="campo-label">Telefone</span>
+                    <div class="campo-valor">{{ carteira.telefone }}</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="rodape">
+            <div>Emitido em: {{ carteira.data_criacao.strftime('%d/%m/%Y') if carteira.data_criacao else 'N/A' }}</div>
+            <div class="validade">Válida por tempo indeterminado</div>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-print quando acessado via PDF
+        window.onload = function() {
+            if (window.location.search.includes('print=true')) {
+                window.print();
+            }
+        }
+    </script>
+</body>
+</html>

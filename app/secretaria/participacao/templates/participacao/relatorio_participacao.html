@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Participação de Obreiros</title>
+    <style>
+        body { 
+            font-family: 'Times New Roman', serif; 
+            margin: 40px; 
+            color: #000; 
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        .cabecalho {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
+            display: block;
+        }
+        
+        h3, h4 { 
+            text-align: center; 
+            margin: 0; 
+            font-weight: bold;
+        }
+        
+        h3 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+        
+        h4 {
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+        
+        .titulo-relatorio {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            text-decoration: underline;
+        }
+        
+        .info-relatorio {
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        
+        .filtros {
+            background-color: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .estatisticas {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .estatistica-item {
+            text-align: center;
+        }
+        
+        .estatistica-numero {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0b1b3a;
+        }
+        
+        .estatistica-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+        }
+        
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 20px;
+            font-size: 11px;
+        }
+        
+        th, td { 
+            border: 1px solid #000; 
+            padding: 6px 8px; 
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        th { 
+            background-color: #0b1b3a;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .presente {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .ausente {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .justificado {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .rodape {
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            margin-top: 40px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #0b1b3a;
+            margin: 15px 0;
+        }
+        
+        .quebra-pagina {
+            page-break-before: always;
+        }
+        
+        @page {
+            margin: 2cm;
+            @bottom-center {
+                content: "Página " counter(page);
+                font-size: 9pt;
+                color: #666;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="cabecalho">
+        <img src="/static/Logo_OBPC.jpg" alt="Logo OBPC" class="logo">
+        <h3>{{ config.nome_igreja }}</h3>
+        <h4>{{ config.endereco }} - {{ config.cidade }}</h4>
+        <h4>CNPJ: {{ config.cnpj }}</h4>
+        <hr>
+        <div class="titulo-relatorio">RELATÓRIO DE PARTICIPAÇÃO DE OBREIROS</div>
+    </div>
+    
+    <div class="info-relatorio">
+        <p><strong>Data de Geração:</strong> {{ data_geracao }}</p>
+        {% if filtros_aplicados %}
+        <div class="filtros">
+            <strong>Filtros Aplicados:</strong>
+            <ul style="margin: 5px 0; padding-left: 20px;">
+                {% for filtro in filtros_aplicados %}
+                <li>{{ filtro }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Estatísticas -->
+    {% if total_participacoes > 0 %}
+    <div class="estatisticas">
+        <div class="estatistica-item">
+            <div class="estatistica-numero">{{ total_participacoes }}</div>
+            <div class="estatistica-label">Total de Registros</div>
+        </div>
+        <div class="estatistica-item">
+            <div class="estatistica-numero">{{ presentes }}</div>
+            <div class="estatistica-label">Presentes</div>
+        </div>
+        <div class="estatistica-item">
+            <div class="estatistica-numero">{{ justificados }}</div>
+            <div class="estatistica-label">Justificados</div>
+        </div>
+        <div class="estatistica-item">
+            <div class="estatistica-numero">{{ ausentes }}</div>
+            <div class="estatistica-label">Ausentes</div>
+        </div>
+        <div class="estatistica-item">
+            <div class="estatistica-numero">
+                {% if total_participacoes > 0 %}
+                    {{ "%.1f"|format((presentes + justificados) / total_participacoes * 100) }}%
+                {% else %}
+                    0%
+                {% endif %}
+            </div>
+            <div class="estatistica-label">Taxa de Participação</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Tabela de Participações -->
+    {% if participacoes %}
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25%;">Obreiro</th>
+                <th style="width: 12%;">Data</th>
+                <th style="width: 18%;">Tipo de Reunião</th>
+                <th style="width: 15%;">Presença</th>
+                <th style="width: 30%;">Observações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in participacoes %}
+            <tr>
+                <td>
+                    <strong>{{ p.obreiro.nome if p.obreiro else 'N/A' }}</strong>
+                    {% if p.obreiro and p.obreiro.cargo %}
+                        <br><em style="font-size: 10px; color: #666;">{{ p.obreiro.cargo }}</em>
+                    {% endif %}
+                </td>
+                <td>{{ p.data_reuniao.strftime('%d/%m/%Y') }}</td>
+                <td>{{ p.tipo_reuniao }}</td>
+                <td class="{% if p.presenca == 'Presente' %}presente{% elif p.presenca == 'Ausente' %}ausente{% else %}justificado{% endif %}">
+                    <strong>{{ p.presenca }}</strong>
+                </td>
+                <td>
+                    {% if p.observacao %}
+                        {{ p.observacao }}
+                    {% else %}
+                        <em style="color: #999;">-</em>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; margin: 40px 0; color: #666;">
+        <h4>Nenhuma participação encontrada</h4>
+        <p>Não há registros de participação com os filtros aplicados.</p>
+    </div>
+    {% endif %}
+    
+    <!-- Rodapé -->
+    <div class="rodape">
+        <p><strong>{{ config.nome_igreja }}</strong></p>
+        <p>{{ config.endereco }} - {{ config.cidade }}</p>
+        <p>
+            {% if config.telefone %}Tel: {{ config.telefone }}{% endif %}
+            {% if config.email %} | E-mail: {{ config.email }}{% endif %}
+        </p>
+        <p><em>Relatório gerado pelo Sistema OBPC em {{ data_geracao }}</em></p>
+    </div>
+</body>
+</html>

@@ -39,7 +39,11 @@
                     </a>
                     
                     <!-- Botões Principais -->
-                    <div class="btn-group" role="group">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('financeiro.relatorio_sede_preview', mes=mes, ano=ano) }}" 
+                           class="btn btn-outline-primary" target="_blank" title="Visualizar Relatório">
+                            <i class="fas fa-eye me-1"></i> Visualizar
+                        </a>
                         <a href="{{ url_for('financeiro.relatorio_sede_pdf', mes=mes, ano=ano) }}" 
                            class="btn btn-success" target="_blank" title="Gerar PDF Profissional">
                             <i class="fas fa-file-pdf me-1"></i> PDF
@@ -95,8 +99,8 @@
                                 </tr>
                                 <tr>
                                     <td class="fw-bold">Saldo Anterior:</td>
-                                    <td class="fw-bold">
-                                        {{ "R$ %.2f"|format(dados_igreja.saldo_anterior)|replace(".", ",") }}
+                                    <td class="fw-bold {{ dados_igreja.saldo_anterior|valor_negativo_vermelho }}">
+                                        {{ dados_igreja.saldo_anterior|valor_com_cor|safe }}
                                         <br><small class="text-muted">(Acumulado até {% if mes == 1 %}12/{{ ano-1 }}{% else %}{{ "%02d"|format(mes-1) }}/{{ ano }}{% endif %})</small>
                                     </td>
                                 </tr>
@@ -115,26 +119,26 @@
                         <table class="table table-striped">
                             <tr>
                                 <td class="fw-bold">Dízimos</td>
-                                <td class="text-end fw-bold text-success">
-                                    {{ "R$ %.2f"|format(totais.dizimos)|replace(".", ",") }}
+                                <td class="text-end fw-bold {{ totais.dizimos|valor_negativo_vermelho or 'text-success' }}">
+                                    {{ totais.dizimos|valor_com_cor|safe }}
                                 </td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">Ofertas Alçadas</td>
-                                <td class="text-end fw-bold text-success">
-                                    {{ "R$ %.2f"|format(totais.ofertas_alcadas)|replace(".", ",") }}
+                                <td class="text-end fw-bold {{ totais.ofertas_alcadas|valor_negativo_vermelho or 'text-success' }}">
+                                    {{ totais.ofertas_alcadas|valor_com_cor|safe }}
                                 </td>
                             </tr>
                             <tr>
                                 <td class="fw-bold">Outras Ofertas</td>
-                                <td class="text-end fw-bold text-success">
-                                    {{ "R$ %.2f"|format(totais.outras_ofertas)|replace(".", ",") }}
+                                <td class="text-end fw-bold {{ totais.outras_ofertas|valor_negativo_vermelho or 'text-success' }}">
+                                    {{ totais.outras_ofertas|valor_com_cor|safe }}
                                 </td>
                             </tr>
                             <tr class="table-success">
                                 <td class="fw-bold fs-5">TOTAL GERAL</td>
-                                <td class="text-end fw-bold fs-5">
-                                    {{ "R$ %.2f"|format(totais.total_geral)|replace(".", ",") }}
+                                <td class="text-end fw-bold fs-5 {{ totais.total_geral|valor_negativo_vermelho }}">
+                                    {{ totais.total_geral|valor_com_cor|safe }}
                                 </td>
                             </tr>
                         </table>
@@ -165,8 +169,8 @@
                         <table class="table table-striped">
                             <tr class="{% if totais.saldo_mes >= 0 %}table-success{% else %}table-danger{% endif %}">
                                 <td class="fw-bold fs-5">Saldo do Mês</td>
-                                <td class="text-end fw-bold fs-5">
-                                    {{ "R$ %.2f"|format(totais.saldo_mes)|replace(".", ",") }}
+                                <td class="text-end fw-bold fs-5 {{ totais.saldo_mes|valor_negativo_vermelho }}">
+                                    {{ totais.saldo_mes|valor_com_cor|safe }}
                                 </td>
                             </tr>
                         </table>
@@ -180,9 +184,9 @@
                         
                         <table class="table table-striped">
                             <tr>
-                                <td class="fw-bold">Valor a ser entregue à sede (10% do total arrecadado)</td>
-                                <td class="text-end fw-bold text-warning">
-                                    {{ "R$ %.2f"|format(totais.valor_conselho)|replace(".", ",") }}
+                                <td class="fw-bold">Valor a ser entregue à sede (30% do total arrecadado)</td>
+                                <td class="text-end fw-bold {{ totais.valor_conselho|valor_negativo_vermelho or 'text-warning' }}">
+                                    {{ totais.valor_conselho|valor_com_cor|safe }}
                                 </td>
                             </tr>
                         </table>
@@ -227,8 +231,8 @@
                             </tr>
                             <tr class="table-info">
                                 <td class="fw-bold fs-5">TOTAL DE ENVIO SEDE</td>
-                                <td class="text-end fw-bold fs-5">
-                                    {{ "R$ %.2f"|format(total_envio_sede)|replace(".", ",") }}
+                                <td class="text-end fw-bold fs-5 {{ total_envio_sede|valor_negativo_vermelho }}">
+                                    {{ total_envio_sede|valor_com_cor|safe }}
                                 </td>
                             </tr>
                         </table>
@@ -331,4 +335,5 @@
     }
 }
 </style>
+
 {% endblock %}

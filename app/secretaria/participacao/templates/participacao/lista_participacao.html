@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Controle de Participação de Obreiros{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="text-primary">
+            <i class="fa-solid fa-handshake me-2"></i> Controle de Participação de Obreiros
+        </h4>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('participacao.gerar_pdf_participacao') }}{% if request.args %}?{{ request.query_string.decode() }}{% endif %}" 
+               class="btn btn-outline-danger" title="Gerar PDF">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+            </a>
+            <a href="{{ url_for('participacao.nova_participacao') }}" class="btn btn-primary">
+                <i class="fa-solid fa-plus"></i> Novo Registro
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h6 class="card-title"><i class="fa-solid fa-filter me-1"></i> Filtros</h6>
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="periodo" class="form-label">Período</label>
+                    <input type="month" name="periodo" id="periodo" class="form-control" 
+                           value="{{ request.args.get('periodo', '') }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="tipo" class="form-label">Tipo de Reunião</label>
+                    <select name="tipo" id="tipo" class="form-select">
+                        <option value="">Todos os Tipos</option>
+                        {% for tipo in tipos_reuniao %}
+                            <option value="{{ tipo }}" {% if request.args.get('tipo') == tipo %}selected{% endif %}>
+                                {{ tipo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="presenca" class="form-label">Presença</label>
+                    <select name="presenca" id="presenca" class="form-select">
+                        <option value="">Todos os Status</option>
+                        {% for status in status_presenca %}
+                            <option value="{{ status }}" {% if request.args.get('presenca') == status %}selected{% endif %}>
+                                {{ status }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3 d-flex align-items-end gap-2">
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="fa-solid fa-filter"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('participacao.listar_participacoes') }}" class="btn btn-outline-secondary">
+                        <i class="fa-solid fa-xmark"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    {% if participacoes %}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Total</h6>
+                            <h3 class="mb-0">{{ total_participacoes }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fa-solid fa-chart-bar fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Presentes</h6>
+                            <h3 class="mb-0">{{ presentes }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fa-solid fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Justificados</h6>
+                            <h3 class="mb-0">{{ justificados }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fa-solid fa-exclamation-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Ausentes</h6>
+                            <h3 class="mb-0">{{ ausentes }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fa-solid fa-times-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabela de Participações -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            {% if participacoes %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle">
+                    <thead class="table-primary">
+                        <tr>
+                            <th>Obreiro</th>
+                            <th>Data</th>
+                            <th>Tipo de Reunião</th>
+                            <th>Presença</th>
+                            <th>Observações</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in participacoes %}
+                        <tr>
+                            <td>
+                                <strong>{{ p.obreiro.nome if p.obreiro else 'N/A' }}</strong>
+                                {% if p.obreiro and p.obreiro.cargo %}
+                                    <br><small class="text-muted">{{ p.obreiro.cargo }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ p.data_reuniao.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                <span class="badge bg-info">{{ p.tipo_reuniao }}</span>
+                            </td>
+                            <td>
+                                {% if p.presenca == 'Presente' %}
+                                    <span class="badge bg-success">
+                                        <i class="fa-solid fa-check"></i> {{ p.presenca }}
+                                    </span>
+                                {% elif p.presenca == 'Ausente' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fa-solid fa-times"></i> {{ p.presenca }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fa-solid fa-exclamation"></i> {{ p.presenca }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.observacao %}
+                                    <span title="{{ p.observacao }}">
+                                        {{ p.observacao[:50] }}{% if p.observacao|length > 50 %}...{% endif %}
+                                    </span>
+                                {% else %}
+                                    <em class="text-muted">Sem observações</em>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a href="{{ url_for('participacao.editar_participacao', id=p.id) }}" 
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Editar participação">
+                                        <i class="fa-solid fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('participacao.excluir_participacao', id=p.id) }}" 
+                                       class="btn btn-sm btn-outline-danger"
+                                       title="Excluir participação"
+                                       onclick="return confirm('Tem certeza que deseja excluir esta participação?')">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fa-solid fa-handshake fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Nenhuma participação encontrada</h5>
+                <p class="text-muted">
+                    {% if request.args %}
+                        Tente ajustar os filtros ou 
+                        <a href="{{ url_for('participacao.listar_participacoes') }}">remover filtros</a>
+                    {% else %}
+                        Registre a primeira participação de obreiro
+                    {% endif %}
+                </p>
+                <a href="{{ url_for('participacao.nova_participacao') }}" class="btn btn-primary">
+                    <i class="fa-solid fa-plus"></i> Registrar Participação
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

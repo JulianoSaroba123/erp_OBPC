@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Certificado - {{ certificado.tipo_certificado }}{% endblock %}
+
+{% block content %}
+<!-- Definir cores baseadas no gênero -->
+{% if certificado.genero == 'Masculino' %}
+    {% set cor_principal = '#4A90E2' %}  <!-- Azul -->
+    {% set cor_secundaria = '#87CEEB' %}  <!-- Azul claro -->
+    {% set cor_gradiente = 'linear-gradient(135deg, #4A90E2 0%, #87CEEB 50%, #E6F3FF 100%)' %}
+    {% set cor_fundo = 'linear-gradient(135deg, #E6F3FF 0%, #F0F8FF 50%, #F5F5FF 100%)' %}
+    {% set emoji_tema = '⚡' %}
+{% elif certificado.genero == 'Feminino' %}
+    {% set cor_principal = '#FF69B4' %}  <!-- Rosa -->
+    {% set cor_secundaria = '#FFB6C1' %}  <!-- Rosa claro -->
+    {% set cor_gradiente = 'linear-gradient(135deg, #FF69B4 0%, #FFB6C1 50%, #FFF0F5 100%)' %}
+    {% set cor_fundo = 'linear-gradient(135deg, #FFF0F5 0%, #FFF5F7 50%, #FFFAFC 100%)' %}
+    {% set emoji_tema = '🌸' %}
+{% else %}
+    {% set cor_principal = '#9B59B6' %}  <!-- Roxo neutro -->
+    {% set cor_secundaria = '#E8C5E8' %}  <!-- Roxo claro -->
+    {% set cor_gradiente = 'linear-gradient(135deg, #9B59B6 0%, #E8C5E8 50%, #F5F0F5 100%)' %}
+    {% set cor_fundo = 'linear-gradient(135deg, #F5F0F5 0%, #FAF5FA 50%, #FEFAFE 100%)' %}
+    {% set emoji_tema = '⭐' %}
+{% endif %}
+
+<div class="certificate-container" style="
+    background: {{ cor_gradiente }}; 
+    min-height: 100vh; 
+    padding: 20px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+">
+    <div class="certificate-page" style="
+        width: 842px; 
+        height: 595px; 
+        background: {{ cor_fundo }};
+        box-shadow: 0 0 40px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.3);
+        position: relative;
+        overflow: hidden;
+        font-family: 'Comic Sans MS', 'Arial', sans-serif;
+        border-radius: 20px;
+        border: 5px solid transparent;
+        background-clip: padding-box;
+    ">
+        
+        <!-- Decorações de fundo alegres baseadas no gênero -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.1;">
+            <!-- Decorações específicas por gênero -->
+            {% if certificado.genero == 'Masculino' %}
+                <!-- Tema azul masculino -->
+                <div style="position: absolute; top: 30px; left: 50px; font-size: 24px; color: #4A90E2;">⚡</div>
+                <div style="position: absolute; top: 80px; right: 80px; font-size: 20px; color: #87CEEB;">🚀</div>
+                <div style="position: absolute; top: 150px; left: 100px; font-size: 18px; color: #4169E1;">⭐</div>
+                <div style="position: absolute; bottom: 100px; right: 120px; font-size: 22px; color: #00BFFF;">⚡</div>
+                <div style="position: absolute; bottom: 150px; left: 80px; font-size: 16px; color: #1E90FF;">🌟</div>
+            {% elif certificado.genero == 'Feminino' %}
+                <!-- Tema rosa feminino -->
+                <div style="position: absolute; top: 30px; left: 50px; font-size: 24px; color: #FF69B4;">🌸</div>
+                <div style="position: absolute; top: 80px; right: 80px; font-size: 20px; color: #FFB6C1;">💖</div>
+                <div style="position: absolute; top: 150px; left: 100px; font-size: 18px; color: #FF1493;">🌺</div>
+                <div style="position: absolute; bottom: 100px; right: 120px; font-size: 22px; color: #FF69B4;">�</div>
+                <div style="position: absolute; bottom: 150px; left: 80px; font-size: 16px; color: #FFB6C1;">🌸</div>
+            {% else %}
+                <!-- Tema neutro -->
+                <div style="position: absolute; top: 30px; left: 50px; font-size: 24px; color: #9B59B6;">⭐</div>
+                <div style="position: absolute; top: 80px; right: 80px; font-size: 20px; color: #E8C5E8;">🌟</div>
+                <div style="position: absolute; top: 150px; left: 100px; font-size: 18px; color: #9B59B6;">✨</div>
+                <div style="position: absolute; bottom: 100px; right: 120px; font-size: 22px; color: #E8C5E8;">⭐</div>
+                <div style="position: absolute; bottom: 150px; left: 80px; font-size: 16px; color: #9B59B6;">�</div>
+            {% endif %}
+        </div>
+
+        <!-- Borda decorativa colorida baseada no gênero -->
+        <div style="
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            right: 15px; 
+            bottom: 15px; 
+            border: 3px solid transparent;
+            border-radius: 15px;
+            {% if certificado.genero == 'Masculino' %}
+                background: linear-gradient(45deg, #4A90E2, #87CEEB, #00BFFF, #1E90FF, #4169E1);
+            {% elif certificado.genero == 'Feminino' %}
+                background: linear-gradient(45deg, #FF69B4, #FFB6C1, #FF1493, #FFB6C1, #FF69B4);
+            {% else %}
+                background: linear-gradient(45deg, #9B59B6, #E8C5E8, #DA70D6, #E8C5E8, #9B59B6);
+            {% endif %}
+            background-size: 300% 300%;
+            animation: rainbow 3s ease infinite;
+        "></div>
+
+        <!-- Conteúdo do certificado -->
+        <div style="position: relative; z-index: 1; padding: 40px 50px; height: 100%; display: flex; flex-direction: column;">
+            
+            <!-- Logo GRANDE no topo -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
+                     alt="Logo da Igreja" 
+                     style="height: 100px; max-width: 150px; object-fit: contain; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));"
+                     onerror="this.style.display='none'">
+            </div>
+
+            <!-- Título colorido e alegre baseado no gênero -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="
+                    {% if certificado.genero == 'Masculino' %}
+                        background: linear-gradient(45deg, #4A90E2, #87CEEB, #1E90FF);
+                    {% elif certificado.genero == 'Feminino' %}
+                        background: linear-gradient(45deg, #FF69B4, #FFB6C1, #FF1493);
+                    {% else %}
+                        background: linear-gradient(45deg, #9B59B6, #E8C5E8, #DA70D6);
+                    {% endif %}
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    font-size: 36px;
+                    font-weight: bold;
+                    margin: 0;
+                    letter-spacing: 2px;
+                    text-transform: uppercase;
+                    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+                ">{{ emoji_tema }} Certificado {{ emoji_tema }}</h1>
+                
+                <h2 style="
+                    color: {{ cor_principal }};
+                    font-size: 24px;
+                    margin: 10px 0;
+                    font-weight: bold;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+                ">✨ DE APRESENTAÇÃO ✨</h2>
+            </div>
+
+            <!-- Conteúdo principal alegre -->
+            <div style="text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                
+                <!-- Texto de certificação com emojis -->
+                <p style="
+                    color: #444;
+                    font-size: 16px;
+                    line-height: 1.6;
+                    margin-bottom: 20px;
+                    font-weight: 500;
+                ">
+                    🌟 Certificamos que a criança 🌟
+                </p>
+                
+                <!-- Nome da criança com destaque especial baseado no gênero -->
+                <div style="
+                    background: {{ cor_gradiente }};
+                    color: #fff;
+                    font-size: 28px;
+                    font-weight: bold;
+                    margin: 15px auto;
+                    padding: 15px 30px;
+                    border-radius: 25px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.3);
+                    max-width: 500px;
+                    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+                ">{{ certificado.nome_pessoa }}</div>
+                
+                <!-- Filiação se existir com tema baseado no gênero -->
+                {% if certificado.filiacao %}
+                <div style="
+                    {% if certificado.genero == 'Masculino' %}
+                        background: linear-gradient(135deg, #87CEEB, #E6F3FF);
+                        border: 2px solid #4A90E2;
+                    {% elif certificado.genero == 'Feminino' %}
+                        background: linear-gradient(135deg, #FFB6C1, #FFF0F5);
+                        border: 2px solid #FF69B4;
+                    {% else %}
+                        background: linear-gradient(135deg, #E8C5E8, #F5F0F5);
+                        border: 2px solid #9B59B6;
+                    {% endif %}
+                    padding: 10px 20px;
+                    margin: 15px auto;
+                    border-radius: 15px;
+                    max-width: 450px;
+                ">
+                    <p style="margin: 0; color: #555; font-size: 14px; font-weight: 500;">
+                        👶 <strong>{{ certificado.filiacao }}</strong>
+                    </p>
+                </div>
+                {% endif %}
+                
+                <!-- Texto principal com cores -->
+                <p style="
+                    color: #555;
+                    font-size: 16px;
+                    line-height: 1.8;
+                    margin: 20px auto;
+                    max-width: 480px;
+                    font-weight: 500;
+                ">
+                    foi apresentada ao <strong style="color: {{ cor_principal }};">Senhor Jesus Cristo</strong> em 
+                    <strong style="color: {{ cor_secundaria }};">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
+                    seguindo o exemplo bíblico, sendo consagrada para uma vida de 
+                    <strong style="color: {{ cor_principal }};">bênçãos e proteção divina</strong>. 🙏
+                </p>
+                
+                <!-- Padrinhos com destaque especial baseado no gênero -->
+                {% if certificado.padrinhos %}
+                <div style="
+                    {% if certificado.genero == 'Masculino' %}
+                        background: linear-gradient(135deg, #B0E0E6, #E0F6FF);
+                        border: 3px solid #4A90E2;
+                    {% elif certificado.genero == 'Feminino' %}
+                        background: linear-gradient(135deg, #FFEAA7, #FAB1A0);
+                        border: 3px solid #FF69B4;
+                    {% else %}
+                        background: linear-gradient(135deg, #D8BFD8, #E6E6FA);
+                        border: 3px solid #9B59B6;
+                    {% endif %}
+                    padding: 15px 25px;
+                    margin: 20px auto;
+                    border-radius: 20px;
+                    max-width: 400px;
+                    box-shadow: 0 6px 12px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.3);
+                ">
+                    <p style="margin: 0; color: #2d3436; font-size: 15px; font-weight: 600;">
+                        👨‍👩‍👧‍👦 <strong>Padrinhos:</strong><br>
+                        <span style="font-size: 16px; color: {{ cor_principal }};">{{ certificado.padrinhos }}</span>
+                    </p>
+                </div>
+                {% endif %}
+                
+                <!-- Versículo bíblico colorido baseado no gênero -->
+                <div style="
+                    {% if certificado.genero == 'Masculino' %}
+                        background: linear-gradient(135deg, #4A90E2, #1E90FF);
+                    {% elif certificado.genero == 'Feminino' %}
+                        background: linear-gradient(135deg, #FF69B4, #FF1493);
+                    {% else %}
+                        background: linear-gradient(135deg, #9B59B6, #DA70D6);
+                    {% endif %}
+                    color: white;
+                    padding: 20px;
+                    margin: 25px auto;
+                    border-radius: 20px;
+                    max-width: 500px;
+                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.4);
+                    position: relative;
+                ">
+                    <div style="position: absolute; top: -10px; left: 20px; font-size: 30px;">📖</div>
+                    <p style="
+                        margin: 10px 0 5px 0;
+                        font-size: 14px;
+                        font-style: italic;
+                        line-height: 1.5;
+                        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+                    ">
+                        "Deixem vir a mim as crianças, não as impeçam;<br>
+                        pois o Reino dos céus pertence aos que são semelhantes a elas."
+                    </p>
+                    <p style="
+                        margin: 5px 0 0 0;
+                        font-size: 12px;
+                        font-weight: bold;
+                        text-align: right;
+                        opacity: 0.9;
+                    ">
+                        — Mateus 19:14 ✨
+                    </p>
+                </div>
+            </div>
+
+            <!-- Rodapé alegre -->
+            <div style="display: flex; justify-content: space-between; align-items: end; margin-top: 15px;">
+                <!-- Local e data -->
+                <div style="text-align: left;">
+                    <p style="color: #666; font-size: 12px; margin: 0; line-height: 1.4; font-weight: 500;">
+                        🏛️ <strong>Local:</strong> {{ certificado.local_evento or 'Igreja OBPC - Tietê' }}<br>
+                        👨‍🏫 <strong>Pastor:</strong> {{ certificado.pastor_responsavel or 'Pastor Responsável' }}
+                    </p>
+                </div>
+                
+                <!-- Linha de assinatura colorida baseada no gênero -->
+                <div style="text-align: center; min-width: 200px;">
+                    <div style="
+                        height: 2px;
+                        {% if certificado.genero == 'Masculino' %}
+                            background: linear-gradient(90deg, #4A90E2, #87CEEB);
+                        {% elif certificado.genero == 'Feminino' %}
+                            background: linear-gradient(90deg, #FF69B4, #FFB6C1);
+                        {% else %}
+                            background: linear-gradient(90deg, #9B59B6, #E8C5E8);
+                        {% endif %}
+                        margin-bottom: 5px;
+                        border-radius: 1px;
+                    "></div>
+                    <p style="color: #666; font-size: 11px; margin: 0; font-weight: 500;">✍️ Assinatura do Pastor</p>
+                </div>
+            </div>
+            
+            <!-- Endereço da igreja -->
+            <div style="text-align: center; margin-top: 15px;">
+                <p style="color: #999; font-size: 10px; margin: 0; font-weight: 500;">
+                    🏠 Igreja O Brasil Para Cristo • Rua Egídio Módulo, 261 • Tietê/SP 💒
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botões de ação -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+        <a href="{{ url_for('midia.listar_certificados') }}" 
+           class="btn btn-outline-primary me-3"
+           style="text-decoration: none;">
+            <i class="fas fa-arrow-left me-2"></i>Voltar
+        </a>
+        
+        <button onclick="window.print()" 
+                class="btn btn-primary"
+                style="background: {{ cor_gradiente }}; border: none;">
+            <i class="fas fa-print me-2"></i>Imprimir
+        </button>
+    </div>
+</div>
+
+<style>
+/* Animação do arco-íris */
+@keyframes rainbow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .certificate-container,
+    .certificate-container * {
+        visibility: visible;
+    }
+    
+    .certificate-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        display: block !important;
+    }
+    
+    .certificate-page {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid;
+        border-radius: 0 !important;
+        animation: none !important;
+    }
+    
+    .btn {
+        display: none !important;
+    }
+}
+
+@page {
+    size: A4 landscape;
+    margin: 0.5in;
+}
+
+/* Melhorar legibilidade */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Gradiente para navegadores que não suportam */
+@supports not (-webkit-background-clip: text) {
+    .certificate-page h1[style*="background-clip: text"] {
+        color: #ff6b6b !important;
+        background: none !important;
+    }
+}
+</style>
+
+<script>
+// Formatação de data em português
+window.addEventListener('beforeprint', function() {
+    document.title = 'Certificado de Apresentação Alegre - {{ certificado.nome_pessoa }}';
+});
+</script>
+{% endblock %}

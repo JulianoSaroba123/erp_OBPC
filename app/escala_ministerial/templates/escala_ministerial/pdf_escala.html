@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Pastoral - OBPC</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: 'Times New Roman', serif;
+            margin: 0;
+            padding: 0;
+            color: #000;
+            line-height: 1.4;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #1e3a8a;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            font-size: 20px;
+            margin: 0;
+            color: #1e3a8a;
+            font-weight: bold;
+        }
+        
+        .header h2 {
+            font-size: 16px;
+            margin: 5px 0;
+            color: #333;
+        }
+        
+        .header h3 {
+            font-size: 18px;
+            margin: 15px 0 0 0;
+            color: #1e3a8a;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .info-line {
+            font-size: 14px;
+            color: #666;
+            margin: 2px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+        
+        th, td {
+            border: 1px solid #000;
+            padding: 8px 6px;
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #1e3a8a;
+            text-align: center;
+        }
+        
+        td {
+            font-size: 11px;
+        }
+        
+        .data-col {
+            width: 12%;
+            text-align: center;
+        }
+        
+        .evento-col {
+            width: 20%;
+        }
+        
+        .ministerio-col {
+            width: 13.6%;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+        }
+        
+        .periodo {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            
+            .header {
+                page-break-after: avoid;
+            }
+            
+            table {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <div class="header">
+        <h1>{{ config.nome_igreja if config and config.nome_igreja else 'OBPC - Organização Batista Pró-Comunhão' }}</h1>
+        {% if config %}
+            {% if config.endereco %}
+                <div class="info-line">{{ config.endereco }}</div>
+            {% endif %}
+            {% if config.cidade %}
+                <div class="info-line">{{ config.cidade }} - {{ config.estado if config.estado else 'SP' }}</div>
+            {% endif %}
+            {% if config.cnpj %}
+                <div class="info-line">CNPJ: {{ config.cnpj }}</div>
+            {% endif %}
+        {% else %}
+            <div class="info-line">Tietê - SP</div>
+        {% endif %}
+        
+        <h3>AGENDA PASTORAL</h3>
+    </div>
+
+    <!-- Período -->
+    {% if periodo %}
+    <div class="periodo">
+        Período: {{ periodo }}
+    </div>
+    {% endif %}
+
+    <!-- Tabela da Escala -->
+    {% if escalas %}
+    <table>
+        <thead>
+            <tr>
+                <th class="data-col">Data</th>
+                <th class="evento-col">Evento</th>
+                <th class="ministerio-col">Pregador</th>
+                <th class="ministerio-col">Dirigente</th>
+                <th class="ministerio-col">Louvor</th>
+                <th class="ministerio-col">Intercessor</th>
+                <th class="ministerio-col">Diaconia</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for escala in escalas %}
+            <tr>
+                <td class="data-col">
+                    {% if escala.data_evento %}
+                        <strong>{{ escala.data_evento.strftime('%d/%m/%Y') }}</strong><br>
+                        <small>{{ escala.data_evento.strftime('%A')|replace('Monday','Seg')|replace('Tuesday','Ter')|replace('Wednesday','Qua')|replace('Thursday','Qui')|replace('Friday','Sex')|replace('Saturday','Sáb')|replace('Sunday','Dom') }}</small>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="evento-col">
+                    {% if escala.evento %}
+                        <strong>{{ escala.evento.titulo }}</strong>
+                        {% if escala.evento.horario %}
+                            <br><small>{{ escala.evento.horario.strftime('%H:%M') }}</small>
+                        {% endif %}
+                        {% if escala.evento.local %}
+                            <br><small>{{ escala.evento.local }}</small>
+                        {% endif %}
+                    {% else %}
+                        {{ escala.titulo_evento or '-' }}
+                    {% endif %}
+                </td>
+                <td class="ministerio-col">{{ escala.pregador or '-' }}</td>
+                <td class="ministerio-col">{{ escala.dirigente or '-' }}</td>
+                <td class="ministerio-col">{{ escala.louvor or '-' }}</td>
+                <td class="ministerio-col">{{ escala.intercessor or '-' }}</td>
+                <td class="ministerio-col">{{ escala.diaconia or '-' }}</td>
+            </tr>
+            {% if escala.observacoes %}
+            <tr>
+                <td colspan="7" style="background-color: #f9f9f9; font-size: 10px; padding: 4px 6px;">
+                    <strong>Obs:</strong> {{ escala.observacoes }}
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="no-data">
+        <p>Nenhuma agenda encontrada para o período selecionado.</p>
+    </div>
+    {% endif %}
+
+    <!-- Rodapé -->
+    <div class="footer">
+        <p>Documento gerado em {{ moment().format('DD/MM/YYYY [às] HH:mm') if moment else now().strftime('%d/%m/%Y às %H:%M') }}</p>
+        <p>Sistema OBPC - Organização Batista Pró-Comunhão</p>
+    </div>
+
+    <script>
+        // Auto-print quando abrir o PDF
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

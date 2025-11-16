@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if participacao %}Editar Participação de Obreiro{% else %}Registrar Participação de Obreiro{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm p-4">
+        <h5 class="mb-3 text-primary">
+            <i class="fa-solid fa-handshake me-2"></i> 
+            {% if participacao %}Editar Participação de Obreiro{% else %}Registrar Participação de Obreiro{% endif %}
+        </h5>
+        
+        <form method="POST" action="{% if participacao %}{{ url_for('participacao.editar_participacao', id=participacao.id) }}{% else %}{{ url_for('participacao.salvar_participacao') }}{% endif %}">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="obreiro_id" class="form-label">Obreiro *</label>
+                    <select name="obreiro_id" id="obreiro_id" class="form-select" required>
+                        <option value="">Selecione o Obreiro</option>
+                        {% for o in obreiros %}
+                            <option value="{{ o.id }}" {% if participacao and participacao.obreiro_id == o.id %}selected{% endif %}>
+                                {{ o.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label for="data_reuniao" class="form-label">Data da Reunião *</label>
+                    <input type="date" name="data_reuniao" id="data_reuniao" class="form-control" 
+                           value="{% if participacao %}{{ participacao.data_reuniao.strftime('%Y-%m-%d') }}{% endif %}" required>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    <label for="tipo_reuniao" class="form-label">Tipo de Reunião *</label>
+                    <select name="tipo_reuniao" id="tipo_reuniao" class="form-select" required>
+                        <option value="">Selecione o Tipo</option>
+                        {% for tipo in tipos_reuniao %}
+                            <option value="{{ tipo }}" {% if participacao and participacao.tipo_reuniao == tipo %}selected{% endif %}>
+                                {{ tipo }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label for="presenca" class="form-label">Presença</label>
+                    <select name="presenca" id="presenca" class="form-select">
+                        {% for status in status_presenca %}
+                            <option value="{{ status }}" 
+                                {% if participacao and participacao.presenca == status %}selected
+                                {% elif not participacao and status == 'Presente' %}selected
+                                {% endif %}>
+                                {{ status }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-9 mb-3">
+                    <label for="observacao" class="form-label">Observações</label>
+                    <textarea name="observacao" id="observacao" class="form-control" rows="2" 
+                              placeholder="Observações adicionais sobre a participação">{% if participacao %}{{ participacao.observacao or '' }}{% endif %}</textarea>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-save"></i> 
+                    {% if participacao %}Atualizar{% else %}Salvar{% endif %}
+                </button>
+                <a href="{{ url_for('participacao.listar_participacoes') }}" class="btn btn-secondary">
+                    <i class="fa-solid fa-arrow-left"></i> Voltar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Auto-definir data de hoje se não preenchida (apenas para novo registro)
+document.addEventListener('DOMContentLoaded', function() {
+    const dataInput = document.getElementById('data_reuniao');
+    {% if not participacao %}
+    if (!dataInput.value) {
+        const hoje = new Date().toISOString().split('T')[0];
+        dataInput.value = hoje;
+    }
+    {% endif %}
+});
+</script>
+{% endblock %}

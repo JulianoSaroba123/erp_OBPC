@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificado Moderno - {{ certificado.tipo_certificado }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .certificate-container {
+            width: 100%;
+            height: 100vh;
+            background: white;
+            margin: 30px;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-width: calc(100% - 60px);
+            max-height: calc(100% - 60px);
+        }
+        
+        /* Decorações geométricas */
+        .geometric-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+            opacity: 0.03;
+        }
+        
+        .geometric-bg::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 20px,
+                #1e3a8a 20px,
+                #1e3a8a 40px
+            );
+            animation: float 20s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-20px, -20px) rotate(180deg); }
+        }
+        
+        /* Bordas decorativas */
+        .border-decoration {
+            position: absolute;
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #667eea, #764ba2, #f093fb) 1;
+            z-index: 2;
+        }
+        
+        .border-top {
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            height: 8px;
+        }
+        
+        .border-bottom {
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 8px;
+        }
+        
+        .border-left {
+            top: 20px;
+            left: 20px;
+            bottom: 20px;
+            width: 8px;
+        }
+        
+        .border-right {
+            top: 20px;
+            right: 20px;
+            bottom: 20px;
+            width: 8px;
+        }
+        
+        /* Conteúdo */
+        .content {
+            position: relative;
+            z-index: 3;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .header {
+            margin-bottom: 40px;
+        }
+        
+        .logo-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            border-radius: 50%;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            object-fit: cover;
+        }
+        
+        .church-name {
+            font-size: 24px;
+            color: #1e3a8a;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .church-subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+        
+        .certificate-title {
+            font-size: 48px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .certificate-type {
+            font-size: 24px;
+            color: #475569;
+            margin-bottom: 40px;
+            font-style: italic;
+        }
+        
+        .main-content {
+            margin: 40px 0;
+        }
+        
+        .certification-text {
+            font-size: 18px;
+            color: #475569;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .participant-name {
+            font-size: 36px;
+            color: #1e3a8a;
+            font-weight: bold;
+            margin: 30px 0;
+            padding: 15px 40px;
+            border-bottom: 3px solid #667eea;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .details-section {
+            display: flex;
+            justify-content: space-around;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+        
+        .detail-box {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px;
+            min-width: 200px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-left: 4px solid #667eea;
+        }
+        
+        .detail-label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        
+        .detail-value {
+            font-size: 16px;
+            color: #1e3a8a;
+            font-weight: bold;
+        }
+        
+        .description-text {
+            font-size: 16px;
+            color: #475569;
+            line-height: 1.8;
+            margin: 30px 0;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-top: 40px;
+        }
+        
+        .signature-section {
+            text-align: center;
+            flex: 1;
+            margin: 0 40px;
+        }
+        
+        .signature-line {
+            width: 250px;
+            height: 2px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            margin: 0 auto 10px;
+        }
+        
+        .signature-name {
+            font-size: 16px;
+            color: #1e3a8a;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .signature-title {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .date-info {
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        /* Elementos decorativos flutuantes */
+        .floating-element {
+            position: absolute;
+            z-index: 1;
+            opacity: 0.1;
+            color: #667eea;
+        }
+        
+        .star-1 {
+            top: 10%;
+            left: 5%;
+            font-size: 30px;
+            animation: pulse 3s ease-in-out infinite;
+        }
+        
+        .star-2 {
+            top: 15%;
+            right: 8%;
+            font-size: 25px;
+            animation: pulse 3s ease-in-out infinite 1s;
+        }
+        
+        .star-3 {
+            bottom: 15%;
+            left: 8%;
+            font-size: 35px;
+            animation: pulse 3s ease-in-out infinite 2s;
+        }
+        
+        .star-4 {
+            bottom: 10%;
+            right: 5%;
+            font-size: 28px;
+            animation: pulse 3s ease-in-out infinite 0.5s;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.2); opacity: 0.2; }
+        }
+        
+        /* Print styles */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background: white;
+            }
+            
+            .certificate-container {
+                margin: 0;
+                box-shadow: none;
+                border-radius: 0;
+                width: 100%;
+                height: 100vh;
+            }
+            
+            .geometric-bg::before {
+                animation: none;
+            }
+        }
+        
+        /* Responsividade */
+        @media (max-width: 1200px) {
+            .certificate-title {
+                font-size: 36px;
+            }
+            
+            .participant-name {
+                font-size: 28px;
+            }
+            
+            .details-section {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate-container">
+        <!-- Fundo geométrico -->
+        <div class="geometric-bg"></div>
+        
+        <!-- Bordas decorativas -->
+        <div class="border-decoration border-top"></div>
+        <div class="border-decoration border-bottom"></div>
+        <div class="border-decoration border-left"></div>
+        <div class="border-decoration border-right"></div>
+        
+        <!-- Elementos decorativos flutuantes -->
+        <div class="floating-element star-1">✦</div>
+        <div class="floating-element star-2">✧</div>
+        <div class="floating-element star-3">✦</div>
+        <div class="floating-element star-4">✧</div>
+        
+        <!-- Conteúdo principal -->
+        <div class="content">
+            <!-- Cabeçalho -->
+            <div class="header">
+                <!-- Logo -->
+                <div class="logo-section">
+                    {% if config and config.logo %}
+                        <img src="{{ url_for('static', filename=config.logo.replace('static/', '') if config.logo.startswith('static/') else config.logo) }}" 
+                             alt="Logo da Igreja" class="logo"
+                             onerror="this.style.display='none'">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
+                             alt="Logo OBPC" class="logo"
+                             onerror="this.style.display='none'">
+                    {% endif %}
+                </div>
+                
+                <div class="church-name">
+                    {{ config.nome_igreja if config and config.nome_igreja else 'Igreja O Brasil Para Cristo' }}
+                </div>
+                <div class="church-subtitle">
+                    {% if config %}
+                        {% if config.endereco %}{{ config.endereco }}{% endif %}
+                        {% if config.endereco and (config.cidade or config.bairro) %} - {% endif %}
+                        {% if config.bairro %}{{ config.bairro }}, {% endif %}
+                        {{ config.cidade if config.cidade else 'Tietê' }} - São Paulo
+                        {% if config.cnpj %}<br>CNPJ: {{ config.cnpj }}{% endif %}
+                        {% if config.telefone %} | Tel: {{ config.telefone }}{% endif %}
+                    {% else %}
+                        Tietê - São Paulo
+                    {% endif %}
+                </div>
+                
+                <div class="certificate-title">Certificado</div>
+                <div class="certificate-type">
+                    {% if certificado.tipo_certificado == 'Batismo' %}
+                        de Batismo
+                    {% elif certificado.tipo_certificado == 'Apresentação' %}
+                        de Apresentação
+                    {% else %}
+                        {{ certificado.tipo_certificado }}
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Conteúdo principal -->
+            <div class="main-content">
+                <div class="certification-text">
+                    {% if certificado.tipo_certificado == 'Batismo' %}
+                        Certificamos que
+                    {% elif certificado.tipo_certificado == 'Apresentação' %}
+                        Certificamos que a criança
+                    {% else %}
+                        Certificamos que
+                    {% endif %}
+                </div>
+                
+                <div class="participant-name">{{ certificado.nome_pessoa }}</div>
+                
+                <div class="description-text">
+                    {% if certificado.tipo_certificado == 'Batismo' %}
+                        foi batizado(a) nas águas por imersão, conforme o modelo bíblico, 
+                        em obediência ao mandamento de nosso Senhor Jesus Cristo, 
+                        sendo assim sepultado(a) com Cristo na morte e ressuscitado(a) 
+                        para uma nova vida em Cristo Jesus.
+                    {% elif certificado.tipo_certificado == 'Apresentação' %}
+                        foi apresentada ao Senhor, seguindo o exemplo bíblico de Jesus 
+                        no templo, sendo consagrada para uma vida de bênçãos sob a 
+                        proteção e direção do Altíssimo.
+                    {% else %}
+                        participou da cerimônia de {{ certificado.tipo_certificado.lower() }}.
+                    {% endif %}
+                </div>
+                
+                <!-- Detalhes -->
+                <div class="details-section">
+                    <div class="detail-box">
+                        <div class="detail-label">Data da Cerimônia</div>
+                        <div class="detail-value">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '-' }}</div>
+                    </div>
+                    
+                    {% if certificado.local_evento %}
+                    <div class="detail-box">
+                        <div class="detail-label">Local</div>
+                        <div class="detail-value">{{ certificado.local_evento }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if certificado.pastor_responsavel %}
+                    <div class="detail-box">
+                        <div class="detail-label">Pastor Responsável</div>
+                        <div class="detail-value">{{ certificado.pastor_responsavel }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if certificado.observacoes %}
+                <div class="description-text" style="font-style: italic; font-size: 14px; margin-top: 20px;">
+                    {{ certificado.observacoes }}
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Rodapé com assinaturas -->
+            <div class="footer">
+                <div class="signature-section">
+                    <div class="signature-line"></div>
+                    <div class="signature-name">{{ config.dirigente if config and config.dirigente else 'Pastor Responsável' }}</div>
+                    <div class="signature-title">Dirigente</div>
+                </div>
+                
+                <div class="signature-section">
+                    <div class="signature-line"></div>
+                    <div class="signature-name">{{ config.tesoureiro if config and config.tesoureiro else 'Secretário(a)' }}</div>
+                    <div class="signature-title">Secretaria</div>
+                </div>
+            </div>
+            
+            <!-- Data de emissão -->
+            <div class="date-info">
+                Emitido em {{ certificado.data_criacao.strftime('%d de %B de %Y') if certificado.data_criacao else 'Data não disponível' }}
+                <br>{{ config.nome_igreja if config and config.nome_igreja else 'Sistema OBPC - Organização Batista Pró-Comunhão' }}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-print quando abrir o PDF
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

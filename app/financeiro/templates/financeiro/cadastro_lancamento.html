@@ -14,7 +14,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}">
+                    <form method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}" enctype="multipart/form-data">
                         {% if lancamento %}
                         <input type="hidden" name="id" value="{{ lancamento.id }}">
                         {% endif %}
@@ -53,45 +53,25 @@
                                 <select class="form-select" id="categoria" name="categoria" required>
                                     <option value="">Selecione a categoria</option>
                                     
-                                    <!-- QR Code Pix Env -->
-                                    <optgroup label="💳 QR Code Pix Env">
+                                    <!-- Entradas -->
+                                    <optgroup label="� ENTRADAS">
                                         <option value="DÍZIMO" {% if lancamento and lancamento.categoria == 'DÍZIMO' %}selected{% endif %}>DÍZIMO</option>
                                         <option value="OFERTA" {% if lancamento and lancamento.categoria == 'OFERTA' %}selected{% endif %}>OFERTA</option>
-                                    </optgroup>
-                                    
-                                    <!-- Pix enviado -->
-                                    <optgroup label="📱 Pix enviado">
                                         <option value="OFERTA OMN" {% if lancamento and lancamento.categoria == 'OFERTA OMN' %}selected{% endif %}>OFERTA OMN</option>
-                                    </optgroup>
-                                    
-                                    <!-- Rend da conta -->
-                                    <optgroup label="💰 Rend da conta">
                                         <option value="RENDIMENTOS" {% if lancamento and lancamento.categoria == 'RENDIMENTOS' %}selected{% endif %}>RENDIMENTOS</option>
+                                    </optgroup>
+                                    
+                                    <!-- Saídas -->
+                                    <optgroup label="� SAÍDAS">
                                         <option value="DESP. FIXAS" {% if lancamento and lancamento.categoria == 'DESP. FIXAS' %}selected{% endif %}>DESP. FIXAS</option>
-                                    </optgroup>
-                                    
-                                    <!-- Pix recebido -->
-                                    <optgroup label="📲 Pix recebido">
                                         <option value="DESP. VARIAVEIS" {% if lancamento and lancamento.categoria == 'DESP. VARIAVEIS' %}selected{% endif %}>DESP. VARIAVEIS</option>
-                                    </optgroup>
-                                    
-                                    <!-- Vendas -->
-                                    <optgroup label="🛒 Vendas">
                                         <option value="PREBENDA" {% if lancamento and lancamento.categoria == 'PREBENDA' %}selected{% endif %}>PREBENDA</option>
                                         <option value="COMBUSTÍVEL" {% if lancamento and lancamento.categoria == 'COMBUSTÍVEL' %}selected{% endif %}>COMBUSTÍVEL</option>
                                         <option value="REND.CONTA" {% if lancamento and lancamento.categoria == 'REND.CONTA' %}selected{% endif %}>REND.CONTA</option>
                                         <option value="AJUDA CUSTO" {% if lancamento and lancamento.categoria == 'AJUDA CUSTO' %}selected{% endif %}>AJUDA CUSTO</option>
                                         <option value="TRANSP VIEX" {% if lancamento and lancamento.categoria == 'TRANSP VIEX' %}selected{% endif %}>TRANSP VIEX</option>
                                         <option value="CONTAS" {% if lancamento and lancamento.categoria == 'CONTAS' %}selected{% endif %}>CONTAS</option>
-                                    </optgroup>
-                                    
-                                    <!-- Dinheiro -->
-                                    <optgroup label="💵 Dinheiro">
                                         <option value="CRÉDITO CARTÃO" {% if lancamento and lancamento.categoria == 'CRÉDITO CARTÃO' %}selected{% endif %}>CRÉDITO CARTÃO</option>
-                                    </optgroup>
-                                    
-                                    <!-- Desc. Tarifa -->
-                                    <optgroup label="📊 Desc. Tarifa">
                                         <option value="DESC.CONTA" {% if lancamento and lancamento.categoria == 'DESC.CONTA' %}selected{% endif %}>DESC.CONTA</option>
                                     </optgroup>
                                 </select>
@@ -121,8 +101,8 @@
                                 <label for="conta" class="form-label">Conta *</label>
                                 <select class="form-select" id="conta" name="conta" required>
                                     <option value="">Selecione a conta</option>
-                                    <option value="Caixa" {% if lancamento and lancamento.conta == 'Caixa' %}selected{% endif %}>
-                                        💰 Caixa
+                                    <option value="Dinheiro" {% if lancamento and lancamento.conta == 'Dinheiro' %}selected{% endif %}>
+                                        💰 Dinheiro
                                     </option>
                                     <option value="Banco" {% if lancamento and lancamento.conta == 'Banco' %}selected{% endif %}>
                                         🏦 Banco
@@ -152,7 +132,49 @@
                                       id="observacoes" 
                                       name="observacoes" 
                                       rows="3" 
-                                      placeholder="Informações adicionais sobre o lançamento (opcional)">{{ lancamento.observacoes if lancamento else '' }}</textarea>
+                                      placeholder="Informações adicionais sobre o lançamento (opcional)">{% if lancamento and lancamento.observacoes and lancamento.observacoes != 'None' %}{{ lancamento.observacoes }}{% endif %}</textarea>
+                        </div>
+
+                        <!-- Comprovante -->
+                        <div class="mb-3">
+                            <label for="comprovante" class="form-label">Comprovante</label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="comprovante" 
+                                   name="comprovante"
+                                   accept=".jpg,.jpeg,.png,.pdf">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle"></i> 
+                                Formatos aceitos: JPG, PNG, PDF (máx. 5MB)
+                            </div>
+                            
+                            {% if lancamento and lancamento.tem_comprovante() %}
+                            <div class="mt-2">
+                                <div class="alert alert-info d-flex align-items-center justify-content-between">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-paperclip me-2"></i>
+                                        <div>
+                                            <strong>Comprovante atual:</strong> 
+                                            <a href="{{ lancamento.comprovante }}" target="_blank" class="alert-link">
+                                                {{ lancamento.nome_arquivo_comprovante() }}
+                                            </a>
+                                            {% if lancamento.is_comprovante_imagem() %}
+                                                <i class="fas fa-image text-primary ms-1"></i>
+                                            {% elif lancamento.is_comprovante_pdf() %}
+                                                <i class="fas fa-file-pdf text-danger ms-1"></i>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <form method="POST" action="{{ url_for('financeiro.excluir_comprovante', id=lancamento.id) }}" 
+                                          onsubmit="return confirm('Tem certeza que deseja excluir este comprovante?');" 
+                                          class="mb-0">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir comprovante">
+                                            <i class="fas fa-trash-alt"></i> Excluir
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
 
                         <!-- Botões -->
@@ -233,11 +255,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function mostrarCategoriasEntrada() {
-        // Esconder optgroups de saída e mostrar de entrada
+        // Mostrar apenas categorias de entrada
         const optgroups = categoriaSelect.querySelectorAll('optgroup');
         optgroups.forEach(group => {
             const label = group.getAttribute('label');
-            if (label.includes('QR Code Pix Env') || label.includes('Pix enviado') || label.includes('Rend da conta')) {
+            if (label.includes('ENTRADAS')) {
                 group.style.display = 'block';
             } else {
                 group.style.display = 'none';
@@ -246,11 +268,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function mostrarCategoriasSaida() {
-        // Esconder optgroups de entrada e mostrar de saída
+        // Mostrar apenas categorias de saída
         const optgroups = categoriaSelect.querySelectorAll('optgroup');
         optgroups.forEach(group => {
             const label = group.getAttribute('label');
-            if (label.includes('Vendas') || label.includes('Dinheiro') || label.includes('Desc. Tarifa') || label.includes('Pix recebido')) {
+            if (label.includes('SAÍDAS')) {
                 group.style.display = 'block';
             } else {
                 group.style.display = 'none';
@@ -337,6 +359,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (valorInput.value) {
         aplicarMascaraMoeda(valorInput);
     }
+    
+    // Melhorar experiência para lançamentos múltiplos
+    // Se existe mensagem de sucesso, focar no campo de data para próximo lançamento
+    setTimeout(function() {
+        const successAlert = document.querySelector('.alert-success');
+        if (successAlert) {
+            const dataInput = document.getElementById('data');
+            if (dataInput && !dataInput.disabled) {
+                dataInput.focus();
+            }
+        }
+    }, 800);
 });
 </script>
 {% endblock %}
