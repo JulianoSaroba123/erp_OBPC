@@ -87,6 +87,14 @@
 <div class="main-container">
     <div class="row">
         <div class="col-12">
+            {% if importacao_recente %}
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Importação Concluída!</strong> Os lançamentos importados estão destacados e aparecem no topo da lista.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endif %}
+            
             <div class="row align-items-center mb-4">
                 <div class="col-md-6">
                     <h2><i class="fas fa-money-bill-wave text-success me-2"></i>Controle Financeiro</h2>
@@ -454,7 +462,8 @@
                             </thead>
                             <tbody>
                                 {% for lancamento in lancamentos %}
-                                <tr>
+                                <!-- DEBUG: ID {{ lancamento.id }} - Tipo: {{ lancamento.tipo }} - Origem: {{ lancamento.origem }} -->
+                                <tr {% if lancamento.origem == 'importado' %}class="table-info"{% endif %}>
                                     <td>
                                         {{ lancamento.data.strftime('%d/%m/%Y') if lancamento.data else '-' }}
                                     </td>
@@ -463,7 +472,13 @@
                                             <i class="{{ lancamento.tipo_icon }}"></i> {{ lancamento.tipo }}
                                         </span>
                                     </td>
-                                    <td>{{ lancamento.categoria or '-' }}</td>
+                                    <td>{{ lancamento.categoria or '-' }}
+                                        {% if lancamento.origem == 'importado' %}
+                                        <small class="badge bg-info ms-1">
+                                            <i class="fas fa-download"></i> Importado
+                                        </small>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ lancamento.descricao or '-' }}</td>
                                     <td class="text-{% if lancamento.tipo == 'Entrada' %}success{% else %}danger{% endif %} fw-bold">
                                         {{ lancamento.valor_formatado }}

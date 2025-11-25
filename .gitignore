@@ -79,3 +79,15 @@ relatorio_*.pdf
 
 # Uploads (opcional - remova se quiser versionar uploads)
 static/uploads/
+
+# Debug/Test files temporários
+debug_*.py
+test_*.py
+testar_*.py
+verificar_*.py
+investigar_*.py
+DIAGNOSTICO_*.py
+INSTRUCOES_*.py
+TESTE_*.py
+resumo_*.py
+*.pid

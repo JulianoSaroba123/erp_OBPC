@@ -215,9 +215,13 @@ def lista_lancamentos():
         valor_min = request.args.get('valor_min', '').strip()
         valor_max = request.args.get('valor_max', '').strip()
         busca_texto = request.args.get('busca_texto', '').strip()
+        importacao_recente = request.args.get('importacao_recente', '').strip()
         
         # Query base
         query = Lancamento.query
+        
+        # Se veio de uma importação recente, mostrar primeiro os importados
+        mostrar_importados_primeiro = importacao_recente == 'true'
         
         # Aplicar filtro por categoria
         if categoria_filtro:
@@ -274,8 +278,18 @@ def lista_lancamentos():
                 )
             )
         
-        # Buscar lançamentos filtrados ordenados por data decrescente
-        lancamentos_filtrados = query.order_by(Lancamento.data.desc(), Lancamento.criado_em.desc()).all()
+        # Buscar lançamentos filtrados com ordenação especial
+        if mostrar_importados_primeiro:
+            # Priorizar lançamentos importados no topo da lista
+            from sqlalchemy import case
+            order_by_clause = [
+                case((Lancamento.origem == 'importado', 0), else_=1),
+                Lancamento.data.desc(), 
+                Lancamento.criado_em.desc()
+            ]
+            lancamentos_filtrados = query.order_by(*order_by_clause).all()
+        else:
+            lancamentos_filtrados = query.order_by(Lancamento.data.desc(), Lancamento.criado_em.desc()).all()
         
         # Calcular totais gerais (sem filtro)
         totais_gerais = Lancamento.calcular_totais()
@@ -348,7 +362,8 @@ def lista_lancamentos():
                                  'valor_max': valor_max,
                                  'busca_texto': busca_texto
                              },
-                             conciliacao_info=conciliacao_info)
+                             conciliacao_info=conciliacao_info,
+                             importacao_recente=mostrar_importados_primeiro)
                              
     except Exception as e:
         flash(f'Erro ao carregar lançamentos: {str(e)}', 'danger')
@@ -989,9 +1004,9 @@ def conciliacao_undo(historico_id):
         return redirect(url_for('financeiro.conciliacao'))
 
 
-@financeiro_bp.route('/financeiro/importar/confirmar', methods=['POST'])
+@financeiro_bp.route('/financeiro/importar/confirmar-old', methods=['POST'])
 @login_required
-def confirmar_importacao():
+def confirmar_importacao_DEPRECATED():
     """Confirma e processa a importação dos registros"""
     try:
         import json
@@ -1261,66 +1276,155 @@ def importar_extrato_preview():
 @login_required
 def importar_extrato_confirmar():
     """Confirma importação: insere lançamentos não casados e registra conciliação"""
+    print("DEBUG: Função importar_extrato_confirmar iniciada")
+    
+    dados = request.form.get('registros')
+    print(f"DEBUG: Dados recebidos: {bool(dados)}")
+    
+    if not dados:
+        flash('Nenhum registro para importar.', 'warning')
+        return redirect(url_for('financeiro.importar_extrato'))
+
     try:
         import json
-        dados = request.form.get('registros')
-        if not dados:
-            flash('Nenhum registro para importar.', 'warning')
-            return redirect(url_for('financeiro.importar_extrato'))
-
         registros = json.loads(dados)
+        print(f"DEBUG: {len(registros)} registros para processar")
+        
         criados = 0
         conciliados = 0
-        for r in registros:
-            if r.get('match_id'):
-                conciliados += 1
-                continue
-            # criar novo lancamento
-            data_obj = None
-            if r.get('data'):
-                try:
-                    data_obj = datetime.strptime(r.get('data'), '%Y-%m-%d').date()
-                except Exception:
-                    data_obj = date.today()
-            else:
+        
+        # Processar cada registro
+        for i, r in enumerate(registros):
+            try:
+                print(f"DEBUG: Processando registro {i+1}")
+                print(f"DEBUG: Registro completo: {r}")
+                
+                if r.get('match_id'):
+                    print(f"DEBUG: Registro {i+1} tem match_id, pulando para conciliação")
+                    conciliados += 1
+                    continue
+                    
+                # Processar data
                 data_obj = date.today()
-
-            novo = Lancamento(
-                data=data_obj,
-                tipo='Entrada' if float(r.get('valor', 0)) >= 0 else 'Saída',
-                categoria=None,
-                descricao=r.get('descricao'),
-                valor=abs(float(r.get('valor', 0))),
-                conta=None,
-                observacoes=f'Importado via extrato: origem arquivo',
-                comprovante=None
-            )
-            novo.origem = 'importado'
-            db.session.add(novo)
-            criados += 1
-
+                if r.get('data'):
+                    try:
+                        data_obj = datetime.strptime(r.get('data'), '%Y-%m-%d').date()
+                    except:
+                        pass  # Usa data atual se houver erro
+                
+                # Processar valor e tipo
+                valor_raw = r.get('valor', '0')
+                valor_float = float(str(valor_raw).replace(',', '.'))
+                valor_abs = abs(valor_float)
+                
+                # USAR O TIPO QUE VEM DO PREVIEW, NÃO RECALCULAR!
+                tipo = r.get('tipo', 'Entrada')  # Usar tipo do preview
+                
+                print(f"DEBUG: Registro {i+1} - Valor raw: {valor_raw}, Float: {valor_float}, Abs: {valor_abs}, Tipo do preview: {tipo}")
+                
+                if tipo == 'Saída':
+                    print(f"DEBUG: *** SAÍDA DETECTADA *** - Registro {i+1}: {r.get('descricao', 'Sem descrição')}")
+                
+                # Criar lançamento
+                novo = Lancamento(
+                    data=data_obj,
+                    tipo=tipo,
+                    categoria='Importação',
+                    descricao=str(r.get('descricao', '')[:190]),  # Limitar tamanho
+                    valor=valor_abs,
+                    conta='Extrato',
+                    observacoes='Importado via extrato',
+                    origem='importado',
+                    conciliado=False
+                )
+                
+                print(f"DEBUG: Objeto criado - Tipo: {novo.tipo}, Valor: {novo.valor}, Desc: {novo.descricao[:30]}...")
+                
+                if novo.tipo == 'Saída':
+                    print(f"DEBUG: *** SALVANDO SAÍDA *** - {novo.descricao[:50]}")
+                
+                db.session.add(novo)
+                criados += 1
+                print(f"DEBUG: Lançamento {i+1} adicionado à sessão - TIPO: {tipo}")
+                
+            except Exception as e:
+                print(f"DEBUG: Erro no registro {i+1}: {e}")
+                import traceback
+                traceback.print_exc()
+                continue  # Pula este registro e continua
+        
+        print(f"DEBUG: Fazendo commit de {criados} registros...")
         db.session.commit()
-
-        # Registrar histórico de conciliação
-        from flask_login import current_user
-        usuario_nome = str(getattr(current_user, 'username', 'import'))
-        historico = ConciliacaoHistorico(
-            data_conciliacao=datetime.now(),
-            usuario=usuario_nome,
-            total_conciliados=conciliados,
-            total_pendentes=criados,
-            observacao=f'Importação de extrato: {criados} criados, {conciliados} conciliados'
-        )
-        db.session.add(historico)
-        db.session.commit()
-
-        flash(f'Importação concluída: {criados} criados, {conciliados} conciliados.', 'success')
+        print(f"DEBUG: Commit realizado")
+        
+        # Verificar resultado imediatamente após commit
+        total_importados = Lancamento.query.filter_by(origem='importado').count()
+        entradas_importadas = Lancamento.query.filter_by(origem='importado', tipo='Entrada').count()  
+        saidas_importadas = Lancamento.query.filter_by(origem='importado', tipo='Saída').count()
+        
+        print(f"DEBUG: Total importados no banco: {total_importados}")
+        print(f"DEBUG: Entradas importadas: {entradas_importadas}")
+        print(f"DEBUG: Saídas importadas: {saidas_importadas}")
+        
+        # Verificar últimos registros salvos
+        ultimos_salvos = Lancamento.query.filter_by(origem='importado').order_by(Lancamento.id.desc()).limit(5).all()
+        print(f"DEBUG: Últimos 5 salvos:")
+        for lanc in ultimos_salvos:
+            print(f"   ID {lanc.id}: {lanc.tipo} - {lanc.descricao[:30]}... - R$ {lanc.valor}")
+        
+        # Mensagem de sucesso
+        mensagem = f'Importação concluída: {criados} lançamentos criados'
+        if conciliados > 0:
+            mensagem += f', {conciliados} conciliados'
+        
+        flash(mensagem, 'success')
+        print(f"DEBUG: Redirecionando para lista de lançamentos")
         return redirect(url_for('financeiro.lista_lancamentos'))
 
     except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao confirmar importação: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.importar_extrato'))
+        print(f"DEBUG: Erro na função: {e}")
+        try:
+            db.session.rollback()
+        except:
+            pass
+        flash(f'Erro ao processar importação: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_lancamentos'))
+
+
+@financeiro_bp.route('/debug/importacao')
+@login_required 
+def debug_importacao():
+    """Função temporária para debug da importação"""
+    from flask import jsonify
+    
+    # Verificar quantos lançamentos importados existem
+    total_importados = Lancamento.query.filter_by(origem='importado').count()
+    entradas_importadas = Lancamento.query.filter_by(origem='importado', tipo='Entrada').count()
+    saidas_importadas = Lancamento.query.filter_by(origem='importado', tipo='Saída').count()
+    
+    # Pegar últimos 10 lançamentos importados
+    ultimos = Lancamento.query.filter_by(origem='importado').order_by(Lancamento.id.desc()).limit(10).all()
+    
+    dados_ultimos = []
+    for lanc in ultimos:
+        dados_ultimos.append({
+            'id': lanc.id,
+            'data': lanc.data.strftime('%Y-%m-%d') if lanc.data else None,
+            'tipo': lanc.tipo,
+            'descricao': lanc.descricao,
+            'valor': float(lanc.valor),
+            'origem': lanc.origem
+        })
+    
+    resultado = {
+        'total_importados': total_importados,
+        'entradas': entradas_importadas, 
+        'saidas': saidas_importadas,
+        'ultimos_registros': dados_ultimos
+    }
+    
+    return jsonify(resultado)
+
 
 @financeiro_bp.route('/financeiro/salvar', methods=['POST'])
 @login_required
