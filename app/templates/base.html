@@ -332,38 +332,83 @@
     }
     @media (max-width: 768px) {
       .sidebar {
-        width: 70px;
-        overflow: hidden;
+        transform: translateX(-100%);
+        width: 240px;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 9999;
       }
-      .sidebar a span {
+      
+      .sidebar.show {
+        transform: translateX(0);
+      }
+      
+      .sidebar-toggle {
         display: none;
       }
-      .sidebar .logo h2 {
-        font-size: 18px !important;
-      }
-      .sidebar .logo p {
-        display: none;
-      }
+      
       .content {
-        margin-left: 70px;
-        width: calc(100vw - 70px);
+        margin-left: 0 !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        padding: 10px !important;
+      }
+      
+      .content.expanded {
+        margin-left: 0 !important;
+        width: 100vw !important;
+      }
+      
+      .navbar-top {
+        padding: 10px 15px;
+        flex-wrap: wrap;
+      }
+      
+      .navbar-top h5 {
+        font-size: 16px !important;
+      }
+      
+      .mobile-toggle {
+        display: block !important;
+      }
+      
+      /* Ajustar cards para mobile */
+      .card {
+        margin-bottom: 15px;
+      }
+      
+      /* Ajustar tabelas para mobile */
+      .table-responsive {
+        font-size: 12px;
+      }
+      
+      /* Ajustar botões para mobile */
+      .btn {
+        font-size: 14px;
+        padding: 8px 12px;
       }
     }
 
     @media (max-width: 576px) {
       .sidebar {
-        transform: translateX(-100%);
-        width: 240px;
+        width: 80%;
+        max-width: 280px;
       }
-      .sidebar.show {
-        transform: translateX(0);
+      
+      .navbar-top h5 {
+        font-size: 14px !important;
       }
-      .content {
-        margin-left: 0;
-        width: 100vw;
+      
+      .card-title {
+        font-size: 16px !important;
       }
-      .mobile-toggle {
-        display: block !important;
+      
+      /* Forçar quebra de linha em textos longos */
+      h1, h2, h3, h4, h5, h6 {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
     }
 
