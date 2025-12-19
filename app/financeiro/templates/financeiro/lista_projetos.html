@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Projetos - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-project-diagram"></i> Gerenciar Projetos</h2>
+                <a href="{{ url_for('financeiro.novo_projeto') }}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Novo Projeto
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if projetos %}
+    <div class="row">
+        {% for item in projetos %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 {% if item.projeto.status != 'Ativo' %}border-secondary{% endif %}">
+                <div class="card-header {% if item.projeto.status == 'Ativo' %}bg-primary text-white{% else %}bg-secondary text-white{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-folder-open"></i> {{ item.projeto.nome }}
+                        </h5>
+                        <span class="badge {% if item.projeto.status == 'Ativo' %}bg-success{% elif item.projeto.status == 'Concluído' %}bg-info{% else %}bg-danger{% endif %}">
+                            {{ item.projeto.status }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if item.projeto.descricao %}
+                    <p class="text-muted small mb-3">{{ item.projeto.descricao }}</p>
+                    {% endif %}
+                    
+                    {% if item.projeto.tipo %}
+                    <p class="mb-2"><strong>Tipo:</strong> <span class="badge bg-secondary">{{ item.projeto.tipo }}</span></p>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <div class="row text-center mb-3">
+                        <div class="col-4">
+                            <small class="text-muted d-block">Entradas</small>
+                            <strong class="text-success">R$ {{ "%.2f"|format(item.totais.entradas)|replace('.', ',') }}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Saídas</small>
+                            <strong class="text-danger">R$ {{ "%.2f"|format(item.totais.saidas)|replace('.', ',') }}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted d-block">Saldo</small>
+                            <strong class="{% if item.totais.saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">
+                                R$ {{ "%.2f"|format(item.totais.saldo)|replace('.', ',') }}
+                            </strong>
+                        </div>
+                    </div>
+                    
+                    {% if item.projeto.meta_valor %}
+                    <div class="mb-3">
+                        <small class="text-muted d-block">Meta: R$ {{ "%.2f"|format(item.projeto.meta_valor)|replace('.', ',') }}</small>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar {% if item.totais.percentual >= 100 %}bg-success{% elif item.totais.percentual >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                 role="progressbar" 
+                                 style="width: {{ [item.totais.percentual, 100]|min }}%"
+                                 aria-valuenow="{{ item.totais.percentual }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ "%.1f"|format(item.totais.percentual) }}%
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('financeiro.editar_projeto', id=item.projeto.id) }}" class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="fas fa-edit"></i> Editar
+                        </a>
+                        <a href="{{ url_for('financeiro.caixa_destinacoes') }}?projeto={{ item.projeto.id }}" class="btn btn-sm btn-outline-info flex-fill">
+                            <i class="fas fa-eye"></i> Ver Movim.
+                        </a>
+                        {% if item.projeto.lancamentos.count() == 0 %}
+                        <form method="POST" action="{{ url_for('financeiro.excluir_projeto', id=item.projeto.id) }}" 
+                              onsubmit="return confirm('Tem certeza que deseja excluir o projeto \'{{ item.projeto.nome }}\'?');" 
+                              class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer text-muted small">
+                    <i class="fas fa-calendar"></i> Criado em {{ item.projeto.created_at.strftime('%d/%m/%Y') }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Nenhum projeto cadastrado. 
+        <a href="{{ url_for('financeiro.novo_projeto') }}">Clique aqui para criar o primeiro projeto</a>.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

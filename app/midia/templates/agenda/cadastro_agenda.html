@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if item %}Editar                                <input type="date" class="form-control" id="data_evento" name="data_evento" 
+                                       value="{{ item.data_evento.strftime('%Y-%m-%d') if item and item.data_evento else '' }}" required>tem{% else %}Novo Item{% endif %} - Agenda Semanal
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>
+                        <i class="fas fa-calendar-plus text-primary me-2"></i>
+                        {% if item %}Editar Item da Agenda{% else %}Novo Item da Agenda{% endif %}
+                    </h2>
+                    <p class="text-muted mb-0">Preencha os dados do item da agenda semanal</p>
+                </div>
+                <a href="{{ url_for('midia.listar_agenda') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar
+                </a>
+            </div>
+
+            <!-- Formulário -->
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('midia.salvar_agenda') }}">
+                        {% if item %}
+                        <input type="hidden" name="id" value="{{ item.id }}">
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Título -->
+                            <div class="col-md-8 mb-3">
+                                <label for="titulo" class="form-label">
+                                    <i class="fas fa-heading text-primary me-1"></i>Título *
+                                </label>
+                                <input type="text" class="form-control" id="titulo" name="titulo" 
+                                       value="{{ item.titulo if item else '' }}" required maxlength="200"
+                                       placeholder="Ex: Culto de Celebração, Reunião de Obreiros...">
+                                <div class="form-text">Máximo 200 caracteres</div>
+                            </div>
+
+                            <!-- Tipo de Evento -->
+                            <div class="col-md-4 mb-3">
+                                <label for="tipo_evento" class="form-label">
+                                    <i class="fas fa-tag text-primary me-1"></i>Tipo de Evento *
+                                </label>
+                                <select class="form-select" id="tipo_evento" name="tipo_evento" required>
+                                    <option value="">Selecione...</option>
+                                    {% for tipo in tipos_evento %}
+                                    <option value="{{ tipo }}" 
+                                            {% if item and item.tipo_evento == tipo %}selected{% endif %}>
+                                        {{ tipo }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Data Início -->
+                            <div class="col-md-6 mb-3">
+                                <label for="data_evento" class="form-label">
+                                    <i class="fas fa-calendar text-primary me-1"></i>Data do Evento *
+                                </label>
+                                <input type="date" class="form-control" id="data_evento" name="data_evento" 
+                                       value="{{ item.data_evento.strftime('%Y-%m-%d') if item and item.data_evento else '' }}" 
+                                       required>
+                            </div>
+
+                            <!-- Hora -->
+                            <div class="col-md-6 mb-3">
+                                <label for="hora_inicio" class="form-label">
+                                    <i class="fas fa-clock text-primary me-1"></i>Horário
+                                </label>
+                                <input type="time" class="form-control" id="hora_inicio" name="hora_inicio" 
+                                       value="{{ item.hora_inicio.strftime('%H:%M') if item and item.hora_inicio else '' }}">
+                            </div>
+                        </div>
+
+                        <!-- Responsável -->
+                        <div class="mb-3">
+                            <label for="responsavel" class="form-label">
+                                <i class="fas fa-user text-primary me-1"></i>Responsável
+                            </label>
+                            <input type="text" class="form-control" id="responsavel" name="responsavel" 
+                                   value="{{ item.responsavel if item else '' }}" maxlength="100"
+                                   placeholder="Ex: Pastor João, Ministério de Louvor...">
+                            <div class="form-text">Pessoa ou ministério responsável pelo evento</div>
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="mb-4">
+                            <label for="descricao" class="form-label">
+                                <i class="fas fa-align-left text-primary me-1"></i>Descrição
+                            </label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="4"
+                                      placeholder="Detalhes adicionais sobre o evento...">{{ item.descricao if item else '' }}</textarea>
+                            <div class="form-text">Informações adicionais que aparecerão na agenda</div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('midia.listar_agenda') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>
+                                {% if item %}Atualizar Item{% else %}Salvar Item{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Dicas -->
+            <div class="card mt-4">
+                <div class="card-body bg-light">
+                    <h6 class="card-title">
+                        <i class="fas fa-lightbulb text-warning me-1"></i>Dicas para a agenda semanal
+                    </h6>
+                    <ul class="mb-0 small">
+                        <li><strong>Culto:</strong> Para cultos regulares (domingo, quarta-feira, etc.)</li>
+                        <li><strong>Reunião:</strong> Para reuniões de ministérios, obreiros, diretoria</li>
+                        <li><strong>Evento:</strong> Para eventos especiais, conferências, retiros</li>
+                        <li><strong>Anúncio:</strong> Para avisos importantes que devem aparecer na agenda</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus no primeiro campo
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('titulo').focus();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}{% if projeto %}Editar{% else %}Novo{% endif %} Projeto - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{% if projeto %}edit{% else %}plus{% endif %} me-2"></i>
+                        {% if projeto %}Editar{% else %}Novo{% endif %} Projeto
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% if projeto %}{{ url_for('financeiro.editar_projeto', id=projeto.id) }}{% else %}{{ url_for('financeiro.novo_projeto') }}{% endif %}">
+                        
+                        <div class="row">
+                            <!-- Nome do Projeto -->
+                            <div class="col-md-6 mb-3">
+                                <label for="nome" class="form-label">Nome do Projeto *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="nome" 
+                                       name="nome" 
+                                       value="{% if projeto %}{{ projeto.nome }}{% endif %}"
+                                       placeholder="Ex: MENIBRAC, Anistia 30%, Reforma Telhado"
+                                       required>
+                                <div class="form-text">Nome único para identificar o projeto</div>
+                            </div>
+
+                            <!-- Tipo -->
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo" class="form-label">Tipo</label>
+                                <select class="form-select" id="tipo" name="tipo">
+                                    <option value="">Selecione um tipo</option>
+                                    <option value="Doação" {% if projeto and projeto.tipo == 'Doação' %}selected{% endif %}>Doação</option>
+                                    <option value="Anistia" {% if projeto and projeto.tipo == 'Anistia' %}selected{% endif %}>Anistia</option>
+                                    <option value="Reforma" {% if projeto and projeto.tipo == 'Reforma' %}selected{% endif %}>Reforma</option>
+                                    <option value="Evento" {% if projeto and projeto.tipo == 'Evento' %}selected{% endif %}>Evento</option>
+                                    <option value="Aquisição" {% if projeto and projeto.tipo == 'Aquisição' %}selected{% endif %}>Aquisição</option>
+                                    <option value="Outro" {% if projeto and projeto.tipo == 'Outro' %}selected{% endif %}>Outro</option>
+                                </select>
+                                <div class="form-text">Categoria do projeto (opcional)</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Status -->
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Status *</label>
+                                <select class="form-select" id="status" name="status" required>
+                                    <option value="Ativo" {% if not projeto or projeto.status == 'Ativo' %}selected{% endif %}>Ativo</option>
+                                    <option value="Concluído" {% if projeto and projeto.status == 'Concluído' %}selected{% endif %}>Concluído</option>
+                                    <option value="Cancelado" {% if projeto and projeto.status == 'Cancelado' %}selected{% endif %}>Cancelado</option>
+                                </select>
+                            </div>
+
+                            <!-- Meta de Valor -->
+                            <div class="col-md-6 mb-3">
+                                <label for="meta_valor" class="form-label">Meta de Valor (Opcional)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">R$</span>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="meta_valor" 
+                                           name="meta_valor" 
+                                           value="{% if projeto and projeto.meta_valor %}{{ '%.2f'|format(projeto.meta_valor)|replace('.', ',') }}{% endif %}"
+                                           placeholder="10.000,00">
+                                </div>
+                                <div class="form-text">Valor que se deseja arrecadar (opcional)</div>
+                            </div>
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" 
+                                      id="descricao" 
+                                      name="descricao" 
+                                      rows="3"
+                                      placeholder="Descreva o objetivo e detalhes do projeto">{% if projeto %}{{ projeto.descricao }}{% endif %}</textarea>
+                            <div class="form-text">Informações adicionais sobre o projeto</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('financeiro.lista_projetos') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> 
+                                {% if projeto %}Atualizar{% else %}Salvar{% endif %} Projeto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Card de Ajuda -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <i class="fas fa-info-circle"></i> Como usar Projetos?
+                </div>
+                <div class="card-body">
+                    <p><strong>1. Criação:</strong> Crie um projeto para cada destino específico de recursos (ex: MENIBRAC, Anistia 30%, Reforma do Telhado).</p>
+                    <p><strong>2. Lançamentos:</strong> Ao cadastrar lançamentos com categoria "Outras Ofertas" ou "DESTINAÇÃO", selecione o projeto correspondente.</p>
+                    <p><strong>3. Relatórios:</strong> Acesse "Caixa de Destinações" para ver o saldo de cada projeto separadamente.</p>
+                    <p class="mb-0"><strong>4. Transparência:</strong> Todos os lançamentos aparecem no Caixa Geral, mas são controlados por projeto no Caixa de Destinações.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Máscara de moeda para meta_valor
+    const metaValorInput = document.getElementById('meta_valor');
+    
+    if (metaValorInput) {
+        metaValorInput.addEventListener('input', function(e) {
+            let valor = this.value.replace(/\D/g, '');
+            if (valor === '') {
+                this.value = '';
+                return;
+            }
+            valor = parseInt(valor);
+            valor = (valor / 100).toFixed(2);
+            valor = valor.replace('.', ',');
+            valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            this.value = valor;
+        });
+    }
+});
+</script>
+{% endblock %}

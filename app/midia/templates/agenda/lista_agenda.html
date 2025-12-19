@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Agenda Semanal - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-calendar-week text-primary me-2"></i>Agenda Semanal</h2>
+                    <p class="text-muted mb-0">
+                        Semana {{ semana_atual }}/{{ ano_atual }} 
+                        ({{ inicio_semana.strftime('%d/%m/%Y') }} - {{ fim_semana.strftime('%d/%m/%Y') }})
+                    </p>
+                </div>
+                <a href="{{ url_for('midia.novo_agenda') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Novo Item
+                </a>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Semana</label>
+                            <select name="semana" class="form-select">
+                                {% for s in semanas_ano %}
+                                <option value="{{ s }}" {% if s == semana_atual %}selected{% endif %}>
+                                    Semana {{ s }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Ano</label>
+                            <select name="ano" class="form-select">
+                                {% for a in range(2024, 2030) %}
+                                <option value="{{ a }}" {% if a == ano_atual %}selected{% endif %}>
+                                    {{ a }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Tipo de Evento</label>
+                            <select name="tipo_evento" class="form-select">
+                                <option value="">Todos os tipos</option>
+                                {% for tipo in tipos_evento %}
+                                <option value="{{ tipo }}" {% if tipo == tipo_evento_atual %}selected{% endif %}>
+                                    {{ tipo }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-outline-primary">
+                                <i class="fas fa-filter me-1"></i> Filtrar
+                            </button>
+                            <a href="{{ url_for('midia.agenda_pdf', semana=semana_atual, ano=ano_atual) }}" 
+                               class="btn btn-success" target="_blank">
+                                <i class="fas fa-file-pdf me-1"></i> PDF
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista da Agenda -->
+            {% if agenda %}
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Título</th>
+                                    <th>Tipo</th>
+                                    <th>Responsável</th>
+                                    <th>Descrição</th>
+                                    <th width="120">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in agenda %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.data_evento.strftime('%d/%m') }}</strong>
+                                    </td>
+                                    <td>
+                                        <strong>{{ item.titulo }}</strong>
+                                        <br><small class="text-muted">{{ item.data_evento.strftime('%A') }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if item.tipo_evento == 'Culto' %}bg-primary
+                                            {% elif item.tipo_evento == 'Reunião' %}bg-info
+                                            {% elif item.tipo_evento == 'Evento' %}bg-success
+                                            {% elif item.tipo_evento == 'Anúncio' %}bg-warning
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ item.tipo_evento }}
+                                        </span>
+                                    </td>
+                                    <td>{{ item.responsavel or '-' }}</td>
+                                    <td>
+                                        {% if item.descricao %}
+                                        <span title="{{ item.descricao }}">
+                                            {{ item.descricao[:50] }}{% if item.descricao|length > 50 %}...{% endif %}
+                                        </span>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('midia.visualizar_agenda', item_id=item.id) }}" 
+                                               class="btn btn-outline-info" title="Visualizar" target="_blank">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('midia.editar_agenda', item_id=item.id) }}" 
+                                               class="btn btn-outline-primary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('midia.excluir_agenda', item_id=item.id) }}" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-danger" title="Excluir"
+                                                        onclick="return confirm('Confirma exclusão do item {{ item.titulo }}?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-calendar-times text-muted" style="font-size: 3rem;"></i>
+                    <h4 class="mt-3 text-muted">Nenhum item na agenda</h4>
+                    <p class="text-muted">
+                        {% if semana_atual and ano_atual %}
+                        Não há itens para a semana {{ semana_atual }}/{{ ano_atual }}.
+                        {% else %}
+                        Não há itens cadastrados na agenda.
+                        {% endif %}
+                    </p>
+                    <a href="{{ url_for('midia.novo_agenda') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i> Adicionar Primeiro Item
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.badge {
+    font-size: 0.75em;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: white;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+</style>
+{% endblock %}

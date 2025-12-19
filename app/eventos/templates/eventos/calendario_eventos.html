@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Calendário de Eventos - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho -->
+            <div class="row align-items-center mb-4">
+                <div class="col-md-6">
+                    <h2><i class="fas fa-calendar text-primary me-2"></i>Calendário de Eventos</h2>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="{{ url_for('eventos.lista_eventos') }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-list me-1"></i> Lista
+                        </a>
+                        <a href="{{ url_for('eventos.novo_evento') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-1"></i> Novo Evento
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendário -->
+            <div class="card">
+                <div class="card-body">
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Detalhes do Evento -->
+<div class="modal fade" id="eventoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    <span id="eventoTitulo"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="eventoDetalhes"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Fechar
+                </button>
+                <div>
+                    <a id="eventoEditar" href="#" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i> Editar
+                    </a>
+                    <a id="eventoExcluir" href="#" class="btn btn-danger" 
+                       onclick="return confirm('Tem certeza que deseja excluir este evento?')">
+                        <i class="fas fa-trash me-1"></i> Excluir
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
+
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/locales/pt-br.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+    
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'pt-br',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        buttonText: {
+            today: 'Hoje',
+            month: 'Mês',
+            week: 'Semana',
+            day: 'Dia'
+        },
+        height: 'auto',
+        selectable: true,
+        selectMirror: true,
+        dayMaxEvents: 3,
+        moreLinkText: function(num) {
+            return '+ ' + num + ' eventos';
+        },
+        
+        // Carregar eventos do servidor
+        events: function(fetchInfo, successCallback, failureCallback) {
+            fetch('{{ url_for("eventos.api_eventos_calendario") }}')
+                .then(response => response.json())
+                .then(data => {
+                    successCallback(data);
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar eventos:', error);
+                    failureCallback(error);
+                });
+        },
+        
+        // Configuração de cores por status
+        eventClassNames: function(arg) {
+            switch(arg.event.extendedProps.status) {
+                case 'Agendado':
+                    return ['evento-agendado'];
+                case 'Em Andamento':
+                    return ['evento-em-andamento'];
+                case 'Concluído':
+                    return ['evento-concluido'];
+                case 'Cancelado':
+                    return ['evento-cancelado'];
+                case 'Adiado':
+                    return ['evento-adiado'];
+                default:
+                    return ['evento-default'];
+            }
+        },
+        
+        // Click em um evento
+        eventClick: function(info) {
+            mostrarDetalhesEvento(info.event);
+        },
+        
+        // Seleção de data para criar novo evento
+        select: function(arg) {
+            var dataInicio = arg.start.toISOString().slice(0, 10);
+            var url = '{{ url_for("eventos.novo_evento") }}?data_inicio=' + dataInicio;
+            window.location.href = url;
+        },
+        
+        // Estilização de hoje
+        dayCellClassNames: function(arg) {
+            var hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
+            if (arg.date.getTime() === hoje.getTime()) {
+                return ['dia-hoje'];
+            }
+            return [];
+        }
+    });
+    
+    calendar.render();
+    
+    // Função para mostrar detalhes do evento
+    function mostrarDetalhesEvento(evento) {
+        document.getElementById('eventoTitulo').textContent = evento.title;
+        
+        var detalhes = '<div class="row">';
+        
+        // Coluna da esquerda
+        detalhes += '<div class="col-md-6">';
+        detalhes += '<h6 class="text-primary">Informações Básicas</h6>';
+        detalhes += '<p><strong>Status:</strong><br>';
+        detalhes += '<span class="badge ' + getBadgeClass(evento.extendedProps.status) + '">' + evento.extendedProps.status + '</span></p>';
+        
+        if (evento.extendedProps.descricao) {
+            detalhes += '<p><strong>Descrição:</strong><br>' + evento.extendedProps.descricao + '</p>';
+        }
+        detalhes += '</div>';
+        
+        // Coluna da direita
+        detalhes += '<div class="col-md-6">';
+        detalhes += '<h6 class="text-primary">Data e Local</h6>';
+        detalhes += '<p><strong>Data/Hora Início:</strong><br>' + formatarDataHora(evento.start) + '</p>';
+        
+        if (evento.end) {
+            detalhes += '<p><strong>Data/Hora Fim:</strong><br>' + formatarDataHora(evento.end) + '</p>';
+        }
+        
+        if (evento.extendedProps.local) {
+            detalhes += '<p><strong>Local:</strong><br>' + evento.extendedProps.local + '</p>';
+        }
+        
+        if (evento.extendedProps.responsavel) {
+            detalhes += '<p><strong>Responsável:</strong><br>' + evento.extendedProps.responsavel + '</p>';
+        }
+        detalhes += '</div>';
+        
+        detalhes += '</div>';
+        
+        document.getElementById('eventoDetalhes').innerHTML = detalhes;
+        
+        // Configurar links de ação
+        document.getElementById('eventoEditar').href = '{{ url_for("eventos.editar_evento", evento_id="") }}' + evento.id;
+        document.getElementById('eventoExcluir').href = '{{ url_for("eventos.excluir_evento", evento_id="") }}' + evento.id;
+        
+        // Mostrar modal
+        var modal = new bootstrap.Modal(document.getElementById('eventoModal'));
+        modal.show();
+    }
+    
+    // Função auxiliar para classe do badge
+    function getBadgeClass(status) {
+        switch(status) {
+            case 'Agendado':
+                return 'bg-info';
+            case 'Em Andamento':
+                return 'bg-warning';
+            case 'Concluído':
+                return 'bg-success';
+            case 'Cancelado':
+                return 'bg-danger';
+            case 'Adiado':
+                return 'bg-secondary';
+            default:
+                return 'bg-primary';
+        }
+    }
+    
+    // Função auxiliar para formatar data/hora
+    function formatarDataHora(dateTime) {
+        if (!dateTime) return '';
+        
+        var options = {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'America/Sao_Paulo'
+        };
+        
+        return new Intl.DateTimeFormat('pt-BR', options).format(new Date(dateTime));
+    }
+});
+</script>
+
+<style>
+/* Customizações do FullCalendar */
+.fc-theme-standard .fc-scrollgrid {
+    border-color: #dee2e6;
+}
+
+.fc-theme-standard td, .fc-theme-standard th {
+    border-color: #dee2e6;
+}
+
+.fc-col-header-cell {
+    background-color: #0b1b3a;
+    color: white;
+    font-weight: 600;
+}
+
+.fc-daygrid-day-number {
+    color: #495057;
+    font-weight: 600;
+}
+
+.fc-button-primary {
+    background-color: #0b1b3a;
+    border-color: #0b1b3a;
+}
+
+.fc-button-primary:hover {
+    background-color: #081429;
+    border-color: #081429;
+}
+
+.fc-button-primary:focus {
+    box-shadow: 0 0 0 0.2rem rgba(11, 27, 58, 0.25);
+}
+
+/* Estilos dos eventos por status */
+.evento-agendado .fc-event-main {
+    background-color: #17a2b8;
+    border-color: #138496;
+}
+
+.evento-em-andamento .fc-event-main {
+    background-color: #ffc107;
+    border-color: #e0a800;
+    color: #212529;
+}
+
+.evento-concluido .fc-event-main {
+    background-color: #28a745;
+    border-color: #1e7e34;
+}
+
+.evento-cancelado .fc-event-main {
+    background-color: #dc3545;
+    border-color: #bd2130;
+}
+
+.evento-adiado .fc-event-main {
+    background-color: #6c757d;
+    border-color: #545b62;
+}
+
+.evento-default .fc-event-main {
+    background-color: #0b1b3a;
+    border-color: #081429;
+}
+
+/* Destaque do dia atual */
+.dia-hoje {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.fc-day-today .fc-daygrid-day-number {
+    background-color: #0b1b3a;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    margin: 2px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .fc-toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .fc-toolbar-chunk {
+        display: flex;
+        justify-content: center;
+    }
+    
+    .fc-button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .modal-dialog {
+        margin: 10px;
+    }
+}
+
+/* Melhorias visuais */
+.fc-event {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.fc-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.fc-daygrid-day:hover {
+    background-color: rgba(11, 27, 58, 0.05);
+}
+
+.fc-day-other .fc-daygrid-day-number {
+    color: #adb5bd;
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

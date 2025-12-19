@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Visualizar Item - Sistema OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-eye me-2"></i>Detalhes do Item
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Código -->
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-barcode me-1"></i>Código
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                <span class="badge bg-dark fs-6">{{ item.codigo }}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Nome -->
+                        <div class="col-md-9 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-box me-1"></i>Nome do Item
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                {{ item.nome }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Categoria -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-tag me-1"></i>Categoria
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                {{ item.categoria or 'Não informado' }}
+                            </div>
+                        </div>
+
+                        <!-- Estado -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-star me-1"></i>Estado de Conservação
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                {% if item.estado_conservacao == 'Novo' %}
+                                    <span class="badge bg-success">{{ item.estado_conservacao }}</span>
+                                {% elif item.estado_conservacao == 'Bom' %}
+                                    <span class="badge bg-primary">{{ item.estado_conservacao }}</span>
+                                {% elif item.estado_conservacao == 'Regular' %}
+                                    <span class="badge bg-warning">{{ item.estado_conservacao }}</span>
+                                {% elif item.estado_conservacao == 'Ruim' %}
+                                    <span class="badge bg-danger">{{ item.estado_conservacao }}</span>
+                                {% else %}
+                                    {{ item.estado_conservacao or 'Não informado' }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Status -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-toggle-on me-1"></i>Status
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                {% if item.ativo %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>Ativo
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-times me-1"></i>Inativo
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Valor -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-dollar-sign me-1"></i>Valor de Aquisição
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                {% if item.valor_aquisicao %}
+                                    <span class="text-success fw-bold">
+                                        R$ {{ "%.2f"|format(item.valor_aquisicao|float) }}
+                                    </span>
+                                {% else %}
+                                    Não informado
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Data Aquisição -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-calendar me-1"></i>Data de Aquisição
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                {% if item.data_aquisicao %}
+                                    {{ item.data_aquisicao.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                    Não informado
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Localização -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-map-marker-alt me-1"></i>Localização
+                            </label>
+                            <div class="p-2 bg-light rounded">
+                                {{ item.localizacao or 'Não informado' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Responsável -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-user me-1"></i>Responsável
+                        </label>
+                        <div class="p-2 bg-light rounded">
+                            {{ item.responsavel or 'Não informado' }}
+                        </div>
+                    </div>
+
+                    <!-- Descrição -->
+                    {% if item.descricao %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-align-left me-1"></i>Descrição
+                        </label>
+                        <div class="p-3 bg-light rounded">
+                            {{ item.descricao }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Observações -->
+                    {% if item.observacoes %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-sticky-note me-1"></i>Observações
+                        </label>
+                        <div class="p-3 bg-light rounded">
+                            {{ item.observacoes }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Datas do Sistema -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <i class="fas fa-plus-circle me-1"></i>
+                                Cadastrado em: {{ item.criado_em.strftime('%d/%m/%Y às %H:%M') if item.criado_em else 'N/A' }}
+                            </small>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted">
+                                <i class="fas fa-edit me-1"></i>
+                                Última atualização: {{ item.atualizado_em.strftime('%d/%m/%Y às %H:%M') if item.atualizado_em else 'N/A' }}
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Botões -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('inventario.lista_itens') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Voltar à Lista
+                        </a>
+                        <div>
+                            <a href="{{ url_for('inventario.editar_item', id=item.id) }}" class="btn btn-warning">
+                                <i class="fas fa-edit me-1"></i>Editar
+                            </a>
+                            <form method="POST" action="{{ url_for('inventario.inativar_item', id=item.id) }}" 
+                                  class="d-inline-block ms-2">
+                                <button type="submit" class="btn btn-{% if item.ativo %}outline-secondary{% else %}success{% endif %}"
+                                        onclick="return confirm('Tem certeza que deseja {% if item.ativo %}inativar{% else %}ativar{% endif %} este item?')">
+                                    <i class="fas fa-toggle-{% if item.ativo %}off{% else %}on{% endif %} me-1"></i>
+                                    {% if item.ativo %}Inativar{% else %}Ativar{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

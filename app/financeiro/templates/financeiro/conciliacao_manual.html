@@ -1,0 +1,615 @@
+{% extends "base.html" %}
+
+{% block title %}Conciliação Manual{% endblock %}
+
+{% block extra_css %}
+<style>
+    .lancamento-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+    }
+    
+    .lancamento-card:hover {
+        border-color: #0b1b3a;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .lancamento-card.selected {
+        border-color: #28a745;
+        background-color: #d4edda;
+    }
+    
+    .lancamento-card.entrada {
+        border-left: 4px solid #28a745;
+    }
+    
+    .lancamento-card.saida {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .match-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #ffc107;
+    }
+    
+    .match-indicator.high { background-color: #28a745; }
+    .match-indicator.medium { background-color: #ffc107; }
+    .match-indicator.low { background-color: #dc3545; }
+    
+    .filtros-card {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .conciliar-area {
+        background-color: #e3f2fd;
+        border: 2px dashed #2196f3;
+        border-radius: 8px;
+        padding: 30px;
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .conciliar-area.ready {
+        background-color: #d4edda;
+        border-color: #28a745;
+    }
+    
+    .valor-formatado {
+        font-size: 1.1em;
+        font-weight: bold;
+    }
+    
+    .valor-entrada { color: #28a745; }
+    .valor-saida { color: #dc3545; }
+    
+    .sugestoes-panel {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .sugestao-item {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .sugestao-item:hover {
+        border-color: #0b1b3a;
+        background-color: #f8f9fa;
+    }
+    
+    .score-badge {
+        font-size: 0.75em;
+        padding: 2px 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-hands me-2"></i>
+                        Conciliação Manual
+                    </h2>
+                    <p class="text-muted mb-0">Compare e concilie lançamentos manuais com importados</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('conciliacao.dashboard_conciliacao') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Dashboard
+                    </a>
+                    <button id="btnConciliarSelecionados" class="btn btn-success" disabled>
+                        <i class="fas fa-link me-1"></i>
+                        Conciliar Selecionados
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros-card">
+        <h5 class="mb-3">
+            <i class="fas fa-filter me-2"></i>
+            Filtros
+        </h5>
+        <form method="GET" id="formFiltros">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Data Inicial</label>
+                    <input type="date" name="data_inicial" class="form-control" value="{{ filtros.data_inicial }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Data Final</label>
+                    <input type="date" name="data_final" class="form-control" value="{{ filtros.data_final }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Valor Mínimo</label>
+                    <input type="number" name="valor_min" class="form-control" step="0.01" value="{{ filtros.valor_min }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Valor Máximo</label>
+                    <input type="number" name="valor_max" class="form-control" step="0.01" value="{{ filtros.valor_max }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>
+                            Filtrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        <!-- Lançamentos Manuais -->
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white d-flex justify-content-between">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Lançamentos Manuais ({{ manuais|length }})
+                    </h5>
+                    <button class="btn btn-sm btn-outline-light" onclick="limparSelecaoManuais()">
+                        Limpar Seleção
+                    </button>
+                </div>
+                <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+                    {% if manuais %}
+                        {% for lancamento in manuais %}
+                        <div class="lancamento-card {{ 'entrada' if lancamento.tipo == 'Entrada' else 'saida' }}" 
+                             data-id="{{ lancamento.id }}" 
+                             data-tipo="manual"
+                             onclick="selecionarLancamento(this, 'manual')">
+                            
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong>{{ lancamento.data_formatada }}</strong>
+                                        <span class="valor-formatado {{ 'valor-entrada' if lancamento.tipo == 'Entrada' else 'valor-saida' }}">
+                                            {{ lancamento.valor_formatado }}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="mb-1">
+                                        <small class="text-muted">{{ lancamento.categoria or 'Sem categoria' }}</small>
+                                    </div>
+                                    
+                                    <div class="text-truncate" title="{{ lancamento.descricao }}">
+                                        {{ lancamento.descricao or 'Sem descrição' }}
+                                    </div>
+                                    
+                                    <div class="mt-2">
+                                        <span class="badge bg-secondary">{{ lancamento.conta or 'N/A' }}</span>
+                                        <span class="badge {{ 'bg-success' if lancamento.tipo == 'Entrada' else 'bg-danger' }}">
+                                            {{ lancamento.tipo }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="ms-2">
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="event.stopPropagation(); buscarSugestoes({{ lancamento.id }}, 'manual')"
+                                            title="Buscar sugestões">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <h5>Nenhum lançamento manual pendente</h5>
+                            <p>Todos os lançamentos manuais já foram conciliados ou não há registros que atendam aos filtros.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de Conciliação -->
+        <div class="col-lg-2">
+            <div class="conciliar-area" id="areaConciliacao">
+                <i class="fas fa-arrows-alt-h fa-2x text-muted mb-3"></i>
+                <h5>Área de Conciliação</h5>
+                <p class="text-muted mb-0">Selecione um lançamento de cada lado para conciliar</p>
+                
+                <div id="detalheConciliacao" class="d-none mt-3">
+                    <div class="alert alert-info mb-3">
+                        <strong>Lançamentos Selecionados:</strong>
+                        <div id="resumoManual" class="mt-2"></div>
+                        <div id="resumoImportado" class="mt-2"></div>
+                    </div>
+                    
+                    <button class="btn btn-success" onclick="confirmarConciliacao()">
+                        <i class="fas fa-link me-1"></i>
+                        Confirmar Conciliação
+                    </button>
+                    <button class="btn btn-outline-secondary ms-2" onclick="cancelarConciliacao()">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lançamentos Importados -->
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white d-flex justify-content-between">
+                    <h5 class="mb-0">
+                        <i class="fas fa-download me-2"></i>
+                        Lançamentos Importados ({{ importados|length }})
+                    </h5>
+                    <button class="btn btn-sm btn-outline-light" onclick="limparSelecaoImportados()">
+                        Limpar Seleção
+                    </button>
+                </div>
+                <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+                    {% if importados %}
+                        {% for lancamento in importados %}
+                        <div class="lancamento-card {{ 'entrada' if lancamento.tipo == 'Entrada' else 'saida' }}" 
+                             data-id="{{ lancamento.id }}" 
+                             data-tipo="importado"
+                             onclick="selecionarLancamento(this, 'importado')">
+                            
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong>{{ lancamento.data_formatada }}</strong>
+                                        <span class="valor-formatado {{ 'valor-entrada' if lancamento.tipo == 'Entrada' else 'valor-saida' }}">
+                                            {{ lancamento.valor_formatado }}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="text-truncate mb-1" title="{{ lancamento.descricao }}">
+                                        {{ lancamento.descricao or 'Sem descrição' }}
+                                    </div>
+                                    
+                                    {% if lancamento.documento_ref %}
+                                    <div class="mb-1">
+                                        <small class="text-muted">Doc: {{ lancamento.documento_ref }}</small>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="mt-2">
+                                        <span class="badge bg-secondary">{{ lancamento.banco_origem or 'N/A' }}</span>
+                                        <span class="badge {{ 'bg-success' if lancamento.tipo == 'Entrada' else 'bg-danger' }}">
+                                            {{ lancamento.tipo }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="ms-2">
+                                    <button class="btn btn-sm btn-outline-info" 
+                                            onclick="event.stopPropagation(); buscarSugestoes({{ lancamento.id }}, 'importado')"
+                                            title="Buscar sugestões">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="p-4 text-center text-muted">
+                            <i class="fas fa-inbox fa-3x mb-3"></i>
+                            <h5>Nenhum lançamento importado pendente</h5>
+                            <p>Todos os lançamentos importados já foram conciliados ou não há registros que atendam aos filtros.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Sugestões -->
+<div class="modal fade" id="modalSugestoes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sugestões de Conciliação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalSugestoesBody">
+                <div class="text-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let manualSelecionado = null;
+let importadoSelecionado = null;
+
+function selecionarLancamento(elemento, tipo) {
+    const id = elemento.dataset.id;
+    
+    if (tipo === 'manual') {
+        // Limpar seleção anterior
+        document.querySelectorAll('[data-tipo="manual"]').forEach(el => {
+            el.classList.remove('selected');
+        });
+        
+        // Selecionar novo
+        elemento.classList.add('selected');
+        manualSelecionado = {
+            id: id,
+            elemento: elemento
+        };
+    } else {
+        // Limpar seleção anterior
+        document.querySelectorAll('[data-tipo="importado"]').forEach(el => {
+            el.classList.remove('selected');
+        });
+        
+        // Selecionar novo
+        elemento.classList.add('selected');
+        importadoSelecionado = {
+            id: id,
+            elemento: elemento
+        };
+    }
+    
+    atualizarAreaConciliacao();
+}
+
+function atualizarAreaConciliacao() {
+    const areaConciliacao = document.getElementById('areaConciliacao');
+    const detalheConciliacao = document.getElementById('detalheConciliacao');
+    const resumoManual = document.getElementById('resumoManual');
+    const resumoImportado = document.getElementById('resumoImportado');
+    
+    if (manualSelecionado && importadoSelecionado) {
+        areaConciliacao.classList.add('ready');
+        detalheConciliacao.classList.remove('d-none');
+        
+        // Preencher resumos
+        const dadosManual = extrairDadosLancamento(manualSelecionado.elemento);
+        const dadosImportado = extrairDadosLancamento(importadoSelecionado.elemento);
+        
+        resumoManual.innerHTML = `
+            <strong>Manual:</strong> ${dadosManual.data} - ${dadosManual.valor} - ${dadosManual.descricao}
+        `;
+        
+        resumoImportado.innerHTML = `
+            <strong>Importado:</strong> ${dadosImportado.data} - ${dadosImportado.valor} - ${dadosImportado.descricao}
+        `;
+    } else {
+        areaConciliacao.classList.remove('ready');
+        detalheConciliacao.classList.add('d-none');
+    }
+}
+
+function extrairDadosLancamento(elemento) {
+    return {
+        data: elemento.querySelector('strong').textContent,
+        valor: elemento.querySelector('.valor-formatado').textContent,
+        descricao: elemento.querySelector('.text-truncate').textContent.slice(0, 30) + '...'
+    };
+}
+
+function confirmarConciliacao() {
+    if (!manualSelecionado || !importadoSelecionado) {
+        alert('Selecione um lançamento de cada lado para conciliar.');
+        return;
+    }
+    
+    if (!confirm('Confirma a criação deste par de conciliação?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/financeiro/conciliacao/criar-par',
+        type: 'POST',
+        data: {
+            manual_id: manualSelecionado.id,
+            importado_id: importadoSelecionado.id
+        },
+        success: function(data) {
+            if (data.success) {
+                alert('Par de conciliação criado com sucesso!');
+                
+                // Remover elementos conciliados da tela
+                manualSelecionado.elemento.remove();
+                importadoSelecionado.elemento.remove();
+                
+                // Limpar seleções
+                manualSelecionado = null;
+                importadoSelecionado = null;
+                
+                atualizarAreaConciliacao();
+                atualizarContadores();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        },
+        error: function() {
+            alert('Erro ao criar par de conciliação. Tente novamente.');
+        }
+    });
+}
+
+function cancelarConciliacao() {
+    limparSelecaoManuais();
+    limparSelecaoImportados();
+}
+
+function limparSelecaoManuais() {
+    document.querySelectorAll('[data-tipo="manual"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+    manualSelecionado = null;
+    atualizarAreaConciliacao();
+}
+
+function limparSelecaoImportados() {
+    document.querySelectorAll('[data-tipo="importado"]').forEach(el => {
+        el.classList.remove('selected');
+    });
+    importadoSelecionado = null;
+    atualizarAreaConciliacao();
+}
+
+function atualizarContadores() {
+    // Atualizar contadores nos cabeçalhos dos cards
+    const totalManuais = document.querySelectorAll('[data-tipo="manual"]').length;
+    const totalImportados = document.querySelectorAll('[data-tipo="importado"]').length;
+    
+    document.querySelector('.card-header .bg-primary h5').innerHTML = 
+        `<i class="fas fa-edit me-2"></i>Lançamentos Manuais (${totalManuais})`;
+    
+    document.querySelector('.card-header .bg-info h5').innerHTML = 
+        `<i class="fas fa-download me-2"></i>Lançamentos Importados (${totalImportados})`;
+}
+
+function buscarSugestoes(lancamentoId, origem) {
+    $('#modalSugestoes').modal('show');
+    
+    $.ajax({
+        url: `/financeiro/conciliacao/api/sugestoes/${lancamentoId}`,
+        type: 'GET',
+        success: function(data) {
+            if (data.sugestoes && data.sugestoes.length > 0) {
+                let html = '<div class="sugestoes-panel">';
+                
+                data.sugestoes.forEach(function(sugestao, index) {
+                    let compatibilidade = sugestao.compatibilidade;
+                    let badgeClass = compatibilidade === 'alta' ? 'success' : (compatibilidade === 'media' ? 'warning' : 'danger');
+                    
+                    html += `
+                        <div class="sugestao-item" onclick="aplicarSugestao(${lancamentoId}, ${sugestao.lancamento.id}, '${origem}')">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong>${new Date(sugestao.lancamento.data).toLocaleDateString('pt-BR')}</strong>
+                                        <span class="fw-bold ${sugestao.lancamento.tipo === 'Entrada' ? 'text-success' : 'text-danger'}">
+                                            R$ ${sugestao.lancamento.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                                        </span>
+                                    </div>
+                                    <div class="text-truncate mb-2">${sugestao.lancamento.descricao}</div>
+                                    <div>
+                                        <span class="badge bg-${badgeClass} score-badge">${sugestao.score}</span>
+                                        <small class="text-muted ms-2">${sugestao.regra.replace('_', ' ')}</small>
+                                    </div>
+                                </div>
+                                <div class="ms-2">
+                                    <i class="fas fa-arrow-right text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                $('#modalSugestoesBody').html(html);
+            } else {
+                $('#modalSugestoesBody').html(`
+                    <div class="text-center p-4">
+                        <i class="fas fa-info-circle fa-3x text-info mb-3"></i>
+                        <h5>Nenhuma sugestão encontrada</h5>
+                        <p class="text-muted">Não foram encontradas sugestões automáticas para este lançamento.</p>
+                    </div>
+                `);
+            }
+        },
+        error: function() {
+            $('#modalSugestoesBody').html(`
+                <div class="text-center p-4">
+                    <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                    <h5>Erro ao buscar sugestões</h5>
+                    <p class="text-muted">Ocorreu um erro ao buscar sugestões. Tente novamente.</p>
+                </div>
+            `);
+        }
+    });
+}
+
+function aplicarSugestao(lancamento1Id, lancamento2Id, origem) {
+    $('#modalSugestoes').modal('hide');
+    
+    let manualId, importadoId;
+    
+    if (origem === 'manual') {
+        manualId = lancamento1Id;
+        importadoId = lancamento2Id;
+    } else {
+        manualId = lancamento2Id;
+        importadoId = lancamento1Id;
+    }
+    
+    if (!confirm('Confirma a criação deste par de conciliação baseado na sugestão?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/financeiro/conciliacao/criar-par',
+        type: 'POST',
+        data: {
+            manual_id: manualId,
+            importado_id: importadoId
+        },
+        success: function(data) {
+            if (data.success) {
+                alert('Par de conciliação criado com sucesso!');
+                location.reload(); // Recarregar para atualizar a lista
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        },
+        error: function() {
+            alert('Erro ao criar par de conciliação. Tente novamente.');
+        }
+    });
+}
+
+// Atalhos de teclado
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        cancelarConciliacao();
+    } else if (e.key === 'Enter' && e.ctrlKey) {
+        confirmarConciliacao();
+    }
+});
+
+// Tooltip para indicar atalhos
+document.addEventListener('DOMContentLoaded', function() {
+    // Adicionar dica de atalhos
+    const areaConciliacao = document.getElementById('areaConciliacao');
+    areaConciliacao.title = 'Atalhos: ESC para cancelar, Ctrl+Enter para confirmar';
+});
+</script>
+{% endblock %}

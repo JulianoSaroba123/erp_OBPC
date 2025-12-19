@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Visualizar Ofício{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho da página -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fa-solid fa-file-signature text-primary me-2"></i>
+                        Detalhes do Ofício {{ oficio.numero }}
+                    </h4>
+                    <p class="text-muted mb-0">Visualize as informações detalhadas do ofício</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('oficios.editar_oficio', id=oficio.id) }}" class="btn btn-primary me-2">
+                        <i class="fa-solid fa-edit me-1"></i> Editar
+                    </a>
+                    <a href="{{ url_for('oficios.lista_oficios') }}" class="btn btn-secondary">
+                        <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+                    </a>
+                </div>
+            </div>
+
+            <!-- Detalhes do ofício -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa-solid fa-info-circle me-2"></i>
+                        Informações do Ofício
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Coluna esquerda -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Número:</label>
+                                <p class="text-primary fw-bold fs-5 mb-0">{{ oficio.numero }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Data de Criação:</label>
+                                <p class="mb-0">{{ oficio.data.strftime('%d/%m/%Y') }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Destinatário:</label>
+                                <p class="mb-0">{{ oficio.destinatario }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Status:</label>
+                                <div>
+                                    {% if oficio.status == 'Emitido' %}
+                                        <span class="badge bg-info fs-6">{{ oficio.status }}</span>
+                                    {% elif oficio.status == 'Enviado' %}
+                                        <span class="badge bg-warning fs-6">{{ oficio.status }}</span>
+                                    {% elif oficio.status == 'Respondido' %}
+                                        <span class="badge bg-primary fs-6">{{ oficio.status }}</span>
+                                    {% elif oficio.status == 'Atendido' %}
+                                        <span class="badge bg-success fs-6">{{ oficio.status }}</span>
+                                    {% elif oficio.status == 'Cancelado' %}
+                                        <span class="badge bg-danger fs-6">{{ oficio.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-6">{{ oficio.status }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Coluna direita -->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Assunto:</label>
+                                <p class="mb-0">{{ oficio.assunto }}</p>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Descrição:</label>
+                                <div class="border rounded p-3 bg-light">
+                                    <p class="mb-0" style="white-space: pre-wrap;">{{ oficio.descricao }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ações -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa-solid fa-cogs me-2"></i>
+                        Ações Disponíveis
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('oficios.gerar_pdf_oficio', id=oficio.id) }}" 
+                               class="btn btn-danger w-100" target="_blank">
+                                <i class="fa-solid fa-file-pdf me-2"></i>
+                                Gerar PDF
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('oficios.editar_oficio', id=oficio.id) }}" 
+                               class="btn btn-primary w-100">
+                                <i class="fa-solid fa-edit me-2"></i>
+                                Editar Ofício
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="dropdown w-100">
+                                <button class="btn btn-info dropdown-toggle w-100" type="button" 
+                                        data-bs-toggle="dropdown">
+                                    <i class="fa-solid fa-cog me-2"></i>
+                                    Alterar Status
+                                </button>
+                                <ul class="dropdown-menu w-100">
+                                    {% for status_opcao in ['Emitido', 'Enviado', 'Respondido', 'Atendido', 'Cancelado'] %}
+                                    <li>
+                                        <form method="POST" 
+                                              action="{{ url_for('oficios.atualizar_status', id=oficio.id) }}" 
+                                              style="display: inline;">
+                                            <input type="hidden" name="status" value="{{ status_opcao }}">
+                                            <button type="submit" class="dropdown-item">
+                                                {{ status_opcao }}
+                                            </button>
+                                        </form>
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <form method="POST" 
+                                  action="{{ url_for('oficios.excluir_oficio', id=oficio.id) }}" 
+                                  onsubmit="return confirm('Tem certeza que deseja excluir o ofício {{ oficio.numero }}?')"
+                                  class="w-100">
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="fa-solid fa-trash me-2"></i>
+                                    Excluir
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge {
+    font-size: 0.875rem;
+}
+
+.form-label {
+    color: #495057;
+    margin-bottom: 0.25rem;
+}
+
+.card-header h6 {
+    color: #495057;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+</style>
+{% endblock %}

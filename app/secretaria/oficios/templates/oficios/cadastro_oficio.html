@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if editando %}Editar Ofício{% else %}Novo Ofício{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Breadcrumb -->
+            <nav aria-label="breadcrumb" class="mb-4">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('oficios.lista_oficios') }}">Ofícios</a>
+                    </li>
+                    <li class="breadcrumb-item active">
+                        {% if editando %}Editar Ofício{% else %}Novo Ofício{% endif %}
+                    </li>
+                </ol>
+            </nav>
+
+            <!-- Formulário principal -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fa-solid fa-file-signature me-2"></i>
+                        {% if editando %}
+                            Editar Ofício: {{ oficio.numero }}
+                        {% else %}
+                            Novo Ofício de Solicitação de Doação
+                        {% endif %}
+                    </h5>
+                </div>
+                
+                <div class="card-body p-4">
+                    {% if editando %}
+                    <div class="alert alert-info mb-4">
+                        <i class="fa-solid fa-info-circle me-2"></i>
+                        <strong>Editando:</strong> {{ oficio.numero }} - {{ oficio.data.strftime('%d/%m/%Y') }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('oficios.salvar_oficio') }}">
+                        {% if editando %}
+                        <input type="hidden" name="id" value="{{ oficio.id }}">
+                        {% endif %}
+                        
+                        <div class="row">
+                            <!-- Destinatário -->
+                            <div class="col-md-6 mb-3">
+                                <label for="destinatario" class="form-label">
+                                    <i class="fa-solid fa-user me-1"></i> Destinatário *
+                                </label>
+                                <input type="text" class="form-control" name="destinatario" 
+                                       id="destinatario" required maxlength="200"
+                                       value="{% if editando %}{{ oficio.destinatario }}{% endif %}"
+                                       placeholder="Nome da pessoa, empresa ou órgão">
+                                <div class="form-text">Para quem será dirigido o ofício</div>
+                            </div>
+
+                            <!-- Status (apenas na edição) -->
+                            {% if editando %}
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">
+                                    <i class="fa-solid fa-flag me-1"></i> Status
+                                </label>
+                                <select name="status" id="status" class="form-select">
+                                    {% for status_opcao in oficio.get_status_options() %}
+                                    <option value="{{ status_opcao }}" 
+                                            {% if status_opcao == oficio.status %}selected{% endif %}>
+                                        {{ status_opcao }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+
+                            <!-- Assunto -->
+                            <div class="col-md-12 mb-3">
+                                <label for="assunto" class="form-label">
+                                    <i class="fa-solid fa-tag me-1"></i> Assunto *
+                                </label>
+                                <input type="text" class="form-control" name="assunto" 
+                                       id="assunto" required maxlength="300"
+                                       value="{% if editando %}{{ oficio.assunto }}{% endif %}"
+                                       placeholder="Ex: Solicitação de Apoio para Evento Beneficente">
+                                <div class="form-text">Tema principal do ofício</div>
+                            </div>
+
+                            <!-- Descrição -->
+                            <div class="col-md-12 mb-4">
+                                <label for="descricao" class="form-label">
+                                    <i class="fa-solid fa-file-text me-1"></i> Descrição da Solicitação *
+                                </label>
+                                <textarea class="form-control" name="descricao" id="descricao" 
+                                          rows="8" required 
+                                          placeholder="Descreva detalhadamente a solicitação, incluindo:&#10;- Motivo da solicitação&#10;- Tipo de apoio necessário&#10;- Benefícios esperados&#10;- Informações relevantes do evento/projeto">{% if editando %}{{ oficio.descricao }}{% endif %}</textarea>
+                                <div class="form-text">
+                                    Detalhe o pedido de forma clara e objetiva. 
+                                    Este texto aparecerá no corpo do ofício oficial.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Informações adicionais -->
+                        <div class="alert alert-light">
+                            <h6 class="alert-heading">
+                                <i class="fa-solid fa-lightbulb me-2"></i> Informações Importantes
+                            </h6>
+                            <ul class="mb-0">
+                                <li><strong>Numeração:</strong> {% if editando %}Já atribuído: {{ oficio.numero }}{% else %}Será gerada automaticamente (ex: OF-2025-001){% endif %}</li>
+                                <li><strong>Data:</strong> {% if editando %}{{ oficio.data.strftime('%d/%m/%Y') }}{% else %}Data atual será usada{% endif %}</li>
+                                <li><strong>PDF:</strong> Será gerado automaticamente com layout institucional</li>
+                                <li><strong>Status:</strong> {% if editando %}Pode ser alterado{% else %}Iniciará como "Emitido"{% endif %}</li>
+                            </ul>
+                        </div>
+
+                        <!-- Botões de ação -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('oficios.lista_oficios') }}" class="btn btn-secondary">
+                                <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+                            </a>
+                            
+                            <div>
+                                {% if editando %}
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fa-solid fa-save me-1"></i> Salvar Alterações
+                                </button>
+                                <a href="{{ url_for('oficios.gerar_pdf_oficio', id=oficio.id) }}" 
+                                   class="btn btn-danger" target="_blank">
+                                    <i class="fa-solid fa-file-pdf me-1"></i> Gerar PDF
+                                </a>
+                                {% else %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa-solid fa-file-signature me-1"></i> Criar Ofício
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Prévia do resultado -->
+            {% if not editando %}
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fa-solid fa-eye me-2"></i> Prévia do Ofício
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="border rounded p-3 bg-light">
+                        <div class="text-center mb-3">
+                            <strong>OBPC/strong><br>
+                            <small class="text-muted">Rua das Flores, 123 - Tietê - SP</small>
+                        </div>
+                        <hr>
+                        <div class="text-center mb-3">
+                            <h6><strong>OFÍCIO DE SOLICITAÇÃO</strong></h6>
+                        </div>
+                        <p><strong>Para:</strong> <span id="preview-destinatario" class="text-muted">[Destinatário]</span></p>
+                        <p><strong>Assunto:</strong> <span id="preview-assunto" class="text-muted">[Assunto]</span></p>
+                        <p><strong>Descrição:</strong></p>
+                        <div id="preview-descricao" class="text-muted fst-italic">
+                            [Descrição da solicitação...]
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Prévia em tempo real (apenas para novo ofício)
+{% if not editando %}
+document.addEventListener('DOMContentLoaded', function() {
+    const destinatario = document.getElementById('destinatario');
+    const assunto = document.getElementById('assunto');
+    const descricao = document.getElementById('descricao');
+    
+    const previewDestinatario = document.getElementById('preview-destinatario');
+    const previewAssunto = document.getElementById('preview-assunto');
+    const previewDescricao = document.getElementById('preview-descricao');
+    
+    function updatePreview() {
+        previewDestinatario.textContent = destinatario.value || '[Destinatário]';
+        previewAssunto.textContent = assunto.value || '[Assunto]';
+        previewDescricao.textContent = descricao.value || '[Descrição da solicitação...]';
+    }
+    
+    destinatario.addEventListener('input', updatePreview);
+    assunto.addEventListener('input', updatePreview);
+    descricao.addEventListener('input', updatePreview);
+});
+{% endif %}
+
+// Validação do formulário
+document.querySelector('form').addEventListener('submit', function(e) {
+    const destinatario = document.getElementById('destinatario').value.trim();
+    const assunto = document.getElementById('assunto').value.trim();
+    const descricao = document.getElementById('descricao').value.trim();
+    
+    if (!destinatario || !assunto || !descricao) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return false;
+    }
+    
+    if (descricao.length < 20) {
+        e.preventDefault();
+        alert('A descrição deve ter pelo menos 20 caracteres.');
+        return false;
+    }
+});
+</script>
+
+<style>
+.form-text {
+    font-size: 0.875rem;
+}
+
+.alert-light {
+    background-color: #f8f9fa;
+    border-color: #dee2e6;
+}
+
+#preview-destinatario,
+#preview-assunto,
+#preview-descricao {
+    transition: color 0.3s ease;
+}
+
+.card-header {
+    font-weight: 500;
+}
+
+textarea {
+    resize: vertical;
+    min-height: 150px;
+}
+</style>
+{% endblock %}

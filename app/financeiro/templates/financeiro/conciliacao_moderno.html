@@ -1,0 +1,481 @@
+{% extends "base.html" %}
+
+{% block title %}Conciliação Bancária - OBPC{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financeiro-moderno.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="conciliacao-container">
+    <div class="container-fluid">
+        <!-- Header da Conciliação -->
+        <div class="financial-dashboard fade-in-up">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1 class="h2 mb-2">
+                        <i class="fas fa-balance-scale me-3"></i>
+                        Conciliação Bancária
+                    </h1>
+                    <p class="mb-0 opacity-75">
+                        Identifique e concilie automaticamente lançamentos manuais com extratos bancários
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="btn-group">
+                        <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="btn btn-modern outline">
+                            <i class="fas fa-chart-line me-2"></i>Dashboard
+                        </a>
+                        <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-modern primary">
+                            <i class="fas fa-list me-2"></i>Lançamentos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estatísticas de Conciliação -->
+        <div class="row mb-4">
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card success fade-in-up">
+                    <div class="metric-icon text-success-custom">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                    <div class="metric-value">{{ historicos|length if historicos else 0 }}</div>
+                    <div class="metric-label">Conciliações Realizadas</div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card warning fade-in-up">
+                    <div class="metric-icon text-warning-custom">
+                        <i class="fas fa-file-import"></i>
+                    </div>
+                    <div class="metric-value">{{ importados|length if importados else 0 }}</div>
+                    <div class="metric-label">Importados Pendentes</div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card info fade-in-up">
+                    <div class="metric-icon text-info">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="metric-value">{{ sugestoes|length if sugestoes else 0 }}</div>
+                    <div class="metric-label">Sugestões Geradas</div>
+                </div>
+            </div>
+            
+            <div class="col-lg-3 col-md-6 mb-3">
+                <div class="metric-card primary fade-in-up">
+                    <div class="metric-icon" style="color: var(--primary-color)">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="metric-value">{{ '%.0f'|format(taxa_conciliacao if taxa_conciliacao else 0) }}%</div>
+                    <div class="metric-label">Taxa de Conciliação</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ações de Conciliação -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="financial-card fade-in-up">
+                    <div class="financial-card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cogs me-2"></i>
+                            Ações de Conciliação
+                        </h5>
+                    </div>
+                    <div class="financial-card-body">
+                        <div class="row g-3">
+                            <!-- Conciliação Automática -->
+                            <div class="col-md-6">
+                                <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}">
+                                    <button class="btn btn-modern success w-100" type="submit">
+                                        <i class="fas fa-magic me-2"></i>
+                                        Conciliação Automática
+                                    </button>
+                                </form>
+                                <small class="text-muted">Concilia automaticamente com base em critérios rígidos</small>
+                            </div>
+                            
+                            <!-- Gerar Sugestões -->
+                            <div class="col-md-6">
+                                <button class="btn btn-modern primary w-100" data-bs-toggle="modal" data-bs-target="#modalSugestoes">
+                                    <i class="fas fa-lightbulb me-2"></i>
+                                    Gerar Sugestões Inteligentes
+                                </button>
+                                <small class="text-muted">Analisa e sugere possíveis correspondências</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sugestões de Conciliação -->
+        {% if sugestoes %}
+        <div class="financial-card fade-in-up mb-4">
+            <div class="financial-card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-brain me-2"></i>
+                        Sugestões Inteligentes de Conciliação
+                    </h5>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-light btn-sm" onclick="selecionarTodos()">
+                            <i class="fas fa-check-square me-1"></i>Selecionar Todos
+                        </button>
+                        <button class="btn btn-outline-light btn-sm" onclick="aceitarSelecionados()">
+                            <i class="fas fa-check me-1"></i>Aceitar Selecionados
+                        </button>
+                        <button class="btn btn-outline-light btn-sm" onclick="exportarSelecionados()">
+                            <i class="fas fa-download me-1"></i>Exportar CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="financial-card-body">
+                <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}">
+                    <input type="hidden" name="pairs" id="pairs-field" />
+                </form>
+                
+                {% for s in sugestoes %}
+                <div class="suggestion-card">
+                    <div class="suggestion-header">
+                        <div class="row align-items-center">
+                            <div class="col-md-1">
+                                <input type="checkbox" class="pair-checkbox form-check-input" 
+                                       data-imp="{{ s.imp_id }}" data-man="{{ s.man_id }}" 
+                                       id="pair-{{ loop.index }}">
+                            </div>
+                            <div class="col-md-2">
+                                <span class="score-badge {{ 'score-high' if s.score >= 80 else 'score-medium' if s.score >= 60 else 'score-low' }}">
+                                    Score: {{ '%.0f'|format(s.score) }}%
+                                </span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Correspondência {{ loop.index }}</strong>
+                                <div class="small text-muted">IDs: {{ s.imp_id }} ↔ {{ s.man_id }}</div>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-success" onclick="aceitarPar({{ s.imp_id }}, {{ s.man_id }})">
+                                        <i class="fas fa-check me-1"></i>Aceitar
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="rejeitarPar({{ loop.index }})">
+                                        <i class="fas fa-times me-1"></i>Rejeitar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="suggestion-body">
+                        <div class="row">
+                            <!-- Lançamento Importado -->
+                            <div class="col-md-6">
+                                <div class="card border-primary h-100">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-download me-2"></i>
+                                            Lançamento Importado
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Data:</strong> {{ s.data_imp.strftime('%d/%m/%Y') if s.data_imp else 'N/A' }}</p>
+                                        <p><strong>Descrição:</strong> {{ s.desc_imp or 'N/A' }}</p>
+                                        <p><strong>Valor:</strong> 
+                                            <span class="fw-bold text-primary">R$ {{ '%.2f'|format(s.valor_imp) if s.valor_imp else '0.00' }}</span>
+                                        </p>
+                                        <p><strong>Banco:</strong> {{ s.banco_imp or 'N/A' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Lançamento Manual -->
+                            <div class="col-md-6">
+                                <div class="card border-success h-100">
+                                    <div class="card-header bg-success text-white">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-edit me-2"></i>
+                                            Lançamento Manual
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p><strong>Data:</strong> {{ s.data_man.strftime('%d/%m/%Y') if s.data_man else 'N/A' }}</p>
+                                        <p><strong>Descrição:</strong> {{ s.desc_man or 'N/A' }}</p>
+                                        <p><strong>Valor:</strong> 
+                                            <span class="fw-bold text-success">R$ {{ '%.2f'|format(s.valor_man) if s.valor_man else '0.00' }}</span>
+                                        </p>
+                                        <p><strong>Categoria:</strong> {{ s.categoria_man or 'N/A' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Detalhes da Análise -->
+                        <div class="mt-3 p-3 bg-light rounded">
+                            <h6 class="text-muted mb-2">
+                                <i class="fas fa-search me-2"></i>
+                                Análise da Correspondência
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <small><strong>Diferença de Data:</strong></small>
+                                    <div>{{ s.diff_dias if s.diff_dias is defined else 'N/A' }} dias</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <small><strong>Diferença de Valor:</strong></small>
+                                    <div>{{ '%.2f'|format(s.diff_valor) if s.diff_valor is defined else 'N/A' }}%</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <small><strong>Similaridade Texto:</strong></small>
+                                    <div>{{ '%.0f'|format(s.sim_texto * 100) if s.sim_texto is defined else 'N/A' }}%</div>
+                                </div>
+                                <div class="col-md-3">
+                                    <small><strong>Regra Aplicada:</strong></small>
+                                    <div>{{ s.regra or 'Automática' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Lançamentos Pendentes -->
+        <div class="row">
+            <!-- Importados Pendentes -->
+            <div class="col-lg-6 mb-4">
+                <div class="financial-card fade-in-up">
+                    <div class="financial-card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-import me-2"></i>
+                            Importados Pendentes ({{ importados|length if importados else 0 }})
+                        </h5>
+                    </div>
+                    <div class="financial-card-body p-0">
+                        <div class="modern-table-container" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Data</th>
+                                        <th>Descrição</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for l in importados %}
+                                    <tr>
+                                        <td>{{ l.id }}</td>
+                                        <td>{{ l.data.strftime('%d/%m/%Y') if l.data else '-' }}</td>
+                                        <td title="{{ l.descricao }}">{{ l.descricao[:30] }}{{ '...' if l.descricao|length > 30 else '' }}</td>
+                                        <td class="fw-bold text-primary">R$ {{ '%.2f'|format(l.valor) }}</td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4">
+                                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                            <div class="text-muted">Todos os importados foram conciliados</div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Histórico de Conciliações -->
+            <div class="col-lg-6 mb-4">
+                <div class="financial-card fade-in-up">
+                    <div class="financial-card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history me-2"></i>
+                            Histórico de Conciliações
+                        </h5>
+                    </div>
+                    <div class="financial-card-body p-0">
+                        <div class="modern-table-container" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Usuário</th>
+                                        <th>Conciliados</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for h in historicos %}
+                                    <tr>
+                                        <td>{{ h.data_conciliacao.strftime('%d/%m %H:%M') }}</td>
+                                        <td>{{ h.usuario }}</td>
+                                        <td>
+                                            <span class="badge bg-success">{{ h.total_conciliados }}</span>
+                                        </td>
+                                        <td>
+                                            <form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" 
+                                                  class="d-inline" onsubmit="return confirm('Deseja desfazer a conciliação #{{ h.id }}?')">
+                                                <button class="btn btn-outline-warning btn-sm" title="Desfazer">
+                                                    <i class="fas fa-undo"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4">
+                                            <i class="fas fa-clock fa-2x text-muted mb-2"></i>
+                                            <div class="text-muted">Nenhuma conciliação realizada ainda</div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Configuração de Sugestões -->
+<div class="modal fade" id="modalSugestoes" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cog me-2"></i>
+                    Configurar Sugestões Inteligentes
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Janela de Dias</label>
+                        <input type="number" name="days_window" value="{{ params.days_window if params else 7 }}" 
+                               class="form-control" min="1" max="30">
+                        <small class="text-muted">Diferença máxima em dias entre as datas</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tolerância de Valor (%)</label>
+                        <input type="number" step="0.01" name="value_tol_pct" value="{{ params.value_tol_pct if params else 5.0 }}" 
+                               class="form-control" min="0" max="100">
+                        <small class="text-muted">Percentual máximo de diferença entre valores</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Limite de Similaridade</label>
+                        <input type="number" step="0.01" name="desc_thresh" value="{{ params.desc_thresh if params else 0.3 }}" 
+                               class="form-control" min="0" max="1">
+                        <small class="text-muted">Similaridade mínima entre descrições (0-1)</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-2"></i>Gerar Sugestões
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function selecionarTodos() {
+    $('.pair-checkbox').prop('checked', true);
+}
+
+function aceitarSelecionados() {
+    const pares = [];
+    $('.pair-checkbox:checked').each(function() {
+        pares.push({
+            imp_id: $(this).data('imp'),
+            man_id: $(this).data('man')
+        });
+    });
+    
+    if (pares.length === 0) {
+        alert('Selecione pelo menos um par para aceitar.');
+        return;
+    }
+    
+    $('#pairs-field').val(JSON.stringify(pares));
+    $('#aceitar-todos-form').submit();
+}
+
+function exportarSelecionados() {
+    const pares = [];
+    $('.pair-checkbox:checked').each(function() {
+        pares.push({
+            imp_id: $(this).data('imp'),
+            man_id: $(this).data('man')
+        });
+    });
+    
+    if (pares.length === 0) {
+        alert('Selecione pelo menos um par para exportar.');
+        return;
+    }
+    
+    // Criar formulário para exportar
+    const form = $('<form>', {
+        method: 'POST',
+        action: '{{ url_for("financeiro.conciliacao_export_pairs") }}'
+    });
+    
+    form.append($('<input>', {
+        type: 'hidden',
+        name: 'pairs',
+        value: JSON.stringify(pares)
+    }));
+    
+    $('body').append(form);
+    form.submit();
+    form.remove();
+}
+
+function aceitarPar(impId, manId) {
+    const form = $('<form>', {
+        method: 'POST',
+        action: '{{ url_for("financeiro.conciliacao_aceitar") }}'
+    });
+    
+    form.append($('<input>', {
+        type: 'hidden',
+        name: 'imp_id',
+        value: impId
+    }));
+    
+    form.append($('<input>', {
+        type: 'hidden',
+        name: 'man_id',
+        value: manId
+    }));
+    
+    $('body').append(form);
+    form.submit();
+}
+
+function rejeitarPar(index) {
+    $(`#pair-${index}`).closest('.suggestion-card').fadeOut();
+}
+
+$(document).ready(function() {
+    // Animação dos cards com delay
+    $('.fade-in-up').each(function(index) {
+        $(this).css('animation-delay', (index * 0.1) + 's');
+    });
+});
+</script>
+{% endblock %}

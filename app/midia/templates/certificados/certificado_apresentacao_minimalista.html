@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Certificado - {{ certificado.tipo_certificado }}{% endblock %}
+
+{% block content %}
+<div class="certificate-container" style="background: #f5f5f5; min-height: 100vh; padding: 20px; display: flex; align-items: center; justify-content: center;">
+    <div class="certificate-page" style="
+        width: 842px; 
+        height: 595px; 
+        background: linear-gradient(135deg, #ffffff 0%, #fef7f7 100%);
+        box-shadow: 0 0 30px rgba(0,0,0,0.2);
+        position: relative;
+        overflow: hidden;
+        font-family: 'Georgia', serif;
+        border-radius: 8px;
+    ">
+        
+        <!-- Decoração de fundo sutil baseada no gênero -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.05;">
+            {% if certificado.genero == 'feminino' %}
+            <div style="position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: #E91E63; border-radius: 50%;"></div>
+            <div style="position: absolute; top: 400px; right: 30px; width: 80px; height: 80px; background: #F48FB1; border-radius: 50%;"></div>
+            <div style="position: absolute; top: 200px; right: 100px; width: 60px; height: 60px; background: #E91E63; border-radius: 50%;"></div>
+            {% else %}
+            <div style="position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: #4A90E2; border-radius: 50%;"></div>
+            <div style="position: absolute; top: 400px; right: 30px; width: 80px; height: 80px; background: #7BB3F0; border-radius: 50%;"></div>
+            <div style="position: absolute; top: 200px; right: 100px; width: 60px; height: 60px; background: #4A90E2; border-radius: 50%;"></div>
+            {% endif %}
+        </div>
+
+        <!-- Borda decorativa minimalista baseada no gênero -->
+        <div style="
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            right: 20px; 
+            bottom: 20px; 
+            border: 2px solid {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};
+            border-radius: 10px;
+        "></div>
+
+        <!-- Conteúdo do certificado -->
+        <div style="position: relative; z-index: 1; padding: 60px; height: 100%; display: flex; flex-direction: column; justify-content: space-between;">
+            
+            <!-- Cabeçalho com logo GRANDE -->
+            <div style="text-align: center;">
+                <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
+                     alt="Logo da Igreja" 
+                     style="height: 120px; max-width: 180px; object-fit: contain; margin-bottom: 20px;"
+                     onerror="this.style.display='none'">
+                
+                <h1 style="
+                    color: {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};
+                    font-size: 28px;
+                    font-weight: 300;
+                    margin: 0 0 15px 0;
+                    letter-spacing: 3px;
+                    text-transform: uppercase;
+                    font-family: 'Georgia', serif;
+                ">Certificado de</h1>
+                
+                <h2 style="
+                    color: {% if certificado.genero == 'feminino' %}#C2185B{% else %}#1976D2{% endif %};
+                    font-size: 36px;
+                    font-weight: bold;
+                    margin: 0 0 30px 0;
+                    letter-spacing: 2px;
+                    text-transform: uppercase;
+                ">Apresentação</h2>
+            </div>
+
+            <!-- Conteúdo principal -->
+            <div style="text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                
+                <!-- Texto de certificação -->
+                <p style="
+                    color: #333;
+                    font-size: 16px;
+                    line-height: 1.6;
+                    margin-bottom: 25px;
+                    font-style: italic;
+                ">
+                    Certificamos que a criança
+                </p>
+                
+                <!-- Nome da criança em destaque baseado no gênero -->
+                <div style="
+                    {% if certificado.genero == 'feminino' %}
+                    background: linear-gradient(90deg, #E91E63, #F48FB1);
+                    {% else %}
+                    background: linear-gradient(90deg, #4A90E2, #7BB3F0);
+                    {% endif %}
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    font-size: 32px;
+                    font-weight: bold;
+                    margin: 20px 0;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    border-bottom: 2px solid {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};
+                    display: inline-block;
+                    padding-bottom: 5px;
+                ">{{ certificado.nome_pessoa }}</div>
+                
+                <!-- Texto principal -->
+                <p style="
+                    color: #333;
+                    font-size: 16px;
+                    line-height: 1.8;
+                    margin: 25px 0;
+                    max-width: 500px;
+                    margin-left: auto;
+                    margin-right: auto;
+                ">
+                    foi apresentada ao Senhor Jesus Cristo em 
+                    <strong style="color: {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
+                    seguindo o exemplo bíblico, sendo consagrada para uma vida de bênçãos e proteção divina.
+                </p>
+                
+                <!-- Padrinhos se existir - com cores por gênero -->
+                {% if certificado.padrinhos %}
+                <div style="
+                    {% if certificado.genero == 'feminino' %}
+                    background: #fef7f7;
+                    border-left: 4px solid #E91E63;
+                    {% else %}
+                    background: #f0f8ff;
+                    border-left: 4px solid #4A90E2;
+                    {% endif %}
+                    padding: 15px 20px;
+                    margin: 25px auto;
+                    border-radius: 0 10px 10px 0;
+                    max-width: 400px;
+                ">
+                    <p style="margin: 0; color: #333; font-size: 14px;">
+                        <strong style="color: {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};">Padrinhos:</strong><br>
+                        <span style="font-style: italic;">{{ certificado.padrinhos }}</span>
+                    </p>
+                </div>
+                {% endif %}
+                
+                <!-- Versículo bíblico minimalista com cores por gênero -->
+                <div style="
+                    margin-top: 30px;
+                    padding: 20px;
+                    border-top: 1px solid {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};
+                    border-bottom: 1px solid {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};
+                ">
+                    <p style="
+                        color: {% if certificado.genero == 'feminino' %}#C2185B{% else %}#1976D2{% endif %};
+                        font-size: 14px;
+                        font-style: italic;
+                        margin: 0;
+                        line-height: 1.5;
+                    ">
+                        "Deixem vir a mim as crianças, não as impeçam;<br>
+                        pois o Reino dos céus pertence aos que são semelhantes a elas."
+                    </p>
+                    <p style="
+                        color: {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};
+                        font-size: 12px;
+                        font-weight: bold;
+                        margin: 8px 0 0 0;
+                        text-align: right;
+                    ">
+                        — Mateus 19:14
+                    </p>
+                </div>
+            </div>
+
+            <!-- Rodapé minimalista -->
+            <div style="display: flex; justify-content: space-between; align-items: end; margin-top: 30px;">
+                <!-- Local e data -->
+                <div style="text-align: left;">
+                    <p style="color: #666; font-size: 12px; margin: 0; line-height: 1.4;">
+                        <strong>Local:</strong> {{ certificado.local_evento or 'Igreja OBPC - Tietê' }}<br>
+                        <strong>Pastor:</strong> {{ certificado.pastor_responsavel or 'Pastor Responsável' }}
+                    </p>
+                </div>
+                
+                <!-- Linha de assinatura com cor por gênero -->
+                <div style="text-align: center; min-width: 200px;">
+                    <div style="border-top: 1px solid {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %}; margin-bottom: 5px;"></div>
+                    <p style="color: #666; font-size: 11px; margin: 0;">Assinatura do Pastor</p>
+                </div>
+            </div>
+            
+            <!-- Endereço da igreja -->
+            <div style="text-align: center; margin-top: 20px;">
+                <p style="color: #999; font-size: 10px; margin: 0;">
+                    Igreja O Brasil Para Cristo • Rua Egídio Módulo, 261 • Tietê/SP
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botões de ação -->
+    <div style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">
+        <a href="{{ url_for('midia.listar_certificados') }}" 
+           class="btn btn-outline-primary me-3"
+           style="text-decoration: none;">
+            <i class="fas fa-arrow-left me-2"></i>Voltar
+        </a>
+        
+        <button onclick="window.print()" 
+                class="btn btn-primary"
+                style="background: {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %}; border: none;">
+            <i class="fas fa-print me-2"></i>Imprimir
+        </button>
+    </div>
+</div>
+
+<style>
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    
+    .certificate-container,
+    .certificate-container * {
+        visibility: visible;
+    }
+    
+    .certificate-container {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        display: block !important;
+    }
+    
+    .certificate-page {
+        box-shadow: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid;
+        border-radius: 0 !important;
+    }
+    
+    .btn {
+        display: none !important;
+    }
+}
+
+@page {
+    size: A4 landscape;
+    margin: 0.5in;
+}
+
+/* Melhorar legibilidade */
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Gradiente para nome quando não suportado */
+@supports not (-webkit-background-clip: text) {
+    .certificate-page div[style*="background-clip: text"] {
+        color: #4A90E2 !important;
+        background: none !important;
+    }
+}
+</style>
+
+<script>
+// Formatação de data em português
+window.addEventListener('beforeprint', function() {
+    document.title = 'Certificado de Apresentação - {{ certificado.nome_pessoa }}';
+});
+</script>
+{% endblock %}

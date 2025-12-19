@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificado de {{ certificado.tipo_certificado }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        
+        body {
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        .certificado {
+            background: white;
+            border: 8px solid #0b1b3a;
+            border-radius: 20px;
+            padding: 40px;
+            margin: 0 auto;
+            max-width: 700px;
+            min-height: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .certificado::before {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            pointer-events: none;
+        }
+        
+        .cabecalho {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .logo {
+            max-height: 150px;
+            width: auto;
+            margin-bottom: 20px;
+        }
+        
+        .titulo-igreja {
+            display: none; /* Removido para dar espaço à logo */
+        }
+        
+        .subtitulo-igreja {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .titulo-certificado {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffd700;
+            margin: 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .tipo-certificado {
+            font-size: 24px;
+            color: #0b1b3a;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+        
+        .conteudo {
+            text-align: center;
+            margin: 40px 0;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .texto-certificacao {
+            font-size: 18px;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .nome-pessoa {
+            font-size: 28px;
+            font-weight: bold;
+            color: #0b1b3a;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #0b1b3a;
+            display: inline-block;
+            padding: 5px 20px;
+            margin: 10px 0;
+        }
+        
+        .detalhes {
+            margin: 30px 0;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        .data-local {
+            margin: 20px 0;
+            font-size: 16px;
+            color: #555;
+        }
+        
+        .observacao {
+            margin: 20px 0;
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .assinaturas {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 60px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .assinatura {
+            text-align: center;
+            flex: 1;
+            margin: 0 20px;
+        }
+        
+        .linha-assinatura {
+            border-top: 2px solid #0b1b3a;
+            margin-bottom: 10px;
+            width: 200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .nome-assinatura {
+            font-weight: bold;
+            color: #0b1b3a;
+            font-size: 14px;
+        }
+        
+        .cargo-assinatura {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .rodape {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 10px;
+            color: #999;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .decoracao {
+            position: absolute;
+            font-size: 100px;
+            color: rgba(11, 27, 58, 0.05);
+            z-index: 0;
+        }
+        
+        .decoracao-1 {
+            top: 50px;
+            left: 50px;
+            transform: rotate(-15deg);
+        }
+        
+        .decoracao-2 {
+            top: 50px;
+            right: 50px;
+            transform: rotate(15deg);
+        }
+        
+        .decoracao-3 {
+            bottom: 50px;
+            left: 50px;
+            transform: rotate(15deg);
+        }
+        
+        .decoracao-4 {
+            bottom: 50px;
+            right: 50px;
+            transform: rotate(-15deg);
+        }
+        
+        {% if preview %}
+        .preview-notice {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #ff6b35;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        {% endif %}
+        
+        @media print {
+            body {
+                background: white;
+            }
+            .preview-notice {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    {% if preview %}
+    <div class="preview-notice">
+        <i class="fas fa-eye"></i> VISUALIZAÇÃO - Clique em "Baixar PDF" para obter o arquivo final
+    </div>
+    {% endif %}
+
+    <div class="certificado">
+        <!-- Decorações de fundo -->
+        <div class="decoracao decoracao-1">✦</div>
+        <div class="decoracao decoracao-2">✦</div>
+        <div class="decoracao decoracao-3">✦</div>
+        <div class="decoracao decoracao-4">✦</div>
+        
+        <!-- Cabeçalho -->
+        <div class="cabecalho">
+            {% if config and config.logo_personalizado %}
+            <img src="{{ url_for('static', filename='Logo_OBPC.jpg') }}" alt="Logo OBPC" class="logo">
+            {% endif %}
+            
+            <div class="subtitulo-igreja">
+                {{ config.cidade if config else 'Tietê' }} - São Paulo
+            </div>
+            
+            <div class="titulo-certificado">Certificado</div>
+            <div class="tipo-certificado">
+                {% if certificado.tipo_certificado == 'Batismo' %}
+                    de Batismo
+                {% elif certificado.tipo_certificado == 'Apresentação' %}
+                    de Apresentação
+                {% else %}
+                    {{ certificado.tipo_certificado }}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Conteúdo -->
+        <div class="conteudo">
+            <div class="texto-certificacao">
+                {% if certificado.tipo_certificado == 'Batismo' %}
+                    Certificamos que
+                {% elif certificado.tipo_certificado == 'Apresentação' %}
+                    Certificamos que a criança
+                {% else %}
+                    Certificamos que
+                {% endif %}
+            </div>
+            
+            <div class="nome-pessoa">{{ certificado.nome_pessoa }}</div>
+            
+            <div class="detalhes">
+                {% if certificado.tipo_certificado == 'Batismo' %}
+                    foi batizado(a) nas águas por imersão, conforme o modelo bíblico, 
+                    em obediência ao mandamento de nosso Senhor Jesus Cristo.
+                {% elif certificado.tipo_certificado == 'Apresentação' %}
+                    foi apresentada ao Senhor, seguindo o exemplo bíblico de Jesus 
+                    no templo, sendo consagrada para uma vida de bênçãos.
+                {% else %}
+                    participou da cerimônia de {{ certificado.tipo_certificado.lower() }}.
+                {% endif %}
+            </div>
+            
+            {% if certificado.observacoes %}
+            <div class="observacao">
+                {{ certificado.observacoes }}
+            </div>
+            {% endif %}
+            
+            <div class="data-local">
+                {% if certificado.local_evento %}
+                    Realizado em {{ certificado.local_evento }} no dia {{ certificado.data_evento.strftime('%d de %B de %Y') }}.
+                {% else %}
+                    Realizado no dia {{ certificado.data_evento.strftime('%d de %B de %Y') }}.
+                {% endif %}
+                
+                {% if certificado.pastor_responsavel %}
+                    <br>Ministrado por {{ certificado.pastor_responsavel }}.
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Assinaturas -->
+        <div class="assinaturas">
+            <div class="assinatura">
+                <div class="linha-assinatura"></div>
+                <div class="nome-assinatura">{{ config.dirigente if config else 'Pastor João Silva' }}</div>
+                <div class="cargo-assinatura">Dirigente</div>
+            </div>
+            <div class="assinatura">
+                <div class="linha-assinatura"></div>
+                <div class="nome-assinatura">{{ config.secretario if config else 'Maria Santos' }}</div>
+                <div class="cargo-assinatura">Secretário(a)</div>
+            </div>
+        </div>
+
+        <!-- Rodapé -->
+        <div class="rodape">
+            Certificado emitido pelo Sistema Administrativo OBPC em {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}
+        </div>
+    </div>
+</body>
+</html>

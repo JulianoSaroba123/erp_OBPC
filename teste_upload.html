@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar Extrato - TESTE DIRETO</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>🧪 TESTE DIRETO DE IMPORTAÇÃO</h2>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Upload do Arquivo</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Área de Upload -->
+                        <div id="uploadArea" class="border border-2 border-dashed p-4 text-center" style="cursor: pointer;">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                            <h5>Clique para selecionar arquivo</h5>
+                            <p class="text-muted">CSV, XLS, XLSX</p>
+                        </div>
+                        
+                        <!-- Input Hidden -->
+                        <input type="file" id="arquivo" class="d-none" accept=".csv,.xls,.xlsx">
+                        
+                        <!-- Info do Arquivo -->
+                        <div id="fileInfo" class="alert alert-success mt-3 d-none">
+                            <strong>Arquivo selecionado:</strong>
+                            <div id="fileName">teste.csv</div>
+                            <div id="fileSize">1.5 MB</div>
+                            <button onclick="removerArquivo()" class="btn btn-sm btn-danger mt-2">Remover</button>
+                        </div>
+                        
+                        <!-- Botão -->
+                        <button id="btnImportar" class="btn btn-success mt-3" disabled>
+                            <i class="fas fa-upload"></i> Importar Extrato
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Debug Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="debugInfo">
+                            <p>Status: Aguardando arquivo...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('🚀 INICIANDO TESTE DIRETO');
+        
+        // FUNÇÃO ULTRA-SIMPLES
+        function mostrarArquivo() {
+            console.log('📁 Função mostrarArquivo() chamada');
+            
+            const input = document.getElementById('arquivo');
+            const file = input.files[0];
+            
+            console.log('📄 Arquivo:', file);
+            
+            if (file) {
+                console.log('✅ ARQUIVO ENCONTRADO:', file.name);
+                
+                // Atualizar UI
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileSize').textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                document.getElementById('uploadArea').classList.add('d-none');
+                document.getElementById('fileInfo').classList.remove('d-none');
+                document.getElementById('btnImportar').disabled = false;
+                
+                // Debug
+                document.getElementById('debugInfo').innerHTML = `
+                    <p><strong>✅ SUCESSO!</strong></p>
+                    <p>Nome: ${file.name}</p>
+                    <p>Tamanho: ${file.size} bytes</p>
+                    <p>Tipo: ${file.type}</p>
+                `;
+                
+                console.log('🎉 UI ATUALIZADA COM SUCESSO!');
+            } else {
+                console.log('❌ NENHUM ARQUIVO ENCONTRADO');
+                document.getElementById('debugInfo').innerHTML = '<p>❌ Nenhum arquivo encontrado</p>';
+            }
+        }
+        
+        function removerArquivo() {
+            console.log('🗑️ Removendo arquivo');
+            
+            document.getElementById('arquivo').value = '';
+            document.getElementById('uploadArea').classList.remove('d-none');
+            document.getElementById('fileInfo').classList.add('d-none');
+            document.getElementById('btnImportar').disabled = true;
+            document.getElementById('debugInfo').innerHTML = '<p>Status: Aguardando arquivo...</p>';
+        }
+        
+        // EVENTS
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📋 DOM carregado');
+            
+            // Clique na área
+            document.getElementById('uploadArea').onclick = function() {
+                console.log('🖱️ Clique na área de upload');
+                document.getElementById('arquivo').click();
+            };
+            
+            // Change no input
+            document.getElementById('arquivo').onchange = function() {
+                console.log('🔄 Input change event');
+                mostrarArquivo();
+            };
+            
+            console.log('✅ Eventos configurados');
+            document.getElementById('debugInfo').innerHTML = '<p><strong>✅ Sistema inicializado</strong></p>';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+Data da Transacao,Descricao da Transacao,Valor da Transacao,Tipo de Transacao
+01/10/2024,PIX Recebido de João Silva,150.00,CREDITO
+02/10/2024,Taxa de transferência PagBank,-5.00,DEBITO
+03/10/2024,Compra no cartão débito Loja ABC,-25.50,DEBITO
+04/10/2024,PIX enviado para Maria Santos,-80.00,DEBITO
+05/10/2024,Depósito em conta empresa,200.00,CREDITO
+06/10/2024,Tarifa mensal conta,-12.90,DEBITO

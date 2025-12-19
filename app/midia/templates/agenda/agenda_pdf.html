@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agenda Semanal - Semana {{ semana }}/{{ ano }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: white;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #2563eb;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1e40af;
+            margin: 0;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #64748b;
+            margin-top: 10px;
+        }
+        
+        .period {
+            font-size: 14px;
+            color: #374151;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        
+        .agenda-container {
+            margin-top: 30px;
+        }
+        
+        .day-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        
+        .day-header {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            color: white;
+            padding: 12px 20px;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 0;
+        }
+        
+        .events-list {
+            border: 2px solid #2563eb;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            background: #f8fafc;
+        }
+        
+        .event-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+            margin: 0;
+        }
+        
+        .event-item:last-child {
+            border-bottom: none;
+            border-radius: 0 0 6px 6px;
+        }
+        
+        .event-time {
+            font-weight: bold;
+            color: #1e40af;
+            font-size: 14px;
+            display: inline-block;
+            min-width: 80px;
+        }
+        
+        .event-title {
+            font-weight: bold;
+            color: #1e293b;
+            font-size: 16px;
+            margin: 5px 0;
+        }
+        
+        .event-description {
+            color: #64748b;
+            font-size: 14px;
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+        
+        .event-location {
+            color: #7c3aed;
+            font-size: 13px;
+            font-style: italic;
+        }
+        
+        .no-events {
+            padding: 30px 20px;
+            text-align: center;
+            color: #9ca3af;
+            font-style: italic;
+            background: white;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .weekday {
+            text-align: center;
+            padding: 8px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #475569;
+        }
+        
+        .weekday.current {
+            background: #dbeafe;
+            color: #1e40af;
+            font-weight: bold;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 15px;
+            }
+            
+            .day-section {
+                page-break-inside: avoid;
+            }
+            
+            .header {
+                page-break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <div class="header">
+        <h1 class="title">AGENDA SEMANAL</h1>
+        <p class="subtitle">Organização Batista Pró-Comunhão</p>
+        <div class="period">
+            Semana {{ semana }} de {{ ano }}<br>
+            {{ inicio_semana.strftime('%d/%m/%Y') }} a {{ fim_semana.strftime('%d/%m/%Y') }}
+        </div>
+    </div>
+
+    <!-- Calendário da Semana -->
+    <div class="weekdays">
+        {% set dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] %}
+        {% for i in range(7) %}
+            {% set data_dia = inicio_semana + timedelta(days=i) %}
+            <div class="weekday {% if data_dia == hoje %}current{% endif %}">
+                {{ dias_semana[i] }}<br>
+                {{ data_dia.strftime('%d/%m') }}
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Agenda por Dia -->
+    <div class="agenda-container">
+        {% set dias_semana = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'] %}
+        
+        {% for i in range(7) %}
+            {% set data_dia = inicio_semana + timedelta(days=i) %}
+            {% set eventos_dia = agenda | selectattr('data_evento', 'equalto', data_dia) | list %}
+            
+            <div class="day-section">
+                <div class="day-header">
+                    {{ dias_semana[i] }} - {{ data_dia.strftime('%d/%m/%Y') }}
+                    <span style="float: right; font-weight: normal; font-size: 14px;">
+                        ({{ eventos_dia | length }} evento{% if eventos_dia | length != 1 %}s{% endif %})
+                    </span>
+                </div>
+                
+                <div class="events-list">
+                    {% if eventos_dia %}
+                        {% for evento in eventos_dia %}
+                            <div class="event-item">
+                                {% if evento.horario %}
+                                    <span class="event-time">{{ evento.horario.strftime('%H:%M') }}</span>
+                                {% endif %}
+                                
+                                <div class="event-title">{{ evento.titulo }}</div>
+                                
+                                {% if evento.descricao %}
+                                    <div class="event-description">{{ evento.descricao }}</div>
+                                {% endif %}
+                                
+                                {% if evento.local %}
+                                    <div class="event-location">📍 {{ evento.local }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="no-events">
+                            Nenhum evento programado para este dia
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Rodapé -->
+    <div class="footer">
+        <p>Relatório gerado em {{ moment().format('DD/MM/YYYY [às] HH:mm') }}</p>
+        <p>Sistema OBPC - Organização Batista Pró-Comunhão</p>
+    </div>
+
+    <script>
+        // Auto-print quando abrir o PDF
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

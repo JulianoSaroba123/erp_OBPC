@@ -1,0 +1,485 @@
+/* ================================
+   SISTEMA FINANCEIRO - CSS MODERNO
+   ================================ */
+
+/* Variáveis CSS para consistência */
+:root {
+    --primary-color: #2563eb;
+    --success-color: #16a34a;
+    --warning-color: #d97706;
+    --danger-color: #dc2626;
+    --info-color: #0891b2;
+    --light-bg: #f8fafc;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --border-radius: 0.75rem;
+    --transition: all 0.3s ease;
+}
+
+/* ================================
+   CARDS E CONTAINERS MODERNOS
+   ================================ */
+
+.financial-dashboard {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    color: white;
+    margin-bottom: 2rem;
+}
+
+.financial-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    border: none;
+    transition: var(--transition);
+    overflow: hidden;
+}
+
+.financial-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.financial-card-header {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+    border: none;
+    padding: 1.5rem;
+}
+
+.financial-card-body {
+    padding: 1.5rem;
+}
+
+/* ================================
+   ESTATÍSTICAS E MÉTRICAS
+   ================================ */
+
+.metric-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    transition: var(--transition);
+    border-left: 4px solid var(--primary-color);
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.metric-card.success {
+    border-left-color: var(--success-color);
+}
+
+.metric-card.warning {
+    border-left-color: var(--warning-color);
+}
+
+.metric-card.danger {
+    border-left-color: var(--danger-color);
+}
+
+.metric-card.info {
+    border-left-color: var(--info-color);
+}
+
+.metric-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0.5rem 0;
+}
+
+.metric-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ================================
+   TABELAS MODERNAS
+   ================================ */
+
+.modern-table-container {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+
+.modern-table {
+    margin: 0;
+    border: none;
+}
+
+.modern-table thead th {
+    background: linear-gradient(135deg, #374151, #4b5563);
+    color: white;
+    border: none;
+    padding: 1rem 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.modern-table tbody td {
+    padding: 0.875rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    vertical-align: middle;
+}
+
+.modern-table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.modern-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Badges de status */
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.entrada {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.status-badge.saida {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.status-badge.conciliado {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.status-badge.pendente {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+/* ================================
+   BOTÕES MODERNOS
+   ================================ */
+
+.btn-modern {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: var(--transition);
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.875rem;
+}
+
+.btn-modern:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-modern.primary {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+}
+
+.btn-modern.success {
+    background: linear-gradient(135deg, var(--success-color), #22c55e);
+    color: white;
+}
+
+.btn-modern.warning {
+    background: linear-gradient(135deg, var(--warning-color), #f59e0b);
+    color: white;
+}
+
+.btn-modern.danger {
+    background: linear-gradient(135deg, var(--danger-color), #ef4444);
+    color: white;
+}
+
+.btn-modern.outline {
+    background: transparent;
+    border: 2px solid var(--primary-color);
+    color: var(--primary-color);
+}
+
+.btn-modern.outline:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+/* ================================
+   FORMULÁRIOS MODERNOS
+   ================================ */
+
+.modern-form {
+    background: white;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+}
+
+.modern-form .form-group {
+    margin-bottom: 1.5rem;
+}
+
+.modern-form .form-label {
+    color: #374151;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.modern-form .form-control {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    transition: var(--transition);
+    font-size: 0.875rem;
+}
+
+.modern-form .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    outline: none;
+}
+
+.modern-form .form-select {
+    border: 2px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    transition: var(--transition);
+}
+
+.modern-form .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    outline: none;
+}
+
+/* ================================
+   FILTROS E SEARCH
+   ================================ */
+
+.search-filters {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1.5rem;
+}
+
+.search-input {
+    position: relative;
+}
+
+.search-input input {
+    padding-left: 2.5rem;
+}
+
+.search-input .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+/* ================================
+   GRÁFICOS E VISUALIZAÇÕES
+   ================================ */
+
+.chart-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1.5rem;
+}
+
+.chart-header {
+    border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+}
+
+.chart-title {
+    color: #1f2937;
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+/* ================================
+   CONCILIAÇÃO ESPECÍFICO
+   ================================ */
+
+.conciliacao-container {
+    background: var(--light-bg);
+    min-height: 100vh;
+    padding: 1rem 0;
+}
+
+.suggestion-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1rem;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.suggestion-card:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.suggestion-header {
+    background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+    padding: 1rem;
+    border-bottom: 1px solid #d1d5db;
+}
+
+.suggestion-body {
+    padding: 1rem;
+}
+
+.score-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.score-high {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.score-medium {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.score-low {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* ================================
+   RESPONSIVIDADE
+   ================================ */
+
+@media (max-width: 768px) {
+    .financial-dashboard {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .metric-card {
+        margin-bottom: 1rem;
+    }
+    
+    .modern-table-container {
+        overflow-x: auto;
+    }
+    
+    .btn-modern {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* ================================
+   ANIMAÇÕES
+   ================================ */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* ================================
+   UTILITÁRIOS
+   ================================ */
+
+.text-success-custom {
+    color: var(--success-color) !important;
+}
+
+.text-danger-custom {
+    color: var(--danger-color) !important;
+}
+
+.text-warning-custom {
+    color: var(--warning-color) !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, var(--success-color), #22c55e);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, var(--warning-color), #f59e0b);
+}
+
+.shadow-modern {
+    box-shadow: var(--card-shadow);
+}
+
+.shadow-modern-hover:hover {
+    box-shadow: var(--card-shadow-hover);
+}
+
+.rounded-modern {
+    border-radius: var(--border-radius);
+}

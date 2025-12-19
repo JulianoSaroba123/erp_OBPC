@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventário Patrimonial - {{ config.nome_igreja }}</title>
+    <style>
+        body { 
+            font-family: 'Times New Roman', serif; 
+            margin: 30px; 
+            color: #000; 
+            line-height: 1.4;
+            font-size: 12px;
+        }
+        
+        .cabecalho {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 15px;
+            display: block;
+        }
+        
+        .cabecalho h2 {
+            font-size: 18px;
+            margin: 0;
+            font-weight: bold;
+        }
+        
+        .cabecalho h3 {
+            font-size: 14px;
+            margin: 2px 0;
+            font-weight: normal;
+        }
+        
+        .titulo-inventario {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            text-decoration: underline;
+        }
+        
+        .resumo {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+        }
+        
+        .resumo h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .resumo-item {
+            display: inline-block;
+            margin-right: 30px;
+            margin-bottom: 5px;
+        }
+        
+        .categoria-titulo {
+            background-color: #0b1b3a;
+            color: white;
+            padding: 8px 12px;
+            margin: 20px 0 10px 0;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 11px;
+        }
+        
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 6px 8px;
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        
+        .codigo {
+            font-family: monospace;
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+        
+        .valor {
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .estado-excelente { color: #28a745; font-weight: bold; }
+        .estado-bom { color: #007bff; font-weight: bold; }
+        .estado-regular { color: #ffc107; font-weight: bold; }
+        .estado-ruim { color: #fd7e14; font-weight: bold; }
+        .estado-pessimo { color: #dc3545; font-weight: bold; }
+        
+        .subtotal {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .total-geral {
+            background-color: #0b1b3a;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .rodape {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+        
+        .assinaturas {
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .assinatura {
+            text-align: center;
+            width: 45%;
+        }
+        
+        .linha-assinatura {
+            border-bottom: 1px solid #000;
+            margin-bottom: 5px;
+            height: 40px;
+        }
+        
+        hr {
+            border: none;
+            border-top: 2px solid #0b1b3a;
+            margin: 15px 0;
+        }
+        
+        .quebra-pagina {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="cabecalho">
+        {% if config.logo and config.exibir_logo_relatorio %}
+            <img src="{{ (base_url or request.url_root) }}{{ config.logo }}" alt="Logo da Igreja" class="logo">
+        {% endif %}
+        <h2>{{ config.nome_igreja }}</h2>
+        <h3>{{ config.endereco_completo() if config.endereco_completo() else 'Endereço não informado' }}</h3>
+        {% if config.cnpj %}
+            <h3>CNPJ: {{ config.cnpj_formatado() }}</h3>
+        {% endif %}
+        <hr>
+        <div class="titulo-inventario">INVENTÁRIO PATRIMONIAL</div>
+        <p><strong>Data de Geração:</strong> {{ data_geracao }}</p>
+    </div>
+    
+    <div class="resumo">
+        <h4>Resumo Executivo</h4>
+        <div class="resumo-item"><strong>Total de Itens Ativos:</strong> {{ total_itens }}</div>
+        <div class="resumo-item"><strong>Valor Total do Patrimônio:</strong> R$ {{ "%.2f"|format(valor_total) }}</div>
+        <div class="resumo-item"><strong>Categorias:</strong> {{ inventario_por_categoria|length }}</div>
+    </div>
+    
+    {% for categoria, itens in inventario_por_categoria.items() %}
+        {% if loop.index > 1 and loop.index % 2 == 1 %}
+            <div class="quebra-pagina"></div>
+        {% endif %}
+        
+        <div class="categoria-titulo">
+            {{ categoria }} ({{ itens|length }} itens)
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 12%;">Código</th>
+                    <th style="width: 25%;">Item</th>
+                    <th style="width: 20%;">Descrição</th>
+                    <th style="width: 12%;">Valor</th>
+                    <th style="width: 10%;">Estado</th>
+                    <th style="width: 15%;">Localização</th>
+                    <th style="width: 6%;">Data Aqu.</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set subtotal = 0 %}
+                {% for item in itens %}
+                    {% if item.valor_aquisicao %}
+                        {% set subtotal = subtotal + item.valor_aquisicao %}
+                    {% endif %}
+                    <tr>
+                        <td class="codigo">{{ item.codigo }}</td>
+                        <td>
+                            <strong>{{ item.nome }}</strong>
+                            {% if item.responsavel %}
+                                <br><small>Resp: {{ item.responsavel }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.descricao %}
+                                {{ item.descricao[:100] }}{% if item.descricao|length > 100 %}...{% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="valor">
+                            {% if item.valor_aquisicao %}
+                                R$ {{ "%.2f"|format(item.valor_aquisicao) }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="estado-{{ item.estado_conservacao.lower() }}">
+                            {{ item.estado_conservacao }}
+                        </td>
+                        <td>
+                            {{ item.localizacao if item.localizacao else '-' }}
+                        </td>
+                        <td>
+                            {% if item.data_aquisicao %}
+                                {{ item.data_aquisicao.strftime('%m/%Y') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                <tr class="subtotal">
+                    <td colspan="3"><strong>Subtotal {{ categoria }}</strong></td>
+                    <td class="valor"><strong>R$ {{ "%.2f"|format(subtotal) }}</strong></td>
+                    <td colspan="3"><strong>{{ itens|length }} itens</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    {% endfor %}
+    
+    <table>
+        <tr class="total-geral">
+            <td colspan="3"><strong>VALOR TOTAL DO PATRIMÔNIO</strong></td>
+            <td class="valor"><strong>R$ {{ "%.2f"|format(valor_total) }}</strong></td>
+            <td colspan="3"><strong>{{ total_itens }} ITENS ATIVOS</strong></td>
+        </tr>
+    </table>
+    
+    <div class="assinaturas">
+        <div class="assinatura">
+            <div class="linha-assinatura"></div>
+            <p><strong>{{ config.presidente or 'Pastor Dirigente' }}</strong><br>Dirigente</p>
+        </div>
+        
+        <div class="assinatura">
+            <div class="linha-assinatura"></div>
+            <p><strong>{{ config.primeiro_secretario or 'Secretaria' }}</strong><br>Secretaria</p>
+        </div>
+    </div>
+    
+    <div class="rodape">
+        <p><em>Inventário gerado automaticamente pelo Sistema OBPC</em></p>
+        <p><em>Este documento relaciona todos os bens patrimoniais ativos da igreja</em></p>
+        <p><strong>Importante:</strong> Este inventário deve ser atualizado periodicamente e mantido em local seguro</p>
+    </div>
+</body>
+</html>

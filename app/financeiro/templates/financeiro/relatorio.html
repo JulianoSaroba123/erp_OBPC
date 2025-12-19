@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório Financeiro - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho para impressão -->
+    <div class="d-print-block text-center mb-4">
+        <h2>OBPC - Tietê/SP</h2>
+        <h4>Relatório Financeiro</h4>
+        <p class="text-muted">Gerado em: {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
+    </div>
+
+    <!-- Controles (não imprime) -->
+    <div class="d-print-none mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-file-pdf text-primary me-2"></i>Relatório Financeiro</h2>
+            <div>
+                <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary me-2">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </a>
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="fas fa-print"></i> Imprimir / Salvar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo Financeiro -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-success">
+                <div class="card-body text-center">
+                    <h5 class="text-success">Total de Entradas</h5>
+                    <h3 class="text-success">R$ {{ "%.2f"|format(totais.entradas)|replace(".", ",") }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-danger">
+                <div class="card-body text-center">
+                    <h5 class="text-danger">Total de Saídas</h5>
+                    <h3 class="text-danger">R$ {{ "%.2f"|format(totais.saidas)|replace(".", ",") }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %}">
+                <div class="card-body text-center">
+                    <h5 class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %}">Saldo Atual</h5>
+                    <h3 class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %}">R$ {{ "%.2f"|format(totais.saldo)|replace(".", ",") }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-info">
+                <div class="card-body text-center">
+                    <h5 class="text-info">Total de Registros</h5>
+                    <h3 class="text-info">{{ lancamentos|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detalhamento dos Lançamentos -->
+    {% if lancamentos %}
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list-ul text-info me-2"></i>
+                Detalhamento dos Lançamentos
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo</th>
+                            <th>Categoria</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                            <th>Conta</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lancamento in lancamentos %}
+                        <tr>
+                            <td>{{ lancamento.data.strftime('%d/%m/%Y') }}</td>
+                            <td class="text-{% if lancamento.tipo == 'Entrada' %}success{% else %}danger{% endif %}">
+                                {{ lancamento.tipo }}
+                            </td>
+                            <td>{{ lancamento.categoria or '-' }}</td>
+                            <td>{{ lancamento.descricao or '-' }}</td>
+                            <td class="text-{% if lancamento.tipo == 'Entrada' %}success{% else %}danger{% endif %} fw-bold text-end">
+                                {{ lancamento.valor_formatado }}
+                            </td>
+                            <td>{{ lancamento.conta }}</td>
+                            <td>
+                                {% if lancamento.observacoes and lancamento.observacoes != 'None' and lancamento.observacoes.strip() %}
+                                    {{ lancamento.observacoes }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-secondary">
+                        <tr>
+                            <td colspan="4" class="fw-bold text-end">TOTAIS:</td>
+                            <td class="fw-bold text-end">
+                                <div class="text-success">Entradas: R$ {{ "%.2f"|format(totais.entradas)|replace(".", ",") }}</div>
+                                <div class="text-danger">Saídas: R$ {{ "%.2f"|format(totais.saidas)|replace(".", ",") }}</div>
+                                <div class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %} border-top pt-1">
+                                    Saldo: R$ {{ "%.2f"|format(totais.saldo)|replace(".", ",") }}
+                                </div>
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumo por Categoria -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">Entradas por Categoria</h6>
+                </div>
+                <div class="card-body">
+                    {% set entradas_por_categoria = {} %}
+                    {% for lancamento in lancamentos %}
+                        {% if lancamento.tipo == 'Entrada' %}
+                            {% set categoria = lancamento.categoria or 'Sem Categoria' %}
+                            {% if categoria in entradas_por_categoria %}
+                                {% set _ = entradas_por_categoria.update({categoria: entradas_por_categoria[categoria] + lancamento.valor}) %}
+                            {% else %}
+                                {% set _ = entradas_por_categoria.update({categoria: lancamento.valor}) %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if entradas_por_categoria %}
+                        <table class="table table-sm">
+                            {% for categoria, valor in entradas_por_categoria.items() %}
+                            <tr>
+                                <td>{{ categoria }}</td>
+                                <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(valor)|replace(".", ",") }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    {% else %}
+                        <p class="text-muted">Nenhuma entrada registrada</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0">Saídas por Categoria</h6>
+                </div>
+                <div class="card-body">
+                    {% set saidas_por_categoria = {} %}
+                    {% for lancamento in lancamentos %}
+                        {% if lancamento.tipo == 'Saída' %}
+                            {% set categoria = lancamento.categoria or 'Sem Categoria' %}
+                            {% if categoria in saidas_por_categoria %}
+                                {% set _ = saidas_por_categoria.update({categoria: saidas_por_categoria[categoria] + lancamento.valor}) %}
+                            {% else %}
+                                {% set _ = saidas_por_categoria.update({categoria: lancamento.valor}) %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if saidas_por_categoria %}
+                        <table class="table table-sm">
+                            {% for categoria, valor in saidas_por_categoria.items() %}
+                            <tr>
+                                <td>{{ categoria }}</td>
+                                <td class="text-end text-danger fw-bold">R$ {{ "%.2f"|format(valor)|replace(".", ",") }}</td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    {% else %}
+                        <p class="text-muted">Nenhuma saída registrada</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-exclamation-triangle fa-4x text-warning mb-3"></i>
+            <h4 class="text-muted">Nenhum lançamento encontrado</h4>
+            <p class="text-muted">Não há dados para gerar o relatório.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Rodapé para impressão -->
+    <div class="d-print-block mt-5 text-center">
+        <hr>
+        <p class="text-muted small">
+            Relatório gerado pelo Sistema OBPC - {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}<br>
+            <strong>OBPC - O Brasil para Cristo - Tietê/SP</strong>
+        </p>
+    </div>
+</div>
+
+<style>
+@media print {
+    .d-print-none {
+        display: none !important;
+    }
+    
+    .d-print-block {
+        display: block !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        break-inside: avoid;
+    }
+    
+    .table {
+        break-inside: avoid;
+    }
+    
+    body {
+        font-size: 12px;
+    }
+    
+    h2, h3, h4, h5, h6 {
+        color: #000 !important;
+    }
+    
+    .text-success, .text-danger, .text-warning, .text-info {
+        color: #000 !important;
+    }
+}
+</style>
+{% endblock %}

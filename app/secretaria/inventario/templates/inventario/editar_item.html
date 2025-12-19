@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Item - Sistema OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Editar Item do Inventário
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('inventario.atualizar_item', id=item.id) }}">
+                        <div class="row">
+                            <!-- Código -->
+                            <div class="col-md-3 mb-3">
+                                <label for="codigo" class="form-label">
+                                    <i class="fas fa-barcode me-1"></i>Código
+                                </label>
+                                <input type="text" class="form-control" id="codigo" name="codigo" 
+                                       value="{{ item.codigo }}" required>
+                            </div>
+                            
+                            <!-- Nome -->
+                            <div class="col-md-9 mb-3">
+                                <label for="nome" class="form-label">
+                                    <i class="fas fa-box me-1"></i>Nome do Item
+                                </label>
+                                <input type="text" class="form-control" id="nome" name="nome" 
+                                       value="{{ item.nome }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Categoria -->
+                            <div class="col-md-4 mb-3">
+                                <label for="categoria" class="form-label">
+                                    <i class="fas fa-tag me-1"></i>Categoria
+                                </label>
+                                <select class="form-select" id="categoria" name="categoria" required>
+                                    <option value="">Selecione uma categoria</option>
+                                    {% for cat in categorias %}
+                                        <option value="{{ cat }}" {% if item.categoria == cat %}selected{% endif %}>
+                                            {{ cat }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Estado -->
+                            <div class="col-md-4 mb-3">
+                                <label for="estado_conservacao" class="form-label">
+                                    <i class="fas fa-star me-1"></i>Estado de Conservação
+                                </label>
+                                <select class="form-select" id="estado_conservacao" name="estado_conservacao" required>
+                                    {% for estado in estados %}
+                                        <option value="{{ estado }}" {% if item.estado_conservacao == estado %}selected{% endif %}>
+                                            {{ estado }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Valor -->
+                            <div class="col-md-4 mb-3">
+                                <label for="valor_aquisicao" class="form-label">
+                                    <i class="fas fa-dollar-sign me-1"></i>Valor de Aquisição
+                                </label>
+                                <input type="number" class="form-control" id="valor_aquisicao" name="valor_aquisicao" 
+                                       step="0.01" value="{{ item.valor_aquisicao }}">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Data Aquisição -->
+                            <div class="col-md-4 mb-3">
+                                <label for="data_aquisicao" class="form-label">
+                                    <i class="fas fa-calendar me-1"></i>Data de Aquisição
+                                </label>
+                                <input type="date" class="form-control" id="data_aquisicao" name="data_aquisicao" 
+                                       value="{{ item.data_aquisicao.strftime('%Y-%m-%d') if item.data_aquisicao else '' }}">
+                            </div>
+
+                            <!-- Localização -->
+                            <div class="col-md-4 mb-3">
+                                <label for="localizacao" class="form-label">
+                                    <i class="fas fa-map-marker-alt me-1"></i>Localização
+                                </label>
+                                <input type="text" class="form-control" id="localizacao" name="localizacao" 
+                                       value="{{ item.localizacao or '' }}">
+                            </div>
+
+                            <!-- Responsável -->
+                            <div class="col-md-4 mb-3">
+                                <label for="responsavel" class="form-label">
+                                    <i class="fas fa-user me-1"></i>Responsável
+                                </label>
+                                <input type="text" class="form-control" id="responsavel" name="responsavel" 
+                                       value="{{ item.responsavel or '' }}">
+                            </div>
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">
+                                <i class="fas fa-align-left me-1"></i>Descrição
+                            </label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ item.descricao or '' }}</textarea>
+                        </div>
+
+                        <!-- Observações -->
+                        <div class="mb-3">
+                            <label for="observacoes" class="form-label">
+                                <i class="fas fa-sticky-note me-1"></i>Observações
+                            </label>
+                            <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ item.observacoes or '' }}</textarea>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('inventario.lista_itens') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>Voltar
+                            </a>
+                            <div>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save me-1"></i>Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

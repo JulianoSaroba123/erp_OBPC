@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Preview - Relatório de Caixa {{ mes }}/{{ ano }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho com ações -->
+    <div class="row mb-3 d-print-none">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="text-primary">
+                    <i class="fas fa-eye me-2"></i>Preview - Relatório de Caixa
+                </h3>
+                
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="{{ url_for('financeiro.relatorio_caixa', mes=mes, ano=ano) }}" 
+                       class="btn btn-outline-secondary" title="Voltar ao Relatório">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar
+                    </a>
+                    <a href="{{ url_for('financeiro.relatorio_caixa_pdf', mes=mes, ano=ano) }}" 
+                       class="btn btn-success" target="_blank" title="Gerar PDF">
+                        <i class="fas fa-file-pdf me-1"></i> Gerar PDF
+                    </a>
+                    <button onclick="window.print()" class="btn btn-primary" title="Imprimir">
+                        <i class="fas fa-print me-1"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Documento de Preview com aparência de PDF -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow" style="background: white; min-height: 800px;">
+                <div class="card-body p-4">
+                    
+                    <!-- Cabeçalho do Relatório -->
+                    <div class="text-center mb-4">
+                        {% if dados_igreja.logo %}
+                        <img src="{{ url_for('static', filename='uploads/logos/' + dados_igreja.logo) }}" 
+                             alt="Logo" style="max-height: 80px;" class="mb-3">
+                        {% endif %}
+                        
+                        <h4 class="fw-bold text-dark">{{ dados_igreja.nome }}</h4>
+                        <p class="mb-1">{{ dados_igreja.endereco }}</p>
+                        <p class="mb-3">{{ dados_igreja.cidade }}</p>
+                        
+                        <h5 class="text-primary fw-bold border-bottom pb-2">
+                            RELATÓRIO DE CAIXA INTERNO - {{ mes|mes_nome_completo }}/{{ ano }}
+                        </h5>
+                    </div>
+
+                    <!-- Resumo Financeiro -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="border p-3 rounded">
+                                <h6 class="text-success fw-bold mb-3">
+                                    <i class="fas fa-arrow-up me-1"></i> ENTRADAS
+                                </h6>
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Banco:</strong></td>
+                                        <td class="text-end {{ totais.entradas_banco|valor_negativo_vermelho }}">{{ totais.entradas_banco|valor_com_cor|safe }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Dinheiro:</strong></td>
+                                        <td class="text-end {{ totais.entradas_dinheiro|valor_negativo_vermelho }}">{{ totais.entradas_dinheiro|valor_com_cor|safe }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>PIX:</strong></td>
+                                        <td class="text-end {{ totais.entradas_pix|valor_negativo_vermelho }}">{{ totais.entradas_pix|valor_com_cor|safe }}</td>
+                                    </tr>
+                                    <tr class="border-top">
+                                        <td><strong>Total Entradas:</strong></td>
+                                        <td class="text-end fw-bold {{ totais.total_entradas|valor_negativo_vermelho }}">{{ totais.total_entradas|valor_com_cor|safe }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="border p-3 rounded">
+                                <h6 class="text-danger fw-bold mb-3">
+                                    <i class="fas fa-arrow-down me-1"></i> SAÍDAS
+                                </h6>
+                                <table class="table table-sm table-borderless">
+                                    <tr>
+                                        <td><strong>Banco:</strong></td>
+                                        <td class="text-end {{ totais.saidas_banco|valor_negativo_vermelho }}">{{ totais.saidas_banco|valor_com_cor|safe }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Dinheiro:</strong></td>
+                                        <td class="text-end {{ totais.saidas_dinheiro|valor_negativo_vermelho }}">{{ totais.saidas_dinheiro|valor_com_cor|safe }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>PIX:</strong></td>
+                                        <td class="text-end {{ totais.saidas_pix|valor_negativo_vermelho }}">{{ totais.saidas_pix|valor_com_cor|safe }}</td>
+                                    </tr>
+                                    <tr class="border-top">
+                                        <td><strong>Total Saídas:</strong></td>
+                                        <td class="text-end fw-bold {{ totais.total_saidas|valor_negativo_vermelho }}">{{ totais.total_saidas|valor_com_cor|safe }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Saldo -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info text-center">
+                                <h5 class="mb-0 {{ totais.saldo_periodo|valor_negativo_vermelho }}">
+                                    <strong>Saldo do Período: {{ totais.saldo_periodo|valor_com_cor|safe }}</strong>
+                                </h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalhamento por Categoria -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold border-bottom pb-2">
+                            <i class="fas fa-chart-pie text-primary me-2"></i>
+                            DETALHAMENTO POR CATEGORIA
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Categoria de Entrada</th>
+                                            <th class="text-end">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for categoria, valor in totais.entradas_por_categoria.items() %}
+                                        <tr>
+                                            <td>{{ categoria }}</td>
+                                            <td class="text-end {{ valor|valor_negativo_vermelho }}">{{ valor|valor_com_cor|safe }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Categoria de Saída</th>
+                                            <th class="text-end">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for categoria, valor in totais.saidas_por_categoria.items() %}
+                                        <tr>
+                                            <td>{{ categoria }}</td>
+                                            <td class="text-end {{ valor|valor_negativo_vermelho }}">{{ valor|valor_com_cor|safe }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Assinaturas -->
+                    <div class="row mt-5">
+                        <div class="col-md-6 text-center">
+                            <div class="border-top pt-3" style="margin-top: 50px;">
+                                <p class="fw-bold">{{ dados_igreja.pastor }}</p>
+                                <p class="small text-muted">PASTOR PRESIDENTE</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-center">
+                            <div class="border-top pt-3" style="margin-top: 50px;">
+                                <p class="fw-bold">{{ dados_igreja.tesoureiro }}</p>
+                                <p class="small text-muted">TESOUREIRO</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data e Local -->
+                    <div class="text-center mt-4">
+                        <p class="fw-bold">
+                            {{ dados_igreja.cidade }}, {{ data_geracao.strftime('%d de %B de %Y') }}
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .d-print-none {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    body {
+        background: white !important;
+    }
+}
+
+/* Estilo para parecer um documento PDF */
+.card {
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.table-borderless td {
+    border: none;
+    padding: 0.25rem 0.5rem;
+}
+
+h4, h5, h6 {
+    color: #2c3e50;
+}
+
+.text-primary {
+    color: #0066cc !important;
+}
+</style>
+{% endblock %}

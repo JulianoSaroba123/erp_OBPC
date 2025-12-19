@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if certificado %}Editar Certificado{% else %}Novo Certificado{% endif %} - OBPC
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Cabeçalho -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>
+                        <i class="fas fa-certificate text-primary me-2"></i>
+                        {% if certificado %}Editar Certificado{% else %}Novo Certificado{% endif %}
+                    </h2>
+                    <p class="text-muted mb-0">Preencha os dados para emissão do certificado</p>
+                </div>
+                <a href="{{ url_for('midia.listar_certificados') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Voltar
+                </a>
+            </div>
+
+            <!-- Formulário -->
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('midia.salvar_certificado') }}">
+                        {% if certificado %}
+                        <input type="hidden" name="id" value="{{ certificado.id }}">
+                        {% endif %}
+
+                        <div class="row">
+                            <!-- Tipo de Certificado -->
+                            <div class="col-md-4 mb-3">
+                                <label for="tipo_certificado" class="form-label">
+                                    <i class="fas fa-award text-primary me-1"></i>Tipo de Certificado *
+                                </label>
+                                <select class="form-select" id="tipo_certificado" name="tipo_certificado" required>
+                                    <option value="">Selecione o tipo...</option>
+                                    {% for tipo in tipos_certificado %}
+                                    <option value="{{ tipo }}" 
+                                            {% if certificado and certificado.tipo_certificado == tipo %}selected{% endif %}>
+                                        {{ tipo }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Gênero -->
+                            <div class="col-md-4 mb-3">
+                                <label for="genero" class="form-label">
+                                    <i class="fas fa-venus-mars text-primary me-1"></i>Gênero *
+                                </label>
+                                <select class="form-select" id="genero" name="genero" required>
+                                    <option value="">Selecione o gênero...</option>
+                                    <option value="masculino" {% if certificado and certificado.genero == 'masculino' %}selected{% endif %}>
+                                        👦 Masculino
+                                    </option>
+                                    <option value="feminino" {% if certificado and certificado.genero == 'feminino' %}selected{% endif %}>
+                                        👧 Feminino
+                                    </option>
+                                </select>
+                                <div class="form-text">Define as cores do certificado (azul/rosa)</div>
+                            </div>
+
+                            <!-- Data -->
+                            <div class="col-md-4 mb-3">
+                                <label for="data" class="form-label">
+                                    <i class="fas fa-calendar text-primary me-1"></i>Data *
+                                </label>
+                                <input type="date" class="form-control" id="data_evento" name="data_evento" 
+                                       value="{{ certificado.data_evento.strftime('%Y-%m-%d') if certificado and certificado.data_evento else '' }}" 
+                                       required>
+                            </div>
+                        </div>
+
+                        <!-- Nome -->
+                        <div class="mb-3">
+                            <label for="nome" class="form-label">
+                                <i class="fas fa-user text-primary me-1"></i>Nome Completo *
+                            </label>
+                            <input type="text" class="form-control" id="nome_pessoa" name="nome_pessoa" 
+                                   value="{{ certificado.nome_pessoa if certificado else '' }}" required maxlength="200"
+                                   placeholder="Digite o nome completo da pessoa">
+                            <div class="form-text">Nome que aparecerá no certificado</div>
+                        </div>
+
+                        <!-- Filiação -->
+                        <div class="mb-3">
+                            <label for="filiacao" class="form-label">
+                                <i class="fas fa-users text-success me-1"></i>Filiação (Pais)
+                            </label>
+                            <input type="text" class="form-control" id="filiacao" name="filiacao" 
+                                   value="{{ certificado.filiacao if certificado else '' }}" maxlength="300"
+                                   placeholder="Ex: Filho(a) de João Silva e Maria Silva">
+                            <div class="form-text">Nome dos pais para constar no certificado</div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Local -->
+                            <div class="col-md-6 mb-3">
+                                <label for="local" class="form-label">
+                                    <i class="fas fa-map-marker-alt text-primary me-1"></i>Local
+                                </label>
+                                <input type="text" class="form-control" id="local_evento" name="local_evento" 
+                                       value="{{ certificado.local_evento if certificado else '' }}" maxlength="200"
+                                       placeholder="Ex: Igreja OBPC - Tietê">
+                                <div class="form-text">Local onde ocorreu o batismo/apresentação</div>
+                            </div>
+
+                            <!-- Ministro -->
+                            <div class="col-md-6 mb-3">
+                                <label for="ministro" class="form-label">
+                                    <i class="fas fa-user-tie text-primary me-1"></i>Ministro
+                                </label>
+                                <input type="text" class="form-control" id="pastor_responsavel" name="pastor_responsavel" 
+                                       value="{{ certificado.pastor_responsavel if certificado else '' }}" maxlength="100"
+                                       placeholder="Ex: Pastor João Silva">
+                                <div class="form-text">Ministro que realizou a cerimônia</div>
+                            </div>
+                        </div>
+
+                        <!-- Campo de Padrinhos (só para Apresentação) -->
+                        <div class="mb-3" id="campo_padrinhos" style="display: none;">
+                            <label for="padrinhos" class="form-label">
+                                <i class="fas fa-users text-primary me-1"></i>Padrinhos <span class="badge bg-info">Apenas para Apresentação</span>
+                            </label>
+                            <textarea class="form-control" id="padrinhos" name="padrinhos" rows="3"
+                                      placeholder="Digite os nomes dos padrinhos (um por linha ou separados por vírgula)...">{{ certificado.padrinhos if certificado else '' }}</textarea>
+                            <div class="form-text">Nomes dos padrinhos que aparecerão no certificado de apresentação</div>
+                        </div>
+
+                        <!-- Observação -->
+                        <div class="mb-4">
+                            <label for="observacao" class="form-label">
+                                <i class="fas fa-comment text-primary me-1"></i>Observações
+                            </label>
+                            <textarea class="form-control" id="observacoes" name="observacoes" rows="3"
+                                      placeholder="Observações adicionais (opcional)...">{{ certificado.observacoes if certificado else '' }}</textarea>
+                            <div class="form-text">Informações adicionais que aparecerão no certificado</div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('midia.listar_certificados') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i> Cancelar
+                            </a>
+                            <div>
+                                {% if certificado %}
+                                <a href="{{ url_for('midia.visualizar_certificado', certificado_id=certificado.id) }}" 
+                                   class="btn btn-outline-info me-2">
+                                    <i class="fas fa-eye me-1"></i> Visualizar
+                                </a>
+                                {% endif %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-1"></i>
+                                    {% if certificado %}Atualizar Certificado{% else %}Criar Certificado{% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Informações sobre tipos de certificado -->
+            <div class="card mt-4">
+                <div class="card-body bg-light">
+                    <h6 class="card-title">
+                        <i class="fas fa-info-circle text-info me-1"></i>Tipos de Certificado
+                    </h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">
+                                <i class="fas fa-water me-1"></i>Batismo
+                            </h6>
+                            <p class="small mb-0">
+                                Certificado emitido para pessoas que foram batizadas nas águas, 
+                                conforme o modelo bíblico. Inclui data, local e ministro responsável.
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success">
+                                <i class="fas fa-baby me-1"></i>Apresentação de Crianças
+                            </h6>
+                            <p class="small mb-0">
+                                Certificado emitido para crianças que foram apresentadas ao Senhor, 
+                                seguindo o exemplo bíblico de Jesus no templo.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus no primeiro campo
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM carregado - inicializando funcionalidade de padrinhos');
+    
+    // Verificar se os elementos existem
+    const tipoSelect = document.getElementById('tipo_certificado');
+    const campoPadrinhos = document.getElementById('campo_padrinhos');
+    
+    if (!tipoSelect) {
+        console.error('Elemento tipo_certificado não encontrado!');
+        return;
+    }
+    
+    if (!campoPadrinhos) {
+        console.error('Elemento campo_padrinhos não encontrado!');
+        return;
+    }
+    
+    console.log('Elementos encontrados, configurando eventos');
+    
+    tipoSelect.focus();
+    
+    // Verificar se deve mostrar campo de padrinhos na inicialização
+    togglePadrinhos();
+});
+
+// Preencher local automaticamente baseado na configuração
+document.getElementById('tipo_certificado').addEventListener('change', function() {
+    console.log('Tipo de certificado mudou para:', this.value);
+    
+    const localField = document.getElementById('local_evento');
+    if (localField && !localField.value) {
+        localField.value = 'Igreja O Brasil Para Cristo - Tietê/SP';
+    }
+    
+    // Mostrar/esconder campo de padrinhos
+    togglePadrinhos();
+});
+
+// Função para mostrar/esconder campo de padrinhos
+function togglePadrinhos() {
+    const tipoSelecionado = document.getElementById('tipo_certificado').value;
+    const campoPadrinhos = document.getElementById('campo_padrinhos');
+    
+    console.log('togglePadrinhos chamada - tipo:', tipoSelecionado);
+    
+    if (!campoPadrinhos) {
+        console.error('Campo padrinhos não encontrado!');
+        return;
+    }
+    
+    if (tipoSelecionado === 'Apresentação') {
+        console.log('Mostrando campo de padrinhos');
+        campoPadrinhos.style.display = 'block';
+        campoPadrinhos.style.animation = 'fadeIn 0.3s ease-in';
+    } else {
+        console.log('Escondendo campo de padrinhos');
+        campoPadrinhos.style.display = 'none';
+        // Limpar o campo se não for apresentação
+        const inputPadrinhos = document.getElementById('padrinhos');
+        if (inputPadrinhos) {
+            inputPadrinhos.value = '';
+        }
+    }
+}
+
+// Adicionar evento de teste para debug
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'tipo_certificado') {
+        console.log('Clicou no select tipo_certificado');
+    }
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Destaque especial para o campo de padrinhos */
+#campo_padrinhos {
+    transition: all 0.3s ease;
+}
+
+#campo_padrinhos.ativo {
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.2);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block title %}Painel - Sistema OBPC{% endblock %}
+
+{% block content %}
+<style>
+  .dashboard-card {
+    background: linear-gradient(135deg, white 0%, #f8fafc 100%);
+    border-radius: 20px;
+    border: none;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .dashboard-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #FF6B35, #FF4500);
+  }
+  
+  .dashboard-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(34, 139, 34, 0.2);
+  }
+  
+  .dashboard-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    font-size: 24px;
+    color: white;
+  }
+  
+  .icon-members { background: linear-gradient(135deg, #228b22, #1e3a8a); }
+  .icon-workers { background: linear-gradient(135deg, #059669, #10b981); }
+  .icon-finance { background: linear-gradient(135deg, #FF6B35, #FF4500); }
+  .icon-events { background: linear-gradient(135deg, #dc2626, #ef4444); }
+  
+  .activity-card {
+    background: white;
+    border-radius: 15px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+  }
+  
+  .activity-card:hover {
+    border-color: #FF6B35;
+    box-shadow: 0 5px 15px rgba(255, 107, 53, 0.1);
+  }
+</style>
+
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold" style="color: #0d5450;">
+      <i class="fa-solid fa-church me-2" style="color: #eab308;"></i> Sistema OBPC - Tietê-SP
+    </h3>
+    <span style="color: #6b7280;">Bem-vindo, {{ current_user.nome }}!</span>
+  </div>
+
+  <div class="row g-4 mb-5">
+    <div class="col-md-3">
+      <div class="card dashboard-card shadow p-4 text-center">
+        <div class="dashboard-icon icon-members">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <h6 class="fw-semibold text-muted mb-2">Membros</h6>
+        <h4 class="fw-bold" style="color: #0d5450;">128</h4>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card dashboard-card shadow p-4 text-center">
+        <div class="dashboard-icon icon-workers">
+          <i class="fa-solid fa-user-tie"></i>
+        </div>
+        <h6 class="fw-semibold text-muted mb-2">Obreiros</h6>
+        <h4 class="fw-bold" style="color: #0d5450;">26</h4>
+      </div>
+    </div>
+
+    
+
+    <div class="col-md-3">
+      <div class="card dashboard-card shadow p-4 text-center">
+        <div class="dashboard-icon icon-events">
+          <i class="fa-solid fa-calendar-days"></i>
+        </div>
+        <h6 class="fw-semibold text-muted mb-2">Próximos Eventos</h6>
+        <h4 class="fw-bold" style="color: #0d5450;">{{ total_eventos_proximos }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-5">
+    <h5 class="fw-semibold" style="color: #0d5450; border-left: 4px solid #eab308; padding-left: 15px;">Últimas Atividades</h5>
+    <p class="text-muted mb-4">Esta área será usada para listar lançamentos, eventos e notificações da igreja.</p>
+
+    <!-- Próximos Eventos -->
+    {% if proximos_eventos %}
+    <div class="mb-4">
+      <h6 class="fw-semibold text-muted mb-3">
+        <i class="fas fa-calendar-alt me-2"></i>Próximos Eventos
+      </h6>
+      {% for evento in proximos_eventos %}
+      <div class="card activity-card shadow-sm mb-2">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-light p-3 me-3" style="background: linear-gradient(135deg, #dc2626, #ef4444) !important;">
+              <i class="fa-solid fa-calendar text-white"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <p class="mb-1 fw-semibold" style="color: #374151;">{{ evento.titulo }}</p>
+                  <p class="mb-0 text-muted small">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ evento.data_inicio.strftime('%d/%m/%Y às %H:%M') if evento.data_inicio else 'Data não definida' }}
+                    {% if evento.local %}
+                    <br><i class="fas fa-map-marker-alt me-1"></i>{{ evento.local }}
+                    {% endif %}
+                  </p>
+                </div>
+                <span class="badge bg-primary">{{ evento.status or 'Agendado' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="card activity-card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center">
+          <div class="rounded-circle bg-light p-3 me-3" style="background: linear-gradient(135deg, #eab308, #ca8a04) !important;">
+            <i class="fa-solid fa-clock text-white"></i>
+          </div>
+          <div>
+            <p class="mb-1 fw-semibold" style="color: #374151;">Sistema em funcionamento</p>
+            <p class="mb-0 text-muted small">Aguardando atividades dos usuários...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório de Caixa - OBPC{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho para impressão -->
+    <div class="d-print-block text-center mb-4">
+        
+        <h3>Tietê - SP</h3>
+        <h4 class="mt-3">RELATÓRIO DE CAIXA INTERNO</h4>
+        <p class="text-muted">
+            Mês: {{ "%02d"|format(mes) }}/{{ ano }} | 
+            Gerado em: {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}
+        </p>
+    </div>
+
+    <!-- Controles (não imprime) -->
+    <div class="d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2><i class="fas fa-cash-register text-primary me-2"></i>Relatório de Caixa - {{ "%02d"|format(mes) }}/{{ ano }}</h2>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex justify-content-end gap-2">
+                    <!-- Dropdown Mês -->
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-calendar me-1"></i> Mês: {{ "%02d"|format(mes) }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for m in range(1, 13) %}
+                            <li><a class="dropdown-item {% if m == mes %}active{% endif %}" href="{{ url_for('financeiro.relatorio_caixa', mes=m, ano=ano) }}">
+                                {{ "%02d"|format(m) }} - {{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][m] }}
+                            </a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <!-- Dropdown Ano -->
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-calendar-alt me-1"></i> Ano: {{ ano }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for a in range(2020, 2030) %}
+                            <li><a class="dropdown-item {% if a == ano %}active{% endif %}" href="{{ url_for('financeiro.relatorio_caixa', mes=mes, ano=a) }}">
+                                {{ a }}
+                            </a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <!-- Botão Voltar -->
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar
+                    </a>
+                    
+                    <!-- Botões Principais -->
+                    <div class="btn-group btn-group-sm" role="group">
+                        <a href="{{ url_for('financeiro.relatorio_caixa_preview', mes=mes, ano=ano) }}" 
+                           class="btn btn-outline-primary" target="_blank" title="Visualizar Relatório">
+                            <i class="fas fa-eye me-1"></i> Visualizar
+                        </a>
+                        <a href="{{ url_for('financeiro.relatorio_caixa_pdf', mes=mes, ano=ano) }}" 
+                           class="btn btn-success" target="_blank" title="Gerar PDF Profissional">
+                            <i class="fas fa-file-pdf me-1"></i> PDF Caixa
+                        </a>
+                        <button onclick="window.print()" class="btn btn-primary" title="Imprimir Relatório">
+                            <i class="fas fa-print me-1"></i> Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relatório de Caixa -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>
+                        Resumo Mensal de Caixa - {{ "%02d"|format(mes) }}/{{ ano }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Coluna 1: Entradas -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary fw-bold mb-3">
+                                <i class="fas fa-arrow-up"></i> ENTRADAS
+                            </h6>
+                            
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Total Entradas Banco:</strong></td>
+                                    <td class="text-end fw-bold {{ totais.entradas_banco|valor_negativo_vermelho or 'text-primary' }}">
+                                        {{ totais.entradas_banco|valor_com_cor|safe }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Entradas Dinheiro:</strong></td>
+                                    <td class="text-end fw-bold {{ totais.entradas_dinheiro|valor_negativo_vermelho or 'text-primary' }}">
+                                        {{ totais.entradas_dinheiro|valor_com_cor|safe }}
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>TOTAL ENTRADAS:</strong></td>
+                                    <td class="text-end fw-bold fs-5 {{ totais.total_entradas|valor_negativo_vermelho or 'text-primary' }}">
+                                        {{ totais.total_entradas|valor_com_cor|safe }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h6 class="text-success fw-bold mt-4 mb-3">
+                                <i class="fas fa-hand-holding-heart"></i> DÍZIMOS
+                            </h6>
+                            
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Dízimos Banco:</td>
+                                    <td class="text-end fw-bold {{ totais.dizimos_banco|valor_negativo_vermelho or 'text-success' }}">
+                                        {{ totais.dizimos_banco|valor_com_cor|safe }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Dízimos Dinheiro:</td>
+                                    <td class="text-end text-success fw-bold">
+                                        {{ "R$ %.2f"|format(totais.dizimos_dinheiro)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>TOTAL DÍZIMOS:</strong></td>
+                                    <td class="text-end text-success fw-bold">
+                                        {{ "R$ %.2f"|format(totais.dizimos_banco + totais.dizimos_dinheiro)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h6 class="text-info fw-bold mt-4 mb-3">
+                                <i class="fas fa-gift"></i> OFERTAS NORMAIS
+                            </h6>
+                            
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Ofertas Banco:</td>
+                                    <td class="text-end text-info fw-bold">
+                                        {{ "R$ %.2f"|format(totais.ofertas_banco)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Ofertas Dinheiro:</td>
+                                    <td class="text-end text-info fw-bold">
+                                        {{ "R$ %.2f"|format(totais.ofertas_dinheiro)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>TOTAL OFERTAS:</strong></td>
+                                    <td class="text-end text-info fw-bold">
+                                        {{ "R$ %.2f"|format(totais.total_ofertas)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h6 class="text-warning fw-bold mt-4 mb-3">
+                                <i class="fas fa-hands-helping"></i> OUTRAS OFERTAS
+                            </h6>
+                            
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Outras Ofertas Banco:</td>
+                                    <td class="text-end text-warning fw-bold">
+                                        {{ "R$ %.2f"|format(totais.outras_ofertas_banco)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Outras Ofertas Dinheiro:</td>
+                                    <td class="text-end text-warning fw-bold">
+                                        {{ "R$ %.2f"|format(totais.outras_ofertas_dinheiro)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>TOTAL OUTRAS OFERTAS:</strong></td>
+                                    <td class="text-end text-warning fw-bold">
+                                        {{ "R$ %.2f"|format(totais.total_outras_ofertas)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h6 class="text-secondary fw-bold mt-4 mb-3">
+                                <i class="fas fa-globe-americas"></i> OFERTAS OMN
+                            </h6>
+                            
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Oferta OMN Banco:</td>
+                                    <td class="text-end text-secondary fw-bold">
+                                        {{ "R$ %.2f"|format(totais.oferta_omn_banco)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Oferta OMN Dinheiro:</td>
+                                    <td class="text-end text-secondary fw-bold">
+                                        {{ "R$ %.2f"|format(totais.oferta_omn_dinheiro)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>TOTAL OMN:</strong></td>
+                                    <td class="text-end text-secondary fw-bold">
+                                        {{ "R$ %.2f"|format(totais.total_oferta_omn)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <!-- Coluna 2: Saídas e Saldos -->
+                        <div class="col-md-6">
+                            <h6 class="text-danger fw-bold mb-3">
+                                <i class="fas fa-arrow-down"></i> SAÍDAS
+                            </h6>
+                            
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Total Saídas Banco:</strong></td>
+                                    <td class="text-end text-danger fw-bold">
+                                        {{ "R$ %.2f"|format(totais.saidas_banco)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Saídas Dinheiro:</strong></td>
+                                    <td class="text-end text-danger fw-bold">
+                                        {{ "R$ %.2f"|format(totais.saidas_dinheiro)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Descontos:</strong></td>
+                                    <td class="text-end text-warning fw-bold">
+                                        {{ "R$ %.2f"|format(totais.descontos)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>TOTAL SAÍDAS:</strong></td>
+                                    <td class="text-end text-danger fw-bold fs-5">
+                                        {{ "R$ %.2f"|format(totais.total_saidas)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h6 class="text-dark fw-bold mt-4 mb-3">
+                                <i class="fas fa-balance-scale"></i> SALDOS
+                            </h6>
+                            
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Saldo Anterior:</strong></td>
+                                    <td class="text-end fw-bold {{ totais.saldo_anterior|valor_negativo_vermelho }}">
+                                        {{ totais.saldo_anterior|valor_com_cor|safe }}
+                                        <br><small class="text-muted">(Acumulado até {% if mes == 1 %}12/{{ ano-1 }}{% else %}{{ "%02d"|format(mes-1) }}/{{ ano }}{% endif %})</small>
+                                    </td>
+                                </tr>
+                                <tr class="table-info">
+                                    <td><strong>Total Dízimos + Ofertas:</strong></td>
+                                    <td class="text-end fw-bold text-primary">
+                                        {{ "R$ %.2f"|format(totais.total_dizimos_ofertas)|replace(".", ",") }}
+                                        <br><small class="text-muted">(Base para cálculo 30%)</small>
+                                    </td>
+                                </tr>
+                                <tr class="table-warning">
+                                    <td><strong>30% para Sede:</strong></td>
+                                    <td class="text-end fw-bold text-warning">
+                                        {{ "R$ %.2f"|format(totais.percentual_30)|replace(".", ",") }}
+                                        <br><small class="text-muted">(30% de Dízimos + Ofertas)</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Geral Entradas:</strong></td>
+                                    <td class="text-end fw-bold text-success">
+                                        {{ "R$ %.2f"|format(totais.total_entradas)|replace(".", ",") }}
+                                        <br><small class="text-muted">(Todas as entradas)</small>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Despesas:</strong></td>
+                                    <td class="text-end fw-bold text-danger">
+                                        {{ "R$ %.2f"|format(totais.total_saidas)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Saldo do Mês:</strong></td>
+                                    <td class="text-end fw-bold {{ totais.saldo_mes|valor_negativo_vermelho or 'text-success' }}">
+                                        {{ totais.saldo_mes|valor_com_cor|safe }}
+                                    </td>
+                                </tr>
+                                <tr class="table-secondary">
+                                    <td><strong>SALDO ACUMULADO:</strong></td>
+                                    <td class="text-end fw-bold fs-5 {{ totais.saldo_acumulado|valor_negativo_vermelho or 'text-success' }}">
+                                        {{ totais.saldo_acumulado|valor_com_cor|safe }}
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Resumo Descritivo -->
+                            <div class="mt-4">
+                                <h6 class="text-dark fw-bold mb-3">
+                                    <i class="fas fa-chart-pie"></i> RESUMO FINANCEIRO
+                                </h6>
+                                
+                                <!-- Cards com valores-chave -->
+                                <div class="row mb-3">
+                                    <div class="col-6">
+                                        <div class="card border-success">
+                                            <div class="card-body p-2 text-center">
+                                                <h6 class="card-title text-success mb-1">Total Dízimos</h6>
+                                                <p class="card-text fw-bold">{{ "R$ %.2f"|format(totais.total_dizimos)|replace(".", ",") }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="card border-info">
+                                            <div class="card-body p-2 text-center">
+                                                <h6 class="card-title text-info mb-1">Total Ofertas</h6>
+                                                <p class="card-text fw-bold">{{ "R$ %.2f"|format(totais.total_ofertas)|replace(".", ",") }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info p-2">
+                                    <small>
+                                        <strong>Observação:</strong> Os 30% para a sede ({{ "R$ %.2f"|format(totais.percentual_30)|replace(".", ",") }}) 
+                                        são calculados apenas sobre o total de dízimos e ofertas normais 
+                                        ({{ "R$ %.2f"|format(totais.total_dizimos_ofertas)|replace(".", ",") }}), 
+                                        <strong>excluindo</strong> outras ofertas e ofertas OMN.
+                                    </small>
+                                </div>
+                                
+                                <div class="progress mb-2" style="height: 25px;">
+                                    {% set percentual_entradas = (totais.total_entradas / (totais.total_entradas + totais.total_saidas) * 100) if (totais.total_entradas + totais.total_saidas) > 0 else 0 %}
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ percentual_entradas }}%;" 
+                                         aria-valuenow="{{ percentual_entradas }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        Entradas: {{ "%.1f"|format(percentual_entradas) }}%
+                                    </div>
+                                    <div class="progress-bar bg-danger" role="progressbar" 
+                                         style="width: {{ 100 - percentual_entradas }}%;" 
+                                         aria-valuenow="{{ 100 - percentual_entradas }}" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        Saídas: {{ "%.1f"|format(100 - percentual_entradas) }}%
+                                    </div>
+                                </div>
+                                <small class="text-muted">
+                                    Relação entre entradas e saídas do mês
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rodapé para impressão -->
+    <div class="d-print-block mt-5">
+        <hr>
+        <div class="row text-center">
+            <div class="col-6">
+                <p class="mb-1"><strong>_________________________________</strong></p>
+                <p class="small">Tesoureiro: {{ dados_igreja.tesoureiro }}</p>
+            </div>
+            <div class="col-6">
+                <p class="mb-1"><strong>_________________________________</strong></p>
+                <p class="small">Dirigente: {{ dados_igreja.dirigente }}</p>
+            </div>
+        </div>
+        <p class="text-center text-muted small mt-3">
+            Sistema Administrativo OBPC - {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}
+        </p>
+    </div>
+    
+    <!-- Informação sobre Destinações (não imprime) -->
+    <div class="d-print-none mt-4">
+        <div class="alert alert-info border-start border-info border-4">
+            <h6 class="alert-heading mb-3">
+                <i class="fas fa-info-circle me-2"></i>Como registrar destinos de Outras Ofertas e Ofertas OMN
+            </h6>
+            <p class="mb-2">
+                <strong>Problema:</strong> Você recebeu R$ 1.700,00 em "Outras Ofertas" que já entraram no caixa, mas têm um destino específico (projeto, reforma, etc).
+            </p>
+            <p class="mb-2">
+                <strong>Solução:</strong> Use categorias de <span class="badge bg-warning text-dark">Destinação</span> para registrar o destino SEM afetar o saldo:
+            </p>
+            <ul class="mb-2">
+                <li><strong>Entrada:</strong> R$ 1.700,00 - Categoria: "Outras Ofertas" - Tipo: Entrada</li>
+                <li><strong>Destinação:</strong> R$ 1.700,00 - Categoria: "Destinação [Nome do Projeto]" - Tipo: Saída</li>
+            </ul>
+            <p class="mb-0">
+                <i class="fas fa-check-circle text-success me-1"></i>
+                Categorias com "Destinação" ou "Transferência Interna" <strong>NÃO afetam o saldo do caixa</strong>, 
+                apenas documentam para onde o dinheiro foi destinado.
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .d-print-none {
+        display: none !important;
+    }
+    
+    .d-print-block {
+        display: block !important;
+    }
+    
+    .card {
+        border: 1px solid #000 !important;
+        break-inside: avoid;
+    }
+    
+    .table {
+        break-inside: avoid;
+    }
+    
+    body {
+        font-size: 12px;
+    }
+    
+    h2, h3, h4, h5, h6 {
+        color: #000 !important;
+    }
+    
+    .text-primary, .text-success, .text-danger, .text-warning, .text-info {
+        color: #000 !important;
+    }
+    
+    .bg-primary, .bg-success, .bg-danger, .bg-warning, .bg-info {
+        background-color: #f8f9fa !important;
+        color: #000 !important;
+    }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Ofícios de Solicitação{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho da página -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-1">
+                        <i class="fa-solid fa-file-signature text-primary me-2"></i>
+                        Ofícios de Solicitação de Doação
+                    </h4>
+                    <p class="text-muted mb-0">Gerencie os ofícios de pedidos de apoio e doações</p>
+                </div>
+                <a href="{{ url_for('oficios.novo_oficio') }}" class="btn btn-primary">
+                    <i class="fa-solid fa-plus me-1"></i> Novo Ofício
+                </a>
+            </div>
+
+            <!-- Filtros de busca -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="busca" class="form-label">Buscar</label>
+                            <input type="text" class="form-control" name="busca" 
+                                   value="{{ busca }}" placeholder="Número, destinatário ou assunto...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">Todos os status</option>
+                                {% for status_opcao in status_options %}
+                                <option value="{{ status_opcao }}" 
+                                        {% if status_opcao == status_selecionado %}selected{% endif %}>
+                                    {{ status_opcao }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-5 d-flex align-items-end">
+                            <button type="submit" class="btn btn-outline-primary me-2">
+                                <i class="fa-solid fa-search me-1"></i> Filtrar
+                            </button>
+                            <a href="{{ url_for('oficios.lista_oficios') }}" class="btn btn-outline-secondary">
+                                <i class="fa-solid fa-times me-1"></i> Limpar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Lista de ofícios -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">
+                        <i class="fa-solid fa-list me-2"></i>
+                        Ofícios Cadastrados ({{ oficios|length }})
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    {% if oficios %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Data</th>
+                                    <th>Destinatário</th>
+                                    <th>Assunto</th>
+                                    <th>Status</th>
+                                    <th width="200">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for oficio in oficios %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-primary">{{ oficio.numero }}</strong>
+                                    </td>
+                                    <td>{{ oficio.data.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ oficio.destinatario }}</td>
+                                    <td>
+                                        <div class="text-truncate" style="max-width: 300px;" 
+                                             title="{{ oficio.assunto }}">
+                                            {{ oficio.assunto }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if oficio.status == 'Emitido' %}
+                                            <span class="badge bg-info">{{ oficio.status }}</span>
+                                        {% elif oficio.status == 'Enviado' %}
+                                            <span class="badge bg-warning">{{ oficio.status }}</span>
+                                        {% elif oficio.status == 'Respondido' %}
+                                            <span class="badge bg-primary">{{ oficio.status }}</span>
+                                        {% elif oficio.status == 'Atendido' %}
+                                            <span class="badge bg-success">{{ oficio.status }}</span>
+                                        {% elif oficio.status == 'Cancelado' %}
+                                            <span class="badge bg-danger">{{ oficio.status }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ oficio.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <!-- Visualizar -->
+                                            <a href="{{ url_for('oficios.visualizar_oficio', id=oficio.id) }}" 
+                                               class="btn btn-outline-info" title="Visualizar Detalhes">
+                                                <i class="fa-solid fa-eye"></i>
+                                            </a>
+                                            
+                                            <!-- Editar -->
+                                            <a href="{{ url_for('oficios.editar_oficio', id=oficio.id) }}" 
+                                               class="btn btn-outline-primary" title="Editar">
+                                                <i class="fa-solid fa-edit"></i>
+                                            </a>
+                                            
+                                            <!-- PDF -->
+                                            <a href="{{ url_for('oficios.gerar_pdf_oficio', id=oficio.id) }}" 
+                                               class="btn btn-outline-danger" title="Gerar PDF" target="_blank">
+                                                <i class="fa-solid fa-file-pdf"></i>
+                                            </a>
+                                            
+                                            <!-- Status -->
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" 
+                                                        data-bs-toggle="dropdown" title="Alterar Status">
+                                                    <i class="fa-solid fa-cog"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    {% for status_opcao in status_options %}
+                                                    <li>
+                                                        <form method="POST" 
+                                                              action="{{ url_for('oficios.atualizar_status', id=oficio.id) }}" 
+                                                              style="display: inline;">
+                                                            <input type="hidden" name="status" value="{{ status_opcao }}">
+                                                            <button type="submit" class="dropdown-item">
+                                                                {{ status_opcao }}
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            
+                                            <!-- Excluir -->
+                                            <form method="POST" 
+                                                  action="{{ url_for('oficios.excluir_oficio', id=oficio.id) }}" 
+                                                  style="display: inline;"
+                                                  onsubmit="return confirm('Tem certeza que deseja excluir o ofício {{ oficio.numero }}?')">
+                                                <button type="submit" class="btn btn-outline-danger" title="Excluir">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fa-solid fa-file-signature fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum ofício encontrado</h5>
+                        {% if busca or status_selecionado %}
+                        <p class="text-muted">Tente ajustar os filtros de busca.</p>
+                        <a href="{{ url_for('oficios.lista_oficios') }}" class="btn btn-outline-primary">
+                            <i class="fa-solid fa-times me-1"></i> Limpar Filtros
+                        </a>
+                        {% else %}
+                        <p class="text-muted">Comece criando seu primeiro ofício de solicitação.</p>
+                        <a href="{{ url_for('oficios.novo_oficio') }}" class="btn btn-primary">
+                            <i class="fa-solid fa-plus me-1"></i> Criar Primeiro Ofício
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-group-sm > .btn, .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+.dropdown-menu {
+    min-width: 120px;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Importação - Financeiro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-file-import me-2"></i>
+                Preview da Importação - Banco {{ banco.title() if banco else 'Genérico' }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <strong>Total de registros encontrados:</strong> {{ total_registros or registros|length }}
+                <br>
+                <small class="text-muted">Revise os dados antes de confirmar a importação</small>
+            </div>
+
+            {% if registros %}
+            <form method="POST" action="{{ url_for('financeiro.importar_extrato_confirmar') }}">
+                <input type="hidden" name="registros" id="registros">
+                
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-hover table-striped">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th style="width: 80px;">Linha</th>
+                                <th style="width: 120px;">Data</th>
+                                <th>Descrição</th>
+                                <th style="width: 120px;">Valor</th>
+                                <th style="width: 100px;">Tipo</th>
+                                <th style="width: 150px;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in registros %}
+                            <tr class="{% if r.match_id %}table-warning{% endif %}">
+                                <td>{{ r.linha or loop.index }}</td>
+                                <td>
+                                    {% if r.data %}
+                                        {{ r.data }}
+                                    {% else %}
+                                        <span class="text-warning">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            Data inválida
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 300px;" title="{{ r.descricao }}">
+                                        {{ r.descricao }}
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <span class="fw-bold {% if r.tipo == 'Entrada' %}text-success{% else %}text-danger{% endif %}">
+                                        {% if r.tipo == 'Entrada' %}+{% else %}-{% endif %}
+                                        R$ {{ "%.2f"|format(r.valor) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge {% if r.tipo == 'Entrada' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ r.tipo }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if r.match_id %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            Possível duplicata
+                                        </span>
+                                        {% if r.match_desc %}
+                                        <div class="small text-muted mt-1">
+                                            Match: {{ r.match_desc[:40] }}...
+                                        </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i>
+                                            Novo registro
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-4 border-top pt-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    Confirmar Importação
+                                </button>
+                                <a href="{{ url_for('financeiro.importar_extrato') }}" class="btn btn-secondary">
+                                    <i class="fas fa-arrow-left"></i>
+                                    Voltar
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="ignorar_duplicatas" name="ignorar_duplicatas">
+                                <label class="form-check-label" for="ignorar_duplicatas">
+                                    Ignorar possíveis duplicatas
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            {% else %}
+            <div class="alert alert-warning">
+                <h5><i class="fas fa-exclamation-triangle"></i> Nenhum registro válido encontrado</h5>
+                <p class="mb-0">Verifique se o arquivo contém as colunas necessárias e se os dados estão no formato correto.</p>
+                <div class="mt-3">
+                    <a href="{{ url_for('financeiro.importar_extrato') }}" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i>
+                        Tentar Novamente
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Enviar os registros via campo hidden em JSON
+const __registros = {{ registros|tojson|safe }};
+document.getElementById('registros').value = JSON.stringify(__registros);
+</script>
+{% endblock %}

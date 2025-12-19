@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard de Conciliação Bancária{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-metric {
+        border-left: 4px solid #0b1b3a;
+        transition: transform 0.2s;
+    }
+    .card-metric:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #0b1b3a;
+    }
+    
+    .metric-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .progress-circle {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .table-conciliacao .table td {
+        vertical-align: middle;
+    }
+    
+    .badge-pendente { background-color: #ffc107; }
+    .badge-conciliado { background-color: #28a745; }
+    .badge-erro { background-color: #dc3545; }
+    
+    .discrepancia-item {
+        border-left: 3px solid #ffc107;
+        padding: 10px;
+        margin-bottom: 10px;
+        background-color: #fff9e6;
+    }
+    
+    .discrepancia-alto { border-left-color: #dc3545; background-color: #ffebee; }
+    .discrepancia-duplicata { border-left-color: #ff9800; background-color: #fff3e0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-primary mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Dashboard de Conciliação Bancária
+                    </h2>
+                    <p class="text-muted mb-0">Controle e automação de conciliação financeira</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('financeiro.importar_extrato') }}" class="btn btn-primary">
+                        <i class="fas fa-upload me-1"></i>
+                        Importar Extrato
+                    </a>
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-success">
+                        <i class="fas fa-list me-1"></i>
+                        Ver Lançamentos
+                    </a>
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-info">
+                        <i class="fas fa-hands me-1"></i>
+                        Conciliação Manual
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Métricas Principais -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card card-metric h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-list-alt fa-2x text-primary mb-2"></i>
+                    <div class="metric-value">{{ indicadores.totais.lancamentos }}</div>
+                    <div class="metric-label">Total de Lançamentos</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card card-metric h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <div class="metric-value">{{ indicadores.totais.conciliados }}</div>
+                    <div class="metric-label">Conciliados</div>
+                    <small class="text-success">{{ indicadores.percentuais.conciliado }}%</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card card-metric h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                    <div class="metric-value">{{ indicadores.totais.pendentes }}</div>
+                    <div class="metric-label">Pendentes</div>
+                    <small class="text-warning">{{ indicadores.percentuais.pendentes }}%</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card card-metric h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i>
+                    <div class="metric-value">{{ indicadores.totais.duplicatas }}</div>
+                    <div class="metric-label">Duplicatas Detectadas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Lançamentos Pendentes -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Lançamentos Manuais Pendentes
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if manuais_pendentes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-conciliacao mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Descrição</th>
+                                    <th>Valor</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lancamento in manuais_pendentes %}
+                                <tr>
+                                    <td>{{ lancamento.data_formatada }}</td>
+                                    <td>
+                                        <small class="text-muted">{{ lancamento.categoria }}</small><br>
+                                        {{ lancamento.descricao[:40] }}{% if lancamento.descricao|length > 40 %}...{% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ 'badge-success' if lancamento.tipo == 'Entrada' else 'badge-danger' }}">
+                                            {{ lancamento.valor_formatado }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                onclick="buscarSugestoes({{ lancamento.id }}, 'manual')"
+                                                title="Buscar sugestões">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-3 text-center text-muted">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <p>Nenhum lançamento manual pendente</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-download me-2"></i>
+                        Lançamentos Importados Pendentes
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if importados_pendentes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-conciliacao mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Descrição</th>
+                                    <th>Valor</th>
+                                    <th>Banco</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lancamento in importados_pendentes %}
+                                <tr>
+                                    <td>{{ lancamento.data_formatada }}</td>
+                                    <td>
+                                        {{ lancamento.descricao[:40] }}{% if lancamento.descricao|length > 40 %}...{% endif %}
+                                        {% if lancamento.documento_ref %}
+                                        <br><small class="text-muted">Doc: {{ lancamento.documento_ref }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ 'badge-success' if lancamento.tipo == 'Entrada' else 'badge-danger' }}">
+                                            {{ lancamento.valor_formatado }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ lancamento.banco_origem or 'N/A' }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-3 text-center text-muted">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <p>Nenhum lançamento importado pendente</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Histórico de Conciliações -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white d-flex justify-content-between">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        Últimas Conciliações
+                    </h5>
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-sm btn-outline-light">
+                        Ver Todos
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    {% if indicadores.historicos_recentes %}
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Usuário</th>
+                                    <th>Conciliados</th>
+                                    <th>Tipo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for historico in indicadores.historicos_recentes %}
+                                <tr>
+                                    <td>{{ historico.data_conciliacao[:10] }}</td>
+                                    <td>{{ historico.usuario }}</td>
+                                    <td>
+                                        <span class="badge badge-success">{{ historico.total_conciliados }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ 'badge-primary' if historico.tipo_conciliacao == 'automatica' else 'badge-secondary' }}">
+                                            {{ historico.tipo_conciliacao }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-3 text-center text-muted">
+                        <i class="fas fa-history fa-2x mb-2"></i>
+                        <p>Nenhuma conciliação realizada ainda</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Regras Mais Utilizadas -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Top Regras de Conciliação
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if indicadores.top_regras %}
+                    {% for regra in indicadores.top_regras %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">{{ regra.regra|replace('_', ' ')|title }}</span>
+                        <span class="badge badge-primary">{{ regra.quantidade }}</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-primary" 
+                             style="width: {{ (regra.quantidade / indicadores.top_regras[0].quantidade * 100)|round(1) }}%">
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center text-muted">
+                        <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                        <p>Ainda não há dados de regras aplicadas</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Discrepâncias Detectadas -->
+    {% if discrepancias %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-danger text-white d-flex justify-content-between">
+                    <h5 class="mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Discrepâncias Detectadas
+                    </h5>
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-sm btn-outline-light">
+                        Ver Relatório Completo
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% for discrepancia in discrepancias %}
+                    <div class="discrepancia-item {{ 'discrepancia-alto' if discrepancia.tipo == 'valor_alto' else 'discrepancia-duplicata' }}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">
+                                    <i class="fas {{ 'fa-dollar-sign' if discrepancia.tipo == 'valor_alto' else 'fa-copy' }} me-1"></i>
+                                    {{ discrepancia.tipo|replace('_', ' ')|title }}
+                                </h6>
+                                <p class="mb-0 text-muted">{{ discrepancia.descricao }}</p>
+                            </div>
+                            <span class="badge {{ 'badge-danger' if discrepancia.tipo == 'valor_alto' else 'badge-warning' }}">
+                                {{ discrepancia.tipo }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal para Sugestões de Conciliação -->
+<div class="modal fade" id="modalSugestoes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sugestões de Conciliação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalSugestoesBody">
+                <div class="text-center p-3">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function buscarSugestoes(lancamentoId, origem) {
+    $('#modalSugestoes').modal('show');
+    
+    $.ajax({
+        url: `/financeiro/conciliacao/api/sugestoes/${lancamentoId}`,
+        type: 'GET',
+        success: function(data) {
+            if (data.sugestoes && data.sugestoes.length > 0) {
+                let html = '<div class="table-responsive">';
+                html += '<table class="table table-hover">';
+                html += '<thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Score</th><th>Regra</th><th>Ação</th></tr></thead><tbody>';
+                
+                data.sugestoes.forEach(function(sugestao) {
+                    let compatibilidade = sugestao.compatibilidade;
+                    let badgeClass = compatibilidade === 'alta' ? 'success' : (compatibilidade === 'media' ? 'warning' : 'danger');
+                    
+                    html += '<tr>';
+                    html += `<td>${new Date(sugestao.lancamento.data).toLocaleDateString('pt-BR')}</td>`;
+                    html += `<td>${sugestao.lancamento.descricao}</td>`;
+                    html += `<td>R$ ${sugestao.lancamento.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>`;
+                    html += `<td><span class="badge bg-${badgeClass}">${sugestao.score}</span></td>`;
+                    html += `<td><small class="text-muted">${sugestao.regra.replace('_', ' ')}</small></td>`;
+                    html += `<td><button class="btn btn-sm btn-success" onclick="criarPar(${lancamentoId}, ${sugestao.lancamento.id})">Conciliar</button></td>`;
+                    html += '</tr>';
+                });
+                
+                html += '</tbody></table></div>';
+                $('#modalSugestoesBody').html(html);
+            } else {
+                $('#modalSugestoesBody').html('<div class="text-center p-3"><i class="fas fa-info-circle fa-2x text-info mb-2"></i><p>Nenhuma sugestão encontrada para este lançamento.</p></div>');
+            }
+        },
+        error: function() {
+            $('#modalSugestoesBody').html('<div class="text-center p-3"><i class="fas fa-exclamation-triangle fa-2x text-danger mb-2"></i><p>Erro ao buscar sugestões. Tente novamente.</p></div>');
+        }
+    });
+}
+
+function criarPar(manualId, importadoId) {
+    if (!confirm('Confirma a criação deste par de conciliação?')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '/financeiro/conciliacao/criar-par',
+        type: 'POST',
+        data: {
+            manual_id: manualId,
+            importado_id: importadoId
+        },
+        success: function(data) {
+            if (data.success) {
+                alert('Par de conciliação criado com sucesso!');
+                location.reload();
+            } else {
+                alert('Erro: ' + data.error);
+            }
+        },
+        error: function() {
+            alert('Erro ao criar par de conciliação. Tente novamente.');
+        }
+    });
+}
+
+// Auto-refresh do dashboard a cada 5 minutos
+setTimeout(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

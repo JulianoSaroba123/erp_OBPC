@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+
+{% block title %}Lançamentos Financeiros - OBPC{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/financeiro-moderno.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header da Página -->
+    <div class="financial-dashboard fade-in-up">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="h2 mb-2">
+                    <i class="fas fa-list-alt me-3"></i>
+                    Lançamentos Financeiros
+                </h1>
+                <p class="mb-0 opacity-75">
+                    Gerencie todas as movimentações financeiras da igreja
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="btn-group">
+                    <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="btn btn-modern outline">
+                        <i class="fas fa-chart-line me-2"></i>Dashboard
+                    </a>
+                    <a href="{{ url_for('financeiro.novo_lancamento') }}" class="btn btn-modern primary">
+                        <i class="fas fa-plus me-2"></i>Novo Lançamento
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros e Pesquisa -->
+    <div class="search-filters fade-in-up">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <div class="search-input">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" name="search" value="{{ request.args.get('search', '') }}" 
+                           class="form-control" placeholder="Buscar por descrição...">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select name="tipo" class="form-select">
+                    <option value="">Todos os tipos</option>
+                    <option value="Entrada" {{ 'selected' if request.args.get('tipo') == 'Entrada' }}>Entrada</option>
+                    <option value="Saída" {{ 'selected' if request.args.get('tipo') == 'Saída' }}>Saída</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="categoria" class="form-select">
+                    <option value="">Todas categorias</option>
+                    {% for cat in categorias_disponiveis %}
+                    <option value="{{ cat }}" {{ 'selected' if request.args.get('categoria') == cat }}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="data_inicio" value="{{ request.args.get('data_inicio', '') }}" 
+                       class="form-control" placeholder="Data início">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="data_fim" value="{{ request.args.get('data_fim', '') }}" 
+                       class="form-control" placeholder="Data fim">
+            </div>
+            <div class="col-md-1">
+                <button type="submit" class="btn btn-modern primary w-100">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Métricas Rápidas -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card success fade-in-up">
+                <div class="metric-icon text-success-custom">
+                    <i class="fas fa-plus-circle"></i>
+                </div>
+                <div class="metric-value">{{ lancamentos|length }}</div>
+                <div class="metric-label">Total de Lançamentos</div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card info fade-in-up">
+                <div class="metric-icon text-info">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="metric-value">{{ totais_filtrados.conciliados|default(0) }}</div>
+                <div class="metric-label">Conciliados</div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card warning fade-in-up">
+                <div class="metric-icon text-warning-custom">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="metric-value">{{ totais_filtrados.pendentes|default(0) }}</div>
+                <div class="metric-label">Pendentes</div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="metric-card primary fade-in-up">
+                <div class="metric-icon" style="color: var(--primary-color)">
+                    <i class="fas fa-calculator"></i>
+                </div>
+                <div class="metric-value">R$ {{ '%.2f'|format(totais_filtrados.saldo) }}</div>
+                <div class="metric-label">Saldo Total</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ações Rápidas -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="financial-card fade-in-up">
+                <div class="financial-card-body">
+                    <div class="row g-2">
+                        <div class="col-md-2">
+                            <a href="{{ url_for('financeiro.novo_lancamento') }}" class="btn btn-modern primary w-100">
+                                <i class="fas fa-plus me-2"></i>Novo
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('financeiro.importar_extrato') }}" class="btn btn-modern success w-100">
+                                <i class="fas fa-file-import me-2"></i>Importar
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('financeiro.conciliacao') }}" class="btn btn-modern warning w-100">
+                                <i class="fas fa-balance-scale me-2"></i>Conciliar
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('financeiro.relatorio_caixa_pdf', mes=request.args.get('mes', '12'), ano=request.args.get('ano', '2025')) }}" class="btn btn-modern outline w-100" target="_blank">
+                                <i class="fas fa-file-pdf me-2"></i>PDF Caixa
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{{ url_for('financeiro.relatorio_sede_pdf', mes=request.args.get('mes', '12'), ano=request.args.get('ano', '2025')) }}" class="btn btn-modern outline w-100" target="_blank">
+                                <i class="fas fa-file-pdf me-2"></i>PDF Sede
+                            </a>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="dropdown">
+                                <button class="btn btn-modern outline dropdown-toggle w-100" data-bs-toggle="dropdown">
+                                    <i class="fas fa-download me-2"></i>Exportar
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="?export=csv">
+                                        <i class="fas fa-file-csv me-2"></i>CSV
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="?export=excel">
+                                        <i class="fas fa-file-excel me-2"></i>Excel
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Lançamentos -->
+    <div class="financial-card fade-in-up">
+        <div class="financial-card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-table me-2"></i>
+                    Lista de Lançamentos
+                </h5>
+                <span class="badge bg-light text-dark">
+                    {{ lancamentos.total }} {{ 'resultado' if lancamentos.total == 1 else 'resultados' }}
+                </span>
+            </div>
+        </div>
+        <div class="financial-card-body p-0">
+            <div class="modern-table-container">
+                <table class="table modern-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="{{ url_for('financeiro.lista_lancamentos', **request.args, sort='data') }}" 
+                                   class="text-white text-decoration-none">
+                                    Data
+                                    <i class="fas fa-sort ms-1"></i>
+                                </a>
+                            </th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Tipo</th>
+                            <th>
+                                <a href="{{ url_for('financeiro.lista_lancamentos', **request.args, sort='valor') }}" 
+                                   class="text-white text-decoration-none">
+                                    Valor
+                                    <i class="fas fa-sort ms-1"></i>
+                                </a>
+                            </th>
+                            <th>Conta</th>
+                            <th>Status</th>
+                            <th>Comprovante</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lancamento in lancamentos.items %}
+                        <tr>
+                            <td class="fw-bold">
+                                {{ lancamento.data.strftime('%d/%m/%Y') if lancamento.data else '-' }}
+                                <div class="small text-muted">
+                                    {{ lancamento.criado_em.strftime('%H:%M') if lancamento.criado_em else '' }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-bold">{{ lancamento.descricao[:40] }}{{ '...' if lancamento.descricao and lancamento.descricao|length > 40 else '' }}</div>
+                                {% if lancamento.observacoes %}
+                                <div class="small text-muted">{{ lancamento.observacoes[:30] }}{{ '...' if lancamento.observacoes|length > 30 else '' }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">
+                                    {{ lancamento.categoria or 'Sem categoria' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge {{ 'entrada' if lancamento.tipo.lower() == 'entrada' else 'saida' }}">
+                                    {{ lancamento.tipo }}
+                                </span>
+                            </td>
+                            <td class="fw-bold {{ 'text-success-custom' if lancamento.tipo.lower() == 'entrada' else 'text-danger-custom' }}">
+                                {{ '+' if lancamento.tipo.lower() == 'entrada' else '-' }}R$ {{ '%.2f'|format(lancamento.valor) }}
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    {{ lancamento.conta or 'N/A' }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge {{ 'conciliado' if lancamento.conciliado else 'pendente' }}">
+                                    {{ 'Conciliado' if lancamento.conciliado else 'Pendente' }}
+                                </span>
+                                {% if lancamento.banco_origem and lancamento.banco_origem != 'manual' %}
+                                <div class="small text-muted">
+                                    <i class="fas fa-university me-1"></i>{{ lancamento.banco_origem }}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                {% if lancamento.comprovante %}
+                                <a href="{{ url_for('static', filename='uploads/comprovantes/' + lancamento.comprovante) }}" 
+                                   target="_blank" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-paperclip"></i>
+                                </a>
+                                {% else %}
+                                <span class="text-muted">
+                                    <i class="fas fa-minus"></i>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('financeiro.editar_lancamento', id=lancamento.id) }}" 
+                                       class="btn btn-outline-warning btn-sm" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <form method="post" action="{{ url_for('financeiro.excluir_lancamento', id=lancamento.id) }}" 
+                                          class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este lançamento?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5">
+                                <div class="text-muted">
+                                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                                    <h5>Nenhum lançamento encontrado</h5>
+                                    <p>Tente ajustar os filtros ou <a href="{{ url_for('financeiro.novo_lancamento') }}">criar um novo lançamento</a></p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if lancamentos.pages > 1 %}
+    <div class="d-flex justify-content-center mt-4">
+        <nav>
+            <ul class="pagination">
+                {% if lancamentos.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('financeiro.lista_lancamentos', page=lancamentos.prev_num, **request.args) }}">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for page_num in lancamentos.iter_pages() %}
+                    {% if page_num %}
+                        {% if page_num != lancamentos.page %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('financeiro.lista_lancamentos', page=page_num, **request.args) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% else %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if lancamentos.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('financeiro.lista_lancamentos', page=lancamentos.next_num, **request.args) }}">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Animação dos cards com delay
+    $('.fade-in-up').each(function(index) {
+        $(this).css('animation-delay', (index * 0.1) + 's');
+    });
+    
+    // Auto submit do formulário de filtro com delay
+    let searchTimeout;
+    $('input[name="search"]').on('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            $('form').submit();
+        }, 500);
+    });
+    
+    // Tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}
