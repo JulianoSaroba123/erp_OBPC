@@ -456,12 +456,18 @@
       <!-- Submenu Financeiro - Tesoureiros, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_financeiro() %}
       <div class="menu-group">
-        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <a href="javascript:void(0)" onclick="toggleSubmenu(this); return false;"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
         <div class="submenu">
+          <a href="{{ url_for('financeiro.caixa_destinacoes') }}" class="submenu-item" id="link-caixa-destinacoes">
+            <i class="fas fa-box-open"></i><span>Caixa de Destinações</span>
+          </a>
+          <a href="{{ url_for('financeiro.lista_projetos') }}" class="submenu-item" id="link-gerenciar-projetos">
+            <i class="fas fa-project-diagram"></i><span>Gerenciar Projetos</span>
+          </a>
           <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="submenu-item">
             <i class="fas fa-list"></i><span>Lista de Lançamentos</span>
           </a>
-          <a href="{{ url_for('financeiro.dashboard_conciliacao') }}" class="submenu-item">
+          <a href="{{ url_for('conciliacao.dashboard_conciliacao') }}" class="submenu-item">
             <i class="fas fa-chart-line"></i><span>Dashboard Conciliação</span>
           </a>
           <a href="{{ url_for('financeiro.importar_extrato') }}" class="submenu-item">
@@ -591,6 +597,26 @@
         if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
           sidebar.classList.remove('show');
         }
+      }
+    });
+    
+    // Garantir navegação para Caixa de Destinações
+    document.addEventListener('DOMContentLoaded', function() {
+      const linkCaixaDestinacoes = document.getElementById('link-caixa-destinacoes');
+      if (linkCaixaDestinacoes) {
+        linkCaixaDestinacoes.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = this.getAttribute('href');
+        });
+      }
+      const linkGerenciarProjetos = document.getElementById('link-gerenciar-projetos');
+      if (linkGerenciarProjetos) {
+        linkGerenciarProjetos.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          window.location.href = this.getAttribute('href');
+        });
       }
     });
   </script>

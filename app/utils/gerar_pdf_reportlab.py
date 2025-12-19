@@ -130,9 +130,15 @@ class RelatorioFinanceiro:
         """Cria cabeçalho profissional do relatório com logo OBPC"""
         elementos = []
         
-        # Logo OBPC sempre presente
+        # Logo da configuração sempre presente
         try:
-            logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
+            # Usar logo da configuração se disponível
+            if self.config.logo and os.path.exists(self.config.logo):
+                logo_path = self.config.logo
+            else:
+                # Fallback para logo padrão
+                logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
+            
             if os.path.exists(logo_path):
                 logo = Image(logo_path, width=120, height=120)
                 logo.hAlign = 'CENTER'
@@ -153,8 +159,9 @@ class RelatorioFinanceiro:
                 except:
                     continue
         
-        # Apenas cidade abaixo do logo (mais limpo)
-        elementos.append(Paragraph("TIETÊ - SP", self.styles['subtitulo_igreja']))
+        # Cidade da configuração abaixo do logo (mais limpo)
+        cidade_texto = f"{self.config.cidade.upper()} - SP" if self.config.cidade else "TIETÊ - SP"
+        elementos.append(Paragraph(cidade_texto, self.styles['subtitulo_igreja']))
         
         # Linha separadora usando cor principal configurada
         elementos.append(Spacer(1, 15))
@@ -179,10 +186,10 @@ class RelatorioFinanceiro:
         # Total disponível: ~17cm (21cm - 2cm margem esquerda - 2cm margem direita)
         if mostrar_saldo:
             colunas = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Comprovante', 'Saldo Acum.']
-            larguras = [2.2*cm, 5.5*cm, 2.8*cm, 1.8*cm, 2.5*cm, 1.7*cm, 2.5*cm]  # Total: 17cm
+            larguras = [2.0*cm, 5.0*cm, 2.5*cm, 1.6*cm, 2.2*cm, 2.2*cm, 2.5*cm]  # Total: 18cm
         else:
             colunas = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor', 'Comprovante']
-            larguras = [2.2*cm, 6.5*cm, 3.0*cm, 2.0*cm, 2.5*cm, 1.8*cm]  # Total: 18cm
+            larguras = [2.0*cm, 6.0*cm, 2.8*cm, 1.8*cm, 2.2*cm, 2.2*cm]  # Total: 17cm
         
         # Dados da tabela
         dados = [colunas]
@@ -206,8 +213,8 @@ class RelatorioFinanceiro:
             comprovante_info = self._gerar_info_comprovante(lancamento)
             
             # Truncar descrição se muito longa para evitar sobreposição
-            descricao = self._truncar_texto(lancamento.descricao or '-', 35)
-            categoria = self._truncar_texto(lancamento.categoria or '-', 15)
+            descricao = self._truncar_texto(lancamento.descricao or '-', 32)
+            categoria = self._truncar_texto(lancamento.categoria or '-', 14)
             
             linha = [
                 lancamento.data.strftime('%d/%m/%Y'),
@@ -228,9 +235,9 @@ class RelatorioFinanceiro:
         
         # Configurar altura mínima das linhas para evitar sobreposição
         if len(dados) > 1:  # Se há dados além do cabeçalho
-            altura_minima = [22]  # Cabeçalho maior
+            altura_minima = [28]  # Cabeçalho maior
             for _ in range(len(dados) - 1):  # Dados
-                altura_minima.append(25)  # Altura maior para cada linha de dados
+                altura_minima.append(32)  # Altura aumentada para não sobrepor as linhas
             tabela = Table(dados, colWidths=larguras, repeatRows=1, rowHeights=altura_minima)
         
         # Estilo da tabela com espaçamento adequado
@@ -259,10 +266,10 @@ class RelatorioFinanceiro:
             ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 1), (-1, -1), 10),    # Mais espaçamento
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 10), # Mais espaçamento
-            ('LEFTPADDING', (0, 0), (-1, -1), 6),    # Espaçamento lateral
-            ('RIGHTPADDING', (0, 0), (-1, -1), 6),   # Espaçamento lateral
+            ('TOPPADDING', (0, 1), (-1, -1), 12),    # Mais espaçamento vertical
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 12), # Mais espaçamento vertical
+            ('LEFTPADDING', (0, 0), (-1, -1), 8),    # Mais espaçamento lateral
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),   # Mais espaçamento lateral
         ]
         
         # Aplicar cores específicas para valores
@@ -322,56 +329,20 @@ class RelatorioFinanceiro:
                 ['CATEGORIA', 'VALOR', '%']
             ]
             
-            # Calcular total de saídas dos lançamentos + despesas fixas
+            # Calcular total de saídas dos lançamentos REAIS (SEM despesas fixas e conselho)
+            # O relatório de CAIXA mostra apenas movimentações reais, não projeções
             total_saidas_lancamentos = sum(totais_categoria['saidas'].values())
             
-            # Obter despesas fixas
-            try:
-                from app.financeiro.despesas_fixas_model import DespesaFixaConselho
-                despesas_fixas = DespesaFixaConselho.obter_despesas_para_relatorio()
-                total_despesas_fixas = sum(despesas_fixas.values())
-            except:
-                despesas_fixas = {
-                    'contador_sede': 100.00,
-                    'forca_para_viver': 50.00,
-                    'oferta_voluntaria_conchas': 100.00,
-                    'projeto_filipe': 10.00,
-                    'site': 20.00
-                }
-                total_despesas_fixas = sum(despesas_fixas.values())
+            # Total de saídas = apenas lançamentos reais
+            total_saidas_geral = total_saidas_lancamentos
             
-            # Calcular valor do conselho administrativo
-            percentual_conselho = self.config.percentual_conselho / 100 if self.config else 0.30
-            valor_conselho = total_entradas * percentual_conselho
-            
-            # Total geral de saídas (lançamentos + despesas fixas + conselho)
-            total_saidas_geral = total_saidas_lancamentos + total_despesas_fixas + valor_conselho
-            
-            # Adicionar categorias de lançamentos
+            # Adicionar apenas categorias de lançamentos REAIS
             for categoria, valor in totais_categoria['saidas'].items():
                 percentual = (valor / total_saidas_geral * 100) if total_saidas_geral > 0 else 0
                 dados_saidas.append([
                     categoria.title(),
                     f"-{self._formatar_moeda(valor)}",
                     f"{percentual:.1f}%"
-                ])
-            
-            # Adicionar despesas fixas
-            if total_despesas_fixas > 0:
-                percentual_fixas = (total_despesas_fixas / total_saidas_geral * 100) if total_saidas_geral > 0 else 0
-                dados_saidas.append([
-                    'Despesas Fixas Sede',
-                    f"-{self._formatar_moeda(total_despesas_fixas)}",
-                    f"{percentual_fixas:.1f}%"
-                ])
-            
-            # Adicionar conselho administrativo
-            if valor_conselho > 0:
-                percentual_conselho_calc = (valor_conselho / total_saidas_geral * 100) if total_saidas_geral > 0 else 0
-                dados_saidas.append([
-                    'Total Enviado ao Conselho Administrativo',
-                    f"-{self._formatar_moeda(valor_conselho)}",
-                    f"{percentual_conselho_calc:.1f}%"
                 ])
             
             dados_saidas.append([
@@ -483,20 +454,8 @@ class RelatorioFinanceiro:
         # Recalcular totais incluindo despesas fixas e conselho
         if lancamentos:
             total_entradas_final = sum(totais_categoria['entradas'].values())
-            total_saidas_lancamentos_final = sum(totais_categoria['saidas'].values())
-            
-            # Adicionar despesas fixas e conselho ao total de saídas
-            try:
-                from app.financeiro.despesas_fixas_model import DespesaFixaConselho
-                despesas_fixas_final = DespesaFixaConselho.obter_despesas_para_relatorio()
-                total_despesas_fixas_final = sum(despesas_fixas_final.values())
-            except:
-                total_despesas_fixas_final = 280.00  # Valor padrão
-            
-            percentual_conselho_final = self.config.percentual_conselho / 100 if self.config else 0.30
-            valor_conselho_final = total_entradas_final * percentual_conselho_final
-            
-            total_saidas_final = total_saidas_lancamentos_final + total_despesas_fixas_final + valor_conselho_final
+            # Relatório de CAIXA: apenas lançamentos reais, sem despesas fixas ou conselho
+            total_saidas_final = sum(totais_categoria['saidas'].values())
         else:
             total_entradas_final = entradas_total
             total_saidas_final = saidas_total
@@ -720,28 +679,32 @@ class RelatorioFinanceiro:
             
             # Criar link clicável usando HTML
             from reportlab.platypus import Paragraph
-            link_html = f'<link href="{url_comprovante}">📎 {nome_arquivo[:15]}...</link>'
+            # Truncar nome para caber na coluna (mais espaço agora)
+            nome_truncado = nome_arquivo if len(nome_arquivo) <= 20 else nome_arquivo[:17] + '...'
+            link_html = f'<link href="{url_comprovante}">📎 {nome_truncado}</link>'
             return Paragraph(link_html, self.styles['texto_normal'])
         else:
             return "-"
     
     def gerar_relatorio_caixa(self, lancamentos, mes, ano, saldo_anterior=0):
-        """Gera relatório de caixa profissional"""
+        """Gera relatório de caixa profissional com padrão oficial"""
         doc = SimpleDocTemplate(
             self.buffer, 
             pagesize=self.pagesize,
             rightMargin=2*cm, 
             leftMargin=2*cm,
-            topMargin=2*cm, 
+            topMargin=1.5*cm, 
             bottomMargin=2*cm,
             title=f"Relatório de Caixa {mes:02d}/{ano}"
         )
         
         elementos = []
         
-        # Cabeçalho
-        periodo = f"{mes:02d}/{ano}"
-        elementos.extend(self._criar_cabecalho("RELATÓRIO DE CAIXA (INTERNO)", periodo))
+        # Cabeçalho oficial (mesmo padrão do relatório sede)
+        elementos.extend(self._criar_cabecalho_caixa_oficial())
+        
+        # Informações do período e igreja
+        elementos.extend(self._criar_info_periodo_caixa(mes, ano))
         
         if lancamentos:
             # Tabela de lançamentos
@@ -792,8 +755,8 @@ class RelatorioFinanceiro:
             # Calcular totais seguindo a mesma lógica do template
             totais = self._calcular_totais_sede(lancamentos)
             
-            # Obter despesas fixas dinamicamente
-            envios = self._obter_despesas_fixas_sede()
+            # Obter envios reais dos lançamentos
+            envios, envios_detalhados = self._calcular_envios_reais_sede(lancamentos)
             
             # SEÇÃO 1: ARRECADAÇÃO DO MÊS
             elementos.extend(self._criar_secao_arrecadacao_sede(totais))
@@ -807,8 +770,8 @@ class RelatorioFinanceiro:
             # SEÇÃO 4: VALOR DO CONSELHO ADMINISTRATIVO
             elementos.extend(self._criar_secao_conselho_sede(totais))
             
-            # SEÇÃO 5: LISTA DE ENVIOS À SEDE
-            elementos.extend(self._criar_secao_envios_sede(envios))
+            # SEÇÃO 5: DETALHAMENTO DOS ENVIOS À SEDE
+            elementos.extend(self._criar_secao_detalhamento_envios_sede(envios_detalhados))
             
             # SEÇÃO 6: TOTAL DE ENVIO PARA SEDE (CONSELHO + PROJETOS)
             elementos.extend(self._criar_secao_total_envio_sede(totais, envios))
@@ -833,15 +796,35 @@ class RelatorioFinanceiro:
         """Cria cabeçalho oficial da igreja para relatório da sede com logo OBPC"""
         elementos = []
         
-        # Logo OBPC no cabeçalho da sede
+        # Logo da configuração no cabeçalho da sede
         try:
-            logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
-            if os.path.exists(logo_path):
-                logo = Image(logo_path, width=130, height=130)
+            # Usar logo da configuração se disponível
+            if self.config.logo and self.config.exibir_logo_relatorio:
+                # Construir caminho absoluto do logo
+                if self.config.logo.startswith('static/'):
+                    # Remove 'static/' do início para usar com static_folder
+                    logo_filename = self.config.logo.replace('static/', '')
+                    logo_path = os.path.join(current_app.static_folder, logo_filename)
+                else:
+                    logo_path = os.path.join(current_app.root_path, '..', self.config.logo)
+            else:
+                # Fallback para logos padrão
+                fallback_logos = ['Logo_OBPC.jpg', 'logo_obpc_novo.jpg', 'logo_igreja_20251025_164525.jpg']
+                logo_path = None
+                for fallback_logo in fallback_logos:
+                    test_path = os.path.join(current_app.static_folder, fallback_logo)
+                    if os.path.exists(test_path):
+                        logo_path = test_path
+                        break
+            
+            if logo_path and os.path.exists(logo_path):
+                logo = Image(logo_path, width=180, height=120)
                 logo.hAlign = 'CENTER'
                 elementos.append(logo)
                 elementos.append(Spacer(1, 20))
         except Exception as e:
+            # Log do erro para debug
+            current_app.logger.warning(f'Erro ao carregar logo: {str(e)}')
             pass
         
         # Título principal centralizado
@@ -875,8 +858,9 @@ class RelatorioFinanceiro:
             fontName='Helvetica-Bold'
         )
         
-        # Apenas cidade (mais limpo e profissional)
-        elementos.append(Paragraph("TIETÊ - SP", subtitulo_style))
+        # Cidade da configuração (mais limpo e profissional)
+        cidade_texto = f"{self.config.cidade.upper()} - SP" if self.config.cidade else "TIETÊ - SP"
+        elementos.append(Paragraph(cidade_texto, subtitulo_style))
         
         # Título do relatório
         elementos.append(Paragraph("RELATÓRIO MENSAL OFICIAL", subtitulo_style))
@@ -892,10 +876,12 @@ class RelatorioFinanceiro:
         elementos = []
         
         # Dados da igreja em tabela
+        periodo_formatado = f'{mes:02d}/{ano}'
+        
         dados_igreja = [
-            ['Cidade:', 'Tietê', 'Dirigente:', 'Pastor João Silva'],
-            ['Bairro:', 'Centro', 'Tesoureiro:', 'Maria Santos'],
-            ['Mês/Ano:', f'{mes:02d}/{ano}', 'Data Relatório:', datetime.now().strftime('%d/%m/%Y')],
+            ['Cidade:', self.config.cidade or 'Tietê', 'Dirigente:', self.config.presidente or 'Pastor não informado'],
+            ['Bairro:', self.config.bairro or 'Centro', 'Tesoureiro:', self.config.primeiro_tesoureiro or 'Tesoureiro não informado'],
+            ['Mês/Ano:', periodo_formatado, 'Data Relatório:', datetime.now().strftime('%d/%m/%Y')],
         ]
         
         tabela_info = Table(dados_igreja, colWidths=[3*cm, 4*cm, 3*cm, 4*cm])
@@ -919,11 +905,112 @@ class RelatorioFinanceiro:
         
         return elementos
     
+    def _criar_cabecalho_caixa_oficial(self):
+        """Cria cabeçalho oficial da igreja para relatório de caixa (mesmo padrão do relatório sede)"""
+        elementos = []
+        
+        # Logo da configuração
+        try:
+            if self.config.logo and self.config.exibir_logo_relatorio:
+                # Construir caminho absoluto do logo
+                if self.config.logo.startswith('static/'):
+                    logo_filename = self.config.logo.replace('static/', '')
+                    logo_path = os.path.join(current_app.static_folder, logo_filename)
+                else:
+                    logo_path = os.path.join(current_app.root_path, '..', self.config.logo)
+            else:
+                # Fallback para logos padrão
+                fallback_logos = ['Logo_OBPC.jpg', 'logo_obpc_novo.jpg', 'logo_igreja_20251025_164525.jpg']
+                logo_path = None
+                for fallback_logo in fallback_logos:
+                    test_path = os.path.join(current_app.static_folder, fallback_logo)
+                    if os.path.exists(test_path):
+                        logo_path = test_path
+                        break
+            
+            if logo_path and os.path.exists(logo_path):
+                logo = Image(logo_path, width=180, height=120)
+                logo.hAlign = 'CENTER'
+                elementos.append(logo)
+                elementos.append(Spacer(1, 20))
+        except Exception as e:
+            current_app.logger.warning(f'Erro ao carregar logo: {str(e)}')
+            pass
+        
+        # Estilos
+        titulo_style = ParagraphStyle(
+            'TituloCaixa',
+            parent=self.styles['titulo_principal'],
+            fontSize=18,
+            textColor=colors.HexColor('#4A7C59'),
+            alignment=TA_CENTER,
+            spaceAfter=5,
+            fontName='Helvetica-Bold'
+        )
+        
+        subtitulo_style = ParagraphStyle(
+            'SubtituloCaixa',
+            parent=self.styles['titulo_principal'],
+            fontSize=14,
+            textColor=colors.black,
+            alignment=TA_CENTER,
+            spaceAfter=15,
+            fontName='Helvetica-Bold'
+        )
+        
+        # Cidade da configuração
+        cidade_texto = f"{self.config.cidade.upper()} - SP" if self.config.cidade else "TIETÊ - SP"
+        elementos.append(Paragraph(cidade_texto, subtitulo_style))
+        
+        # Título do relatório
+        elementos.append(Paragraph("RELATÓRIO DE CAIXA (INTERNO)", subtitulo_style))
+        
+        # Linha horizontal decorativa
+        elementos.append(HRFlowable(width="60%", thickness=2, color=colors.HexColor('#2E86AB')))
+        elementos.append(Spacer(1, 15))
+        
+        return elementos
+    
+    def _criar_info_periodo_caixa(self, mes, ano):
+        """Cria seção com informações do período e dados da igreja para relatório de caixa"""
+        elementos = []
+        
+        # Dados da igreja em tabela
+        periodo_formatado = f'{mes:02d}/{ano}'
+        
+        dados_igreja = [
+            ['Cidade:', self.config.cidade or 'Tietê', 'Dirigente:', self.config.presidente or 'Pastor não informado'],
+            ['Bairro:', self.config.bairro or 'Centro', 'Tesoureiro:', self.config.primeiro_tesoureiro or 'Tesoureiro não informado'],
+            ['Mês/Ano:', periodo_formatado, 'Data Relatório:', datetime.now().strftime('%d/%m/%Y')],
+        ]
+        
+        tabela_info = Table(dados_igreja, colWidths=[3*cm, 4*cm, 3*cm, 4*cm])
+        tabela_info.setStyle(TableStyle([
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # Labels primeira coluna
+            ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),  # Labels terceira coluna
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (1, 0), (1, -1), 20),
+        ]))
+        
+        elementos.append(tabela_info)
+        elementos.append(Spacer(1, 20))
+        elementos.append(HRFlowable(width="100%", thickness=1, color=colors.grey))
+        elementos.append(Spacer(1, 20))
+        
+        return elementos
+    
     def _calcular_totais_sede(self, lancamentos):
         """Calcula totais específicos para o relatório da sede"""
         totais = {
             'dizimos': 0,
             'ofertas_alcadas': 0,
+            'oferta_omn': 0,
             'outras_ofertas': 0,
             'total_geral': 0,
             'despesas_financeiras': 0,
@@ -940,24 +1027,17 @@ class RelatorioFinanceiro:
                 if 'dízimo' in categoria_lower or 'dizimo' in categoria_lower:
                     totais['dizimos'] += valor
                 elif 'oferta' in categoria_lower:
-                    # Lógica padronizada das ofertas:
-                    if 'omn' in categoria_lower:
-                        # OFERTA OMN - direcionada à convenção
-                        totais['ofertas_alcadas'] += valor
-                    elif categoria_lower == 'oferta':
-                        # OFERTA regular - verificar descrição
-                        descricao = (lancamento.descricao or '').lower()
-                        if 'oferta' in descricao and 'outras' not in descricao:
-                            # Ofertas do ofertório durante cultos
-                            totais['ofertas_alcadas'] += valor
-                        else:
-                            # Ofertas externas, doações, projetos
-                            totais['outras_ofertas'] += valor
-                    else:
-                        # Outras categorias de oferta
+                    # Lógica corrigida e padronizada das ofertas:
+                    # 1º: Verificar se é OMN (não computa no conselho, mas registrado)
+                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
+                        totais['oferta_omn'] += valor
+                    # 2º: Verificar se é "Outras Ofertas" (não computa no conselho)
+                    elif any(x in categoria_lower for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
                         totais['outras_ofertas'] += valor
-                else:
-                    totais['outras_ofertas'] += valor
+                    # 3º: O resto são Ofertas Alçadas (computa 30% conselho)
+                    else:
+                        # Ofertas Alçadas = ofertas normais do ofertório
+                        totais['ofertas_alcadas'] += valor
                 
                 totais['total_geral'] += valor
             
@@ -965,14 +1045,83 @@ class RelatorioFinanceiro:
                 totais['despesas_financeiras'] += valor
         
         # Calcular valores finais
-        totais['saldo_mes'] = totais['total_geral'] - totais['despesas_financeiras']
-        
         # Buscar percentual do conselho das configurações
         percentual = self.config.percentual_conselho / 100
-        totais['valor_conselho'] = totais['total_geral'] * percentual
+        # Calcular valor do conselho: APENAS Dízimos + Ofertas Alçadas (excluindo OMN e Outras Ofertas)
+        base_conselho = totais['dizimos'] + totais['ofertas_alcadas']
+        totais['valor_conselho'] = base_conselho * percentual
+        
+        # Calcular saldo do mês: Entradas - Saídas Lançadas (despesas fixas e conselho são informativos)
+        totais['saldo_mes'] = totais['total_geral'] - totais['despesas_financeiras']
         
         return totais
     
+    def _calcular_envios_reais_sede(self, lancamentos):
+        """Calcula envios reais baseados nos lançamentos de saída"""
+        # Buscar lançamentos de saída que correspondem aos envios
+        lancamentos_saida = [l for l in lancamentos if l.tipo == 'Saída']
+        
+        envios = {
+            'oferta_voluntaria_conchas': 0.0,
+            'site': 0.0,
+            'projeto_filipe': 0.0,
+            'forca_para_viver': 0.0,
+            'contador_sede': 0.0
+        }
+        
+        # Lista detalhada para o PDF
+        envios_detalhados = {
+            'oferta_voluntaria_conchas': [],
+            'site': [],
+            'projeto_filipe': [],
+            'forca_para_viver': [],
+            'contador_sede': [],
+            'omn': []
+        }
+        
+        # Mapear descrições para chaves
+        mapeamento_envios = {
+            'oferta_voluntaria_conchas': ['conchas', 'voluntaria conchas', 'oferta voluntaria conchas'],
+            'site': ['site'],
+            'projeto_filipe': ['projeto filipe', 'filipe'],
+            'forca_para_viver': ['força para viver', 'forca para viver'],
+            'contador_sede': ['contador sede', 'contador'],
+            'omn': ['omn', 'obra missionaria', 'missionaria']
+        }
+        
+        # Buscar valores nos lançamentos de saída
+        for lancamento in lancamentos_saida:
+            if lancamento.descricao:
+                descricao_lower = lancamento.descricao.lower()
+                
+                # Verificar cada tipo de envio
+                for chave, termos_busca in mapeamento_envios.items():
+                    for termo in termos_busca:
+                        if termo in descricao_lower:
+                            envios[chave] += lancamento.valor
+                            # Adicionar detalhes para o PDF
+                            envios_detalhados[chave].append({
+                                'data': lancamento.data,
+                                'descricao': lancamento.descricao,
+                                'valor': lancamento.valor,
+                                'conta': lancamento.conta
+                            })
+                            break  # Para evitar dupla contagem
+        
+        # Adicionar ofertas OMN automaticamente aos envios detalhados
+        for lancamento in lancamentos:
+            if lancamento.tipo == 'Entrada' and lancamento.categoria:
+                categoria_lower = lancamento.categoria.lower()
+                if 'omn' in categoria_lower or 'missionaria' in categoria_lower:
+                    envios_detalhados['omn'].append({
+                        'data': lancamento.data,
+                        'descricao': lancamento.categoria,
+                        'conta': getattr(lancamento, 'conta', None),
+                        'valor': float(lancamento.valor) if lancamento.valor else 0
+                    })
+        
+        return envios, envios_detalhados
+
     def _obter_despesas_fixas_sede(self):
         """Obtém despesas fixas da base de dados ou valores padrão"""
         try:
@@ -1028,10 +1177,11 @@ class RelatorioFinanceiro:
             ['CATEGORIA', 'VALOR ARRECADADO'],
             ['Dízimos', self._formatar_moeda(totais['dizimos'])],
             ['Ofertas Alçadas', self._formatar_moeda(totais['ofertas_alcadas'])],
+            ['Ofertas OMN', self._formatar_moeda(totais.get('oferta_omn', 0))],
             ['Outras Ofertas', self._formatar_moeda(totais['outras_ofertas'])],
         ]
         
-        tabela_arrecadacao = Table(dados_arrecadacao, colWidths=[12*cm, 4*cm])
+        tabela_arrecadacao = Table(dados_arrecadacao, colWidths=[11*cm, 5*cm])
         tabela_arrecadacao.setStyle(TableStyle([
             # Header (primeira linha)
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4A7C59')),  # Verde escuro
@@ -1082,13 +1232,17 @@ class RelatorioFinanceiro:
         )
         
         percentual_conselho = self.config.percentual_conselho if hasattr(self.config, 'percentual_conselho') else 30
-        valor_conselho = totais['total_geral'] * (percentual_conselho / 100)
+        # Calcular valor do conselho: APENAS Dízimos + Ofertas Alçadas
+        base_calculo = totais.get('dizimos', 0) + totais.get('ofertas_alcadas', 0)
+        valor_conselho = base_calculo * (percentual_conselho / 100)
         
         texto_info = f"""
-        <b>📊 INFORMAÇÕES IMPORTANTES:</b><br/>
-        • Do total arrecadado, {percentual_conselho}% vai para o Conselho da sede: <b>{self._formatar_moeda(valor_conselho)}</b><br/>
+        <b>INFORMAÇÕES IMPORTANTES:</b><br/>
+        • Base para cálculo 30%: <b>{self._formatar_moeda(base_calculo)}</b> (Dízimos + Ofertas Alçadas, EXCLUINDO Outras Ofertas de {self._formatar_moeda(totais.get('outras_ofertas', 0))})<br/>
+        • 30% para Sede: <b>{self._formatar_moeda(valor_conselho)}</b> (valor informativo, não deduzido do saldo)<br/>
         • As Ofertas OMN são direcionadas diretamente à convenção (não passam pelo caixa local)<br/>
-        • Este relatório serve para comunicação oficial com a igreja sede
+        • As OUTRAS OFERTAS não entram no cálculo do valor administrativo<br/>
+        • Saldo correto: <b>{self._formatar_moeda(totais.get('saldo_mes', 0))}</b> (considerando apenas lançamentos reais)
         """
         
         elementos.append(Paragraph(texto_info, info_style))
@@ -1172,7 +1326,7 @@ class RelatorioFinanceiro:
             fontName='Helvetica-Bold'
         )
         
-        elementos.append(Paragraph("⚖️ SALDO DO MÊS", secao_style))
+        elementos.append(Paragraph("SALDO DO MÊS", secao_style))
         
         # Cor de fundo baseada no saldo
         cor_fundo = colors.HexColor('#E8F5E8') if totais['saldo_mes'] >= 0 else colors.HexColor('#FFE6E6')  # Verde claro do logo
@@ -1217,7 +1371,9 @@ class RelatorioFinanceiro:
         
         # Usar percentual configurado
         percentual = int(self.config.percentual_conselho)
-        descricao = f'Valor a ser entregue à sede ({percentual}% do total arrecadado)'
+        # Base de cálculo: Dízimos + Ofertas Alçadas (excluindo OMN e Outras Ofertas)
+        base_calculo = totais['dizimos'] + totais['ofertas_alcadas']
+        descricao = f'Valor a ser entregue à sede ({percentual}% de Dízimos + Ofertas Alçadas)'
         
         dados_conselho = [[descricao, self._formatar_moeda(totais['valor_conselho'])]]
         
@@ -1240,7 +1396,7 @@ class RelatorioFinanceiro:
         
         return elementos
     
-    def _criar_secao_envios_sede(self, envios):
+    def _criar_secao_envios_sede(self, envios, totais):
         """Cria seção de lista de envios à sede"""
         elementos = []
         
@@ -1254,7 +1410,7 @@ class RelatorioFinanceiro:
             fontName='Helvetica-Bold'
         )
         
-        elementos.append(Paragraph("📤 LISTA DE ENVIOS À SEDE", secao_style))
+        elementos.append(Paragraph("LISTA DE ENVIOS À SEDE", secao_style))
         
         # Preparar dados dos envios com header
         dados_envios = [['PROJETO/DESTINO', 'VALOR ENVIADO']]
@@ -1262,11 +1418,11 @@ class RelatorioFinanceiro:
         
         # Mapeamento de nomes para exibição
         nomes_exibicao = {
-            'oferta_voluntaria_conchas': '🌊 Oferta Voluntária Conchas',
-            'site': '💻 Site OBPC',
-            'projeto_filipe': '👨‍⚕️ Projeto Filipe',
-            'forca_para_viver': '💪 Força para Viver',
-            'contador_sede': '📊 Contador Sede'
+            'oferta_voluntaria_conchas': 'Oferta Voluntária Conchas',
+            'site': 'Site',
+            'projeto_filipe': 'Projeto Filipe',
+            'forca_para_viver': 'Força para Viver',
+            'contador_sede': 'Contador Sede'
         }
         
         for chave, valor in envios.items():
@@ -1274,10 +1430,11 @@ class RelatorioFinanceiro:
             dados_envios.append([nome_exibir, self._formatar_moeda(valor)])
             total_envio += valor
         
-        # Adicionar valor do conselho (30% do total)
+        # Adicionar valor do conselho (30% de Dízimos + Ofertas Alçadas)
         percentual_conselho = self.config.percentual_conselho if hasattr(self.config, 'percentual_conselho') else 30
-        valor_conselho = totais['total_geral'] * (percentual_conselho / 100)
-        dados_envios.append([f'🏛️ Conselho ({percentual_conselho}% do total)', self._formatar_moeda(valor_conselho)])
+        # Usar o valor já calculado corretamente nos totais
+        valor_conselho = totais.get('valor_conselho', 0)
+        dados_envios.append([f'Conselho ({percentual_conselho}% de Dízimos + Ofertas Alçadas)', self._formatar_moeda(valor_conselho)])
         total_envio += valor_conselho
         
         # Tabela de envios com header
@@ -1317,7 +1474,7 @@ class RelatorioFinanceiro:
         elementos.append(Spacer(1, 10))
         
         # Total de envio destacado
-        total_dados = [['🏛️ TOTAL ENVIADO PARA SEDE', self._formatar_moeda(total_envio)]]
+        total_dados = [['TOTAL ENVIADO PARA SEDE', self._formatar_moeda(total_envio)]]
         tabela_total_envio = Table(total_dados, colWidths=[12*cm, 4*cm])
         tabela_total_envio.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#2E86AB')),  # Azul do logo
@@ -1340,6 +1497,110 @@ class RelatorioFinanceiro:
         elementos.append(Spacer(1, 30))
         
         return elementos
+        
+    def _criar_secao_detalhamento_envios_sede(self, envios_detalhados):
+        """Cria seção detalhada dos envios à sede"""
+        elementos = []
+        
+        # Verificar se há envios detalhados
+        tem_envios = any(envios_detalhados[chave] for chave in envios_detalhados)
+        
+        if not tem_envios:
+            return elementos  # Retorna vazio se não houver envios
+        
+        secao_style = ParagraphStyle(
+            'SecaoSede',
+            parent=self.styles['cabecalho_secao'],
+            fontSize=14,
+            textColor=colors.HexColor('#6c757d'),  # Cinza
+            alignment=TA_LEFT,
+            spaceAfter=15,
+            fontName='Helvetica-Bold'
+        )
+        
+        elementos.append(Paragraph("DETALHAMENTO DOS ENVIOS", secao_style))
+        
+        # Mapeamento de nomes para exibição
+        nomes_exibicao = {
+            'oferta_voluntaria_conchas': 'Oferta Voluntária Conchas',
+            'site': 'Site',
+            'projeto_filipe': 'Projeto Filipe',
+            'forca_para_viver': 'Força para Viver',
+            'contador_sede': 'Contador Sede',
+            'omn': 'Ofertas OMN'
+        }
+        
+        for chave, detalhes in envios_detalhados.items():
+            if detalhes:  # Se há lançamentos para esta categoria
+                nome_categoria = nomes_exibicao.get(chave, chave.replace('_', ' ').title())
+                
+                # Subtítulo da categoria
+                subtitulo_style = ParagraphStyle(
+                    'SubtituloCategoria',
+                    fontSize=12,
+                    textColor=colors.HexColor('#4A7C59'),
+                    alignment=TA_LEFT,
+                    spaceAfter=8,
+                    spaceBefore=5,
+                    fontName='Helvetica-Bold'
+                )
+                
+                elementos.append(Paragraph(nome_categoria, subtitulo_style))
+                
+                # Tabela de detalhes
+                dados_detalhes = [['Data', 'Descrição', 'Conta', 'Valor']]
+                
+                for detalhe in detalhes:
+                    data_formatada = detalhe['data'].strftime('%d/%m/%Y')
+                    dados_detalhes.append([
+                        data_formatada,
+                        detalhe['descricao'][:40] + '...' if len(detalhe['descricao']) > 40 else detalhe['descricao'],
+                        detalhe['conta'] or '-',
+                        self._formatar_moeda(detalhe['valor'])
+                    ])
+                
+                tabela_detalhes = Table(dados_detalhes, colWidths=[2.5*cm, 7*cm, 3*cm, 3.5*cm])
+                tabela_detalhes.setStyle(TableStyle([
+                    # Header
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f8f9fa')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 9),
+                    ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                    
+                    # Dados
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 8),
+                    ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Data
+                    ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Descrição
+                    ('ALIGN', (2, 1), (2, -1), 'CENTER'),  # Conta
+                    ('ALIGN', (3, 1), (3, -1), 'RIGHT'),   # Valor
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 4),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 8),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+                    
+                    # Bordas
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                    
+                    # Cores alternadas
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+                ]))
+                
+                elementos.append(tabela_detalhes)
+                elementos.append(Spacer(1, 10))
+        
+        if not any(envios_detalhados[chave] for chave in envios_detalhados):
+            # Mensagem se não há envios
+            texto_info = Paragraph(
+                "Nenhum lançamento de envio foi encontrado para este período.",
+                ParagraphStyle('InfoEnvios', fontSize=10, textColor=colors.grey, alignment=TA_CENTER)
+            )
+            elementos.append(texto_info)
+        
+        elementos.append(Spacer(1, 15))
+        return elementos
     
     def _criar_secao_total_envio_sede(self, totais, envios):
         """Cria seção do total de envio para sede (conselho + projetos)"""
@@ -1355,7 +1616,7 @@ class RelatorioFinanceiro:
             fontName='Helvetica-Bold'
         )
         
-        elementos.append(Paragraph("📋 TOTAL DE ENVIO PARA SEDE", secao_style))
+        elementos.append(Paragraph("TOTAL DE ENVIO PARA SEDE", secao_style))
         
         # Calcular total dos envios (projetos/contador/etc)
         total_envio_projetos = sum(envios.values())
@@ -1419,7 +1680,7 @@ class RelatorioFinanceiro:
         # Campos de assinatura em tabela
         dados_assinatura = [
             ['_' * 40, '_' * 40],
-            ['Pastor João Silva', 'Maria Santos'],
+            [self.config.presidente or 'Pastor não informado', self.config.primeiro_tesoureiro or 'Tesoureiro não informado'],
             ['DIRIGENTE', 'TESOUREIRO(A)']
         ]
         

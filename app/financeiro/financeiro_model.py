@@ -27,6 +27,10 @@ class Lancamento(db.Model):
     conciliado_por = db.Column(db.String(100), nullable=True)  # Usuário que conciliou
     par_conciliacao_id = db.Column(db.Integer, db.ForeignKey('conciliacao_pares.id'), nullable=True)
     
+    # Relacionamento com Projeto
+    projeto_id = db.Column(db.Integer, db.ForeignKey('projetos.id'), nullable=True)
+    projeto = db.relationship('Projeto', back_populates='lancamentos')
+    
     def __repr__(self):
         return f'<Lancamento {self.tipo}: R$ {self.valor:.2f} - {self.descricao}>'
     
@@ -170,8 +174,13 @@ class Lancamento(db.Model):
     
     @staticmethod
     def calcular_saldo_ate_mes_anterior(mes, ano):
-        """Calcula o saldo acumulado até o mês anterior ao especificado"""
+        """Calcula o saldo acumulado até o mês anterior ao especificado, incluindo saldo inicial"""
         from sqlalchemy import extract
+        from app.configuracoes.configuracoes_model import Configuracao
+        
+        # Buscar saldo inicial das configurações
+        config = Configuracao.query.first()
+        saldo_inicial = config.saldo_inicial if config else 0.0
         
         # Se for janeiro, pegar saldo de dezembro do ano anterior
         if mes == 1:
@@ -199,7 +208,7 @@ class Lancamento(db.Model):
                       )
                   ).scalar() or 0
         
-        return entradas - saidas
+        return saldo_inicial + entradas - saidas
     
     @staticmethod
     def formatar_valor(valor):

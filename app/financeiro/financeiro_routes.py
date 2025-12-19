@@ -3,11 +3,12 @@ from flask_login import login_required
 from app.extensoes import db
 from app.financeiro.financeiro_model import Lancamento
 from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
+from app.financeiro.projeto_model import Projeto
 from app.financeiro.despesas_fixas_model import DespesaFixaConselho
 from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
 from datetime import datetime, date
-from sqlalchemy import extract, or_, func
+from sqlalchemy import extract, or_, and_, func
 from decimal import Decimal
 import os
 from werkzeug.utils import secure_filename
@@ -199,6 +200,270 @@ def processar_upload_comprovante(file):
         flash(f'Erro ao fazer upload do comprovante: {str(e)}', 'danger')
         return None
 
+# ========== ROTAS ESPECÍFICAS (devem vir ANTES de /financeiro) ==========
+
+@financeiro_bp.route('/financeiro/caixa-destinacoes', endpoint='caixa_destinacoes')
+@login_required
+def caixa_destinacoes():
+    """Caixa separado para controlar valores destinados a projetos específicos"""
+    print(">>> ROTA CAIXA_DESTINACOES CHAMADA!")
+    try:
+        # Obter filtros
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int, default=datetime.now().year)
+        projeto_id = request.args.get('projeto_id', type=int)
+        
+        # Buscar todos os projetos
+        projetos = Projeto.query.order_by(Projeto.nome).all()
+        
+        # Calcular totais por projeto
+        projetos_com_totais = []
+        for projeto in projetos:
+            totais_projeto = projeto.calcular_totais()
+            
+            # Filtrar lançamentos do projeto
+            query = Lancamento.query.filter(Lancamento.projeto_id == projeto.id)
+            
+            # Aplicar filtro de período
+            if mes:
+                query = query.filter(
+                    extract('month', Lancamento.data) == mes,
+                    extract('year', Lancamento.data) == ano
+                )
+            elif ano:
+                query = query.filter(extract('year', Lancamento.data) == ano)
+            
+            lancamentos_projeto = query.order_by(Lancamento.data.asc()).all()
+            
+            if lancamentos_projeto or (not mes and not projeto_id):  # Mostrar projetos sem lançamentos apenas na visão geral
+                projetos_com_totais.append({
+                    'projeto': projeto,
+                    'totais': totais_projeto,
+                    'lancamentos': lancamentos_projeto
+                })
+        
+        # Buscar lançamentos sem projeto (legado)
+        query_sem_projeto = Lancamento.query.filter(Lancamento.projeto_id == None)
+        
+        # Aplicar filtro de período
+        if mes:
+            query_sem_projeto = query_sem_projeto.filter(
+                extract('month', Lancamento.data) == mes,
+                extract('year', Lancamento.data) == ano
+            )
+        elif ano:
+            query_sem_projeto = query_sem_projeto.filter(extract('year', Lancamento.data) == ano)
+        
+        # Filtrar apenas OUTRAS OFERTAS e DESTINAÇÃO para lançamentos sem projeto
+        lancamentos_sem_projeto = query_sem_projeto.filter(
+            or_(
+                and_(
+                    Lancamento.tipo == 'Entrada',
+                    func.upper(Lancamento.categoria) == 'OUTRAS OFERTAS'
+                ),
+                and_(
+                    Lancamento.tipo == 'Saída',
+                    func.upper(Lancamento.categoria) == 'DESTINAÇÃO'
+                )
+            )
+        ).order_by(Lancamento.data.asc()).all()
+        
+        # Calcular totais gerais
+        totais_geral = {
+            'entradas': sum(p['totais']['entradas'] for p in projetos_com_totais),
+            'saidas': sum(p['totais']['saidas'] for p in projetos_com_totais),
+            'saldo': sum(p['totais']['saldo'] for p in projetos_com_totais)
+        }
+        
+        # Adicionar lançamentos sem projeto aos totais
+        if lancamentos_sem_projeto:
+            totais_sem_projeto = {
+                'entradas': sum(l.valor for l in lancamentos_sem_projeto if l.tipo == 'Entrada'),
+                'saidas': sum(l.valor for l in lancamentos_sem_projeto if l.tipo == 'Saída')
+            }
+            totais_sem_projeto['saldo'] = totais_sem_projeto['entradas'] - totais_sem_projeto['saidas']
+            
+            totais_geral['entradas'] += totais_sem_projeto['entradas']
+            totais_geral['saidas'] += totais_sem_projeto['saidas']
+            totais_geral['saldo'] += totais_sem_projeto['saldo']
+        
+        return render_template('financeiro/caixa_destinacoes.html',
+                             projetos=projetos_com_totais,
+                             lancamentos_sem_projeto=lancamentos_sem_projeto,
+                             totais=totais_geral,
+                             mes=mes,
+                             ano=ano,
+                             projeto_id=projeto_id,
+                             todos_projetos=projetos)
+    
+    except Exception as e:
+        import traceback
+        print(f">>> ERRO em caixa_destinacoes: {str(e)}")
+        print(traceback.format_exc())
+        flash(f'Erro ao carregar caixa de destinações: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_lancamentos'))
+
+# ========== ROTAS DE CRUD DE PROJETOS ==========
+
+@financeiro_bp.route('/financeiro/projetos', endpoint='lista_projetos')
+@login_required
+def lista_projetos():
+    """Lista todos os projetos cadastrados"""
+    print(">>> ROTA LISTA_PROJETOS CHAMADA!")
+    try:
+        projetos = Projeto.query.order_by(Projeto.status.desc(), Projeto.nome).all()
+        
+        # Calcular totais para cada projeto
+        projetos_com_totais = []
+        for projeto in projetos:
+            totais = projeto.calcular_totais()
+            projetos_com_totais.append({
+                'projeto': projeto,
+                'totais': totais
+            })
+        
+        return render_template('financeiro/lista_projetos.html', 
+                             projetos=projetos_com_totais)
+    except Exception as e:
+        import traceback
+        print(f">>> ERRO em lista_projetos: {str(e)}")
+        print(traceback.format_exc())
+        flash(f'Erro ao listar projetos: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_lancamentos'))
+
+@financeiro_bp.route('/financeiro/projetos/novo', methods=['GET', 'POST'])
+@login_required
+def novo_projeto():
+    """Cadastra novo projeto"""
+    if request.method == 'POST':
+        try:
+            nome = request.form.get('nome', '').strip()
+            descricao = request.form.get('descricao', '').strip()
+            tipo = request.form.get('tipo', '').strip()
+            status = request.form.get('status', 'Ativo')
+            meta_valor_str = request.form.get('meta_valor', '').strip()
+            
+            # Validações
+            if not nome:
+                flash('Nome do projeto é obrigatório!', 'danger')
+                return redirect(url_for('financeiro.novo_projeto'))
+            
+            # Verifica duplicidade
+            existe = Projeto.query.filter_by(nome=nome).first()
+            if existe:
+                flash(f'Já existe um projeto com o nome "{nome}"!', 'danger')
+                return redirect(url_for('financeiro.novo_projeto'))
+            
+            # Converter meta_valor
+            meta_valor = None
+            if meta_valor_str:
+                try:
+                    meta_valor = float(meta_valor_str.replace('.', '').replace(',', '.'))
+                except:
+                    pass
+            
+            # Criar projeto
+            projeto = Projeto(
+                nome=nome,
+                descricao=descricao if descricao else None,
+                tipo=tipo if tipo else None,
+                status=status,
+                meta_valor=meta_valor
+            )
+            
+            db.session.add(projeto)
+            db.session.commit()
+            
+            flash(f'Projeto "{nome}" cadastrado com sucesso!', 'success')
+            return redirect(url_for('financeiro.lista_projetos'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao cadastrar projeto: {str(e)}', 'danger')
+            return redirect(url_for('financeiro.novo_projeto'))
+    
+    return render_template('financeiro/cadastro_projeto.html')
+
+@financeiro_bp.route('/financeiro/projetos/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_projeto(id):
+    """Edita projeto existente"""
+    projeto = Projeto.query.get_or_404(id)
+    
+    if request.method == 'POST':
+        try:
+            nome = request.form.get('nome', '').strip()
+            descricao = request.form.get('descricao', '').strip()
+            tipo = request.form.get('tipo', '').strip()
+            status = request.form.get('status', 'Ativo')
+            meta_valor_str = request.form.get('meta_valor', '').strip()
+            
+            if not nome:
+                flash('Nome do projeto é obrigatório!', 'danger')
+                return redirect(url_for('financeiro.editar_projeto', id=id))
+            
+            # Verifica duplicidade (exceto o próprio)
+            existe = Projeto.query.filter(Projeto.nome == nome, Projeto.id != id).first()
+            if existe:
+                flash(f'Já existe outro projeto com o nome "{nome}"!', 'danger')
+                return redirect(url_for('financeiro.editar_projeto', id=id))
+            
+            # Converter meta_valor
+            meta_valor = None
+            if meta_valor_str:
+                try:
+                    meta_valor = float(meta_valor_str.replace('.', '').replace(',', '.'))
+                except:
+                    pass
+            
+            # Atualizar
+            projeto.nome = nome
+            projeto.descricao = descricao if descricao else None
+            projeto.tipo = tipo if tipo else None
+            projeto.status = status
+            projeto.meta_valor = meta_valor
+            projeto.updated_at = datetime.now()
+            
+            db.session.commit()
+            flash(f'Projeto "{nome}" atualizado com sucesso!', 'success')
+            return redirect(url_for('financeiro.lista_projetos'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar projeto: {str(e)}', 'danger')
+            return redirect(url_for('financeiro.editar_projeto', id=id))
+    
+    return render_template('financeiro/cadastro_projeto.html', projeto=projeto)
+
+@financeiro_bp.route('/financeiro/projetos/excluir/<int:id>', methods=['POST'])
+@login_required
+def excluir_projeto(id):
+    """Exclui projeto (apenas se não tiver lançamentos)"""
+    try:
+        projeto = Projeto.query.get_or_404(id)
+        
+        # Verifica se tem lançamentos
+        if projeto.lancamentos.count() > 0:
+            flash(f'Não é possível excluir o projeto "{projeto.nome}" pois existem lançamentos vinculados!', 'danger')
+            return redirect(url_for('financeiro.lista_projetos'))
+        
+        nome = projeto.nome
+        db.session.delete(projeto)
+        db.session.commit()
+        
+        flash(f'Projeto "{nome}" excluído com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir projeto: {str(e)}', 'danger')
+    
+    return redirect(url_for('financeiro.lista_projetos'))
+
+# ========== FIM ROTAS DE PROJETOS ==========
+
+# ========== ROTA GENÉRICA (deve vir DEPOIS das específicas) ==========
+
+@financeiro_bp.route('/financeiro/lancamentos')
 @financeiro_bp.route('/financeiro')
 @login_required
 def lista_lancamentos():
@@ -223,9 +488,46 @@ def lista_lancamentos():
         # Se veio de uma importação recente, mostrar primeiro os importados
         mostrar_importados_primeiro = importacao_recente == 'true'
         
-        # Aplicar filtro por categoria
+        # Aplicar filtro por categoria (com lógica especial para ofertas)
         if categoria_filtro:
-            query = query.filter(Lancamento.categoria.ilike(f'%{categoria_filtro}%'))
+            if categoria_filtro == 'Ofertas Alçadas':
+                # Ofertas Alçadas = Ofertas normais do ofertório (30% para conselho)
+                # Exclui: OMN, Outras Ofertas, Especiais, Voluntárias
+                query = query.filter(
+                    Lancamento.categoria.ilike('%oferta%')
+                ).filter(
+                    ~Lancamento.categoria.ilike('%omn%')
+                ).filter(
+                    ~Lancamento.categoria.ilike('%missionaria%')
+                ).filter(
+                    ~Lancamento.categoria.ilike('%outras%')
+                ).filter(
+                    ~Lancamento.categoria.ilike('%especial%')
+                ).filter(
+                    ~Lancamento.categoria.ilike('%voluntaria%')
+                )
+            elif categoria_filtro == 'Oferta OMN':
+                # Buscar ofertas OMN
+                query = query.filter(
+                    or_(
+                        Lancamento.categoria.ilike('%omn%'),
+                        Lancamento.categoria.ilike('%missionaria%')
+                    )
+                )
+            elif categoria_filtro == 'Outras Ofertas':
+                # Buscar outras ofertas
+                query = query.filter(
+                    Lancamento.categoria.ilike('%oferta%')
+                ).filter(
+                    or_(
+                        Lancamento.categoria.ilike('%outras%'),
+                        Lancamento.categoria.ilike('%especial%'),
+                        Lancamento.categoria.ilike('%voluntaria%')
+                    )
+                )
+            else:
+                # Filtro padrão para outras categorias
+                query = query.filter(Lancamento.categoria.ilike(f'%{categoria_filtro}%'))
         
         # Aplicar filtro por tipo
         if tipo_filtro:
@@ -302,12 +604,42 @@ def lista_lancamentos():
         }
         totais_filtrados['saldo'] = totais_filtrados['entradas'] - totais_filtrados['saidas']
         
-        # Obter todas as categorias únicas para o filtro
+        # Obter todas as categorias únicas para o filtro (organizadas)
         categorias_todas = db.session.query(Lancamento.categoria).distinct().filter(
             Lancamento.categoria.is_not(None), 
             Lancamento.categoria != ''
         ).order_by(Lancamento.categoria).all()
-        categorias_unicas = [cat[0] for cat in categorias_todas]
+        
+        # Organizar categorias de forma estruturada
+        categorias_organizadas = []
+        categorias_brutas = [cat[0] for cat in categorias_todas]
+        
+        # Separar e organizar por tipo
+        # CATEGORIAS DE OFERTAS:
+        # 1. Ofertas Alçadas = Ofertas do ofertório (30% para conselho)
+        # 2. Oferta OMN = Ofertas missionárias (NÃO computa conselho)
+        # 3. Outras Ofertas = Especiais, Voluntárias (NÃO computa conselho)
+        for categoria in sorted(categorias_brutas):
+            cat_lower = categoria.lower()
+            
+            # Verificar se é oferta e especificar o tipo
+            if 'oferta' in cat_lower:
+                if 'omn' in cat_lower or 'missionaria' in cat_lower:
+                    # Oferta OMN - não computa para conselho
+                    categorias_organizadas.append('Oferta OMN')
+                elif any(x in cat_lower for x in ['outras', 'especial', 'voluntaria']):
+                    # Outras Ofertas - não computa para conselho
+                    categorias_organizadas.append('Outras Ofertas')
+                else:
+                    # Ofertas Alçadas (unifica "Oferta" e "Oferta Alçada")
+                    # Computa 30% para conselho administrativo
+                    categorias_organizadas.append('Ofertas Alçadas')
+            else:
+                # Não é oferta, manter como está
+                categorias_organizadas.append(categoria)
+        
+        # Remover duplicatas e manter ordem
+        categorias_unicas = list(dict.fromkeys(categorias_organizadas))
         
         # Obter todas as contas únicas para o filtro
         contas_todas = db.session.query(Lancamento.conta).distinct().filter(
@@ -326,7 +658,32 @@ def lista_lancamentos():
         # Calcular totais por categoria para exibição
         totais_por_categoria = {}
         for categoria in categorias_unicas:
-            lancamentos_cat = [l for l in lancamentos_filtrados if l.categoria == categoria]
+            # Função auxiliar para verificar se um lançamento pertence à categoria
+            def pertence_categoria(lanc, cat):
+                cat_lower = cat.lower()
+                lanc_cat_lower = lanc.categoria.lower() if lanc.categoria else ''
+                
+                if cat == 'Ofertas Alçadas':
+                    # Ofertas Alçadas = Ofertas do ofertório (30% para conselho)
+                    # Exclui: OMN, Outras Ofertas, Especiais, Voluntárias
+                    return ('oferta' in lanc_cat_lower and 
+                            'omn' not in lanc_cat_lower and 
+                            'missionaria' not in lanc_cat_lower and
+                            'outras' not in lanc_cat_lower and
+                            'especial' not in lanc_cat_lower and
+                            'voluntaria' not in lanc_cat_lower)
+                elif cat == 'Oferta OMN':
+                    # Ofertas OMN
+                    return 'omn' in lanc_cat_lower or 'missionaria' in lanc_cat_lower
+                elif cat == 'Outras Ofertas':
+                    # Outras ofertas especiais
+                    return ('oferta' in lanc_cat_lower and 
+                            ('outras' in lanc_cat_lower or 'especial' in lanc_cat_lower or 'voluntaria' in lanc_cat_lower))
+                else:
+                    # Comparação direta
+                    return lanc.categoria == cat
+            
+            lancamentos_cat = [l for l in lancamentos_filtrados if pertence_categoria(l, categoria)]
             if lancamentos_cat:
                 entradas_cat = sum(l.valor for l in lancamentos_cat if l.tipo == 'Entrada')
                 saidas_cat = sum(l.valor for l in lancamentos_cat if l.tipo == 'Saída')
@@ -378,13 +735,19 @@ def lista_lancamentos():
                                  'categoria': '', 'tipo': '', 'conta': '',
                                  'data_inicial': '', 'data_final': '',
                                  'valor_min': '', 'valor_max': '', 'busca_texto': ''
-                             })
+                             },
+                             conciliacao_info={'total_conciliados': 0, 'total_pendentes': 0, 'ultima_data': None},
+                             importacao_recente=False)
 
 @financeiro_bp.route('/financeiro/novo')
 @login_required
 def novo_lancamento():
     """Exibe formulário para cadastro de novo lançamento"""
-    return render_template('financeiro/cadastro_lancamento.html', today=date.today())
+    # Buscar projetos ativos para o dropdown
+    projetos = Projeto.query.filter_by(status='Ativo').order_by(Projeto.nome).all()
+    return render_template('financeiro/cadastro_lancamento.html', 
+                         today=date.today(), 
+                         projetos=projetos)
 
 
 @financeiro_bp.route('/financeiro/importar', methods=['GET', 'POST'])
@@ -1440,6 +1803,22 @@ def salvar_lancamento():
         valor_str = request.form.get('valor', '').strip()
         conta = request.form.get('conta')
         observacoes_raw = request.form.get('observacoes', '').strip()
+        projeto_id_str = request.form.get('projeto_id', '').strip()
+        
+        # Processar projeto_id
+        projeto_id = None
+        if projeto_id_str and projeto_id_str.isdigit():
+            projeto_id = int(projeto_id_str)
+            # Validar se o projeto existe e está ativo
+            projeto = Projeto.query.filter_by(id=projeto_id, status='Ativo').first()
+            if not projeto:
+                flash('Projeto selecionado inválido ou inativo!', 'danger')
+                return redirect(url_for('financeiro.novo_lancamento'))
+        
+        # Validar se projeto é obrigatório para DESTINAÇÃO e GASTO PROJETO
+        if categoria in ['DESTINAÇÃO', 'GASTO PROJETO'] and not projeto_id:
+            flash('Projeto é obrigatório para lançamentos de DESTINAÇÃO e GASTO PROJETO!', 'danger')
+            return redirect(url_for('financeiro.novo_lancamento'))
         
         # Limpar observações - garantir que None ou strings vazias sejam tratadas adequadamente
         observacoes = None
@@ -1494,10 +1873,15 @@ def salvar_lancamento():
             lancamento.valor = valor
             lancamento.conta = conta
             lancamento.observacoes = observacoes
+            lancamento.projeto_id = projeto_id  # Atualizar projeto
             # Atualizar comprovante apenas se um novo foi enviado
             if caminho_comprovante:
                 lancamento.comprovante = caminho_comprovante
-            flash('Lançamento atualizado com sucesso! Você pode continuar lançando ou clicar em "Voltar" para ver a lista.', 'success')
+            flash('Lançamento atualizado com sucesso!', 'success')
+            
+            # Após editar, salvar e redirecionar para a lista de lançamentos
+            db.session.commit()
+            return redirect(url_for('financeiro.lista_lancamentos'))
         else:
             # Validação de duplicidade
             duplicado = Lancamento.query.filter_by(
@@ -1520,15 +1904,16 @@ def salvar_lancamento():
                 valor=valor,
                 conta=conta,
                 observacoes=observacoes,
-                comprovante=caminho_comprovante
+                comprovante=caminho_comprovante,
+                projeto_id=projeto_id  # Vincular ao projeto
             )
             novo_lancamento.origem = 'manual'
             db.session.add(novo_lancamento)
             flash('Lançamento cadastrado com sucesso! Você pode continuar lançando ou clicar em "Voltar" para ver a lista.', 'success')
-
-        db.session.commit()
-
-        return redirect(url_for('financeiro.novo_lancamento'))
+            
+            # Para novos lançamentos, salvar e continuar no formulário
+            db.session.commit()
+            return redirect(url_for('financeiro.novo_lancamento'))
         
     except Exception as e:
         db.session.rollback()
@@ -1541,7 +1926,11 @@ def editar_lancamento(id):
     """Carrega dados do lançamento para edição"""
     try:
         lancamento = Lancamento.query.get_or_404(id)
-        return render_template('financeiro/cadastro_lancamento.html', lancamento=lancamento)
+        # Buscar projetos ativos para o dropdown
+        projetos = Projeto.query.filter_by(status='Ativo').order_by(Projeto.nome).all()
+        return render_template('financeiro/cadastro_lancamento.html', 
+                             lancamento=lancamento, 
+                             projetos=projetos)
     except Exception as e:
         flash(f'Erro ao carregar dados do lançamento: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
@@ -1624,9 +2013,21 @@ def gerar_relatorio():
 def relatorio_caixa():
     """Gera relatório de caixa interno mensal"""
     try:
-        # Pegar mês e ano atual ou da query string
-        mes = request.args.get('mes', datetime.now().month, type=int)
-        ano = request.args.get('ano', datetime.now().year, type=int)
+        # Pegar mês e ano da query string com validação
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int)
+        
+        # Se não foram fornecidos na URL, usar o mês/ano padrão
+        if mes is None:
+            mes = 12
+        if ano is None:
+            ano = 2025
+        
+        # Validar valores
+        if mes < 1 or mes > 12:
+            mes = 12
+        if ano < 2020 or ano > 2030:
+            ano = 2025
         
         # Filtrar lançamentos do mês
         lancamentos = Lancamento.query.filter(
@@ -1634,22 +2035,29 @@ def relatorio_caixa():
             extract('year', Lancamento.data) == ano
         ).all()
         
-        # Inicializar totais
+        # Inicializar totais (PIX agrupado com BANCO)
         totais = {
             'entradas_banco': 0,
             'entradas_dinheiro': 0,
-            'entradas_pix': 0,
             'dizimos_banco': 0,
             'dizimos_dinheiro': 0,
-            'dizimos_pix': 0,
             'ofertas_banco': 0,
             'ofertas_dinheiro': 0,
-            'ofertas_pix': 0,
+            'outras_ofertas_banco': 0,
+            'outras_ofertas_dinheiro': 0,
+            'oferta_omn_banco': 0,
+            'oferta_omn_dinheiro': 0,
             'saidas_banco': 0,
             'saidas_dinheiro': 0,
             'descontos': 0,
             'total_entradas': 0,
             'total_saidas': 0,
+            'total_dizimos': 0,
+            'total_ofertas': 0,
+            'total_outras_ofertas': 0,
+            'total_oferta_omn': 0,
+            'total_dizimos_ofertas': 0,
+            'percentual_30': 0,
             'saldo_anterior': Lancamento.calcular_saldo_ate_mes_anterior(mes, ano),
             'saldo_mes': 0,
             'saldo_acumulado': 0
@@ -1662,46 +2070,77 @@ def relatorio_caixa():
             valor = lancamento.valor or 0
             
             if lancamento.tipo == 'Entrada':
-                # Entradas por conta
-                if 'banco' in conta:
+                # Entradas por conta (PIX agrupado com BANCO)
+                if 'banco' in conta or 'pix' in conta:
                     totais['entradas_banco'] += valor
-                elif 'pix' in conta:
-                    totais['entradas_pix'] += valor
                 else:
                     totais['entradas_dinheiro'] += valor
                 
-                # Dízimos por conta
+                # Dízimos por conta (PIX agrupado com BANCO)
                 if 'dízimo' in categoria or 'dizimo' in categoria:
-                    if 'banco' in conta:
+                    if 'banco' in conta or 'pix' in conta:
                         totais['dizimos_banco'] += valor
-                    elif 'pix' in conta:
-                        totais['dizimos_pix'] += valor
                     else:
                         totais['dizimos_dinheiro'] += valor
                 
-                # Ofertas por conta
+                # Verificar primeiro as categorias específicas (mais restritivas)
+                # Oferta OMN (verificar primeiro para evitar confusão)
+                elif 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                    if 'banco' in conta or 'pix' in conta:
+                        totais['oferta_omn_banco'] += valor
+                    else:
+                        totais['oferta_omn_dinheiro'] += valor
+                
+                # Outras ofertas (verificar antes das ofertas normais)
+                elif 'oferta' in categoria and any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                    if 'banco' in conta or 'pix' in conta:
+                        totais['outras_ofertas_banco'] += valor
+                    else:
+                        totais['outras_ofertas_dinheiro'] += valor
+                
+                # Ofertas Alçadas (ofertas normais do ofertório - só o que sobrou)
                 elif 'oferta' in categoria:
-                    if 'banco' in conta:
+                    if 'banco' in conta or 'pix' in conta:
                         totais['ofertas_banco'] += valor
-                    elif 'pix' in conta:
-                        totais['ofertas_pix'] += valor
                     else:
                         totais['ofertas_dinheiro'] += valor
                 
                 totais['total_entradas'] += valor
             
             elif lancamento.tipo == 'Saída':
-                # Saídas por conta
-                if 'banco' in conta:
-                    totais['saidas_banco'] += valor
-                else:
-                    totais['saidas_dinheiro'] += valor
+                # Verificar se é uma "Destinação" (não afeta saldo do caixa)
+                # Destinações são registros de onde o dinheiro foi destinado,
+                # mas já entrou no caixa como entrada, então não deve sair novamente
+                eh_destinacao = any(x in categoria for x in [
+                    'destinação', 'destinacao', 
+                    'transferência interna', 'transferencia interna'
+                ])
                 
-                totais['total_saidas'] += valor
-                
-                # Descontos (categorias específicas)
-                if 'desconto' in categoria or 'taxa' in categoria:
-                    totais['descontos'] += valor
+                # Apenas contabilizar como saída se NÃO for destinação
+                if not eh_destinacao:
+                    # Saídas por conta (PIX agrupado com BANCO)
+                    if 'banco' in conta or 'pix' in conta:
+                        totais['saidas_banco'] += valor
+                    else:
+                        totais['saidas_dinheiro'] += valor
+                    
+                    totais['total_saidas'] += valor
+                    
+                    # Descontos (categorias específicas)
+                    if 'desconto' in categoria or 'taxa' in categoria:
+                        totais['descontos'] += valor
+        
+        # Calcular totais consolidados
+        totais['total_dizimos'] = totais['dizimos_banco'] + totais['dizimos_dinheiro']
+        totais['total_ofertas'] = totais['ofertas_banco'] + totais['ofertas_dinheiro']
+        totais['total_outras_ofertas'] = totais['outras_ofertas_banco'] + totais['outras_ofertas_dinheiro']
+        totais['total_oferta_omn'] = totais['oferta_omn_banco'] + totais['oferta_omn_dinheiro']
+        
+        # Total para cálculo dos 30% (apenas dízimos + ofertas normais)
+        totais['total_dizimos_ofertas'] = totais['total_dizimos'] + totais['total_ofertas']
+        
+        # Calcular 30% sobre dízimos e ofertas (excluindo outras ofertas e OMN)
+        totais['percentual_30'] = totais['total_dizimos_ofertas'] * 0.30
         
         # Calcular saldos
         totais['saldo_mes'] = totais['total_entradas'] - totais['total_saidas']
@@ -1730,94 +2169,232 @@ def relatorio_caixa():
 def relatorio_sede():
     """Gera relatório oficial para igreja sede"""
     try:
-        # Pegar mês e ano atual ou da query string
-        mes = request.args.get('mes', datetime.now().month, type=int)
-        ano = request.args.get('ano', datetime.now().year, type=int)
+        print("DEBUG: Inicio relatorio_sede")
         
-        # Filtrar lançamentos do mês
-        lancamentos = Lancamento.query.filter(
-            extract('month', Lancamento.data) == mes,
-            extract('year', Lancamento.data) == ano
-        ).all()
+        # Obter parâmetros da URL ou valores padrão
+        mes = int(request.args.get('mes', 12))
+        ano = int(request.args.get('ano', 2025))
         
-        # Buscar dados de configuração da igreja
-        config = Configuracao.obter_configuracao()
-        dados_igreja = {
-            'cidade': config.cidade if config.cidade else 'Tietê',
-            'bairro': config.bairro if config.bairro else 'Centro',
-            'dirigente': config.dirigente if config.dirigente else 'Pastor Responsável',
-            'tesoureiro': config.tesoureiro if config.tesoureiro else 'Tesoureiro(a)',
-            'saldo_anterior': Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
-        }
+        print(f"DEBUG: Processando mês {mes}, ano {ano}")
+        print(f"DEBUG: Parâmetros da URL: {dict(request.args)}")
         
-        # Inicializar totais
+        print(f"DEBUG: Mês: {mes}, Ano: {ano}")
+        print(f"DEBUG: Mês: {mes}, Ano: {ano}")
+        
+        print("DEBUG: Criando dados básicos")
+        
+        # Buscar dados da configuração
+        try:
+            from app.configuracoes.configuracoes_model import Configuracao
+            config = Configuracao.obter_configuracao_atual()
+            if config:
+                dados_igreja = {
+                    'cidade': config.cidade or 'Tietê',
+                    'bairro': config.bairro or 'Centro', 
+                    'dirigente': config.pastor or 'Pastor Responsável',
+                    'tesoureiro': config.tesoureiro or 'Tesoureiro(a)',
+                    'saldo_anterior': 0.0
+                }
+            else:
+                dados_igreja = {
+                    'cidade': 'Tietê',
+                    'bairro': 'Centro', 
+                    'dirigente': 'Pastor Responsável',
+                    'tesoureiro': 'Tesoureiro(a)',
+                    'saldo_anterior': 0.0
+                }
+        except Exception as e:
+            print(f"DEBUG: Erro ao buscar configuração: {e}")
+            dados_igreja = {
+                'cidade': 'Tietê',
+                'bairro': 'Centro', 
+                'dirigente': 'Pastor Responsável',
+                'tesoureiro': 'Tesoureiro(a)',
+                'saldo_anterior': 0.0
+            }
+        
+        # Buscar lançamentos do mês/ano
+        try:
+            from app.financeiro.financeiro_model import Lancamento
+            from sqlalchemy import and_, extract
+            
+            lancamentos = Lancamento.query.filter(
+                and_(
+                    extract('month', Lancamento.data) == mes,
+                    extract('year', Lancamento.data) == ano
+                )
+            ).all()
+            
+            print(f"DEBUG: Encontrados {len(lancamentos)} lançamentos")
+            
+            # Calcular totais com lógica corrigida
+            total_dizimos = sum(l.valor for l in lancamentos if l.tipo == 'Entrada' and l.categoria and 'dízimo' in l.categoria.lower())
+            
+            # Ofertas Alçadas: Primeiro verificar se NÃO é OMN ou Outras Ofertas
+            total_ofertas_alcadas = sum(
+                l.valor for l in lancamentos 
+                if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower()
+                and not ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower())
+                and not any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
+            )
+            
+            # Outras Ofertas: Apenas ofertas com palavras-chave específicas
+            total_outras_ofertas = sum(
+                l.valor for l in lancamentos 
+                if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower() 
+                and any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
+            )
+            
+            # Oferta OMN: Apenas com OMN ou missionária
+            total_ofertas_omn = sum(
+                l.valor for l in lancamentos 
+                if l.tipo == 'Entrada' and l.categoria 
+                and ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower() or 'missionária' in l.categoria.lower())
+            )
+            total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'Saída')
+            
+            # Total para cálculo dos 30% do Conselho Administrativo
+            # IMPORTANTE: Apenas Dízimos + Ofertas Alçadas computam para o conselho
+            # Outras Ofertas e Oferta OMN NÃO computam
+            total_dizimos_ofertas = total_dizimos + total_ofertas_alcadas
+            
+            # Calcular 30% sobre dízimos e ofertas alçadas (base do conselho)
+            valor_conselho_30 = total_dizimos_ofertas * 0.30
+            
+        except Exception as e:
+            print(f"DEBUG: Erro ao buscar lançamentos: {e}")
+            lancamentos = []
+            total_dizimos = 0
+            total_ofertas_alcadas = 0
+            total_outras_ofertas = 0
+            total_ofertas_omn = 0
+            total_despesas = 0
+            total_dizimos_ofertas = 0
+            valor_conselho_30 = 0
+        
+        # Total geral de entradas
+        total_entradas = total_dizimos + total_ofertas_alcadas + total_outras_ofertas + total_ofertas_omn
+        saldo_mes = total_entradas - total_despesas
+        
+        # Totais básicos
         totais = {
-            'dizimos': 0,
-            'ofertas_alcadas': 0,
-            'outras_ofertas': 0,
-            'total_geral': 0,
-            'despesas_financeiras': 0,
-            'saldo_mes': 0,
-            'valor_conselho': 0
+            'dizimos': total_dizimos,
+            'ofertas_alcadas': total_ofertas_alcadas,
+            'outras_ofertas': total_outras_ofertas,
+            'oferta_omn': total_ofertas_omn,
+            'total_geral': total_entradas,
+            'despesas_financeiras': total_despesas,
+            'saldo_mes': saldo_mes,
+            'valor_conselho': valor_conselho_30,
+            'total_dizimos_ofertas': total_dizimos_ofertas,
+            'percentual_30': valor_conselho_30
         }
         
-        # Envios fixos obtidos da base de dados
-        envios = DespesaFixaConselho.obter_despesas_para_relatorio()
-        
-        # Processar lançamentos
-        for lancamento in lancamentos:
-            categoria = lancamento.categoria.lower() if lancamento.categoria else ''
-            valor = lancamento.valor or 0
+        # Buscar envios para sede baseados nas saídas
+        try:
+            # Buscar lançamentos de saída que correspondem aos envios
+            lancamentos_saida = [l for l in lancamentos if l.tipo == 'Saída']
             
-            if lancamento.tipo == 'Entrada':
-                if 'dízimo' in categoria or 'dizimo' in categoria:
-                    totais['dizimos'] += valor
-                elif 'oferta' in categoria:
-                    # Lógica padronizada das ofertas:
-                    if 'omn' in categoria:
-                        # OFERTA OMN - direcionada à convenção
-                        totais['ofertas_alcadas'] += valor
-                    elif categoria == 'oferta':
-                        # OFERTA regular - verificar descrição
-                        descricao = lancamento.descricao.lower() if lancamento.descricao else ''
-                        if 'oferta' in descricao and 'outras' not in descricao:
-                            # Ofertas do ofertório durante cultos
-                            totais['ofertas_alcadas'] += valor
-                        else:
-                            # Ofertas externas, doações, projetos
-                            totais['outras_ofertas'] += valor
-                    else:
-                        # Outras categorias de oferta
-                        totais['outras_ofertas'] += valor
-                else:
-                    totais['outras_ofertas'] += valor
-                
-                totais['total_geral'] += valor
+            envios = {
+                'oferta_voluntaria_conchas': 0.0,
+                'site': 0.0,
+                'projeto_filipe': 0.0,
+                'forca_para_viver': 0.0,
+                'contador_sede': 0.0
+            }
             
-            elif lancamento.tipo == 'Saída':
-                totais['despesas_financeiras'] += valor
+            # Lista detalhada para o PDF
+            envios_detalhados = {
+                'oferta_voluntaria_conchas': [],
+                'site': [],
+                'projeto_filipe': [],
+                'forca_para_viver': [],
+                'contador_sede': [],
+                'omn': []
+            }
+            
+            # Mapear descrições para chaves
+            mapeamento_envios = {
+                'oferta_voluntaria_conchas': ['conchas', 'voluntaria conchas', 'oferta voluntaria conchas'],
+                'site': ['site'],
+                'projeto_filipe': ['projeto filipe', 'filipe'],
+                'forca_para_viver': ['força para viver', 'forca para viver'],
+                'contador_sede': ['contador sede', 'contador']
+            }
+            
+            # Buscar valores nos lançamentos de saída
+            for lancamento in lancamentos_saida:
+                if lancamento.descricao:
+                    descricao_lower = lancamento.descricao.lower()
+                    
+                    # Verificar cada tipo de envio
+                    for chave, termos_busca in mapeamento_envios.items():
+                        for termo in termos_busca:
+                            if termo in descricao_lower:
+                                envios[chave] += lancamento.valor
+                                # Adicionar detalhes para o PDF
+                                envios_detalhados[chave].append({
+                                    'data': lancamento.data,
+                                    'descricao': lancamento.descricao,
+                                    'valor': lancamento.valor,
+                                    'conta': lancamento.conta
+                                })
+                                break  # Para evitar dupla contagem
+            
+            total_envio_sede = sum(envios.values())
+            
+            # Adicionar ofertas OMN automaticamente aos envios detalhados
+            for lancamento in lancamentos:
+                if lancamento.tipo == 'Entrada' and lancamento.categoria:
+                    categoria_lower = lancamento.categoria.lower()
+                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower:
+                        envios_detalhados['omn'].append({
+                            'data': lancamento.data,
+                            'descricao': lancamento.categoria,
+                            'conta': getattr(lancamento, 'conta', None),
+                            'valor': float(lancamento.valor) if lancamento.valor else 0
+                        })
+            
+            print(f"DEBUG: Envios encontrados: {envios}")
+            print(f"DEBUG: Total envio sede: {total_envio_sede}")
+            
+        except Exception as e:
+            print(f"DEBUG: Erro ao buscar envios: {e}")
+            envios = {
+                'oferta_voluntaria_conchas': 0.0,
+                'site': 0.0,
+                'projeto_filipe': 0.0,
+                'forca_para_viver': 0.0,
+                'contador_sede': 0.0
+            }
+            envios_detalhados = {
+                'oferta_voluntaria_conchas': [],
+                'site': [],
+                'projeto_filipe': [],
+                'forca_para_viver': [],
+                'contador_sede': [],
+                'omn': []
+            }
+            total_envio_sede = 0
         
-        # Calcular valores finais
-        totais['saldo_mes'] = totais['total_geral'] - totais['despesas_financeiras']
+        print("DEBUG: Tentando renderizar template")
         
-        # Buscar percentual do conselho das configurações
-        config = Configuracao.obter_configuracao()
-        percentual = config.percentual_conselho / 100  # Converter para decimal
-        totais['valor_conselho'] = totais['total_geral'] * percentual
-        
-        # Calcular total de envios (envios fixos + valor do conselho)
-        total_envio_sede = sum(envios.values()) + totais['valor_conselho']
+        from datetime import date
         
         return render_template('financeiro/relatorio_sede.html',
                              dados_igreja=dados_igreja,
                              totais=totais,
                              envios=envios,
+                             envios_detalhados=envios_detalhados,
                              total_envio_sede=total_envio_sede,
                              mes=mes,
                              ano=ano,
-                             data_geracao=datetime.now())
+                             data_geracao=date.today())
         
     except Exception as e:
+        print(f"DEBUG: ERRO: {e}")
+        import traceback
+        print(f"DEBUG: TRACEBACK: {traceback.format_exc()}")
         flash(f'Erro ao gerar relatório da sede: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
@@ -1897,9 +2474,21 @@ def toggle_despesa_fixa(id):
 def relatorio_caixa_preview():
     """Preview HTML do relatório de caixa antes de gerar PDF"""
     try:
-        # Pegar mês e ano atual ou da query string
-        mes = request.args.get('mes', datetime.now().month, type=int)
-        ano = request.args.get('ano', datetime.now().year, type=int)
+        # Pegar mês e ano da query string com validação
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int)
+        
+        # Se não foram fornecidos na URL, usar o mês/ano atual
+        if mes is None:
+            mes = datetime.now().month
+        if ano is None:
+            ano = datetime.now().year
+        
+        # Validar valores
+        if mes < 1 or mes > 12:
+            mes = datetime.now().month
+        if ano < 2020 or ano > 2030:
+            ano = datetime.now().year
         
         # Filtrar lançamentos do mês
         lancamentos = Lancamento.query.filter(
@@ -1944,19 +2533,27 @@ def relatorio_caixa_preview():
                 totais['entradas_por_categoria'][categoria] += valor
                 
             elif lancamento.tipo == 'Saída':
-                if 'banco' in conta:
-                    totais['saidas_banco'] += valor
-                elif 'pix' in conta:
-                    totais['saidas_pix'] += valor
-                else:
-                    totais['saidas_dinheiro'] += valor
+                # Verificar se é uma "Destinação" (não afeta saldo do caixa)
+                eh_destinacao = any(x in categoria for x in [
+                    'destinação', 'destinacao', 
+                    'transferência interna', 'transferencia interna'
+                ])
                 
-                totais['total_saidas'] += valor
-                
-                # Agrupar por categoria
-                if categoria not in totais['saidas_por_categoria']:
-                    totais['saidas_por_categoria'][categoria] = 0
-                totais['saidas_por_categoria'][categoria] += valor
+                # Apenas contabilizar como saída se NÃO for destinação
+                if not eh_destinacao:
+                    if 'banco' in conta:
+                        totais['saidas_banco'] += valor
+                    elif 'pix' in conta:
+                        totais['saidas_pix'] += valor
+                    else:
+                        totais['saidas_dinheiro'] += valor
+                    
+                    totais['total_saidas'] += valor
+                    
+                    # Agrupar por categoria
+                    if categoria not in totais['saidas_por_categoria']:
+                        totais['saidas_por_categoria'][categoria] = 0
+                    totais['saidas_por_categoria'][categoria] += valor
         
         # Calcular saldo do período
         totais['saldo_periodo'] = totais['total_entradas'] - totais['total_saidas']
@@ -1989,9 +2586,21 @@ def relatorio_caixa_preview():
 def relatorio_sede_preview():
     """Preview HTML do relatório oficial para sede"""
     try:
-        # Pegar mês e ano atual ou da query string
-        mes = request.args.get('mes', datetime.now().month, type=int)
-        ano = request.args.get('ano', datetime.now().year, type=int)
+        # Pegar mês e ano da query string com validação
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int)
+        
+        # Se não foram fornecidos na URL, usar o mês/ano atual
+        if mes is None:
+            mes = datetime.now().month
+        if ano is None:
+            ano = datetime.now().year
+        
+        # Validar valores
+        if mes < 1 or mes > 12:
+            mes = datetime.now().month
+        if ano < 2020 or ano > 2030:
+            ano = datetime.now().year
         
         # Filtrar lançamentos do mês
         lancamentos = Lancamento.query.filter(
@@ -2023,22 +2632,17 @@ def relatorio_sede_preview():
                 if 'dízimo' in categoria or 'dizimo' in categoria:
                     totais['dizimos'] += valor
                 elif 'oferta' in categoria:
-                    # Lógica padronizada das ofertas:
-                    if 'omn' in categoria:
-                        # OFERTA OMN - direcionada à convenção
-                        totais['ofertas_alcadas'] += valor
-                    elif categoria == 'oferta':
-                        # OFERTA regular - verificar descrição
-                        descricao = lancamento.descricao.lower() if lancamento.descricao else ''
-                        if 'oferta' in descricao and 'outras' not in descricao:
-                            # Ofertas do ofertório durante cultos
-                            totais['ofertas_alcadas'] += valor
-                        else:
-                            # Ofertas externas, doações, projetos
-                            totais['outras_ofertas'] += valor
-                    else:
-                        # Outras categorias de oferta
+                    # Lógica corrigida e padronizada das ofertas:
+                    # 1º: Verificar se é OMN (não computa no conselho, mas registrado)
+                    if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                        totais['ofertas_alcadas'] += valor  # Mantido por compatibilidade do preview
+                    # 2º: Verificar se é "Outras Ofertas" (não computa no conselho)
+                    elif any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
                         totais['outras_ofertas'] += valor
+                    # 3º: O resto são Ofertas Alçadas (computa 30% conselho)
+                    else:
+                        # Ofertas Alçadas = ofertas normais do ofertório
+                        totais['ofertas_alcadas'] += valor
                 else:
                     totais['outras_ofertas'] += valor
                 
@@ -2058,7 +2662,9 @@ def relatorio_sede_preview():
         config = Configuracao.obter_configuracao()
         percentual = config.percentual_conselho / 100 if config else 0.30  # Default 30%
         totais['valor_conselho'] = totais['total_entradas']
-        totais['trinta_porcento_conselho'] = totais['total_entradas'] * percentual
+        # Calcular 30% excluindo "OUTRAS OFERTAS"
+        valor_para_conselho = totais['total_entradas'] - totais.get('outras_ofertas', 0)
+        totais['trinta_porcento_conselho'] = valor_para_conselho * percentual
         
         # Buscar despesas fixas do conselho
         despesas_fixas = DespesaFixaConselho.query.filter_by(ativo=True).all()
@@ -2066,6 +2672,90 @@ def relatorio_sede_preview():
         
         # Calcular total de envio para sede
         totais['total_envio_sede'] = totais['trinta_porcento_conselho'] + totais['despesas_fixas_conselho']
+        
+        # Buscar envios para sede baseados nas saídas
+        try:
+            # Buscar lançamentos de saída que correspondem aos envios
+            lancamentos_saida = [l for l in lancamentos if l.tipo == 'Saída']
+            
+            envios = {
+                'oferta_voluntaria_conchas': 0.0,
+                'site': 0.0,
+                'projeto_filipe': 0.0,
+                'forca_para_viver': 0.0,
+                'contador_sede': 0.0
+            }
+            
+            # Lista detalhada para o PDF
+            envios_detalhados = {
+                'oferta_voluntaria_conchas': [],
+                'site': [],
+                'projeto_filipe': [],
+                'forca_para_viver': [],
+                'contador_sede': [],
+                'omn': []
+            }
+            
+            # Mapear descrições para chaves
+            mapeamento_envios = {
+                'oferta_voluntaria_conchas': ['conchas', 'voluntaria conchas', 'oferta voluntaria conchas'],
+                'site': ['site'],
+                'projeto_filipe': ['projeto filipe', 'filipe'],
+                'forca_para_viver': ['força para viver', 'forca para viver'],
+                'contador_sede': ['contador sede', 'contador']
+            }
+            
+            # Buscar valores nos lançamentos de saída
+            for lancamento in lancamentos_saida:
+                if lancamento.descricao:
+                    descricao_lower = lancamento.descricao.lower()
+                    
+                    # Verificar cada tipo de envio
+                    for chave, termos_busca in mapeamento_envios.items():
+                        for termo in termos_busca:
+                            if termo in descricao_lower:
+                                envios[chave] += lancamento.valor
+                                # Adicionar detalhes para o PDF
+                                envios_detalhados[chave].append({
+                                    'data': lancamento.data,
+                                    'descricao': lancamento.descricao,
+                                    'valor': lancamento.valor,
+                                    'conta': lancamento.conta
+                                })
+                                break  # Para evitar dupla contagem
+            
+            total_envio_sede = sum(envios.values())
+            
+            # Adicionar ofertas OMN automaticamente aos envios detalhados
+            for lancamento in lancamentos:
+                if lancamento.tipo == 'Entrada' and lancamento.categoria:
+                    categoria_lower = lancamento.categoria.lower()
+                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower:
+                        envios_detalhados['omn'].append({
+                            'data': lancamento.data,
+                            'descricao': lancamento.categoria,
+                            'conta': getattr(lancamento, 'conta', None),
+                            'valor': float(lancamento.valor) if lancamento.valor else 0
+                        })
+            
+        except Exception as e:
+            print(f"DEBUG: Erro ao buscar envios: {e}")
+            envios = {
+                'oferta_voluntaria_conchas': 0.0,
+                'site': 0.0,
+                'projeto_filipe': 0.0,
+                'forca_para_viver': 0.0,
+                'contador_sede': 0.0
+            }
+            envios_detalhados = {
+                'oferta_voluntaria_conchas': [],
+                'site': [],
+                'projeto_filipe': [],
+                'forca_para_viver': [],
+                'contador_sede': [],
+                'omn': []
+            }
+            total_envio_sede = 0
         
         # Buscar configuração da igreja
         config = Configuracao.obter_configuracao()
@@ -2083,6 +2773,9 @@ def relatorio_sede_preview():
                              mes=mes,
                              ano=ano,
                              totais=totais,
+                             envios=envios,
+                             envios_detalhados=envios_detalhados,
+                             total_envio_sede=total_envio_sede,
                              dados_igreja=dados_igreja,
                              data_geracao=datetime.now())
     
@@ -2095,9 +2788,21 @@ def relatorio_sede_preview():
 def relatorio_caixa_pdf():
     """Gera PDF do relatório de caixa interno"""
     try:
-        # Pegar mês e ano atual ou da query string
-        mes = request.args.get('mes', datetime.now().month, type=int)
-        ano = request.args.get('ano', datetime.now().year, type=int)
+        # Pegar mês e ano da query string com validação
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int)
+        
+        # Se não foram fornecidos na URL, usar o mês/ano atual
+        if mes is None:
+            mes = datetime.now().month
+        if ano is None:
+            ano = datetime.now().year
+        
+        # Validar valores
+        if mes < 1 or mes > 12:
+            mes = datetime.now().month
+        if ano < 2020 or ano > 2030:
+            ano = datetime.now().year
         
         # Filtrar lançamentos do mês
         lancamentos = Lancamento.query.filter(
@@ -2162,17 +2867,25 @@ def relatorio_caixa_pdf():
                 totais['total_entradas'] += valor
             
             elif lancamento.tipo == 'Saída':
-                # Saídas por conta
-                if 'banco' in conta:
-                    totais['saidas_banco'] += valor
-                else:
-                    totais['saidas_dinheiro'] += valor
+                # Verificar se é uma "Destinação" (não afeta saldo do caixa)
+                eh_destinacao = any(x in categoria for x in [
+                    'destinação', 'destinacao', 
+                    'transferência interna', 'transferencia interna'
+                ])
                 
-                totais['total_saidas'] += valor
-                
-                # Descontos (categorias específicas)
-                if 'desconto' in categoria or 'taxa' in categoria:
-                    totais['descontos'] += valor
+                # Apenas contabilizar como saída se NÃO for destinação
+                if not eh_destinacao:
+                    # Saídas por conta
+                    if 'banco' in conta:
+                        totais['saidas_banco'] += valor
+                    else:
+                        totais['saidas_dinheiro'] += valor
+                    
+                    totais['total_saidas'] += valor
+                    
+                    # Descontos (categorias específicas)
+                    if 'desconto' in categoria or 'taxa' in categoria:
+                        totais['descontos'] += valor
         
         # Calcular saldos
         totais['saldo_mes'] = totais['total_entradas'] - totais['total_saidas']
@@ -2190,11 +2903,11 @@ def relatorio_caixa_pdf():
         
         return send_file(
             pdf_buffer,
-            as_attachment=True,
+            as_attachment=False,
             download_name=nome_arquivo,
             mimetype='application/pdf'
         )
-        
+
     except Exception as e:
         flash(f'Erro ao gerar PDF do relatório de caixa: {str(e)}', 'danger')
         return redirect(url_for('financeiro.relatorio_caixa'))
@@ -2204,9 +2917,21 @@ def relatorio_caixa_pdf():
 def relatorio_sede_pdf():
     """Gera PDF do relatório oficial para sede"""
     try:
-        # Pegar mês e ano atual ou da query string
-        mes = request.args.get('mes', datetime.now().month, type=int)
-        ano = request.args.get('ano', datetime.now().year, type=int)
+        # Pegar mês e ano da query string com validação
+        mes = request.args.get('mes', type=int)
+        ano = request.args.get('ano', type=int)
+        
+        # Se não foram fornecidos na URL, usar o mês/ano atual
+        if mes is None:
+            mes = datetime.now().month
+        if ano is None:
+            ano = datetime.now().year
+        
+        # Validar valores
+        if mes < 1 or mes > 12:
+            mes = datetime.now().month
+        if ano < 2020 or ano > 2030:
+            ano = datetime.now().year
         
         # Filtrar lançamentos do mês
         lancamentos = Lancamento.query.filter(
@@ -2247,22 +2972,17 @@ def relatorio_sede_pdf():
                 if 'dízimo' in categoria or 'dizimo' in categoria:
                     totais['dizimos'] += valor
                 elif 'oferta' in categoria:
-                    # Lógica padronizada das ofertas:
-                    if 'omn' in categoria:
-                        # OFERTA OMN - direcionada à convenção
-                        totais['ofertas_alcadas'] += valor
-                    elif categoria == 'oferta':
-                        # OFERTA regular - verificar descrição
-                        descricao = lancamento.descricao.lower() if lancamento.descricao else ''
-                        if 'oferta' in descricao and 'outras' not in descricao:
-                            # Ofertas do ofertório durante cultos
-                            totais['ofertas_alcadas'] += valor
-                        else:
-                            # Ofertas externas, doações, projetos
-                            totais['outras_ofertas'] += valor
-                    else:
-                        # Outras categorias de oferta
+                    # Lógica corrigida e padronizada das ofertas:
+                    # 1º: Verificar se é OMN (não computa no conselho, mas registrado)
+                    if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                        totais['ofertas_alcadas'] += valor  # Mantido por compatibilidade
+                    # 2º: Verificar se é "Outras Ofertas" (não computa no conselho)
+                    elif any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
                         totais['outras_ofertas'] += valor
+                    # 3º: O resto são Ofertas Alçadas (computa 30% conselho)
+                    else:
+                        # Ofertas Alçadas = ofertas normais do ofertório
+                        totais['ofertas_alcadas'] += valor
                 else:
                     totais['outras_ofertas'] += valor
                 
@@ -2277,7 +2997,9 @@ def relatorio_sede_pdf():
         # Buscar percentual do conselho das configurações
         config = Configuracao.obter_configuracao()
         percentual = config.percentual_conselho / 100  # Converter para decimal
-        totais['valor_conselho'] = totais['total_geral'] * percentual
+        # Calcular valor do conselho excluindo "OUTRAS OFERTAS"
+        valor_para_conselho = totais['total_geral'] - totais.get('outras_ofertas', 0)
+        totais['valor_conselho'] = valor_para_conselho * percentual
         
         # Calcular total de envios (envios fixos + valor do conselho)
         total_envio_sede = sum(envios.values()) + totais['valor_conselho']
@@ -2294,55 +3016,11 @@ def relatorio_sede_pdf():
         
         return send_file(
             pdf_buffer,
-            as_attachment=True,
+            as_attachment=False,
             download_name=nome_arquivo,
             mimetype='application/pdf'
         )
-        
+
     except Exception as e:
         flash(f'Erro ao gerar PDF do relatório da sede: {str(e)}', 'danger')
         return redirect(url_for('financeiro.relatorio_sede'))
-
-@financeiro_bp.route('/financeiro/conciliacao/dashboard')
-@login_required
-def dashboard_conciliacao():
-    """Dashboard básico de conciliação - versão temporária"""
-    try:
-        # Estatísticas básicas
-        total_lancamentos = Lancamento.query.count()
-        manuais = Lancamento.query.filter_by(origem='manual').count()
-        importados = Lancamento.query.filter_by(origem='importado').count()
-        conciliados = Lancamento.query.filter_by(conciliado=True).count()
-        
-        # Lançamentos pendentes
-        manuais_pendentes = Lancamento.query.filter_by(origem='manual', conciliado=False).limit(10).all()
-        importados_pendentes = Lancamento.query.filter_by(origem='importado', conciliado=False).limit(10).all()
-        
-        indicadores = {
-            'totais': {
-                'lancamentos': total_lancamentos,
-                'manuais': manuais,
-                'importados': importados,
-                'conciliados': conciliados,
-                'pendentes': total_lancamentos - conciliados,
-                'duplicatas': 0
-            },
-            'percentuais': {
-                'conciliado': round((conciliados / total_lancamentos * 100) if total_lancamentos > 0 else 0, 1),
-                'importados': round((importados / total_lancamentos * 100) if total_lancamentos > 0 else 0, 1),
-                'pendentes': round(((total_lancamentos - conciliados) / total_lancamentos * 100) if total_lancamentos > 0 else 0, 1)
-            },
-            'historicos_recentes': [],
-            'top_regras': []
-        }
-        
-        return render_template('financeiro/dashboard_conciliacao.html',
-                             indicadores=indicadores,
-                             manuais_pendentes=manuais_pendentes,
-                             importados_pendentes=importados_pendentes,
-                             importacoes_recentes=[],
-                             discrepancias=[])
-        
-    except Exception as e:
-        flash(f'Erro ao carregar dashboard: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.lista_lancamentos'))

@@ -222,5 +222,6 @@ class Configuracao(db.Model):
             'Nubank',
             'Banco Inter',
             'Banco Original',
+            'PagBank',
             'Outros'
         ]

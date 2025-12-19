@@ -139,12 +139,12 @@
                             </a>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ url_for('financeiro.relatorio_caixa_pdf') }}" class="btn btn-modern outline w-100" target="_blank">
+                            <a href="{{ url_for('financeiro.relatorio_caixa_pdf', mes=request.args.get('mes', '12'), ano=request.args.get('ano', '2025')) }}" class="btn btn-modern outline w-100" target="_blank">
                                 <i class="fas fa-file-pdf me-2"></i>PDF Caixa
                             </a>
                         </div>
                         <div class="col-md-2">
-                            <a href="{{ url_for('financeiro.relatorio_sede_pdf') }}" class="btn btn-modern outline w-100" target="_blank">
+                            <a href="{{ url_for('financeiro.relatorio_sede_pdf', mes=request.args.get('mes', '12'), ano=request.args.get('ano', '2025')) }}" class="btn btn-modern outline w-100" target="_blank">
                                 <i class="fas fa-file-pdf me-2"></i>PDF Sede
                             </a>
                         </div>

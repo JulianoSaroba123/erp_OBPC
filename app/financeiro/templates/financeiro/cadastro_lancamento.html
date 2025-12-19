@@ -14,7 +14,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}" enctype="multipart/form-data">
+                    <form id="form-lancamento" method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}" enctype="multipart/form-data">
                         {% if lancamento %}
                         <input type="hidden" name="id" value="{{ lancamento.id }}">
                         {% endif %}
@@ -54,15 +54,16 @@
                                     <option value="">Selecione a categoria</option>
                                     
                                     <!-- Entradas -->
-                                    <optgroup label="� ENTRADAS">
+                                    <optgroup label="💰 ENTRADAS">
                                         <option value="DÍZIMO" {% if lancamento and lancamento.categoria == 'DÍZIMO' %}selected{% endif %}>DÍZIMO</option>
                                         <option value="OFERTA" {% if lancamento and lancamento.categoria == 'OFERTA' %}selected{% endif %}>OFERTA</option>
                                         <option value="OFERTA OMN" {% if lancamento and lancamento.categoria == 'OFERTA OMN' %}selected{% endif %}>OFERTA OMN</option>
+                                        <option value="OUTRAS OFERTAS" {% if lancamento and lancamento.categoria == 'OUTRAS OFERTAS' %}selected{% endif %}>OUTRAS OFERTAS</option>
                                         <option value="RENDIMENTOS" {% if lancamento and lancamento.categoria == 'RENDIMENTOS' %}selected{% endif %}>RENDIMENTOS</option>
                                     </optgroup>
                                     
                                     <!-- Saídas -->
-                                    <optgroup label="� SAÍDAS">
+                                    <optgroup label="SAÍDAS">
                                         <option value="DESP. FIXAS" {% if lancamento and lancamento.categoria == 'DESP. FIXAS' %}selected{% endif %}>DESP. FIXAS</option>
                                         <option value="DESP. VARIAVEIS" {% if lancamento and lancamento.categoria == 'DESP. VARIAVEIS' %}selected{% endif %}>DESP. VARIAVEIS</option>
                                         <option value="PREBENDA" {% if lancamento and lancamento.categoria == 'PREBENDA' %}selected{% endif %}>PREBENDA</option>
@@ -73,11 +74,32 @@
                                         <option value="CONTAS" {% if lancamento and lancamento.categoria == 'CONTAS' %}selected{% endif %}>CONTAS</option>
                                         <option value="CRÉDITO CARTÃO" {% if lancamento and lancamento.categoria == 'CRÉDITO CARTÃO' %}selected{% endif %}>CRÉDITO CARTÃO</option>
                                         <option value="DESC.CONTA" {% if lancamento and lancamento.categoria == 'DESC.CONTA' %}selected{% endif %}>DESC.CONTA</option>
+                                        <option value="DESTINAÇÃO" {% if lancamento and lancamento.categoria == 'DESTINAÇÃO' %}selected{% endif %}>DESTINAÇÃO</option>
+                                        <option value="GASTO PROJETO" {% if lancamento and lancamento.categoria == 'GASTO PROJETO' %}selected{% endif %}>GASTO PROJETO</option>
                                     </optgroup>
                                 </select>
                                 <div class="form-text">Selecione a categoria apropriada para o lançamento</div>
                             </div>
 
+                            <!-- Projeto (aparece apenas para OUTRAS OFERTAS e DESTINAÇÃO) -->
+                            <div class="col-md-6 mb-3" id="campo-projeto" style="display: none;">
+                                <label for="projeto_id" class="form-label">Projeto <span id="projeto-label-extra"></span></label>
+                                <select class="form-select" id="projeto_id" name="projeto_id">
+                                    <option value="">Nenhum projeto</option>
+                                    {% for projeto in projetos %}
+                                    <option value="{{ projeto.id }}" 
+                                            {% if lancamento and lancamento.projeto_id == projeto.id %}selected{% endif %}
+                                            data-saldo="{{ projeto.calcular_totais()['saldo'] }}">
+                                        {{ projeto.nome }} 
+                                        {% if projeto.status != 'Ativo' %}({{ projeto.status }}){% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text" id="projeto-help-text">Vincule este lançamento a um projeto específico</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
                             <!-- Valor -->
                             <div class="col-md-6 mb-3">
                                 <label for="valor" class="form-label">Valor *</label>
@@ -93,9 +115,7 @@
                                 </div>
                                 <div class="form-text">Use vírgula para separar os centavos (ex: 1.500,50)</div>
                             </div>
-                        </div>
 
-                        <div class="row">
                             <!-- Conta -->
                             <div class="col-md-6 mb-3">
                                 <label for="conta" class="form-label">Conta *</label>
@@ -112,7 +132,9 @@
                                     </option>
                                 </select>
                             </div>
+                        </div>
 
+                        <div class="row">
                             <!-- Descrição -->
                             <div class="col-md-6 mb-3">
                                 <label for="descricao" class="form-label">Descrição</label>
@@ -182,7 +204,7 @@
                             <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Voltar
                             </a>
-                            <button type="submit" class="btn btn-success">
+                            <button id="btn-submit-lancamento" type="submit" class="btn btn-success">
                                 <i class="fas fa-save"></i> 
                                 {% if lancamento %}Atualizar{% else %}Salvar{% endif %} Lançamento
                             </button>
@@ -225,6 +247,8 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM carregado - iniciando scripts');
+    
     // Se estiver editando, configurar data padrão para hoje
     {% if not lancamento %}
     const dataInput = document.getElementById('data');
@@ -237,6 +261,55 @@ document.addEventListener('DOMContentLoaded', function() {
     // Mudança de cor do tipo e sugestão de categorias
     const tipoSelect = document.getElementById('tipo');
     const categoriaSelect = document.getElementById('categoria');
+    
+    // === CONTROLE DO CAMPO PROJETO (INÍCIO) ===
+    const campoProjetoDiv = document.getElementById('campo-projeto');
+    const projetoSelect = document.getElementById('projeto_id');
+    const projetoLabelExtra = document.getElementById('projeto-label-extra');
+    
+    console.log('Elementos encontrados:', {
+        campoProjetoDiv: !!campoProjetoDiv,
+        categoriaSelect: !!categoriaSelect,
+        projetoSelect: !!projetoSelect
+    });
+    
+    function atualizarCampoProjeto() {
+        if (!categoriaSelect || !campoProjetoDiv) {
+            console.error('Elementos não encontrados!');
+            return;
+        }
+        
+        const categoriaSelecionada = categoriaSelect.value;
+        const categoriasComProjeto = ['OUTRAS OFERTAS', 'DESTINAÇÃO', 'GASTO PROJETO'];
+        
+        console.log('Atualizando campo projeto. Categoria:', categoriaSelecionada);
+        
+        if (categoriasComProjeto.includes(categoriaSelecionada)) {
+            console.log('✅ Mostrando campo de projeto');
+            campoProjetoDiv.style.display = 'block';
+            
+            if (categoriaSelecionada === 'OUTRAS OFERTAS') {
+                projetoLabelExtra.textContent = '(Opcional)';
+                projetoSelect.removeAttribute('required');
+            } else if (categoriaSelecionada === 'DESTINAÇÃO' || categoriaSelecionada === 'GASTO PROJETO') {
+                projetoLabelExtra.textContent = '*';
+                projetoSelect.setAttribute('required', 'required');
+            }
+        } else {
+            console.log('❌ Ocultando campo de projeto');
+            campoProjetoDiv.style.display = 'none';
+            projetoSelect.removeAttribute('required');
+            projetoSelect.value = '';
+        }
+    }
+    
+    // Aplicar ao carregar
+    if (categoriaSelect) {
+        atualizarCampoProjeto();
+        categoriaSelect.addEventListener('change', atualizarCampoProjeto);
+        console.log('Event listener adicionado à categoria');
+    }
+    // === CONTROLE DO CAMPO PROJETO (FIM) ===
     
     tipoSelect.addEventListener('change', function() {
         const card = this.closest('.card');
@@ -288,10 +361,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Trigger inicial se já tiver valor selecionado
+    // NÃO aplicar filtro automático quando estiver editando (categoria já selecionada)
+    // Apenas aplicar quando for novo lançamento
+    {% if not lancamento %}
     if (tipoSelect.value) {
         tipoSelect.dispatchEvent(new Event('change'));
     }
+    {% endif %}
     
     // Máscara de moeda brasileira para o campo valor
     const valorInput = document.getElementById('valor');
@@ -371,6 +447,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }, 800);
+});
+</script>
+<script>
+// Garantir que o botão dispare o submit mesmo se algum script externo falhar
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('btn-submit-lancamento');
+    const form = document.getElementById('form-lancamento');
+    if (btn && form) {
+        btn.addEventListener('click', function(e) {
+            // Se o navegador suportar, usar requestSubmit para respeitar validações HTML5
+            if (typeof form.requestSubmit === 'function') {
+                e.preventDefault();
+                form.requestSubmit();
+            } else {
+                // Fallback
+                form.submit();
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
