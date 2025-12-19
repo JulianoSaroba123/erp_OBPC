@@ -11,6 +11,34 @@ if sys.platform.startswith('win'):
 
 try:
     app = create_app()
+    
+    # Inicializar banco de dados e criar admin padrão em produção
+    with app.app_context():
+        from app.extensions import db
+        from app.auth.auth_model import Usuario
+        
+        # Criar tabelas se não existirem
+        db.create_all()
+        
+        # Verificar se existe algum usuário admin
+        admin_exists = Usuario.query.filter_by(is_admin=True).first()
+        
+        if not admin_exists:
+            print(">>> Criando usuário admin padrão para produção...")
+            admin = Usuario(
+                username='admin',
+                nome_completo='Administrador',
+                is_admin=True,
+                ativo=True
+            )
+            admin.set_password('admin123')
+            db.session.add(admin)
+            db.session.commit()
+            print(">>> Admin criado: username='admin', senha='admin123'")
+            print(">>> IMPORTANTE: Altere a senha após o primeiro login!")
+        else:
+            print(f">>> Usuário admin já existe: {admin_exists.username}")
+            
 except Exception as e:
     print("Falha ao criar a aplicação Flask:")
     traceback.print_exc()
