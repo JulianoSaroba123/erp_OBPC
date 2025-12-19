@@ -15,8 +15,11 @@ Pillow==10.1.0
 # Para geração de executável
 pyinstaller==6.3.0
 
-# Para servidor de produção (opcional)
+# Para servidor de produção
 gunicorn==21.2.0
+
+# Driver PostgreSQL para produção
+psycopg2-binary==2.9.9
 
 # Dependências de desenvolvimento (opcional)
 pytest==7.4.3
