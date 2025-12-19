@@ -14,7 +14,7 @@ try:
     
     # Inicializar banco de dados e criar admin padrão em produção
     with app.app_context():
-        from app.extensions import db
+        from app.extensoes import db
         from app.auth.auth_model import Usuario
         
         # Criar tabelas se não existirem
