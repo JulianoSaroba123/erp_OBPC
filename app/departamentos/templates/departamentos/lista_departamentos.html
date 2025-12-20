@@ -192,7 +192,7 @@
                                                 Cronograma Mensal de Atividades
                                             </h6>
                                             <div class="text-muted">
-                                                {{ departamento.cronograma_mensal|nl2br|safe }}
+                                                {{ departamento.cronograma_mensal|replace("\n", "<br>")|safe if departamento.cronograma_mensal else '-' }}
                                             </div>
                                             {% if departamento.possui_aulas and departamento.planejamento_aulas %}
                                             <hr class="my-3">
@@ -201,7 +201,7 @@
                                                 Planejamento de Aulas
                                             </h6>
                                             <div class="text-muted">
-                                                {{ departamento.planejamento_aulas|nl2br|safe }}
+                                                {{ departamento.planejamento_aulas|replace("\n", "<br>")|safe if departamento.planejamento_aulas else '-' }}
                                             </div>
                                             {% endif %}
                                         </div>
