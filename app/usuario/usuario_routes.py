@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensoes import db
 from app.usuario.usuario_model import Usuario, NivelAcesso
+from app.departamentos.departamentos_model import Departamento
 from app.utils.auth_decorators import requer_gerencia_usuarios, requer_nivel_acesso
 from datetime import datetime
 
@@ -174,24 +175,28 @@ def editar_usuario(user_id):
         nome = request.form.get("nome")
         email = request.form.get("email")
         nivel_acesso = request.form.get("nivel_acesso")
+        departamento_id = request.form.get("departamento_id")
         ativo = request.form.get("ativo") == "on"
         nova_senha = request.form.get("nova_senha")
 
         # Validações
         if not all([nome, email, nivel_acesso]):
             flash("Nome, email e nível são obrigatórios!", "danger")
-            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
 
         # Verificar email único (exceto o próprio usuário)
         existente = Usuario.query.filter_by(email=email).first()
         if existente and existente.id != usuario.id:
             flash("Já existe outro usuário com este e-mail!", "warning")
-            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
 
         # Verificar se pode alterar para esse nível
         if not pode_criar_nivel(current_user.nivel_acesso, nivel_acesso):
             flash("Você não pode definir este nível de acesso!", "danger")
-            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
 
         # Atualizar dados
         usuario.nome = nome
@@ -199,6 +204,16 @@ def editar_usuario(user_id):
         usuario.nivel_acesso = nivel_acesso
         usuario.ativo = ativo
         usuario.perfil = nivel_acesso.title()  # Manter compatibilidade
+        
+        # Atualizar departamento se for líder
+        if nivel_acesso == 'lider_departamento':
+            if not departamento_id:
+                flash("Líder de departamento precisa ter um departamento associado!", "danger")
+                departamentos = Departamento.query.order_by(Departamento.nome).all()
+                return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
+            usuario.departamento_id = int(departamento_id)
+        else:
+            usuario.departamento_id = None
 
         # Alterar senha se informada
         if nova_senha:
@@ -208,7 +223,8 @@ def editar_usuario(user_id):
         flash(f"Usuário {nome} atualizado com sucesso!", "success")
         return redirect(url_for("usuario.lista_usuarios"))
 
-    return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso)
+    departamentos = Departamento.query.order_by(Departamento.nome).all()
+    return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
 
 @usuario_bp.route("/usuarios/<int:user_id>/toggle-status", methods=["POST"])
 @requer_gerencia_usuarios

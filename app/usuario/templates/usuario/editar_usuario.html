@@ -89,6 +89,9 @@
                                         <option value="midia" {% if usuario.nivel_acesso == 'midia' %}selected{% endif %}>
                                             Mídia - Departamentos e Mídia
                                         </option>
+                                        <option value="lider_departamento" {% if usuario.nivel_acesso == 'lider_departamento' %}selected{% endif %}>
+                                            Líder de Departamento - Apenas seu Departamento
+                                        </option>
                                         <option value="membro" {% if usuario.nivel_acesso == 'membro' %}selected{% endif %}>
                                             Membro - Apenas Consulta
                                         </option>
@@ -96,6 +99,25 @@
                                     </select>
                                 </div>
                             </div>
+                            
+                            <!-- Campo departamento - aparece apenas para líder_departamento -->
+                            <div class="col-md-6" id="campo_departamento" style="display: {% if usuario.nivel_acesso == 'lider_departamento' %}block{% else %}none{% endif %};">
+                                <div class="mb-3">
+                                    <label for="departamento_id" class="form-label">
+                                        <i class="fas fa-church me-1"></i>
+                                        Departamento *
+                                    </label>
+                                    <select class="form-select" id="departamento_id" name="departamento_id">
+                                        <option value="">Selecione o departamento</option>
+                                        {% for dept in departamentos %}
+                                        <option value="{{ dept.id }}" {% if usuario.departamento_id == dept.id %}selected{% endif %}>
+                                            {{ dept.nome }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="ativo" class="form-label">
@@ -214,6 +236,17 @@ document.getElementById('formEditarUsuario').addEventListener('submit', function
 document.getElementById('nivel_acesso').addEventListener('change', function() {
     const nivel_original = '{{ usuario.nivel_acesso }}';
     const nivel_novo = this.value;
+    
+    // Mostrar/ocultar campo departamento
+    const campoDepartamento = document.getElementById('campo_departamento');
+    if (nivel_novo === 'lider_departamento') {
+        campoDepartamento.style.display = 'block';
+        document.getElementById('departamento_id').required = true;
+    } else {
+        campoDepartamento.style.display = 'none';
+        document.getElementById('departamento_id').required = false;
+        document.getElementById('departamento_id').value = '';
+    }
     
     if (nivel_original === 'master' && nivel_novo !== 'master') {
         if (!confirm('ATENÇÃO: Você está removendo privilégios de MASTER! Esta ação pode ser irreversível. Tem certeza?')) {
