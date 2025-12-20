@@ -42,13 +42,29 @@ def save_uploaded_file(file, departamento_id):
 def lista_departamentos():
     """Lista todos os departamentos cadastrados"""
     try:
+        # Forçar refresh da sessão
+        db.session.expire_all()
+        
         departamentos = Departamento.query.all()
-        current_app.logger.info(f">>> Listando departamentos: {len(departamentos)} encontrados")
+        current_app.logger.info(f">>> LISTAGEM: {len(departamentos)} departamentos encontrados")
+        
+        if len(departamentos) == 0:
+            current_app.logger.warning(">>> ATENÇÃO: Nenhum departamento encontrado na query!")
+            current_app.logger.info(">>> Tentando query direta com SQL...")
+            
+            # Tentar query SQL direta para debug
+            result = db.session.execute(db.text("SELECT COUNT(*) FROM departamentos"))
+            count = result.scalar()
+            current_app.logger.info(f">>> SQL direto: {count} departamentos na tabela")
+        
         for dep in departamentos:
             current_app.logger.info(f"    - {dep.nome} (ID: {dep.id})")
+            
         return render_template('departamentos/lista_departamentos.html', departamentos=departamentos)
     except Exception as e:
         current_app.logger.error(f">>> ERRO ao listar departamentos: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash(f'Erro ao carregar departamentos: {str(e)}', 'danger')
         return render_template('departamentos/lista_departamentos.html', departamentos=[])
 
