@@ -81,7 +81,7 @@ class Usuario(UserMixin, db.Model):
             'master': 'usuario.painel',
             'administrador': 'usuario.painel',
             'tesoureiro': 'financeiro.lista_lancamentos',
-            'secretario': 'secretaria.atas',
+            'secretario': 'atas.lista_atas',
             'midia': 'departamentos.lista_departamentos',
             'membro': 'eventos.lista_eventos'
         }

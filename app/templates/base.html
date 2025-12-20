@@ -493,11 +493,6 @@
       <a href="{{ url_for('departamentos.lista_departamentos') }}"><i class="fa-solid fa-church"></i><span>Departamentos</span></a>
       {% endif %}
       
-      <!-- Agenda Pastoral - Secretários, Admins e Master -->
-      {% if current_user.is_authenticated and current_user.tem_acesso_secretaria() %}
-      <a href="{{ url_for('escala_ministerial.listar_escalas') }}"><i class="fas fa-calendar-check"></i><span>Agenda Pastoral</span></a>
-      {% endif %}
-      
       <!-- Submenu Financeiro - Tesoureiros, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_financeiro() %}
       <div class="menu-group">
