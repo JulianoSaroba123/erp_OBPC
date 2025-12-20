@@ -59,6 +59,8 @@ def novo_departamento():
 def salvar_departamento():
     """Salva novo departamento ou atualiza departamento existente"""
     try:
+        current_app.logger.info(">>> Rota salvar_departamento chamada!")
+        
         # Captura dados do formulário
         departamento_id = request.form.get('id')
         nome = request.form.get('nome', '').strip()
@@ -70,6 +72,8 @@ def salvar_departamento():
         cronograma_mensal = request.form.get('cronograma_mensal', '').strip()
         possui_aulas = bool(request.form.get('possui_aulas'))  # Checkbox retorna valor ou None
         planejamento_aulas = request.form.get('planejamento_aulas', '').strip()
+        
+        current_app.logger.info(f">>> Dados recebidos - Nome: {nome}, Lider: {lider}, ID: {departamento_id}")
         
         # Validação básica
         if not nome:
@@ -116,12 +120,17 @@ def salvar_departamento():
             
             db.session.add(novo_departamento)
             flash('Departamento cadastrado com sucesso!', 'success')
+            current_app.logger.info(f">>> Novo departamento criado: {nome}")
         
         db.session.commit()
+        current_app.logger.info(">>> Departamento salvo no banco com sucesso!")
         return redirect(url_for('departamentos.lista_departamentos'))
         
     except Exception as e:
         db.session.rollback()
+        current_app.logger.error(f">>> ERRO ao salvar departamento: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash(f'Erro ao salvar departamento: {str(e)}', 'danger')
         return redirect(url_for('departamentos.novo_departamento'))
 
