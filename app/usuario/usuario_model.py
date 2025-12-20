@@ -61,7 +61,7 @@ class Usuario(UserMixin, db.Model):
     
     def tem_acesso_departamentos(self):
         """Verifica se tem acesso ao módulo departamentos"""
-        return self.nivel_acesso in ['master', 'administrador', 'Admin', 'midia']
+        return self.nivel_acesso in ['master', 'administrador', 'Admin']
     
     def tem_acesso_configuracoes(self):
         """Verifica se tem acesso às configurações"""
@@ -82,7 +82,7 @@ class Usuario(UserMixin, db.Model):
             'administrador': 'usuario.painel',
             'tesoureiro': 'financeiro.lista_lancamentos',
             'secretario': 'atas.lista_atas',
-            'midia': 'departamentos.lista_departamentos',
+            'midia': 'usuario.painel',
             'membro': 'eventos.lista_eventos'
         }
         return menu_map.get(self.nivel_acesso, 'usuario.painel')
