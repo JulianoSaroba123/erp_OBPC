@@ -45,7 +45,7 @@
                 </div>
                 
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('departamentos.salvar_departamento') }}" enctype="multipart/form-data" novalidate>
+                    <form method="POST" action="{{ url_for('departamentos.salvar_departamento') }}">
                         {% if departamento %}
                             <input type="hidden" name="id" value="{{ departamento.id }}">
                         {% endif %}
@@ -442,9 +442,15 @@ document.querySelector('form').addEventListener('submit', function(e) {
     
     if (!nome) {
         e.preventDefault();
+        e.stopPropagation();
         alert('Por favor, preencha o nome do departamento.');
         document.getElementById('nome').focus();
+        return false;
     }
+    
+    // Se chegou aqui, formulário é válido - permitir submit
+    console.log('Formulário válido, enviando...');
+    return true;
 });
 
 // Sugestões de departamentos comuns
