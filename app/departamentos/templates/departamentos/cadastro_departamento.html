@@ -436,43 +436,8 @@ document.getElementById('contato').addEventListener('input', function(e) {
     }
 });
 
-// DEBUG E SOLUÇÃO - Forçar submit funcionando
-console.log('>>> Iniciando sistema de submit forçado...');
-
-// Aguardar DOM carregar
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form');
-    console.log('>>> Formulário encontrado:', form);
-
-    if (form) {
-        // Remover TODOS os event listeners anteriores clonando o elemento
-        const newForm = form.cloneNode(true);
-        form.parentNode.replaceChild(newForm, form);
-        console.log('>>> Event listeners anteriores removidos');
-        
-        // Adicionar novo listener limpo
-        const submitBtn = newForm.querySelector('button[type="submit"]');
-        console.log('>>> Botão submit encontrado:', submitBtn);
-        
-        if (submitBtn) {
-            submitBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                console.log('>>> BOTÃO CLICADO! Validando...');
-                
-                const nome = newForm.querySelector('#nome').value.trim();
-                console.log('>>> Nome preenchido:', nome);
-                
-                if (!nome) {
-                    alert('Por favor, preencha o nome do departamento.');
-                    return;
-                }
-                
-                console.log('>>> Formulário válido! Submetendo...');
-                newForm.submit();
-            });
-        }
-    }
-});
+// JAVASCRIPT DE VALIDAÇÃO REMOVIDO - Deixar form funcionar nativamente
+console.log('>>> Formulário funcionando nativamente sem interferência JavaScript');
 
 // Sugestões de departamentos comuns
 document.addEventListener('DOMContentLoaded', function() {
