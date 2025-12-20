@@ -43,8 +43,12 @@ def lista_departamentos():
     """Lista todos os departamentos cadastrados"""
     try:
         departamentos = Departamento.query.all()
+        current_app.logger.info(f">>> Listando departamentos: {len(departamentos)} encontrados")
+        for dep in departamentos:
+            current_app.logger.info(f"    - {dep.nome} (ID: {dep.id})")
         return render_template('departamentos/lista_departamentos.html', departamentos=departamentos)
     except Exception as e:
+        current_app.logger.error(f">>> ERRO ao listar departamentos: {str(e)}")
         flash(f'Erro ao carregar departamentos: {str(e)}', 'danger')
         return render_template('departamentos/lista_departamentos.html', departamentos=[])
 
