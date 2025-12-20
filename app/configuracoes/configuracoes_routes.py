@@ -137,12 +137,23 @@ def salvar_configuracoes():
                     flash('Cores devem estar no formato hexadecimal (#RRGGBB)', 'danger')
                     return redirect(url_for('configuracoes.configuracoes', aba='layout'))
         
+        # Debug: Mostrar dados antes de salvar
+        current_app.logger.info(f">>> Dados a serem salvos:")
+        current_app.logger.info(f"    Nome Igreja: {config.nome_igreja}")
+        current_app.logger.info(f"    Cidade: {config.cidade}")
+        current_app.logger.info(f"    Banco: {config.banco_padrao}")
+        current_app.logger.info(f"    Saldo Inicial: {config.saldo_inicial}")
+        
         # Salvar no banco de dados
-        if config.salvar():
+        resultado_salvar = config.salvar()
+        current_app.logger.info(f">>> Resultado do método salvar(): {resultado_salvar}")
+        
+        if resultado_salvar:
             flash('Configurações salvas com sucesso!', 'success')
-            current_app.logger.info(f'Configurações da aba "{aba_ativa}" atualizadas')
+            current_app.logger.info(f'✅ Configurações da aba "{aba_ativa}" atualizadas')
         else:
             flash('Erro ao salvar configurações. Tente novamente.', 'danger')
+            current_app.logger.error(f'❌ Falha ao salvar configurações da aba "{aba_ativa}"')
         
         return redirect(url_for('configuracoes.configuracoes', aba=aba_ativa))
         
