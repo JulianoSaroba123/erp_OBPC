@@ -128,11 +128,16 @@ class Configuracao(db.Model):
         """Salva as alterações da configuração no banco"""
         try:
             self.atualizado_em = datetime.utcnow()
+            db.session.add(self)  # Garantir que o objeto está na sessão
+            db.session.flush()  # Forçar atualização antes do commit
             db.session.commit()
+            print(f">>> Configuração salva com sucesso! ID: {self.id}")
             return True
         except Exception as e:
             db.session.rollback()
-            print(f"Erro ao salvar configuração: {str(e)}")
+            print(f">>> ERRO ao salvar configuração: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def nome_igreja_completo(self):

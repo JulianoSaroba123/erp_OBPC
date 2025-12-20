@@ -53,9 +53,11 @@ def salvar_configuracoes():
     try:
         # Obter configuração existente
         config = Configuracao.obter_configuracao()
+        current_app.logger.info(f">>> Configuração carregada: ID={config.id}, Nome={config.nome_igreja}")
         
         # Determinar qual aba foi submetida
         aba_ativa = request.form.get('aba_ativa', 'gerais')
+        current_app.logger.info(f">>> Salvando aba: {aba_ativa}")
         
         # Atualizar campos baseado na aba
         if aba_ativa == 'gerais':
