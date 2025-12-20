@@ -436,34 +436,43 @@ document.getElementById('contato').addEventListener('input', function(e) {
     }
 });
 
-// DEBUG AGRESSIVO - Capturar todos os eventos de submit
-console.log('>>> JavaScript de validação desabilitado - formulário deve submeter livremente');
+// DEBUG E SOLUÇÃO - Forçar submit funcionando
+console.log('>>> Iniciando sistema de submit forçado...');
 
-// Encontrar o formulário
-const form = document.querySelector('form');
-console.log('>>> Formulário encontrado:', form);
+// Aguardar DOM carregar
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    console.log('>>> Formulário encontrado:', form);
 
-if (form) {
-    // Adicionar listener para debug
-    form.addEventListener('submit', function(e) {
-        console.log('>>> EVENTO SUBMIT CAPTURADO!');
-        console.log('>>> Ação do form:', form.action);
-        console.log('>>> Método do form:', form.method);
-        console.log('>>> Dados do formulário:', new FormData(form));
+    if (form) {
+        // Remover TODOS os event listeners anteriores clonando o elemento
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+        console.log('>>> Event listeners anteriores removidos');
         
-        // NÃO bloquear - deixar submeter
-        console.log('>>> Permitindo submit...');
-    }, false);
-    
-    // Tentar submeter via código quando clicar no botão
-    const submitBtn = document.querySelector('button[type="submit"]');
-    if (submitBtn) {
+        // Adicionar novo listener limpo
+        const submitBtn = newForm.querySelector('button[type="submit"]');
         console.log('>>> Botão submit encontrado:', submitBtn);
-        submitBtn.addEventListener('click', function(e) {
-            console.log('>>> BOTÃO SUBMIT CLICADO!');
-        });
+        
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('>>> BOTÃO CLICADO! Validando...');
+                
+                const nome = newForm.querySelector('#nome').value.trim();
+                console.log('>>> Nome preenchido:', nome);
+                
+                if (!nome) {
+                    alert('Por favor, preencha o nome do departamento.');
+                    return;
+                }
+                
+                console.log('>>> Formulário válido! Submetendo...');
+                newForm.submit();
+            });
+        }
     }
-}
+});
 
 // Sugestões de departamentos comuns
 document.addEventListener('DOMContentLoaded', function() {
