@@ -10,6 +10,7 @@ class NivelAcesso(Enum):
     TESOUREIRO = "tesoureiro"
     SECRETARIO = "secretario"
     MIDIA = "midia"
+    LIDER_DEPARTAMENTO = "lider_departamento"
     MEMBRO = "membro"
 
 class Usuario(UserMixin, db.Model):
@@ -21,6 +22,7 @@ class Usuario(UserMixin, db.Model):
     senha_hash = db.Column(db.String(200), nullable=False)
     perfil = db.Column(db.String(50), default="Membro")  # Campo legado
     nivel_acesso = db.Column(db.String(20), default=NivelAcesso.MEMBRO.value)
+    departamento_id = db.Column(db.Integer, db.ForeignKey('departamentos.id'), nullable=True)  # ID do departamento que o usuário lidera
     ativo = db.Column(db.Boolean, default=True)
     criado_por = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
     criado_em = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -28,6 +30,9 @@ class Usuario(UserMixin, db.Model):
 
     # Relacionamento para usuários criados por este usuário
     usuarios_criados = db.relationship('Usuario', backref=db.backref('criador', remote_side=[id]))
+    
+    # Relacionamento com departamento
+    departamento = db.relationship('Departamento', foreign_keys=[departamento_id], backref='lider_usuario')
 
     # -------- Métodos de senha --------
     def set_senha(self, senha):
@@ -61,7 +66,11 @@ class Usuario(UserMixin, db.Model):
     
     def tem_acesso_departamentos(self):
         """Verifica se tem acesso ao módulo departamentos"""
-        return self.nivel_acesso in ['master', 'administrador', 'Admin']
+        return self.nivel_acesso in ['master', 'administrador', 'Admin', 'lider_departamento']
+    
+    def eh_lider_departamento(self):
+        """Verifica se é líder de departamento"""
+        return self.nivel_acesso == 'lider_departamento' and self.departamento_id is not None
     
     def tem_acesso_configuracoes(self):
         """Verifica se tem acesso às configurações"""
@@ -83,6 +92,7 @@ class Usuario(UserMixin, db.Model):
             'tesoureiro': 'financeiro.lista_lancamentos',
             'secretario': 'atas.lista_atas',
             'midia': 'usuario.painel',
+            'lider_departamento': 'departamentos.lista_departamentos',
             'membro': 'eventos.lista_eventos'
         }
         return menu_map.get(self.nivel_acesso, 'usuario.painel')
@@ -95,6 +105,7 @@ class Usuario(UserMixin, db.Model):
             'tesoureiro': 'Tesoureiro',
             'secretario': 'Secretário',
             'midia': 'Mídia',
+            'lider_departamento': 'Líder de Departamento',
             'membro': 'Membro'
         }
         return nomes.get(self.nivel_acesso, 'Desconhecido')

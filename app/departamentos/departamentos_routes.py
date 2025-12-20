@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_from_directory
-from flask_login import login_required
+from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
 import json
@@ -45,7 +45,15 @@ def lista_departamentos():
         # Forçar refresh da sessão
         db.session.expire_all()
         
-        departamentos = Departamento.query.all()
+        # Verificar se é líder de departamento
+        if current_user.eh_lider_departamento():
+            # Líder vê apenas seu departamento
+            departamentos = Departamento.query.filter_by(id=current_user.departamento_id).all()
+            current_app.logger.info(f">>> LÍDER DE DEPARTAMENTO: Mostrando apenas departamento ID {current_user.departamento_id}")
+        else:
+            # Admin/Master vê todos
+            departamentos = Departamento.query.all()
+        
         current_app.logger.info(f">>> LISTAGEM: {len(departamentos)} departamentos encontrados")
         
         if len(departamentos) == 0:
