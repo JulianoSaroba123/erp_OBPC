@@ -635,8 +635,12 @@
                 if (form.checkValidity() === false) {
                     event.preventDefault();
                     event.stopPropagation();
+                    form.classList.add('was-validated');
+                    return false;
                 }
+                // Formulário válido - permitir envio
                 form.classList.add('was-validated');
+                return true;
             }, false);
         });
     }, false);
