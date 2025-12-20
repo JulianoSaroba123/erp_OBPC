@@ -479,6 +479,9 @@
           <a href="{{ url_for('oficios.lista_oficios') }}" class="submenu-item">
             <i class="fas fa-file-signature"></i><span>Ofícios de Solicitação</span>
           </a>
+          <a href="{{ url_for('midia.listar_carteiras') }}" class="submenu-item">
+            <i class="fas fa-id-card"></i><span>Carteira de Membro</span>
+          </a>
           {% if current_user.tem_acesso_obreiros() %}
           <a href="{{ url_for('participacao.listar_participacoes') }}" class="submenu-item">
             <i class="fa-solid fa-handshake"></i><span>Participação de Obreiros</span>
@@ -527,9 +530,6 @@
           </a>
           <a href="{{ url_for('midia.listar_certificados') }}" class="submenu-item">
             <i class="fas fa-certificate"></i><span>Certificados</span>
-          </a>
-          <a href="{{ url_for('midia.listar_carteiras') }}" class="submenu-item">
-            <i class="fas fa-id-card"></i><span>Carteira de Membro</span>
           </a>
         </div>
       </div>
