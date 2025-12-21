@@ -16,10 +16,12 @@
                     <p class="text-muted">Gerencie os departamentos e ministérios da igreja</p>
                 </div>
                 <div>
+                    {% if not current_user.eh_lider_departamento() %}
                     <a href="{{ url_for('departamentos.novo_departamento') }}" class="btn btn-primary btn-lg">
                         <i class="fas fa-plus me-2"></i>
                         Novo Departamento
                     </a>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -72,6 +72,14 @@ class Usuario(UserMixin, db.Model):
         """Verifica se é líder de departamento"""
         return self.nivel_acesso == 'lider_departamento' and self.departamento_id is not None
     
+    def tem_acesso_eventos(self):
+        """Verifica se tem acesso ao módulo eventos"""
+        return self.nivel_acesso in ['master', 'administrador', 'Admin', 'lider_departamento', 'midia', 'secretario', 'membro']
+    
+    def pode_gerenciar_eventos(self):
+        """Verifica se pode criar/editar eventos"""
+        return self.nivel_acesso in ['master', 'administrador', 'Admin', 'lider_departamento', 'midia']
+    
     def tem_acesso_configuracoes(self):
         """Verifica se tem acesso às configurações"""
         return self.nivel_acesso in ['master', 'administrador', 'Admin']

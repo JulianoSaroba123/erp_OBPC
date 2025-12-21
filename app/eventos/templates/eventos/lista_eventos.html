@@ -16,9 +16,11 @@
                         <a href="{{ url_for('eventos.calendario_eventos') }}" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-calendar me-1"></i> Calendário
                         </a>
+                        {% if current_user.pode_gerenciar_eventos() %}
                         <a href="{{ url_for('eventos.novo_evento') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-1"></i> Novo Evento
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -172,6 +174,7 @@
                                                class="btn btn-sm btn-outline-info" title="Ver Detalhes">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            {% if current_user.pode_gerenciar_eventos() %}
                                             <a href="{{ url_for('eventos.editar_evento', evento_id=evento.id) }}" 
                                                class="btn btn-sm btn-outline-warning" title="Editar">
                                                 <i class="fas fa-edit"></i>
@@ -181,6 +184,7 @@
                                                onclick="return confirm('Tem certeza que deseja excluir o evento \'{{ evento.titulo }}\'?')">
                                                 <i class="fas fa-trash"></i>
                                             </a>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
