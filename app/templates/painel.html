@@ -138,6 +138,47 @@
     </div>
     {% endif %}
 
+    <!-- Atividades do Departamento (apenas para líderes) -->
+    {% if current_user.eh_lider_departamento() and atividades_departamento %}
+    <div class="mb-4">
+      <h6 class="fw-semibold text-muted mb-3">
+        <i class="fas fa-church me-2"></i>Atividades do Departamento
+      </h6>
+      {% for atividade in atividades_departamento %}
+      <div class="card activity-card shadow-sm mb-2">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-light p-3 me-3" style="background: linear-gradient(135deg, #059669, #10b981) !important;">
+              <i class="fa-solid fa-calendar-check text-white"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <p class="mb-1 fw-semibold" style="color: #374151;">{{ atividade.titulo }}</p>
+                  <p class="mb-0 text-muted small">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ atividade.data_formatada }}
+                    {% if atividade.horario %}
+                    às {{ atividade.horario }}
+                    {% endif %}
+                    {% if atividade.local %}
+                    <br><i class="fas fa-map-marker-alt me-1"></i>{{ atividade.local }}
+                    {% endif %}
+                    {% if atividade.responsavel %}
+                    <br><i class="fas fa-user me-1"></i>{{ atividade.responsavel }}
+                    {% endif %}
+                  </p>
+                </div>
+                <span class="badge bg-success">Departamento</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
     <div class="card activity-card shadow-sm">
       <div class="card-body">
         <div class="d-flex align-items-center">

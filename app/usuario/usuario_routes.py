@@ -104,9 +104,26 @@ def painel():
         proximos_eventos = []
         total_eventos_proximos = 0
     
+    # Buscar atividades do departamento se for líder
+    atividades_departamento = []
+    if current_user.eh_lider_departamento():
+        try:
+            from app.departamentos.departamentos_model import CronogramaDepartamento
+            from datetime import date
+            
+            # Buscar atividades futuras do departamento
+            atividades_departamento = CronogramaDepartamento.query.filter(
+                CronogramaDepartamento.departamento_id == current_user.departamento_id,
+                CronogramaDepartamento.data_evento >= date.today(),
+                CronogramaDepartamento.ativo == True
+            ).order_by(CronogramaDepartamento.data_evento).limit(5).all()
+        except Exception as e:
+            atividades_departamento = []
+    
     return render_template("painel.html", 
                          proximos_eventos=proximos_eventos,
-                         total_eventos_proximos=total_eventos_proximos)
+                         total_eventos_proximos=total_eventos_proximos,
+                         atividades_departamento=atividades_departamento)
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
 @usuario_bp.route("/usuarios")
