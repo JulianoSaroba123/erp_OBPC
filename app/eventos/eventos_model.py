@@ -26,6 +26,11 @@ class Evento(db.Model):
     local = db.Column(db.String(200))
     responsavel = db.Column(db.String(100))
     status = db.Column(db.String(20), default='Agendado')
+    
+    # Campos de relacionamento
+    departamento_id = db.Column(db.Integer, db.ForeignKey('departamentos.id'), nullable=True)
+    criado_por = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True)
+    
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):

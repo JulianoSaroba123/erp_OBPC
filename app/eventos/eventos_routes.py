@@ -10,7 +10,7 @@ Rotas para gerenciamento de eventos da igreja
 
 from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app.extensoes import db
 from app.eventos.eventos_model import Evento
 
@@ -144,8 +144,13 @@ def salvar_evento():
                 data_fim=data_fim_dt,
                 local=local,
                 responsavel=responsavel,
-                status=status
+                status=status,
+                criado_por=current_user.id
             )
+            
+            # Se for líder de departamento, associar ao departamento
+            if current_user.eh_lider_departamento():
+                novo_evento.departamento_id = current_user.departamento_id
             
             db.session.add(novo_evento)
             db.session.commit()
