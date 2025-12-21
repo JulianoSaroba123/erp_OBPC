@@ -125,22 +125,33 @@ def novo_usuario():
         email = request.form.get("email")
         senha = request.form.get("senha")
         nivel_acesso = request.form.get("nivel_acesso")
+        departamento_id = request.form.get("departamento_id")
 
         # Validações
         if not all([nome, email, senha, nivel_acesso]):
             flash("Todos os campos são obrigatórios!", "danger")
-            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
 
         # Verificar se já existe usuário com esse email
         existente = Usuario.query.filter_by(email=email).first()
         if existente:
             flash("Já existe um usuário com este e-mail!", "warning")
-            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
 
         # Verificar se pode criar usuário com esse nível
         if not pode_criar_nivel(current_user.nivel_acesso, nivel_acesso):
             flash("Você não pode criar usuários com este nível de acesso!", "danger")
-            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
+
+        # Validar departamento para líder
+        if nivel_acesso == 'lider_departamento':
+            if not departamento_id:
+                flash("Líder de departamento precisa ter um departamento associado!", "danger")
+                departamentos = Departamento.query.order_by(Departamento.nome).all()
+                return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
 
         # Criar novo usuário
         novo_usuario = Usuario(
@@ -151,6 +162,10 @@ def novo_usuario():
             perfil=nivel_acesso.title()  # Manter compatibilidade
         )
         novo_usuario.set_senha(senha)
+        
+        # Atribuir departamento se for líder
+        if nivel_acesso == 'lider_departamento':
+            novo_usuario.departamento_id = int(departamento_id)
 
         db.session.add(novo_usuario)
         db.session.commit()
@@ -158,7 +173,8 @@ def novo_usuario():
         flash(f"Usuário {nome} criado com sucesso!", "success")
         return redirect(url_for("usuario.lista_usuarios"))
 
-    return render_template("usuario/novo_usuario.html", niveis=NivelAcesso)
+    departamentos = Departamento.query.order_by(Departamento.nome).all()
+    return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
 
 @usuario_bp.route("/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
 @requer_gerencia_usuarios

@@ -94,6 +94,7 @@
                                 {% endif %}
                                 
                                 {% if current_user.nivel_acesso in ['master', 'administrador'] %}
+                                <option value="lider_departamento" data-description="Líder de um departamento específico">Líder de Departamento</option>
                                 <option value="tesoureiro" data-description="Acesso apenas ao módulo financeiro">Tesoureiro - Apenas Financeiro</option>
                                 <option value="secretario" data-description="Acesso aos módulos de secretaria, membros e obreiros">Secretário - Secretaria e Membros</option>
                                 <option value="midia" data-description="Acesso aos módulos de mídia e departamentos">Mídia - Departamentos e Mídia</option>
@@ -101,6 +102,21 @@
                                 {% endif %}
                             </select>
                             <div id="descricaoNivel" class="mt-2 text-muted small"></div>
+                        </div>
+
+                        <!-- Campo de Departamento (aparece apenas para líder_departamento) -->
+                        <div class="mb-4" id="campo_departamento" style="display: none;">
+                            <label for="departamento_id" class="form-label">
+                                <i class="fas fa-building me-1"></i>
+                                Departamento *
+                            </label>
+                            <select class="form-select" id="departamento_id" name="departamento_id">
+                                <option value="">Selecione o departamento</option>
+                                {% for depto in departamentos %}
+                                <option value="{{ depto.id }}">{{ depto.nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="form-text text-muted">Líder de departamento deve ter um departamento associado</small>
                         </div>
 
                         <!-- Resumo de Permissões -->
@@ -156,6 +172,19 @@ document.getElementById('nivel_acesso').addEventListener('change', function() {
     
     document.getElementById('descricaoNivel').textContent = descricao;
     
+    // Mostrar/ocultar campo de departamento
+    const campoDepartamento = document.getElementById('campo_departamento');
+    const departamentoSelect = document.getElementById('departamento_id');
+    
+    if (nivel === 'lider_departamento') {
+        campoDepartamento.style.display = 'block';
+        departamentoSelect.required = true;
+    } else {
+        campoDepartamento.style.display = 'none';
+        departamentoSelect.required = false;
+        departamentoSelect.value = '';
+    }
+    
     const permissoes = {
         'master': [
             'Acesso total ao sistema',
@@ -170,6 +199,12 @@ document.getElementById('nivel_acesso').addEventListener('change', function() {
             'Ver relatórios gerais',
             'Configurar sistema',
             'Dashboard administrativo'
+        ],
+        'lider_departamento': [
+            'Gerenciar seu departamento',
+            'Ver cronograma e aulas',
+            'Dashboard e eventos (consulta)',
+            'Acesso limitado ao seu departamento'
         ],
         'tesoureiro': [
             'Módulo Financeiro completo',
