@@ -285,8 +285,8 @@ def excluir_usuario(user_id):
 def pode_criar_nivel(nivel_criador, nivel_novo):
     """Verifica se um nível pode criar outro nível"""
     hierarquia = {
-        'master': ['master', 'administrador', 'tesoureiro', 'secretario', 'midia', 'membro'],
-        'administrador': ['administrador', 'tesoureiro', 'secretario', 'midia', 'membro'],
+        'master': ['master', 'administrador', 'lider_departamento', 'tesoureiro', 'secretario', 'midia', 'membro'],
+        'administrador': ['administrador', 'lider_departamento', 'tesoureiro', 'secretario', 'midia', 'membro'],
         'tesoureiro': [],
         'secretario': [],
         'midia': [],
