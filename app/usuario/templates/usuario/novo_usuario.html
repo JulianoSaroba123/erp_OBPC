@@ -246,18 +246,30 @@ document.getElementById('nivel_acesso').addEventListener('change', function() {
 document.getElementById('formNovoUsuario').addEventListener('submit', function(e) {
     const senha = document.getElementById('senha').value;
     const confirmar = document.getElementById('confirmar_senha').value;
+    const nivel = document.getElementById('nivel_acesso').value;
+    const departamento = document.getElementById('departamento_id').value;
     
     if (senha !== confirmar) {
         e.preventDefault();
         alert('As senhas não conferem!');
-        return;
+        return false;
     }
     
     if (senha.length < 6) {
         e.preventDefault();
         alert('A senha deve ter pelo menos 6 caracteres!');
-        return;
+        return false;
     }
+    
+    // Validar departamento para líder
+    if (nivel === 'lider_departamento' && !departamento) {
+        e.preventDefault();
+        alert('Selecione o departamento para o líder!');
+        document.getElementById('departamento_id').focus();
+        return false;
+    }
+    
+    return true;
 });
 </script>
 {% endblock %}
