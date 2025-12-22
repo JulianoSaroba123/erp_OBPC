@@ -124,7 +124,6 @@ def painel():
                          proximos_eventos=proximos_eventos,
                          total_eventos_proximos=total_eventos_proximos,
                          atividades_departamento=atividades_departamento)
-                         atividades_departamento=atividades_departamento)
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
 @usuario_bp.route("/usuarios")
