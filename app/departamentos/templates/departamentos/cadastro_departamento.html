@@ -676,13 +676,76 @@ function removerAula(button) {
 // ============================================================================
 
 function carregarCronogramasExistentes(departamentoId) {
-    // Esta função será implementada quando tivermos dados existentes
-    console.log('Carregando cronogramas existentes para departamento:', departamentoId);
+    fetch(`/departamentos/${departamentoId}/cronogramas/listar`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('cronogramas-container');
+            const vazioDiv = document.getElementById('cronogramas-vazio');
+            
+            if (data.cronogramas && data.cronogramas.length > 0) {
+                vazioDiv.style.display = 'none';
+                
+                data.cronogramas.forEach(cronograma => {
+                    const cronogramaHtml = `
+                        <div class="cronograma-item border rounded p-3 mb-3 bg-white" data-id="${cronograma.id}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="text-primary mb-0">
+                                    <i class="fas fa-calendar-check me-2"></i>${cronograma.titulo}
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerCronogramaSalvo(${cronograma.id}, this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-3"><strong>Data:</strong> ${cronograma.data_evento}</div>
+                                <div class="col-md-3"><strong>Horário:</strong> ${cronograma.horario || '-'}</div>
+                                <div class="col-md-6"><strong>Local:</strong> ${cronograma.local || '-'}</div>
+                            </div>
+                            ${cronograma.descricao ? `<div class="mt-2"><strong>Descrição:</strong> ${cronograma.descricao}</div>` : ''}
+                            ${cronograma.responsavel ? `<div class="mt-1"><strong>Responsável:</strong> ${cronograma.responsavel}</div>` : ''}
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('afterbegin', cronogramaHtml);
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar cronogramas:', error));
 }
 
 function carregarAulasExistentes(departamentoId) {
-    // Esta função será implementada quando tivermos dados existentes
-    console.log('Carregando aulas existentes para departamento:', departamentoId);
+    fetch(`/departamentos/${departamentoId}/aulas/listar`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('aulas-container');
+            const vazioDiv = document.getElementById('aulas-vazio');
+            
+            if (data.aulas && data.aulas.length > 0) {
+                vazioDiv.style.display = 'none';
+                
+                data.aulas.forEach(aula => {
+                    const aulaHtml = `
+                        <div class="aula-item border rounded p-3 mb-3 bg-white" data-id="${aula.id}">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="text-success mb-0">
+                                    <i class="fas fa-graduation-cap me-2"></i>${aula.titulo}
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerAulaSalva(${aula.id}, this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-4"><strong>Professor(a):</strong> ${aula.professora || '-'}</div>
+                                <div class="col-md-4"><strong>Dia:</strong> ${aula.dia_semana || '-'}</div>
+                                <div class="col-md-4"><strong>Horário:</strong> ${aula.horario || '-'}</div>
+                            </div>
+                            ${aula.descricao ? `<div class="mt-2"><strong>Descrição:</strong> ${aula.descricao}</div>` : ''}
+                        </div>
+                    `;
+                    container.insertAdjacentHTML('afterbegin', aulaHtml);
+                });
+            }
+        })
+        .catch(error => console.error('Erro ao carregar aulas:', error));
 }
 
 // Função para mostrar/ocultar seção de aulas

@@ -197,6 +197,34 @@ def excluir_departamento(id):
 # ROTAS PARA CRONOGRAMAS DE DEPARTAMENTOS
 # ============================================================================
 
+@departamentos_bp.route('/departamentos/<int:departamento_id>/cronogramas/listar')
+@login_required
+def listar_cronogramas_json(departamento_id):
+    """Lista cronogramas de um departamento em formato JSON"""
+    try:
+        cronogramas = CronogramaDepartamento.query.filter_by(
+            departamento_id=departamento_id, 
+            ativo=True
+        ).order_by(CronogramaDepartamento.data_evento.asc()).all()
+        
+        cronogramas_list = []
+        for c in cronogramas:
+            cronogramas_list.append({
+                'id': c.id,
+                'titulo': c.titulo,
+                'descricao': c.descricao or '',
+                'data_evento': c.data_evento.strftime('%d/%m/%Y'),
+                'horario': c.horario or '',
+                'local': c.local or '',
+                'responsavel': c.responsavel or '',
+                'exibir_no_painel': c.exibir_no_painel
+            })
+        
+        return jsonify({'cronogramas': cronogramas_list})
+        
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
 @departamentos_bp.route('/departamentos/<int:departamento_id>/cronogramas')
 @login_required
 def listar_cronogramas(departamento_id):
@@ -281,6 +309,36 @@ def excluir_cronograma(cronograma_id):
 # ============================================================================
 # ROTAS PARA AULAS DE DEPARTAMENTOS  
 # ============================================================================
+
+@departamentos_bp.route('/departamentos/<int:departamento_id>/aulas/listar')
+@login_required
+def listar_aulas_json(departamento_id):
+    """Lista aulas de um departamento em formato JSON"""
+    try:
+        aulas = AulaDepartamento.query.filter_by(
+            departamento_id=departamento_id,
+            ativo=True
+        ).order_by(AulaDepartamento.data_inicio.desc()).all()
+        
+        aulas_list = []
+        for a in aulas:
+            aulas_list.append({
+                'id': a.id,
+                'titulo': a.titulo,
+                'descricao': a.descricao or '',
+                'professora': a.professora or '',
+                'dia_semana': a.dia_semana or '',
+                'horario': a.horario or '',
+                'local': a.local or '',
+                'max_alunos': a.max_alunos,
+                'data_inicio': a.data_inicio.strftime('%d/%m/%Y') if a.data_inicio else '',
+                'data_fim': a.data_fim.strftime('%d/%m/%Y') if a.data_fim else ''
+            })
+        
+        return jsonify({'aulas': aulas_list})
+        
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
 
 @departamentos_bp.route('/departamentos/<int:departamento_id>/aulas')
 @login_required
