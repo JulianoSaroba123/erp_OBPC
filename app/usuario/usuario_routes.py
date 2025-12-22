@@ -111,18 +111,19 @@ def painel():
             from app.departamentos.departamentos_model import CronogramaDepartamento
             from datetime import date
             
-            # Buscar atividades futuras do departamento
+            # Buscar todas as atividades do departamento (sem filtro de data para debug)
             atividades_departamento = CronogramaDepartamento.query.filter(
                 CronogramaDepartamento.departamento_id == current_user.departamento_id,
-                CronogramaDepartamento.data_evento >= date.today(),
                 CronogramaDepartamento.ativo == True
-            ).order_by(CronogramaDepartamento.data_evento).limit(5).all()
+            ).order_by(CronogramaDepartamento.data_evento.desc()).limit(10).all()
         except Exception as e:
+            current_app.logger.error(f"Erro ao buscar atividades: {e}")
             atividades_departamento = []
     
     return render_template("painel.html", 
                          proximos_eventos=proximos_eventos,
                          total_eventos_proximos=total_eventos_proximos,
+                         atividades_departamento=atividades_departamento)
                          atividades_departamento=atividades_departamento)
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
