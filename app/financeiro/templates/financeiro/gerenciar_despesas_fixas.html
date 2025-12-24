@@ -10,7 +10,10 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="fas fa-cogs text-primary me-2"></i>Despesas Fixas do Conselho</h2>
                 <div>
-                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-secondary">
+                    <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#gerarLancamentosModal">
+                        <i class="fas fa-magic me-1"></i> Gerar Lançamentos
+                    </button>
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-secondary me-2">
                         <i class="fas fa-arrow-left me-1"></i> Voltar
                     </a>
                     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#novaDespesaModal">
@@ -173,9 +176,15 @@
                                   placeholder="Descrição detalhada da despesa"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="categoria" class="form-label">Categoria</label>
-                        <input type="text" class="form-control" id="categoria" name="categoria"
-                               placeholder="Ex: Serviços Profissionais">
+                        <label for="categoria" class="form-label">Categoria <small class="text-muted">(usada nos lançamentos)</small></label>
+                        <select class="form-select" id="categoria" name="categoria" required>
+                            <option value="">Selecione uma categoria...</option>
+                            {% for cat in categorias_saida %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                            <option value="DESP. FIXAS">DESP. FIXAS (Nova)</option>
+                        </select>
+                        <small class="form-text text-muted">Selecione a categoria de saída que será usada ao gerar lançamentos automáticos</small>
                     </div>
                     <div class="mb-3">
                         <label for="valor_padrao" class="form-label">Valor Mensal (R$)</label>
@@ -217,8 +226,14 @@
                         <textarea class="form-control" id="edit_descricao" name="descricao" rows="2"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_categoria" class="form-label">Categoria</label>
-                        <input type="text" class="form-control" id="edit_categoria" name="categoria">
+                        <label for="edit_categoria" class="form-label">Categoria <small class="text-muted">(usada nos lançamentos)</small></label>
+                        <select class="form-select" id="edit_categoria" name="categoria" required>
+                            <option value="">Selecione uma categoria...</option>
+                            {% for cat in categorias_saida %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                            <option value="DESP. FIXAS">DESP. FIXAS (Nova)</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="edit_valor_padrao" class="form-label">Valor Mensal (R$)</label>
@@ -245,7 +260,85 @@
     </div>
 </div>
 
+<!-- Modal Gerar Lançamentos -->
+<div class="modal fade" id="gerarLancamentosModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-magic me-2"></i>Gerar Lançamentos Automáticos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('financeiro.gerar_lancamentos_despesas_fixas') }}">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Como funciona:</strong><br>
+                        Esta função cria automaticamente lançamentos de saída para todas as despesas fixas ativas 
+                        no mês selecionado. Os lançamentos serão criados com a categoria configurada em cada despesa.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="mes" class="form-label">Mês</label>
+                            <select class="form-select" id="mes" name="mes" required>
+                                <option value="1">Janeiro</option>
+                                <option value="2">Fevereiro</option>
+                                <option value="3">Março</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Maio</option>
+                                <option value="6">Junho</option>
+                                <option value="7">Julho</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="ano" class="form-label">Ano</label>
+                            <input type="number" class="form-control" id="ano" name="ano" 
+                                   value="{{ now.year if now else 2025 }}" min="2020" max="2030" required>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Atenção:</strong> Lançamentos já existentes não serão duplicados.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Despesas ativas que serão lançadas:</strong>
+                        <ul class="mt-2">
+                            {% for despesa in despesas_ativas %}
+                            <li>{{ despesa.nome }} - R$ {{ "%.2f"|format(despesa.valor_padrao)|replace(".", ",") }} 
+                                <small class="text-muted">({{ despesa.categoria or 'DESP. FIXAS' }})</small>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        <strong>Total: R$ {{ "%.2f"|format(total_despesas)|replace(".", ",") }}</strong>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info">
+                        <i class="fas fa-magic me-1"></i>Gerar Lançamentos
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+// Definir mês atual ao abrir o modal
+document.getElementById('gerarLancamentosModal').addEventListener('show.bs.modal', function () {
+    const mesAtual = new Date().getMonth() + 1;
+    document.getElementById('mes').value = mesAtual;
+});
+
 function editarDespesa(id, nome, descricao, categoria, valor, ativo) {
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_nome').value = nome;

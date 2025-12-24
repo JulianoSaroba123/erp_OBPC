@@ -12,11 +12,20 @@ http://localhost:5000/financeiro/despesas-fixas
 
 ### ➕ Criar Nova Despesa
 1. Clique em **"+ Nova Despesa"** (botão verde)
-2. Preencha os campos e clique em **"Salvar"**
+2. Preencha nome, descrição, **selecione a categoria** e valor
+3. **IMPORTANTE**: Use categorias de saída dos lançamentos (ex: DESP. FIXAS)
+4. Clique em **"Salvar"**
+
+### ⚡ Gerar Lançamentos Automáticos ⭐ NOVO
+1. Clique em **"⚡ Gerar Lançamentos"** (botão azul)
+2. Selecione mês e ano
+3. Clique em **"Gerar Lançamentos"**
+4. Lançamentos de saída serão criados automaticamente!
 
 ### ✏️ Editar Despesa
 1. Na tabela, clique no botão **azul** (ícone de lápis)
-2. Altere os dados e clique em **"Atualizar"**
+2. Altere os dados (incluindo categoria)
+3. Clique em **"Atualizar"**
 
 ### ⏸️ Ativar/Desativar
 1. Clique no botão **amarelo** (pausar) ou **verde** (play)
@@ -28,10 +37,19 @@ http://localhost:5000/financeiro/despesas-fixas
 
 ## 💡 Dicas
 
+- **Use categorias consistentes**: Selecione categorias de saída já existentes
+- **Gere lançamentos mensalmente**: Use "Gerar Lançamentos" no início de cada mês
 - **Não exclua** despesas que podem voltar - apenas **desative**
-- Use **categorias** para organizar melhor (ex: "Utilidades", "Serviços")
 - O **valor total mensal** e **anual** são calculados automaticamente
 - Despesas **inativas** aparecem em cinza na tabela
+- Lançamentos gerados têm origem "automatico" para rastreabilidade
+
+## 🔄 Integração com Lançamentos
+
+- ✅ Categorias sincronizadas com lançamentos de saída
+- ✅ Gera lançamentos automáticos no formato padrão
+- ✅ Evita duplicação de lançamentos
+- ✅ Usa a mesma estrutura de dados dos lançamentos manuais
 
 ## 🧪 Testar o Sistema
 

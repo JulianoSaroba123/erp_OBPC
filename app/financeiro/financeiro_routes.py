@@ -2454,10 +2454,18 @@ def gerenciar_despesas_fixas():
         despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
         total_despesas = DespesaFixaConselho.obter_total_despesas_fixas()
         
+        # Buscar categorias de saída dos lançamentos (para usar nas despesas fixas)
+        categorias_saida = db.session.query(Lancamento.categoria).distinct().filter(
+            Lancamento.categoria.isnot(None),
+            Lancamento.tipo.ilike('saída')
+        ).order_by(Lancamento.categoria).all()
+        categorias_saida = [c[0] for c in categorias_saida if c[0] and c[0].strip()]
+        
         return render_template('financeiro/gerenciar_despesas_fixas.html',
                              despesas_todas=despesas_todas,
                              despesas_ativas=despesas_ativas,
-                             total_despesas=total_despesas)
+                             total_despesas=total_despesas,
+                             categorias_saida=categorias_saida)
     
     except Exception as e:
         db.session.rollback()
@@ -2499,6 +2507,69 @@ def excluir_despesa_fixa(id):
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao excluir despesa fixa: {str(e)}', 'danger')
+    
+    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+@financeiro_bp.route('/financeiro/despesas-fixas/gerar-lancamentos', methods=['POST'])
+@login_required
+def gerar_lancamentos_despesas_fixas():
+    """Gera lançamentos automáticos para o mês atual baseado nas despesas fixas ativas"""
+    try:
+        mes = request.form.get('mes', type=int) or datetime.now().month
+        ano = request.form.get('ano', type=int) or datetime.now().year
+        
+        # Buscar despesas fixas ativas
+        despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
+        
+        if not despesas_ativas:
+            flash('Nenhuma despesa fixa ativa encontrada!', 'warning')
+            return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+        
+        # Data do lançamento (primeiro dia do mês)
+        data_lancamento = date(ano, mes, 1)
+        
+        lancamentos_criados = 0
+        lancamentos_existentes = 0
+        
+        for despesa in despesas_ativas:
+            # Verificar se já existe lançamento para esta despesa neste mês
+            existe = Lancamento.query.filter(
+                extract('month', Lancamento.data) == mes,
+                extract('year', Lancamento.data) == ano,
+                Lancamento.descricao.ilike(f'%{despesa.nome}%'),
+                Lancamento.tipo.ilike('saída')
+            ).first()
+            
+            if existe:
+                lancamentos_existentes += 1
+                continue
+            
+            # Criar lançamento
+            novo_lancamento = Lancamento(
+                data=data_lancamento,
+                tipo='Saída',
+                categoria=despesa.categoria or 'DESP. FIXAS',
+                descricao=f'{despesa.nome} - Despesa Fixa {mes:02d}/{ano}',
+                valor=despesa.valor_padrao,
+                conta='Dinheiro',
+                observacoes=f'Gerado automaticamente de: {despesa.descricao}' if despesa.descricao else 'Despesa fixa mensal',
+                origem='automatico'
+            )
+            
+            db.session.add(novo_lancamento)
+            lancamentos_criados += 1
+        
+        db.session.commit()
+        
+        mensagem = f'{lancamentos_criados} lançamento(s) criado(s) para {mes:02d}/{ano}!'
+        if lancamentos_existentes > 0:
+            mensagem += f' ({lancamentos_existentes} já existia(m))'
+        
+        flash(mensagem, 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao gerar lançamentos: {str(e)}', 'danger')
     
     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 

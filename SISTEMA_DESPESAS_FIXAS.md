@@ -2,7 +2,7 @@
 
 ## 📋 Resumo da Implementação
 
-O módulo de **Despesas Fixas** foi totalmente implementado no sistema financeiro da Igreja O Brasil para Cristo (OBPC) de Tietê/SP. Agora você tem um controle completo sobre os custos fixos mensais da igreja.
+O módulo de **Despesas Fixas** foi totalmente implementado no sistema financeiro da Igreja O Brasil para Cristo (OBPC) de Tietê/SP. Agora você tem um controle completo sobre os custos fixos mensais da igreja **integrado com os lançamentos financeiros**.
 
 ## ✅ Funcionalidades Implementadas
 
@@ -11,7 +11,7 @@ O módulo de **Despesas Fixas** foi totalmente implementado no sistema financeir
 - ✅ Campos disponíveis:
   - Nome da despesa (obrigatório)
   - Descrição detalhada (opcional)
-  - Categoria (opcional)
+  - **Categoria** (obrigatório - **mesmas categorias dos lançamentos**)
   - Valor mensal (obrigatório)
   - Status automático (sempre ativa ao criar)
 
@@ -22,10 +22,12 @@ O módulo de **Despesas Fixas** foi totalmente implementado no sistema financeir
   - Valor total mensal
   - Projeção anual (valor mensal × 12)
 - ✅ Identificação visual de despesas inativas na tabela
+- ✅ Exibição da categoria de cada despesa
 
 ### 3. **UPDATE (Editar)**
 - ✅ Botão de edição para cada despesa
 - ✅ Modal de edição com todos os campos preenchidos
+- ✅ **Seleção de categoria através de dropdown** (categorias de saída dos lançamentos)
 - ✅ Possibilidade de ativar/desativar despesas
 - ✅ Validação de dados antes de salvar
 - ✅ Feedback visual de sucesso/erro
@@ -36,12 +38,19 @@ O módulo de **Despesas Fixas** foi totalmente implementado no sistema financeir
 - ✅ Mensagem clara de que a exclusão é permanente
 - ✅ Remoção completa do banco de dados
 
-### 5. **Outros Recursos**
-- ✅ Ativar/Desativar despesas sem excluí-las
-- ✅ Integração com relatórios financeiros
-- ✅ Cálculo automático de totais
-- ✅ Interface moderna e responsiva
-- ✅ Validação de dados com mensagens de erro claras
+### 5. **GERAR LANÇAMENTOS AUTOMÁTICOS** ⭐ NOVO
+- ✅ Botão "Gerar Lançamentos" para criar lançamentos automaticamente
+- ✅ Seleção de mês e ano para geração
+- ✅ Cria lançamentos de saída para todas despesas fixas ativas
+- ✅ **Usa a categoria configurada em cada despesa**
+- ✅ Evita duplicação de lançamentos
+- ✅ Mostra quantos lançamentos foram criados vs já existentes
+
+### 6. **Integração com Lançamentos**
+- ✅ **Categorias sincronizadas**: Despesas fixas usam as mesmas categorias de saída dos lançamentos
+- ✅ **Dropdown de categorias**: Ao criar/editar despesa, seleciona de categorias existentes
+- ✅ **Lançamentos automáticos**: Gera lançamentos de saída no formato padrão do sistema
+- ✅ **Rastreabilidade**: Lançamentos gerados têm origem "automatico"
 
 ## 🔗 Como Acessar
 
@@ -58,9 +67,27 @@ O módulo de **Despesas Fixas** foi totalmente implementado no sistema financeir
 2. Preencha o formulário:
    - **Nome**: Ex: "Contador Sede", "Site da Igreja", "Luz", "Água"
    - **Descrição**: Ex: "Pagamento mensal do contador responsável pela sede"
-   - **Categoria**: Ex: "Serviços Profissionais", "Utilidades", "Manutenção"
+   - **Categoria**: Selecione no dropdown (ex: "DESP. FIXAS", "Serviços", "Utilidades")
+     - **IMPORTANTE**: Use as mesmas categorias dos lançamentos para facilitar relatórios
    - **Valor Mensal**: Ex: 500.00
 3. Clique em **"Salvar"**
+
+### Gerar Lançamentos Automáticos ⭐ NOVO
+
+1. Clique no botão azul **"⚡ Gerar Lançamentos"**
+2. Selecione o **mês** e **ano** desejado
+3. Revise a lista de despesas ativas que serão lançadas
+4. Clique em **"Gerar Lançamentos"**
+5. O sistema criará lançamentos de saída para cada despesa fixa ativa
+6. **Nota**: Lançamentos duplicados não serão criados
+
+**Como funciona:**
+- Cria um lançamento de **Saída** para cada despesa fixa ativa
+- Data: 1º dia do mês selecionado
+- Categoria: A mesma configurada na despesa fixa
+- Descrição: "[Nome da Despesa] - Despesa Fixa MM/AAAA"
+- Valor: O valor padrão configurado
+- Origem: "automatico" (para rastreabilidade)
 
 ### Editar Despesa Fixa
 
