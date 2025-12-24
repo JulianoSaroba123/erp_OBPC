@@ -96,212 +96,243 @@
         "></div>
 
         <!-- Conteúdo do certificado -->
-        <div style="position: relative; z-index: 1; padding: 40px 50px; height: 100%; display: flex; flex-direction: column;">
+        <div style="position: relative; z-index: 1; padding: 35px 45px; height: 100%; display: flex; flex-direction: column;">
             
-            <!-- Logo GRANDE no topo -->
-            <div style="text-align: center; margin-bottom: 20px;">
-                <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
-                     alt="Logo da Igreja" 
-                     style="height: 100px; max-width: 150px; object-fit: contain; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));"
-                     onerror="this.style.display='none'">
+            <!-- Logo com efeito visual melhorado -->
+            <div style="text-align: center; margin-bottom: 15px;">
+                <div style="
+                    display: inline-block;
+                    padding: 8px;
+                    background: white;
+                    border-radius: 50%;
+                    box-shadow: 0 4px 12px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.25);
+                ">
+                    <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
+                         alt="Logo da Igreja" 
+                         style="height: 90px; max-width: 140px; object-fit: contain; border-radius: 50%;"
+                         onerror="this.style.display='none'">
+                </div>
             </div>
 
-            <!-- Título colorido e alegre baseado no gênero -->
-            <div style="text-align: center; margin-bottom: 20px;">
+            <!-- Título moderno com degradê -->
+            <div style="text-align: center; margin-bottom: 18px;">
                 <h1 style="
                     {% if certificado.genero == 'masculino' %}
-                        background: linear-gradient(45deg, #4A90E2, #87CEEB, #1E90FF);
+                        background: linear-gradient(135deg, #4A90E2 0%, #1E90FF 100%);
                     {% elif certificado.genero == 'feminino' %}
-                        background: linear-gradient(45deg, #FF69B4, #FFB6C1, #FF1493);
+                        background: linear-gradient(135deg, #FF69B4 0%, #FF1493 100%);
                     {% else %}
-                        background: linear-gradient(45deg, #9B59B6, #E8C5E8, #DA70D6);
+                        background: linear-gradient(135deg, #9B59B6 0%, #DA70D6 100%);
                     {% endif %}
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                     background-clip: text;
-                    font-size: 36px;
-                    font-weight: bold;
-                    margin: 0;
-                    letter-spacing: 2px;
+                    font-size: 40px;
+                    font-weight: 900;
+                    margin: 0 0 8px 0;
+                    letter-spacing: 3px;
                     text-transform: uppercase;
-                    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+                    font-family: 'Georgia', 'Times New Roman', serif;
                 ">{{ emoji_tema }} Certificado {{ emoji_tema }}</h1>
                 
-                <h2 style="
-                    color: {{ cor_principal }};
-                    font-size: 24px;
-                    margin: 10px 0;
-                    font-weight: bold;
-                    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-                ">✨ DE APRESENTAÇÃO ✨</h2>
+                <div style="
+                    display: inline-block;
+                    background: {{ cor_gradiente }};
+                    color: white;
+                    padding: 8px 30px;
+                    border-radius: 50px;
+                    font-size: 18px;
+                    font-weight: 700;
+                    letter-spacing: 2px;
+                    box-shadow: 0 4px 15px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.35);
+                    text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+                ">✨ DE APRESENTAÇÃO ✨</div>
             </div>
 
             <!-- Conteúdo principal alegre -->
             <div style="text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center;">
                 
-                <!-- Texto de certificação com emojis -->
+                <!-- Texto de certificação elegante -->
                 <p style="
-                    color: #444;
-                    font-size: 16px;
-                    line-height: 1.6;
-                    margin-bottom: 20px;
-                    font-weight: 500;
+                    color: #333;
+                    font-size: 15px;
+                    line-height: 1.8;
+                    margin-bottom: 12px;
+                    font-weight: 600;
+                    font-family: 'Georgia', serif;
+                    font-style: italic;
                 ">
                     🌟 Certificamos que a criança 🌟
                 </p>
                 
-                <!-- Nome da criança com destaque especial baseado no gênero -->
+                <!-- Nome da criança com design premium -->
                 <div style="
-                    background: {{ cor_gradiente }};
-                    color: #fff;
-                    font-size: 28px;
-                    font-weight: bold;
-                    margin: 15px auto;
-                    padding: 15px 30px;
-                    border-radius: 25px;
+                    position: relative;
+                    background: white;
+                    color: {{ cor_principal }};
+                    font-size: 32px;
+                    font-weight: 900;
+                    margin: 12px auto 15px;
+                    padding: 18px 35px;
+                    border-radius: 15px;
                     text-transform: uppercase;
-                    letter-spacing: 1px;
-                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.3);
-                    max-width: 500px;
-                    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+                    letter-spacing: 2px;
+                    box-shadow: 0 8px 25px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.4),
+                                inset 0 -4px 0 {{ cor_principal }};
+                    max-width: 520px;
+                    font-family: 'Georgia', 'Times New Roman', serif;
+                    border: 3px solid {{ cor_principal }};
                 ">{{ certificado.nome_pessoa }}</div>
                 
-                <!-- Filiação se existir com tema baseado no gênero -->
+                <!-- Filiação com design elegante -->
                 {% if certificado.filiacao %}
                 <div style="
+                    background: rgba(255, 255, 255, 0.8);
+                    backdrop-filter: blur(10px);
                     {% if certificado.genero == 'masculino' %}
-                        background: linear-gradient(135deg, #87CEEB, #E6F3FF);
-                        border: 2px solid #4A90E2;
+                        border-left: 4px solid #4A90E2;
                     {% elif certificado.genero == 'feminino' %}
-                        background: linear-gradient(135deg, #FFB6C1, #FFF0F5);
-                        border: 2px solid #FF69B4;
+                        border-left: 4px solid #FF69B4;
                     {% else %}
-                        background: linear-gradient(135deg, #E8C5E8, #F5F0F5);
-                        border: 2px solid #9B59B6;
+                        border-left: 4px solid #9B59B6;
                     {% endif %}
-                    padding: 10px 20px;
-                    margin: 15px auto;
-                    border-radius: 15px;
-                    max-width: 450px;
+                    padding: 12px 25px;
+                    margin: 12px auto;
+                    border-radius: 8px;
+                    max-width: 480px;
+                    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
                 ">
-                    <p style="margin: 0; color: #555; font-size: 14px; font-weight: 500;">
-                        👶 <strong>{{ certificado.filiacao }}</strong>
+                    <p style="margin: 0; color: #444; font-size: 14px; font-weight: 600; font-family: 'Georgia', serif;">
+                        👶 <span style="color: {{ cor_principal }};">Filho(a) de:</span> <strong>{{ certificado.filiacao }}</strong>
                     </p>
                 </div>
                 {% endif %}
                 
-                <!-- Texto principal com cores -->
+                <!-- Texto principal com tipografia melhorada -->
                 <p style="
-                    color: #555;
-                    font-size: 16px;
-                    line-height: 1.8;
-                    margin: 20px auto;
-                    max-width: 480px;
+                    color: #2c3e50;
+                    font-size: 15px;
+                    line-height: 1.9;
+                    margin: 15px auto;
+                    max-width: 500px;
                     font-weight: 500;
+                    text-align: justify;
+                    font-family: 'Georgia', 'Times New Roman', serif;
                 ">
-                    foi apresentada ao <strong style="color: {{ cor_principal }};">Senhor Jesus Cristo</strong> em 
-                    <strong style="color: {{ cor_secundaria }};">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
+                    foi apresentada ao <strong style="color: {{ cor_principal }}; font-weight: 700;">Senhor Jesus Cristo</strong> em 
+                    <strong style="color: {{ cor_principal }}; font-weight: 700;">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
                     seguindo o exemplo bíblico, sendo consagrada para uma vida de 
-                    <strong style="color: {{ cor_principal }};">bênçãos e proteção divina</strong>. 🙏
+                    <strong style="color: {{ cor_principal }}; font-weight: 700;">bênçãos e proteção divina</strong>. 🙏
                 </p>
                 
-                <!-- Padrinhos com destaque especial baseado no gênero -->
+                <!-- Padrinhos com design premium -->
                 {% if certificado.padrinhos %}
                 <div style="
+                    background: white;
                     {% if certificado.genero == 'masculino' %}
-                        background: linear-gradient(135deg, #B0E0E6, #E0F6FF);
-                        border: 3px solid #4A90E2;
+                        border: 2px solid #4A90E2;
+                        border-left: 5px solid #4A90E2;
                     {% elif certificado.genero == 'feminino' %}
-                        background: linear-gradient(135deg, #FFEAA7, #FAB1A0);
-                        border: 3px solid #FF69B4;
+                        border: 2px solid #FF69B4;
+                        border-left: 5px solid #FF69B4;
                     {% else %}
-                        background: linear-gradient(135deg, #D8BFD8, #E6E6FA);
-                        border: 3px solid #9B59B6;
+                        border: 2px solid #9B59B6;
+                        border-left: 5px solid #9B59B6;
                     {% endif %}
-                    padding: 15px 25px;
-                    margin: 20px auto;
-                    border-radius: 20px;
-                    max-width: 400px;
-                    box-shadow: 0 6px 12px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.3);
+                    padding: 15px 28px;
+                    margin: 15px auto;
+                    border-radius: 10px;
+                    max-width: 440px;
+                    box-shadow: 0 5px 20px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.2);
                 ">
-                    <p style="margin: 0; color: #2d3436; font-size: 15px; font-weight: 600;">
-                        👨‍👩‍👧‍👦 <strong>Padrinhos:</strong><br>
-                        <span style="font-size: 16px; color: {{ cor_principal }};">{{ certificado.padrinhos }}</span>
+                    <p style="margin: 0; color: #555; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">
+                        👨‍👩‍👧‍👦 Padrinhos
+                    </p>
+                    <p style="margin: 0; font-size: 17px; color: {{ cor_principal }}; font-weight: 700; font-family: 'Georgia', serif;">
+                        {{ certificado.padrinhos }}
                     </p>
                 </div>
                 {% endif %}
                 
-                <!-- Versículo bíblico colorido baseado no gênero -->
+                <!-- Versículo bíblico com design sofisticado -->
                 <div style="
                     {% if certificado.genero == 'masculino' %}
-                        background: linear-gradient(135deg, #4A90E2, #1E90FF);
+                        background: linear-gradient(135deg, #4A90E2 0%, #2874D1 100%);
                     {% elif certificado.genero == 'feminino' %}
-                        background: linear-gradient(135deg, #FF69B4, #FF1493);
+                        background: linear-gradient(135deg, #FF69B4 0%, #E8519C 100%);
                     {% else %}
-                        background: linear-gradient(135deg, #9B59B6, #DA70D6);
+                        background: linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%);
                     {% endif %}
                     color: white;
-                    padding: 20px;
-                    margin: 25px auto;
-                    border-radius: 20px;
-                    max-width: 500px;
-                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.4);
+                    padding: 18px 25px;
+                    margin: 18px auto;
+                    border-radius: 12px;
+                    max-width: 520px;
+                    box-shadow: 0 6px 20px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.35);
                     position: relative;
+                    border: 2px solid rgba(255, 255, 255, 0.3);
                 ">
-                    <div style="position: absolute; top: -10px; left: 20px; font-size: 30px;">📖</div>
+                    <div style="position: absolute; top: -15px; left: 25px; font-size: 32px; background: inherit; padding: 0 8px; border-radius: 50%;">📖</div>
                     <p style="
-                        margin: 10px 0 5px 0;
+                        margin: 8px 0 8px 0;
                         font-size: 14px;
                         font-style: italic;
-                        line-height: 1.5;
-                        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+                        line-height: 1.7;
+                        text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+                        font-family: 'Georgia', serif;
                     ">
                         "Deixem vir a mim as crianças, não as impeçam;<br>
                         pois o Reino dos céus pertence aos que são semelhantes a elas."
                     </p>
                     <p style="
-                        margin: 5px 0 0 0;
+                        margin: 0;
                         font-size: 12px;
-                        font-weight: bold;
+                        font-weight: 700;
                         text-align: right;
-                        opacity: 0.9;
+                        opacity: 0.95;
+                        letter-spacing: 0.5px;
                     ">
                         — Mateus 19:14 ✨
                     </p>
                 </div>
             </div>
 
-            <!-- Rodapé alegre -->
-            <div style="display: flex; justify-content: space-between; align-items: end; margin-top: 15px;">
-                <!-- Local e data -->
-                <div style="text-align: left;">
-                    <p style="color: #666; font-size: 12px; margin: 0; line-height: 1.4; font-weight: 500;">
-                        🏛️ <strong>Local:</strong> {% if config %}{{ config.igreja_nome }}{% else %}{{ certificado.local_evento or 'Igreja OBPC - Tietê' }}{% endif %}<br>
-                        👨‍🏫 <strong>Pastor:</strong> {% if config %}{{ config.pastor_nome }}{% else %}{{ certificado.pastor_responsavel or 'Pastor Responsável' }}{% endif %}
+            <!-- Rodapé moderno e elegante -->
+            <div style="display: flex; justify-content: space-between; align-items: end; margin-top: 12px; padding-top: 12px; border-top: 2px solid rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.15);">
+                <!-- Informações da igreja -->
+                <div style="text-align: left; flex: 1;">
+                    <p style="color: #555; font-size: 11px; margin: 0; line-height: 1.6; font-weight: 600;">
+                        🏛️ <strong style="color: {{ cor_principal }};">Local:</strong><br>
+                        <span style="margin-left: 20px;">{% if config %}{{ config.igreja_nome }}{% else %}{{ certificado.local_evento or 'Igreja OBPC - Tietê' }}{% endif %}</span>
                     </p>
                 </div>
                 
-                <!-- Linha de assinatura colorida baseada no gênero -->
-                <div style="text-align: center; min-width: 200px;">
+                <!-- Assinatura do pastor com design premium -->
+                <div style="text-align: center; min-width: 220px;">
                     <div style="
-                        height: 2px;
+                        height: 1px;
                         {% if certificado.genero == 'masculino' %}
-                            background: linear-gradient(90deg, #4A90E2, #87CEEB);
+                            background: {{ cor_principal }};
                         {% elif certificado.genero == 'feminino' %}
-                            background: linear-gradient(90deg, #FF69B4, #FFB6C1);
+                            background: {{ cor_principal }};
                         {% else %}
-                            background: linear-gradient(90deg, #9B59B6, #E8C5E8);
+                            background: {{ cor_principal }};
                         {% endif %}
-                        margin-bottom: 5px;
-                        border-radius: 1px;
+                        margin-bottom: 6px;
+                        width: 100%;
                     "></div>
-                    <p style="color: #666; font-size: 11px; margin: 0; font-weight: 500;">✍️ Assinatura do Pastor</p>
+                    <p style="color: #666; font-size: 10px; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ✍️ {% if config %}{{ config.pastor_nome }}{% else %}{{ certificado.pastor_responsavel or 'Pastor Responsável' }}{% endif %}
+                    </p>
+                    <p style="color: #999; font-size: 9px; margin: 2px 0 0 0; font-style: italic;">
+                        Pastor
+                    </p>
                 </div>
             </div>
             
-            <!-- Endereço da igreja -->
-            <div style="text-align: center; margin-top: 15px;">
-                <p style="color: #999; font-size: 10px; margin: 0; font-weight: 500;">
+            <!-- Endereço com design limpo -->
+            <div style="text-align: center; margin-top: 10px;">
+                <p style="color: #999; font-size: 9px; margin: 0; font-weight: 500; letter-spacing: 0.5px;">
                     {% if config %}
                         🏠 {{ config.igreja_nome }} • {{ config.igreja_endereco }} 💒
                     {% else %}
