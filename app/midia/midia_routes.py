@@ -21,18 +21,20 @@ midia_bp = Blueprint('midia', __name__, url_prefix='/midia', template_folder='te
 @midia_bp.route('/certificados/pdf/<int:certificado_id>')
 @login_required
 def certificado_pdf(certificado_id):
-    """Gera PDF do certificado - modelo azul para batismo, minimalista para apresentação"""
+    """Gera PDF do certificado - modelo genérico para batismo, alegre com cores para apresentação"""
     try:
         certificado = Certificado.query.get_or_404(certificado_id)
         
-        # Buscar configurações da igreja
+        # Buscar configurações da igreja (dados pastorais)
         from app.configuracoes.configuracoes_model import Configuracao
         config_obj = Configuracao.query.first()
         
         # Escolher template baseado no tipo de certificado
         if certificado.tipo_certificado == 'Apresentação':
-            template_name = 'certificados/certificado_apresentacao_minimalista.html'
+            # Apresentação usa modelo alegre com cores por gênero
+            template_name = 'certificados/certificado_apresentacao_alegre.html'
         else:
+            # Batismo usa modelo genérico azul (sem distinção de gênero)
             template_name = 'certificados/certificado_modelo_azul.html'
         
         return render_template(template_name, 

@@ -4,13 +4,13 @@
 
 {% block content %}
 <!-- Definir cores baseadas no gênero -->
-{% if certificado.genero == 'Masculino' %}
+{% if certificado.genero == 'masculino' %}
     {% set cor_principal = '#4A90E2' %}  <!-- Azul -->
     {% set cor_secundaria = '#87CEEB' %}  <!-- Azul claro -->
     {% set cor_gradiente = 'linear-gradient(135deg, #4A90E2 0%, #87CEEB 50%, #E6F3FF 100%)' %}
     {% set cor_fundo = 'linear-gradient(135deg, #E6F3FF 0%, #F0F8FF 50%, #F5F5FF 100%)' %}
     {% set emoji_tema = '⚡' %}
-{% elif certificado.genero == 'Feminino' %}
+{% elif certificado.genero == 'feminino' %}
     {% set cor_principal = '#FF69B4' %}  <!-- Rosa -->
     {% set cor_secundaria = '#FFB6C1' %}  <!-- Rosa claro -->
     {% set cor_gradiente = 'linear-gradient(135deg, #FF69B4 0%, #FFB6C1 50%, #FFF0F5 100%)' %}
@@ -36,7 +36,7 @@
         width: 842px; 
         height: 595px; 
         background: {{ cor_fundo }};
-        box-shadow: 0 0 40px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.3);
+        box-shadow: 0 0 40px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.3);
         position: relative;
         overflow: hidden;
         font-family: 'Comic Sans MS', 'Arial', sans-serif;
@@ -48,14 +48,14 @@
         <!-- Decorações de fundo alegres baseadas no gênero -->
         <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.1;">
             <!-- Decorações específicas por gênero -->
-            {% if certificado.genero == 'Masculino' %}
+            {% if certificado.genero == 'masculino' %}
                 <!-- Tema azul masculino -->
                 <div style="position: absolute; top: 30px; left: 50px; font-size: 24px; color: #4A90E2;">⚡</div>
                 <div style="position: absolute; top: 80px; right: 80px; font-size: 20px; color: #87CEEB;">🚀</div>
                 <div style="position: absolute; top: 150px; left: 100px; font-size: 18px; color: #4169E1;">⭐</div>
                 <div style="position: absolute; bottom: 100px; right: 120px; font-size: 22px; color: #00BFFF;">⚡</div>
                 <div style="position: absolute; bottom: 150px; left: 80px; font-size: 16px; color: #1E90FF;">🌟</div>
-            {% elif certificado.genero == 'Feminino' %}
+            {% elif certificado.genero == 'feminino' %}
                 <!-- Tema rosa feminino -->
                 <div style="position: absolute; top: 30px; left: 50px; font-size: 24px; color: #FF69B4;">🌸</div>
                 <div style="position: absolute; top: 80px; right: 80px; font-size: 20px; color: #FFB6C1;">💖</div>
@@ -81,9 +81,9 @@
             bottom: 15px; 
             border: 3px solid transparent;
             border-radius: 15px;
-            {% if certificado.genero == 'Masculino' %}
+            {% if certificado.genero == 'masculino' %}
                 background: linear-gradient(45deg, #4A90E2, #87CEEB, #00BFFF, #1E90FF, #4169E1);
-            {% elif certificado.genero == 'Feminino' %}
+            {% elif certificado.genero == 'feminino' %}
                 background: linear-gradient(45deg, #FF69B4, #FFB6C1, #FF1493, #FFB6C1, #FF69B4);
             {% else %}
                 background: linear-gradient(45deg, #9B59B6, #E8C5E8, #DA70D6, #E8C5E8, #9B59B6);
@@ -106,9 +106,9 @@
             <!-- Título colorido e alegre baseado no gênero -->
             <div style="text-align: center; margin-bottom: 20px;">
                 <h1 style="
-                    {% if certificado.genero == 'Masculino' %}
+                    {% if certificado.genero == 'masculino' %}
                         background: linear-gradient(45deg, #4A90E2, #87CEEB, #1E90FF);
-                    {% elif certificado.genero == 'Feminino' %}
+                    {% elif certificado.genero == 'feminino' %}
                         background: linear-gradient(45deg, #FF69B4, #FFB6C1, #FF1493);
                     {% else %}
                         background: linear-gradient(45deg, #9B59B6, #E8C5E8, #DA70D6);
@@ -158,7 +158,7 @@
                     border-radius: 25px;
                     text-transform: uppercase;
                     letter-spacing: 1px;
-                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.3);
+                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.3);
                     max-width: 500px;
                     text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
                 ">{{ certificado.nome_pessoa }}</div>
@@ -166,10 +166,10 @@
                 <!-- Filiação se existir com tema baseado no gênero -->
                 {% if certificado.filiacao %}
                 <div style="
-                    {% if certificado.genero == 'Masculino' %}
+                    {% if certificado.genero == 'masculino' %}
                         background: linear-gradient(135deg, #87CEEB, #E6F3FF);
                         border: 2px solid #4A90E2;
-                    {% elif certificado.genero == 'Feminino' %}
+                    {% elif certificado.genero == 'feminino' %}
                         background: linear-gradient(135deg, #FFB6C1, #FFF0F5);
                         border: 2px solid #FF69B4;
                     {% else %}
@@ -205,10 +205,10 @@
                 <!-- Padrinhos com destaque especial baseado no gênero -->
                 {% if certificado.padrinhos %}
                 <div style="
-                    {% if certificado.genero == 'Masculino' %}
+                    {% if certificado.genero == 'masculino' %}
                         background: linear-gradient(135deg, #B0E0E6, #E0F6FF);
                         border: 3px solid #4A90E2;
-                    {% elif certificado.genero == 'Feminino' %}
+                    {% elif certificado.genero == 'feminino' %}
                         background: linear-gradient(135deg, #FFEAA7, #FAB1A0);
                         border: 3px solid #FF69B4;
                     {% else %}
@@ -219,7 +219,7 @@
                     margin: 20px auto;
                     border-radius: 20px;
                     max-width: 400px;
-                    box-shadow: 0 6px 12px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.3);
+                    box-shadow: 0 6px 12px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.3);
                 ">
                     <p style="margin: 0; color: #2d3436; font-size: 15px; font-weight: 600;">
                         👨‍👩‍👧‍👦 <strong>Padrinhos:</strong><br>
@@ -230,9 +230,9 @@
                 
                 <!-- Versículo bíblico colorido baseado no gênero -->
                 <div style="
-                    {% if certificado.genero == 'Masculino' %}
+                    {% if certificado.genero == 'masculino' %}
                         background: linear-gradient(135deg, #4A90E2, #1E90FF);
-                    {% elif certificado.genero == 'Feminino' %}
+                    {% elif certificado.genero == 'feminino' %}
                         background: linear-gradient(135deg, #FF69B4, #FF1493);
                     {% else %}
                         background: linear-gradient(135deg, #9B59B6, #DA70D6);
@@ -242,7 +242,7 @@
                     margin: 25px auto;
                     border-radius: 20px;
                     max-width: 500px;
-                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'Masculino' else ('255, 105, 180' if certificado.genero == 'Feminino' else '155, 89, 182') }}, 0.4);
+                    box-shadow: 0 8px 16px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.4);
                     position: relative;
                 ">
                     <div style="position: absolute; top: -10px; left: 20px; font-size: 30px;">📖</div>
@@ -273,8 +273,8 @@
                 <!-- Local e data -->
                 <div style="text-align: left;">
                     <p style="color: #666; font-size: 12px; margin: 0; line-height: 1.4; font-weight: 500;">
-                        🏛️ <strong>Local:</strong> {{ certificado.local_evento or 'Igreja OBPC - Tietê' }}<br>
-                        👨‍🏫 <strong>Pastor:</strong> {{ certificado.pastor_responsavel or 'Pastor Responsável' }}
+                        🏛️ <strong>Local:</strong> {% if config %}{{ config.igreja_nome }}{% else %}{{ certificado.local_evento or 'Igreja OBPC - Tietê' }}{% endif %}<br>
+                        👨‍🏫 <strong>Pastor:</strong> {% if config %}{{ config.pastor_nome }}{% else %}{{ certificado.pastor_responsavel or 'Pastor Responsável' }}{% endif %}
                     </p>
                 </div>
                 
@@ -282,9 +282,9 @@
                 <div style="text-align: center; min-width: 200px;">
                     <div style="
                         height: 2px;
-                        {% if certificado.genero == 'Masculino' %}
+                        {% if certificado.genero == 'masculino' %}
                             background: linear-gradient(90deg, #4A90E2, #87CEEB);
-                        {% elif certificado.genero == 'Feminino' %}
+                        {% elif certificado.genero == 'feminino' %}
                             background: linear-gradient(90deg, #FF69B4, #FFB6C1);
                         {% else %}
                             background: linear-gradient(90deg, #9B59B6, #E8C5E8);
@@ -299,7 +299,11 @@
             <!-- Endereço da igreja -->
             <div style="text-align: center; margin-top: 15px;">
                 <p style="color: #999; font-size: 10px; margin: 0; font-weight: 500;">
-                    🏠 Igreja O Brasil Para Cristo • Rua Egídio Módulo, 261 • Tietê/SP 💒
+                    {% if config %}
+                        🏠 {{ config.igreja_nome }} • {{ config.igreja_endereco }} 💒
+                    {% else %}
+                        🏠 Igreja O Brasil Para Cristo • Rua Egídio Módulo, 261 • Tietê/SP 💒
+                    {% endif %}
                 </p>
             </div>
         </div>

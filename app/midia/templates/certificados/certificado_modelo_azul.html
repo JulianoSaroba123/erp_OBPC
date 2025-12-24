@@ -140,7 +140,11 @@
                 <!-- Endereço discreto no rodapé -->
                 <div style="text-align: center; margin-top: 20px;">
                     <p style="color: #666; font-size: 10px; margin: 0;">
-                        IGREJA O BRASIL PARA CRISTO - RUA EGÍDIO MÓDULO, 261 - TIETÊ/SP
+                        {% if config %}
+                            {{ config.igreja_nome|upper }} - {{ config.igreja_endereco|upper }}
+                        {% else %}
+                            IGREJA O BRASIL PARA CRISTO - RUA EGÍDIO MÓDULO, 261 - TIETÊ/SP
+                        {% endif %}
                     </p>
                 </div>
             </div>
