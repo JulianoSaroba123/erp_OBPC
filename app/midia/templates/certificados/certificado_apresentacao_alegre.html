@@ -31,8 +31,11 @@
     display: flex; 
     align-items: center; 
     justify-content: center;
+    overflow: auto;
 ">
     <div class="certificate-page" style="
+        max-width: 95vw;
+        max-height: 90vh;
         width: 842px; 
         height: 595px; 
         background: {{ cor_fundo }};
@@ -331,6 +334,21 @@
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
+}
+
+/* Responsividade para telas menores */
+@media screen and (max-width: 900px) {
+    .certificate-page {
+        transform: scale(0.85);
+        transform-origin: center;
+    }
+}
+
+@media screen and (max-height: 700px) {
+    .certificate-page {
+        transform: scale(0.75);
+        transform-origin: center;
+    }
 }
 
 @media print {
