@@ -33,6 +33,32 @@ class DespesaFixaConselho(db.Model):
     def __repr__(self):
         return f'<DespesaFixaConselho {self.nome}: R$ {self.valor_padrao:.2f}>'
     
+    def validar(self):
+        """Valida os dados da despesa fixa"""
+        erros = []
+        
+        if not self.nome or len(self.nome.strip()) == 0:
+            erros.append("Nome da despesa é obrigatório")
+        
+        if self.valor_padrao is None or self.valor_padrao < 0:
+            erros.append("Valor deve ser maior ou igual a zero")
+        
+        return erros
+    
+    def to_dict(self):
+        """Retorna a despesa como dicionário"""
+        return {
+            'id': self.id,
+            'nome': self.nome,
+            'descricao': self.descricao,
+            'valor_padrao': self.valor_padrao,
+            'ativo': self.ativo,
+            'tipo': self.tipo,
+            'categoria': self.categoria,
+            'data_criacao': self.data_criacao.isoformat() if self.data_criacao else None,
+            'data_atualizacao': self.data_atualizacao.isoformat() if self.data_atualizacao else None
+        }
+    
     @classmethod
     def obter_despesas_ativas(cls):
         """Obtém todas as despesas fixas ativas"""

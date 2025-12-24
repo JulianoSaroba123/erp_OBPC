@@ -112,22 +112,30 @@
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
                                             <button type="button" class="btn btn-outline-primary" 
-                                                    onclick="editarDespesa({{ despesa.id }}, '{{ despesa.nome }}', '{{ despesa.descricao }}', '{{ despesa.categoria }}', {{ despesa.valor_padrao }}, {{ despesa.ativo|lower }})">
+                                                    onclick="editarDespesa({{ despesa.id }}, '{{ despesa.nome }}', '{{ despesa.descricao }}', '{{ despesa.categoria }}', {{ despesa.valor_padrao }}, {{ despesa.ativo|lower }})"
+                                                    title="Editar despesa">
                                                 <i class="fas fa-edit"></i>
                                             </button>
                                             {% if despesa.ativo %}
                                                 <a href="{{ url_for('financeiro.toggle_despesa_fixa', id=despesa.id) }}" 
                                                    class="btn btn-outline-warning"
-                                                   onclick="return confirm('Desativar esta despesa fixa?')">
+                                                   onclick="return confirm('Desativar esta despesa fixa?')"
+                                                   title="Desativar despesa">
                                                     <i class="fas fa-pause"></i>
                                                 </a>
                                             {% else %}
                                                 <a href="{{ url_for('financeiro.toggle_despesa_fixa', id=despesa.id) }}" 
                                                    class="btn btn-outline-success"
-                                                   onclick="return confirm('Reativar esta despesa fixa?')">
+                                                   onclick="return confirm('Reativar esta despesa fixa?')"
+                                                   title="Reativar despesa">
                                                     <i class="fas fa-play"></i>
                                                 </a>
                                             {% endif %}
+                                            <button type="button" class="btn btn-outline-danger" 
+                                                    onclick="confirmarExclusao({{ despesa.id }}, '{{ despesa.nome }}')"
+                                                    title="Excluir despesa permanentemente">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -247,6 +255,17 @@ function editarDespesa(id, nome, descricao, categoria, valor, ativo) {
     document.getElementById('edit_ativo').checked = ativo;
     
     new bootstrap.Modal(document.getElementById('editarDespesaModal')).show();
+}
+
+function confirmarExclusao(id, nome) {
+    if (confirm(`ATENÇÃO! Esta ação é PERMANENTE e não poderá ser desfeita.\n\nDeseja realmente EXCLUIR a despesa fixa "${nome}"?`)) {
+        // Criar e submeter formulário de exclusão
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/financeiro/despesas-fixas/excluir/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 </script>
 {% endblock %}

@@ -2398,46 +2398,61 @@ def relatorio_sede():
         flash(f'Erro ao gerar relatório da sede: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
-@financeiro_bp.route('/financeiro/despesas-fixas')
+@financeiro_bp.route('/financeiro/despesas-fixas', methods=['GET', 'POST'])
 @login_required
 def gerenciar_despesas_fixas():
     """Interface para gerenciar despesas fixas do conselho"""
     try:
-        # Buscar todas as despesas
-        despesas_todas = DespesaFixaConselho.query.order_by(DespesaFixaConselho.nome).all()
-        despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
-        total_despesas = DespesaFixaConselho.obter_total_despesas_fixas()
-        
         # Processar ações de POST
         if request.method == 'POST':
             acao = request.form.get('acao')
             
             if acao == 'criar':
                 nova_despesa = DespesaFixaConselho(
-                    nome=request.form.get('nome'),
-                    descricao=request.form.get('descricao'),
-                    categoria=request.form.get('categoria'),
+                    nome=request.form.get('nome', '').strip(),
+                    descricao=request.form.get('descricao', '').strip(),
+                    categoria=request.form.get('categoria', '').strip(),
                     valor_padrao=float(request.form.get('valor_padrao', 0)),
                     ativo=True
                 )
+                
+                # Validar antes de salvar
+                erros = nova_despesa.validar()
+                if erros:
+                    for erro in erros:
+                        flash(erro, 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                
                 db.session.add(nova_despesa)
                 db.session.commit()
-                flash('Despesa fixa criada com sucesso!', 'success')
+                flash(f'Despesa fixa "{nova_despesa.nome}" criada com sucesso!', 'success')
                 
             elif acao == 'editar':
                 despesa_id = request.form.get('id')
                 despesa = DespesaFixaConselho.query.get_or_404(despesa_id)
                 
-                despesa.nome = request.form.get('nome')
-                despesa.descricao = request.form.get('descricao')
-                despesa.categoria = request.form.get('categoria')
+                despesa.nome = request.form.get('nome', '').strip()
+                despesa.descricao = request.form.get('descricao', '').strip()
+                despesa.categoria = request.form.get('categoria', '').strip()
                 despesa.valor_padrao = float(request.form.get('valor_padrao', 0))
                 despesa.ativo = bool(request.form.get('ativo'))
                 
+                # Validar antes de salvar
+                erros = despesa.validar()
+                if erros:
+                    for erro in erros:
+                        flash(erro, 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                
                 db.session.commit()
-                flash('Despesa fixa atualizada com sucesso!', 'success')
+                flash(f'Despesa fixa "{despesa.nome}" atualizada com sucesso!', 'success')
             
             return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+        
+        # Buscar todas as despesas para exibição
+        despesas_todas = DespesaFixaConselho.query.order_by(DespesaFixaConselho.nome).all()
+        despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
+        total_despesas = DespesaFixaConselho.obter_total_despesas_fixas()
         
         return render_template('financeiro/gerenciar_despesas_fixas.html',
                              despesas_todas=despesas_todas,
@@ -2445,11 +2460,9 @@ def gerenciar_despesas_fixas():
                              total_despesas=total_despesas)
     
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao gerenciar despesas fixas: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
-
-# Permitir POST no método acima
-gerenciar_despesas_fixas.methods = ['GET', 'POST']
 
 @financeiro_bp.route('/financeiro/despesas-fixas/toggle/<int:id>')
 @login_required
@@ -2466,6 +2479,26 @@ def toggle_despesa_fixa(id):
         
     except Exception as e:
         flash(f'Erro ao alterar status da despesa: {str(e)}', 'danger')
+    
+    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+@financeiro_bp.route('/financeiro/despesas-fixas/excluir/<int:id>', methods=['POST'])
+@login_required
+def excluir_despesa_fixa(id):
+    """Exclui permanentemente uma despesa fixa do banco de dados"""
+    try:
+        despesa = DespesaFixaConselho.query.get_or_404(id)
+        nome_despesa = despesa.nome
+        
+        # Remover a despesa do banco de dados
+        db.session.delete(despesa)
+        db.session.commit()
+        
+        flash(f'Despesa fixa "{nome_despesa}" excluída com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir despesa fixa: {str(e)}', 'danger')
     
     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
