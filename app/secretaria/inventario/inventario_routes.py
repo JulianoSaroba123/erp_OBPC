@@ -98,9 +98,25 @@ def lista_itens():
             if item.valor_aquisicao:
                 valor_total += float(item.valor_aquisicao)
         
+        # Categorias padrão
+        categorias_padrao = [
+            'Móveis e Utensílios',
+            'Equipamentos Eletrônicos',
+            'Instrumentos Musicais',
+            'Equipamentos de Som',
+            'Equipamentos de Iluminação',
+            'Livros e Material Didático',
+            'Veículos',
+            'Imóveis',
+            'Outros'
+        ]
+        
         # Obter todas as categorias para o filtro
-        categorias = db.session.query(ItemInventario.categoria).distinct().all()
-        categorias = [cat[0] for cat in categorias if cat[0]]
+        categorias_banco = db.session.query(ItemInventario.categoria).distinct().all()
+        categorias_banco = [cat[0] for cat in categorias_banco if cat[0]]
+        
+        # Combinar categorias (banco + padrão), removendo duplicatas e ordenando
+        categorias = sorted(list(set(categorias_padrao + categorias_banco)))
         
         # Estados de conservação
         estados = ['Novo', 'Bom', 'Regular', 'Ruim', 'Péssimo']
@@ -137,9 +153,27 @@ def novo_item():
     """Página para cadastrar novo item"""
     from .inventario_model import ItemInventario
     from app.extensoes import db
-    # Buscar categorias distintas
-    categorias = db.session.query(ItemInventario.categoria).distinct().all()
-    categorias = [cat[0] for cat in categorias if cat[0]]
+    
+    # Categorias padrão
+    categorias_padrao = [
+        'Móveis e Utensílios',
+        'Equipamentos Eletrônicos',
+        'Instrumentos Musicais',
+        'Equipamentos de Som',
+        'Equipamentos de Iluminação',
+        'Livros e Material Didático',
+        'Veículos',
+        'Imóveis',
+        'Outros'
+    ]
+    
+    # Buscar categorias distintas do banco
+    categorias_banco = db.session.query(ItemInventario.categoria).distinct().all()
+    categorias_banco = [cat[0] for cat in categorias_banco if cat[0]]
+    
+    # Combinar categorias (banco + padrão), removendo duplicatas e ordenando
+    categorias = sorted(list(set(categorias_padrao + categorias_banco)))
+    
     # Estados de conservação
     estados = ['Novo', 'Bom', 'Regular', 'Ruim', 'Péssimo']
     # Gerar próximo código automático
@@ -473,8 +507,27 @@ def visualizar_item(id):
 def editar_item(id):
     """Formulário para editar um item"""
     item = ItemInventario.query.get_or_404(id)
-    categorias = db.session.query(ItemInventario.categoria).distinct().all()
-    categorias = [cat[0] for cat in categorias if cat[0]]
+    
+    # Categorias padrão
+    categorias_padrao = [
+        'Móveis e Utensílios',
+        'Equipamentos Eletrônicos',
+        'Instrumentos Musicais',
+        'Equipamentos de Som',
+        'Equipamentos de Iluminação',
+        'Livros e Material Didático',
+        'Veículos',
+        'Imóveis',
+        'Outros'
+    ]
+    
+    # Buscar categorias distintas do banco
+    categorias_banco = db.session.query(ItemInventario.categoria).distinct().all()
+    categorias_banco = [cat[0] for cat in categorias_banco if cat[0]]
+    
+    # Combinar categorias (banco + padrão), removendo duplicatas e ordenando
+    categorias = sorted(list(set(categorias_padrao + categorias_banco)))
+    
     estados = ['Novo', 'Bom', 'Regular', 'Ruim', 'Péssimo']
     return render_template('inventario/editar_item.html', item=item, categorias=categorias, estados=estados)
 
