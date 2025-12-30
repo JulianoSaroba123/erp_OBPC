@@ -114,23 +114,21 @@
                                             
                                             <!-- Editar -->
                                             <a href="{{ url_for('oficios.editar_oficio', id=oficio.id) }}" 
-                                               class="btn btn-outline-primary" title="Editar Ofício">
+                                               class="btn btn-outline-primary" title="Editar">
                                                 <i class="fa-solid fa-edit"></i>
                                             </a>
                                             
                                             <!-- PDF -->
                                             <a href="{{ url_for('oficios.gerar_pdf_oficio', id=oficio.id) }}" 
-                                               class="btn btn-outline-danger" title="Gerar e Baixar PDF" target="_blank">
+                                               class="btn btn-outline-danger" title="Gerar PDF" target="_blank">
                                                 <i class="fa-solid fa-file-pdf"></i>
                                             </a>
-                                        </div>
-                                        
-                                        <div class="btn-group btn-group-sm ms-1" role="group">
+                                            
                                             <!-- Status -->
                                             <div class="btn-group" role="group">
                                                 <button type="button" class="btn btn-outline-warning dropdown-toggle" 
-                                                        data-bs-toggle="dropdown" title="Alterar Status do Ofício">
-                                                    <i class="fa-solid fa-circle-check"></i>
+                                                        data-bs-toggle="dropdown" title="Alterar Status">
+                                                    <i class="fa-solid fa-tasks"></i>
                                                 </button>
                                                 <ul class="dropdown-menu">
                                                     {% for status_opcao in status_options %}
@@ -139,18 +137,7 @@
                                                               action="{{ url_for('oficios.atualizar_status', id=oficio.id) }}" 
                                                               style="display: inline;">
                                                             <input type="hidden" name="status" value="{{ status_opcao }}">
-                                                            <button type="submit" class="dropdown-item {% if oficio.status == status_opcao %}active{% endif %}">
-                                                                {% if status_opcao == 'Emitido' %}
-                                                                    <i class="fa-solid fa-file-circle-plus text-info me-2"></i>
-                                                                {% elif status_opcao == 'Enviado' %}
-                                                                    <i class="fa-solid fa-paper-plane text-warning me-2"></i>
-                                                                {% elif status_opcao == 'Respondido' %}
-                                                                    <i class="fa-solid fa-reply text-primary me-2"></i>
-                                                                {% elif status_opcao == 'Atendido' %}
-                                                                    <i class="fa-solid fa-check-circle text-success me-2"></i>
-                                                                {% elif status_opcao == 'Cancelado' %}
-                                                                    <i class="fa-solid fa-times-circle text-danger me-2"></i>
-                                                                {% endif %}
+                                                            <button type="submit" class="dropdown-item">
                                                                 {{ status_opcao }}
                                                             </button>
                                                         </form>
@@ -164,7 +151,7 @@
                                                   action="{{ url_for('oficios.excluir_oficio', id=oficio.id) }}" 
                                                   style="display: inline;"
                                                   onsubmit="return confirm('Tem certeza que deseja excluir o ofício {{ oficio.numero }}?')">
-                                                <button type="submit" class="btn btn-outline-danger" title="Excluir Ofício">
+                                                <button type="submit" class="btn btn-outline-danger" title="Excluir">
                                                     <i class="fa-solid fa-trash"></i>
                                                 </button>
                                             </form>
