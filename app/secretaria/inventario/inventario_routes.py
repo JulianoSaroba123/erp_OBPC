@@ -606,40 +606,60 @@ def gerar_pdf_item(id):
         # Obter configurações da igreja
         from app.configuracoes.configuracoes_model import Configuracao
         config = Configuracao.obter_configuracao()
+        
+        if not config:
+            flash('Erro: Configurações do sistema não encontradas.', 'danger')
+            return redirect(url_for('inventario.lista_itens'))
 
-        # Renderizar template HTML para o item
-        html_content = render_template('inventario/pdf_item.html', item=item, config=config, data_geracao=datetime.now().strftime('%d/%m/%Y às %H:%M'), base_url=request.url_root)
-
-        if WEASYPRINT_AVAILABLE:
-            pdf = weasyprint.HTML(string=html_content, base_url=request.url_root).write_pdf()
-            filename = f"inventario_item_{item.codigo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-            response = make_response(pdf)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
-            return response
-        else:
-            # Fallback simples: gerar PDF com ReportLab contendo dados do item
-            buffer = BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
-            styles = getSampleStyleSheet()
-            story = []
-            story.append(Paragraph(config.nome_igreja if config else 'Igreja', styles['Title']))
-            story.append(Spacer(1, 12))
-            story.append(Paragraph(f"Código: {item.codigo}", styles['Normal']))
-            story.append(Paragraph(f"Nome: {item.nome}", styles['Normal']))
-            story.append(Paragraph(f"Categoria: {item.categoria}", styles['Normal']))
-            story.append(Paragraph(f"Valor: R$ {item.valor_aquisicao:.2f}" if item.valor_aquisicao else "Valor: -", styles['Normal']))
-            story.append(Paragraph(f"Estado: {item.estado_conservacao}", styles['Normal']))
-            story.append(Paragraph(f"Local: {item.localizacao or '-'}", styles['Normal']))
-            story.append(Paragraph(f"Responsável: {item.responsavel or '-'}", styles['Normal']))
-            doc.build(story)
-            pdf_data = buffer.getvalue()
-            buffer.close()
-            response = make_response(pdf_data)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename="inventario_item_{item.codigo}.pdf"'
-            return response
+        # Tentar renderizar template HTML para o item
+        try:
+            html_content = render_template('inventario/pdf_item.html', 
+                                         item=item, 
+                                         config=config, 
+                                         data_geracao=datetime.now().strftime('%d/%m/%Y às %H:%M'), 
+                                         base_url=request.url_root)
+            
+            if WEASYPRINT_AVAILABLE:
+                try:
+                    pdf = weasyprint.HTML(string=html_content, base_url=request.url_root).write_pdf()
+                    filename = f"inventario_item_{item.codigo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                    response = make_response(pdf)
+                    response.headers['Content-Type'] = 'application/pdf'
+                    response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+                    return response
+                except Exception as weasy_error:
+                    print(f"Erro WeasyPrint: {weasy_error}")
+                    # Continua para fallback ReportLab
+        except Exception as template_error:
+            print(f"Erro template: {template_error}")
+            # Continua para fallback ReportLab
+        
+        # Fallback: gerar PDF com ReportLab
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
+        styles = getSampleStyleSheet()
+        story = []
+        story.append(Paragraph(config.nome_igreja, styles['Title']))
+        story.append(Spacer(1, 12))
+        story.append(Paragraph(f"Código: {item.codigo}", styles['Normal']))
+        story.append(Paragraph(f"Nome: {item.nome}", styles['Normal']))
+        story.append(Paragraph(f"Categoria: {item.categoria or '-'}", styles['Normal']))
+        story.append(Paragraph(f"Valor: R$ {item.valor_aquisicao:.2f}" if item.valor_aquisicao else "Valor: -", styles['Normal']))
+        story.append(Paragraph(f"Estado: {item.estado_conservacao or '-'}", styles['Normal']))
+        story.append(Paragraph(f"Local: {item.localizacao or '-'}", styles['Normal']))
+        story.append(Paragraph(f"Responsável: {item.responsavel or '-'}", styles['Normal']))
+        doc.build(story)
+        pdf_data = buffer.getvalue()
+        buffer.close()
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename="inventario_item_{item.codigo}.pdf"'
+        return response
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"ERRO ao gerar PDF do item {id}:")
+        print(error_trace)
         flash(f'Erro ao gerar PDF do item: {str(e)}', 'danger')
         return redirect(url_for('inventario.lista_itens'))
 
