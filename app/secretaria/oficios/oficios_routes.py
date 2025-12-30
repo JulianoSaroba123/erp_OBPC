@@ -190,53 +190,61 @@ def gerar_pdf_oficio(id):
         from app.configuracoes.configuracoes_model import Configuracao
         config = Configuracao.obter_configuracao()
         
-        # Verifica se WeasyPrint está disponível
-        if WEASYPRINT_AVAILABLE:
-            # Renderiza o template do PDF
+        if not config:
+            flash('Erro: Configurações do sistema não encontradas. Configure o sistema primeiro.', 'danger')
+            return redirect(url_for('oficios.lista_oficios'))
+        
+        # Tentar renderizar template HTML
+        try:
             html_content = render_template('oficios/pdf_oficio.html', 
                                          oficio=oficio,
                                          config=config,
                                          data_geracao=datetime.now().strftime('%d/%m/%Y'),
                                          base_url=request.url_root)
-            
-            # Configura o WeasyPrint
-            base_url = request.url_root
-            
-            # Gera o PDF
-            pdf = weasyprint.HTML(string=html_content, base_url=base_url).write_pdf()
-            
-            # Define nome do arquivo
-            nome_arquivo = f"oficio_{oficio.numero}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-            caminho_arquivo = os.path.join('app', 'static', 'oficios', nome_arquivo)
-            
-            # Salva o arquivo
-            os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
-            with open(caminho_arquivo, 'wb') as f:
-                f.write(pdf)
-            
-            # Atualiza o registro do ofício com o caminho do arquivo
-            oficio.arquivo = f"static/oficios/{nome_arquivo}"
-            db.session.commit()
-            
-            # Retorna o PDF para download
-            response = make_response(pdf)
-            response.headers['Content-Type'] = 'application/pdf'
-            response.headers['Content-Disposition'] = f'inline; filename="{nome_arquivo}"'
-        else:
-            # Usar ReportLab como alternativa
+        except Exception as template_error:
+            print(f"Erro ao renderizar template HTML: {str(template_error)}")
+            # Fallback direto para ReportLab
             return gerar_pdf_oficio_reportlab(oficio, config)
         
-        return response
+        # Verifica se WeasyPrint está disponível
+        if WEASYPRINT_AVAILABLE:
+            try:
+                # Gera o PDF
+                pdf = weasyprint.HTML(string=html_content, base_url=request.url_root).write_pdf()
+                
+                # Define nome do arquivo
+                nome_arquivo = f"oficio_{oficio.numero}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                caminho_arquivo = os.path.join('app', 'static', 'oficios', nome_arquivo)
+                
+                # Salva o arquivo
+                os.makedirs(os.path.dirname(caminho_arquivo), exist_ok=True)
+                with open(caminho_arquivo, 'wb') as f:
+                    f.write(pdf)
+                
+                # Atualiza o registro do ofício com o caminho do arquivo
+                oficio.arquivo = f"static/oficios/{nome_arquivo}"
+                db.session.commit()
+                
+                # Retorna o PDF para download
+                response = make_response(pdf)
+                response.headers['Content-Type'] = 'application/pdf'
+                response.headers['Content-Disposition'] = f'inline; filename="{nome_arquivo}"'
+                return response
+            except Exception as weasy_error:
+                print(f"Erro ao gerar PDF com WeasyPrint: {str(weasy_error)}")
+                # Fallback para ReportLab
+                return gerar_pdf_oficio_reportlab(oficio, config)
+        else:
+            # Usar ReportLab como alternativa
+            print("WeasyPrint não disponível, usando ReportLab")
+            return gerar_pdf_oficio_reportlab(oficio, config)
         
     except Exception as e:
-        # Se WeasyPrint falhar, usar ReportLab como fallback
-        if not WEASYPRINT_AVAILABLE:
-            try:
-                return gerar_pdf_oficio_reportlab(oficio, config)
-            except Exception as e2:
-                flash(f'Erro ao gerar PDF com ReportLab: {str(e2)}', 'error')
-        
-        flash(f'Erro ao gerar PDF: {str(e)}', 'error')
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"ERRO DETALHADO ao gerar PDF do ofício {id}:")
+        print(error_trace)
+        flash(f'Erro ao gerar PDF: {str(e)}. Verifique os logs para mais detalhes.', 'danger')
         return redirect(url_for('oficios.lista_oficios'))
 
 def gerar_pdf_oficio_reportlab(oficio, config):
@@ -307,9 +315,12 @@ def gerar_pdf_oficio_reportlab(oficio, config):
             pass
         
         # Cabeçalho da igreja
-        story.append(Paragraph(config.nome_igreja, title_style))
-        story.append(Paragraph(f"{config.endereco_completo()}", subtitle_style))
-        story.append(Paragraph(f"CNPJ: {config.cnpj_formatado()} | Tel: {config.telefone_formatado()}", subtitle_style))
+        story.append(Paragraph(config.nome_igreja or 'Igreja', title_style))
+        endereco = config.endereco_completo() if hasattr(config, 'endereco_completo') else f"{config.endereco}, {config.cidade}"
+        story.append(Paragraph(endereco, subtitle_style))
+        cnpj = config.cnpj_formatado() if hasattr(config, 'cnpj_formatado') else config.cnpj
+        telefone = config.telefone_formatado() if hasattr(config, 'telefone_formatado') else config.telefone
+        story.append(Paragraph(f"CNPJ: {cnpj} | Tel: {telefone}", subtitle_style))
         story.append(Spacer(1, 30))
         
         # Título do ofício
@@ -397,6 +408,10 @@ def gerar_pdf_oficio_reportlab(oficio, config):
         return response
         
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"ERRO DETALHADO ao gerar PDF com ReportLab do ofício {oficio.numero if oficio else 'desconhecido'}:")
+        print(error_trace)
         raise Exception(f"Erro na geração com ReportLab: {str(e)}")
 
 @oficios_bp.route('/excluir/<int:id>', methods=['POST'])
