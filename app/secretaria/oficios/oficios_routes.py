@@ -354,21 +354,25 @@ def gerar_pdf_oficio_reportlab(oficio, config):
         story.append(Paragraph("Atenciosamente,", content_style))
         story.append(Spacer(1, 40))
         
+        # Linhas de assinatura
+        linha_assinatura = "_" * 50
+        
         # Criar tabela para as duas assinaturas lado a lado
         assinaturas_data = [
-            [f"<b>{config.presidente or 'Pastor Dirigente'}</b>", f"<b>{config.primeiro_secretario or 'Secretaria'}</b>"],
-            ["Pastor Dirigente", "Secretaria"],
-            [config.nome_igreja, config.nome_igreja]
+            [linha_assinatura, linha_assinatura],
+            [config.presidente or 'Pastor Dirigente', config.primeiro_secretario or 'Secretaria'],
+            ["Pastor Dirigente", "Secretaria"]
         ]
         
         assinaturas_table = Table(assinaturas_data, colWidths=[8*cm, 8*cm])
         assinaturas_table.setStyle(TableStyle([
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('TOPPADDING', (0, 0), (-1, -1), 20),
-            ('LINEABOVE', (0, 0), (0, 0), 1, colors.black),
-            ('LINEABOVE', (1, 0), (1, 0), 1, colors.black),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
         ]))
         
         story.append(assinaturas_table)
