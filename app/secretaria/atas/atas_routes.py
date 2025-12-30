@@ -131,23 +131,38 @@ def gerar_pdf_ata(id):
         from app.configuracoes.configuracoes_model import Configuracao
         config = Configuracao.obter_configuracao()
         
+        if not config:
+            flash('Erro: Configurações do sistema não encontradas. Configure o sistema primeiro.', 'danger')
+            return redirect(url_for('atas.lista_atas'))
+        
         # Renderizar template HTML
-        html_content = render_template('atas/pdf_ata.html', 
-                                     ata=ata, 
-                                     config=config,
-                                     data_geracao=datetime.now().strftime('%d/%m/%Y às %H:%M'),
-                                     base_url=request.url_root)
+        try:
+            html_content = render_template('atas/pdf_ata.html', 
+                                         ata=ata, 
+                                         config=config,
+                                         data_geracao=datetime.now().strftime('%d/%m/%Y às %H:%M'),
+                                         base_url=request.url_root)
+        except Exception as template_error:
+            print(f"Erro ao renderizar template HTML: {str(template_error)}")
+            # Se falhar o template HTML, usa diretamente o ReportLab
+            return gerar_pdf_ata_reportlab(ata, config)
         
         # Verificar se weasyprint está disponível
         if not WEASYPRINT_AVAILABLE:
             # Usar ReportLab como alternativa
+            print("WeasyPrint não disponível, usando ReportLab")
             return gerar_pdf_ata_reportlab(ata, config)
         
         # Configura o WeasyPrint
         base_url = request.url_root
         
         # Gerar PDF
-        pdf = weasyprint.HTML(string=html_content, base_url=base_url).write_pdf()
+        try:
+            pdf = weasyprint.HTML(string=html_content, base_url=base_url).write_pdf()
+        except Exception as weasy_error:
+            print(f"Erro ao gerar PDF com WeasyPrint: {str(weasy_error)}")
+            # Fallback para ReportLab
+            return gerar_pdf_ata_reportlab(ata, config)
         
         # Define nome do arquivo
         filename = f"ata_{ata.id}_{ata.data.strftime('%Y%m%d')}.pdf"
@@ -170,7 +185,11 @@ def gerar_pdf_ata(id):
         return response
         
     except Exception as e:
-        flash(f'Erro ao gerar PDF: {str(e)}', 'danger')
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"ERRO DETALHADO ao gerar PDF da ata {id}:")
+        print(error_trace)
+        flash(f'Erro ao gerar PDF: {str(e)}. Verifique os logs para mais detalhes.', 'danger')
         return redirect(url_for('atas.lista_atas'))
 
 @atas_bp.route('/secretaria/atas/excluir/<int:id>', methods=['POST'])
@@ -294,9 +313,9 @@ def gerar_pdf_ata_reportlab(ata, config):
             pass
         
         # Cabeçalho da igreja
-        story.append(Paragraph(config['nome_igreja'], title_style))
-        story.append(Paragraph(f"{config['endereco']}, {config['cidade']}", subtitle_style))
-        story.append(Paragraph(f"CNPJ: {config['cnpj']} | Tel: {config['telefone']}", subtitle_style))
+        story.append(Paragraph(config.nome_igreja, title_style))
+        story.append(Paragraph(f"{config.endereco}, {config.cidade}", subtitle_style))
+        story.append(Paragraph(f"CNPJ: {config.cnpj} | Tel: {config.telefone}", subtitle_style))
         story.append(Spacer(1, 20))
         
         # Título da ata
@@ -400,5 +419,9 @@ def gerar_pdf_ata_reportlab(ata, config):
         return response
         
     except Exception as e:
-        flash(f'Erro ao gerar PDF com ReportLab: {str(e)}', 'danger')
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"ERRO DETALHADO ao gerar PDF com ReportLab da ata {ata.id}:")
+        print(error_trace)
+        flash(f'Erro ao gerar PDF com ReportLab: {str(e)}. Verifique os logs para mais detalhes.', 'danger')
         return redirect(url_for('atas.lista_atas'))
