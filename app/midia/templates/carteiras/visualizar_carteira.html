@@ -6,90 +6,104 @@
     <title>Carteira de Membro - {{ carteira.nome_completo }}</title>
     <style>
         @page {
-            size: A4;
-            margin: 1cm;
+            size: 85.6mm 53.98mm;
+            margin: 0;
         }
         
         body {
             font-family: 'Arial', sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
+            font-size: 9px;
+            line-height: 1.2;
             color: #333;
             margin: 0;
-            padding: 15px;
+            padding: 0;
             background: #f0f0f0;
         }
         
         .carteira {
             background: white;
-            border: 3px solid #0b1b3a;
-            border-radius: 15px;
-            padding: 20px;
+            border: 2px solid #0b1b3a;
+            border-radius: 5px;
+            padding: 5px;
             margin: 0 auto;
-            max-width: 320px;
-            min-height: 200px;
+            width: 85.6mm;
+            height: 53.98mm;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             position: relative;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
         }
         
         .carteira::before {
             content: '';
             position: absolute;
-            top: 8px;
-            left: 8px;
-            right: 8px;
-            bottom: 8px;
-            border: 1px solid #ffd700;
-            border-radius: 10px;
+            top: 3px;
+            left: 3px;
+            right: 3px;
+            bottom: 3px;
+            border: 0.5px solid #ffd700;
+            border-radius: 4px;
             pointer-events: none;
         }
         
         .cabecalho {
-            text-align: center;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #0b1b3a;
-            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 3px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #0b1b3a;
         }
         
         .logo {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 5px;
+            width: 60px;
+            height: 60px;
+            flex-shrink: 0;
             display: block;
             object-fit: contain;
         }
         
         .logo-placeholder {
-            width: 80px;
-            height: 80px;
-            margin: 0 auto 5px;
+            width: 60px;
+            height: 60px;
+            flex-shrink: 0;
             background: #0b1b3a;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 20px;
+            font-size: 18px;
+        }
+        
+        .igreja-info {
+            flex: 1;
+            text-align: center;
         }
         
         .igreja-nome {
             font-weight: bold;
             font-size: 14px;
             color: #0b1b3a;
-            margin: 5px 0;
+            margin: 0;
+            line-height: 1.3;
         }
         
         .tipo-documento {
-            font-size: 11px;
+            font-size: 9px;
             color: #666;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
+            line-height: 1.3;
         }
         
         .conteudo {
             display: flex;
-            gap: 15px;
+            gap: 8px;
             align-items: flex-start;
+            flex: 1;
+            overflow: hidden;
         }
         
         .foto-container {
@@ -97,36 +111,44 @@
         }
         
         .foto {
-            width: 80px;
-            height: 100px;
-            border: 2px solid #0b1b3a;
-            border-radius: 5px;
+            width: 60px;
+            height: 80px;
+            border: 1px solid #0b1b3a;
+            border-radius: 3px;
             object-fit: cover;
             background: #f8f9fa;
             display: block;
         }
         
         .foto-placeholder {
-            width: 80px;
-            height: 100px;
-            border: 2px solid #0b1b3a;
-            border-radius: 5px;
+            width: 60px;
+            height: 80px;
+            border: 1px solid #0b1b3a;
+            border-radius: 3px;
             background: #f8f9fa;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #666;
-            font-size: 12px;
+            font-size: 8px;
             text-align: center;
         }
         
         .dados {
             flex: 1;
-            font-size: 11px;
+            font-size: 10px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 10px;
+            align-content: start;
         }
         
         .campo {
-            margin-bottom: 8px;
+            margin-bottom: 0;
+        }
+        
+        .campo.full-width {
+            grid-column: 1 / -1;
         }
         
         .campo-label {
@@ -135,37 +157,44 @@
             display: block;
             font-size: 9px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 2px;
+            letter-spacing: 0.3px;
+            margin-bottom: 1px;
         }
         
         .campo-valor {
             color: #333;
             word-break: break-word;
+            font-size: 12px;
+            line-height: 1.3;
+            font-weight: 500;
         }
         
         .numero-carteira {
             background: #0b1b3a;
             color: white;
-            padding: 3px 8px;
+            padding: 3px 6px;
             border-radius: 3px;
             font-weight: bold;
             font-size: 10px;
             display: inline-block;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         
         .rodape {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 0.5px solid #ddd;
             text-align: center;
-            font-size: 9px;
+            font-size: 8px;
             color: #666;
+            line-height: 1.3;
         }
         
         .validade {
             color: #0b1b3a;
             font-weight: bold;
+            font-size: 8px;
         }
         
         @media print {
@@ -186,8 +215,10 @@
         <div class="cabecalho">
             <img src="{{ url_for('static', filename='Logo_OBPC.jpg') }}" alt="Logo OBPC" class="logo" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="logo-placeholder" style="display: none;">OBPC</div>
-            <div class="igreja-nome">Igreja OBPC - Tietê/SP</div>
-            <div class="tipo-documento">Carteira de Identificação</div>
+            <div class="igreja-info">
+                <div class="igreja-nome">Igreja OBPC - Tietê/SP</div>
+                <div class="tipo-documento">Carteira de Identificação</div>
+            </div>
         </div>
         
         <div class="conteudo">
@@ -203,12 +234,12 @@
             </div>
             
             <div class="dados">
-                <div class="campo">
+                <div class="campo full-width">
                     <span class="campo-label">Número da Carteira</span>
                     <span class="numero-carteira">{{ carteira.numero_carteira }}</span>
                 </div>
                 
-                <div class="campo">
+                <div class="campo full-width">
                     <span class="campo-label">Nome</span>
                     <div class="campo-valor">{{ carteira.nome_completo }}</div>
                 </div>
@@ -245,7 +276,7 @@
         
         <div class="rodape">
             <div>Emitido em: {{ carteira.data_criacao.strftime('%d/%m/%Y') if carteira.data_criacao else 'N/A' }}</div>
-            <div class="validade">Válida por tempo indeterminado</div>
+            <div class="validade">Válida por 1 ano</div>
         </div>
     </div>
     
