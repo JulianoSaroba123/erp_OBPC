@@ -290,7 +290,7 @@ def gerar_pdf_ata_reportlab(ata, config):
             # Primeiro tenta o logo principal OBPC
             logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
             if os.path.exists(logo_path):
-                logo = Image(logo_path, width=80, height=80)
+                logo = Image(logo_path, width=120, height=120)
                 logo.hAlign = 'CENTER'
                 story.append(logo)
                 story.append(Spacer(1, 10))
@@ -301,7 +301,7 @@ def gerar_pdf_ata_reportlab(ata, config):
                     try:
                         logo_path = os.path.join(current_app.static_folder, fallback_logo)
                         if os.path.exists(logo_path):
-                            logo = Image(logo_path, width=80, height=80)
+                            logo = Image(logo_path, width=120, height=120)
                             logo.hAlign = 'CENTER' 
                             story.append(logo)
                             story.append(Spacer(1, 10))
