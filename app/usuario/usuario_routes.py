@@ -106,25 +106,13 @@ def painel():
     
     # Buscar atividades do departamento se for líder
     atividades_departamento = []
-    
-    # LOG DEBUG
-    current_app.logger.info("=" * 80)
-    current_app.logger.info(f"PAINEL - Buscando atividades para: {current_user.nome}")
-    current_app.logger.info(f"  Email: {current_user.email}")
-    current_app.logger.info(f"  Departamento ID: {current_user.departamento_id}")
-    current_app.logger.info(f"  Nível: {current_user.nivel_acesso}")
-    current_app.logger.info(f"  eh_lider_departamento(): {current_user.eh_lider_departamento()}")
-    
     if current_user.eh_lider_departamento():
-        current_app.logger.info(">>> ENTROU no IF eh_lider_departamento()")
         try:
             from app.departamentos.departamentos_model import CronogramaDepartamento
             from datetime import date
             
             # Buscar próximas atividades do departamento que devem aparecer no painel
             hoje = date.today()
-            current_app.logger.info(f"  Data hoje: {hoje}")
-            
             atividades_departamento = CronogramaDepartamento.query.filter(
                 CronogramaDepartamento.departamento_id == current_user.departamento_id,
                 CronogramaDepartamento.ativo == True,
@@ -132,29 +120,10 @@ def painel():
                 CronogramaDepartamento.data_evento >= hoje
             ).order_by(CronogramaDepartamento.data_evento.asc()).limit(10).all()
             
-            current_app.logger.info(f">>> ATIVIDADES ENCONTRADAS: {len(atividades_departamento)}")
-            
-            if atividades_departamento:
-                for a in atividades_departamento:
-                    current_app.logger.info(f"  - {a.titulo} ({a.data_evento})")
-            else:
-                current_app.logger.warning(">>> NENHUMA ATIVIDADE ENCONTRADA!")
-                # Debug: buscar todas do departamento
-                todas = CronogramaDepartamento.query.filter_by(departamento_id=current_user.departamento_id).all()
-                current_app.logger.info(f"  Total de atividades do departamento: {len(todas)}")
-                for a in todas:
-                    current_app.logger.info(f"    {a.titulo}: ativo={a.ativo}, painel={a.exibir_no_painel}, data={a.data_evento}")
-                
+            current_app.logger.info(f"Painel: {len(atividades_departamento)} atividades para {current_user.nome}")
         except Exception as e:
-            current_app.logger.error(f">>> ERRO ao buscar atividades: {e}")
-            import traceback
-            current_app.logger.error(traceback.format_exc())
+            current_app.logger.error(f"Erro ao buscar atividades: {e}")
             atividades_departamento = []
-    else:
-        current_app.logger.warning(">>> NÃO ENTROU no IF - eh_lider_departamento() retornou False")
-    
-    current_app.logger.info(f">>> Retornando {len(atividades_departamento)} atividades para o template")
-    current_app.logger.info("=" * 80)
     
     return render_template("painel.html", 
                          proximos_eventos=proximos_eventos,
