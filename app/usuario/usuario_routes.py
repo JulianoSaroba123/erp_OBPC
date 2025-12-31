@@ -118,15 +118,18 @@ def painel():
             CronogramaDepartamento.data_evento >= hoje
         ).order_by(CronogramaDepartamento.data_evento.asc()).limit(10).all()
         
-        current_app.logger.info(f"Painel: {len(atividades_departamento)} atividades carregadas")
+        total_atividades = len(atividades_departamento)
+        current_app.logger.info(f"Painel: {total_atividades} atividades carregadas")
     except Exception as e:
         current_app.logger.error(f"Erro ao buscar atividades: {e}")
         atividades_departamento = []
+        total_atividades = 0
     
     return render_template("painel.html", 
                          proximos_eventos=proximos_eventos,
                          total_eventos_proximos=total_eventos_proximos,
-                         atividades_departamento=atividades_departamento)
+                         atividades_departamento=atividades_departamento,
+                         total_atividades=total_atividades)
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
 @usuario_bp.route("/usuarios")

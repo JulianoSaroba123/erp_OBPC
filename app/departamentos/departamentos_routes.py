@@ -47,19 +47,21 @@ def lista_departamentos():
         
         from sqlalchemy.orm import joinedload
         
-        # Admin/Master vê TODOS, Líder vê apenas o seu (com atividades e aulas carregadas)
+        # Admin/Master vê TODOS, Líder vê apenas o seu (com atividades, aulas e eventos carregados)
         if current_user.nivel_acesso in ['master', 'administrador', 'Admin']:
-            # Admin/Master vê todos com cronogramas e aulas
+            # Admin/Master vê todos com cronogramas, aulas e eventos
             departamentos = Departamento.query.options(
                 joinedload(Departamento.cronogramas),
-                joinedload(Departamento.aulas)
+                joinedload(Departamento.aulas),
+                joinedload(Departamento.eventos)
             ).all()
             current_app.logger.info(f">>> ADMIN/MASTER: Mostrando TODOS os departamentos")
         elif current_user.eh_lider_departamento():
-            # Líder vê apenas seu departamento com cronogramas e aulas
+            # Líder vê apenas seu departamento com cronogramas, aulas e eventos
             departamentos = Departamento.query.options(
                 joinedload(Departamento.cronogramas),
-                joinedload(Departamento.aulas)
+                joinedload(Departamento.aulas),
+                joinedload(Departamento.eventos)
             ).filter_by(id=current_user.departamento_id).all()
             current_app.logger.info(f">>> LÍDER DE DEPARTAMENTO: Mostrando apenas departamento ID {current_user.departamento_id}")
         else:
@@ -69,11 +71,12 @@ def lista_departamentos():
         
         current_app.logger.info(f">>> LISTAGEM: {len(departamentos)} departamentos encontrados")
         
-        # Log de atividades e aulas para cada departamento
+        # Log de atividades, aulas e eventos para cada departamento
         for dep in departamentos:
             num_cronogramas = len(dep.cronogramas) if dep.cronogramas else 0
             num_aulas = len(dep.aulas) if dep.aulas else 0
-            current_app.logger.info(f"    - {dep.nome} (ID: {dep.id}) | {num_cronogramas} atividades | {num_aulas} aulas")
+            num_eventos = len(dep.eventos) if dep.eventos else 0
+            current_app.logger.info(f"    - {dep.nome} (ID: {dep.id}) | {num_cronogramas} atividades | {num_aulas} aulas | {num_eventos} eventos")
             
         return render_template('departamentos/lista_departamentos.html', departamentos=departamentos)
     except Exception as e:

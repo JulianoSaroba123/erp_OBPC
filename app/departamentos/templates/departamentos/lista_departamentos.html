@@ -156,10 +156,10 @@
                                     </td>
                                     <td class="align-middle text-center">
                                         <div class="btn-group" role="group">
-                                            {% if departamento.cronogramas or (departamento.possui_aulas and departamento.aulas) %}
+                                            {% if departamento.cronogramas or (departamento.possui_aulas and departamento.aulas) or departamento.eventos %}
                                             <button type="button" 
                                                     class="btn btn-outline-info btn-sm" 
-                                                    title="Ver Cronograma"
+                                                    title="Ver Atividades, Aulas e Eventos"
                                                     data-bs-toggle="collapse"
                                                     data-bs-target="#cronograma{{ departamento.id }}"
                                                     aria-expanded="false">
@@ -185,10 +185,11 @@
                                 </tr>
                                 
                                 <!-- Linha do cronograma (expansível) -->
-                                {% if departamento.cronogramas %}
+                                {% if departamento.cronogramas or departamento.eventos or (departamento.possui_aulas and departamento.aulas) %}
                                 <tr class="collapse" id="cronograma{{ departamento.id }}">
                                     <td colspan="6" class="border-0 bg-light">
                                         <div class="p-3">
+                                            {% if departamento.cronogramas %}
                                             <h6 class="text-primary mb-2">
                                                 <i class="fas fa-calendar-alt me-2"></i>
                                                 Cronograma Mensal de Atividades
@@ -211,8 +212,38 @@
                                                 </div>
                                                 {% endfor %}
                                             </div>
+                                            {% endif %}
+                                            
+                                            {% if departamento.eventos %}
+                                            {% if departamento.cronogramas %}<hr class="my-3">{% endif %}
+                                            <h6 class="text-warning mb-2">
+                                                <i class="fas fa-star me-2"></i>
+                                                Eventos do Departamento
+                                            </h6>
+                                            <div class="list-group">
+                                                {% for evento in departamento.eventos|sort(attribute='data_inicio') %}
+                                                <div class="list-group-item">
+                                                    <div class="d-flex w-100 justify-content-between">
+                                                        <h6 class="mb-1">{{ evento.titulo }}</h6>
+                                                        <span class="badge bg-{{ 'success' if evento.status == 'Concluído' else 'info' if evento.status == 'Agendado' else 'warning' }}">
+                                                            {{ evento.status }}
+                                                        </span>
+                                                    </div>
+                                                    {% if evento.descricao %}
+                                                    <p class="mb-1 small">{{ evento.descricao }}</p>
+                                                    {% endif %}
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-calendar"></i> {{ evento.data_inicio_formatada() }}
+                                                        {% if evento.local %} | <i class="fas fa-map-marker-alt"></i> {{ evento.local }}{% endif %}
+                                                        {% if evento.responsavel %} | <i class="fas fa-user"></i> {{ evento.responsavel }}{% endif %}
+                                                    </small>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                            
                                             {% if departamento.possui_aulas and departamento.aulas %}
-                                            <hr class="my-3">
+                                            {% if departamento.cronogramas or departamento.eventos %}<hr class="my-3">{% endif %}
                                             <h6 class="text-success mb-2">
                                                 <i class="fas fa-graduation-cap me-2"></i>
                                                 Planejamento de Aulas

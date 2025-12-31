@@ -19,6 +19,7 @@ class Departamento(db.Model):
     # Relacionamentos
     cronogramas = db.relationship('CronogramaDepartamento', backref='departamento', lazy=True, cascade='all, delete-orphan')
     aulas = db.relationship('AulaDepartamento', backref='departamento', lazy=True, cascade='all, delete-orphan')
+    eventos = db.relationship('Evento', backref='departamento', lazy=True, foreign_keys='Evento.departamento_id')
 
     def __repr__(self):
         return f'<Departamento {self.nome}>'
