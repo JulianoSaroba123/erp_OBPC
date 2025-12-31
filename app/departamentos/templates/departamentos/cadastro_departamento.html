@@ -436,8 +436,107 @@ document.getElementById('contato').addEventListener('input', function(e) {
     }
 });
 
-// JAVASCRIPT DE VALIDAÇÃO REMOVIDO - Deixar form funcionar nativamente
-console.log('>>> Formulário funcionando nativamente sem interferência JavaScript');
+// ============================================================================
+// SALVAR CRONOGRAMAS E AULAS ANTES DE SUBMETER O FORMULÁRIO
+// ============================================================================
+
+document.querySelector('form').addEventListener('submit', async function(e) {
+    // Se estivermos editando um departamento existente
+    const departamentoId = document.querySelector('input[name="id"]')?.value;
+    
+    if (departamentoId) {
+        // Capturar todos os cronogramas novos (data-temp="true")
+        const novosCronogramas = document.querySelectorAll('.cronograma-item[data-temp="true"]');
+        
+        if (novosCronogramas.length > 0) {
+            e.preventDefault(); // Impedir submit temporariamente
+            
+            let todosOk = true;
+            
+            // Salvar cada cronograma via AJAX
+            for (let item of novosCronogramas) {
+                const cronogramaData = {
+                    titulo: item.querySelector('.cronograma-titulo').value,
+                    data_evento: item.querySelector('.cronograma-data').value,
+                    horario: item.querySelector('.cronograma-horario').value,
+                    local: item.querySelector('.cronograma-local').value,
+                    responsavel: item.querySelector('.cronograma-responsavel').value,
+                    descricao: item.querySelector('.cronograma-descricao').value,
+                    exibir_no_painel: item.querySelector('.cronograma-painel').checked
+                };
+                
+                try {
+                    const response = await fetch(`/departamentos/${departamentoId}/cronogramas/adicionar`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(cronogramaData)
+                    });
+                    
+                    if (!response.ok) {
+                        todosOk = false;
+                        console.error('Erro ao salvar cronograma:', await response.text());
+                    } else {
+                        // Remover atributo data-temp para não tentar salvar novamente
+                        item.removeAttribute('data-temp');
+                    }
+                } catch (error) {
+                    todosOk = false;
+                    console.error('Erro ao salvar cronograma:', error);
+                }
+            }
+            
+            // Capturar todas as aulas novas
+            const novasAulas = document.querySelectorAll('.aula-item[data-temp="true"]');
+            
+            // Salvar cada aula via AJAX
+            for (let item of novasAulas) {
+                const aulaData = {
+                    titulo: item.querySelector('.aula-titulo').value,
+                    descricao: item.querySelector('.aula-descricao').value,
+                    professora: item.querySelector('.aula-professora').value,
+                    dia_semana: item.querySelector('.aula-dia-semana').value,
+                    horario: item.querySelector('.aula-horario').value,
+                    local: item.querySelector('.aula-local').value,
+                    data_inicio: item.querySelector('.aula-data-inicio').value,
+                    data_fim: item.querySelector('.aula-data-fim').value,
+                    max_alunos: item.querySelector('.aula-max-alunos').value,
+                    material_necessario: item.querySelector('.aula-material').value,
+                    exibir_no_painel: item.querySelector('.aula-painel').checked
+                };
+                
+                try {
+                    const response = await fetch(`/departamentos/${departamentoId}/aulas/adicionar`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(aulaData)
+                    });
+                    
+                    if (!response.ok) {
+                        todosOk = false;
+                        console.error('Erro ao salvar aula:', await response.text());
+                    } else {
+                        item.removeAttribute('data-temp');
+                    }
+                } catch (error) {
+                    todosOk = false;
+                    console.error('Erro ao salvar aula:', error);
+                }
+            }
+            
+            // Agora submeter o formulário principal
+            if (todosOk) {
+                // Reenviar o formulário sem preventDefault
+                e.target.submit();
+            } else {
+                alert('Alguns cronogramas ou aulas não puderam ser salvos. Verifique o console.');
+            }
+        }
+    }
+});
 
 // Sugestões de departamentos comuns
 document.addEventListener('DOMContentLoaded', function() {
@@ -496,7 +595,7 @@ function adicionarCronograma() {
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Horário</label>
-                    <input type="text" class="form-control form-control-sm cronograma-horario" placeholder="Ex: 19h30">
+                    <input type="time" class="form-control form-control-sm cronograma-horario">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Título *</label>
@@ -598,7 +697,8 @@ function adicionarAula() {
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Horário</label>
-                    <input type="text" class="form-control form-control-sm aula-horario" placeholder="Ex: 19h30 às 21h">
+                    <input type="time" class="form-control form-control-sm aula-horario">
+                    <small class="text-muted">Hora de início</small>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label">Local</label>
@@ -669,6 +769,86 @@ function removerAula(button) {
     if (aulas.length === 0) {
         document.getElementById('aulas-vazio').style.display = 'block';
     }
+}
+
+// ============================================================================
+// FUNÇÕES PARA EXCLUIR CRONOGRAMAS E AULAS SALVOS
+// ============================================================================
+
+function removerCronogramaSalvo(cronogramaId, button) {
+    if (!confirm('Deseja realmente excluir esta atividade?')) {
+        return;
+    }
+    
+    fetch(`/cronogramas/${cronogramaId}/excluir`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            // Remover o elemento da tela
+            const cronogramaItem = button.closest('.cronograma-item');
+            const container = document.getElementById('cronogramas-container');
+            
+            cronogramaItem.remove();
+            
+            // Se não há mais cronogramas, mostrar mensagem vazia
+            const cronogramas = container.querySelectorAll('.cronograma-item');
+            if (cronogramas.length === 0) {
+                document.getElementById('cronogramas-vazio').style.display = 'block';
+            }
+            
+            // Mostrar mensagem de sucesso
+            alert('Atividade excluída com sucesso!');
+        } else {
+            alert('Erro ao excluir atividade: ' + (data.erro || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao excluir cronograma:', error);
+        alert('Erro ao excluir atividade. Verifique o console para mais detalhes.');
+    });
+}
+
+function removerAulaSalva(aulaId, button) {
+    if (!confirm('Deseja realmente excluir esta aula?')) {
+        return;
+    }
+    
+    fetch(`/aulas/${aulaId}/excluir`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.sucesso) {
+            // Remover o elemento da tela
+            const aulaItem = button.closest('.aula-item');
+            const container = document.getElementById('aulas-container');
+            
+            aulaItem.remove();
+            
+            // Se não há mais aulas, mostrar mensagem vazia
+            const aulas = container.querySelectorAll('.aula-item');
+            if (aulas.length === 0) {
+                document.getElementById('aulas-vazio').style.display = 'block';
+            }
+            
+            // Mostrar mensagem de sucesso
+            alert('Aula excluída com sucesso!');
+        } else {
+            alert('Erro ao excluir aula: ' + (data.erro || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        console.error('Erro ao excluir aula:', error);
+        alert('Erro ao excluir aula. Verifique o console para mais detalhes.');
+    });
 }
 
 // ============================================================================

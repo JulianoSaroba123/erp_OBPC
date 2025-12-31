@@ -147,11 +147,19 @@ def salvar_departamento():
             )
             
             db.session.add(novo_departamento)
+            db.session.flush()  # Gera o ID antes do commit
+            departamento_id = novo_departamento.id
             flash('Departamento cadastrado com sucesso!', 'success')
-            current_app.logger.info(f">>> Novo departamento criado: {nome}")
+            current_app.logger.info(f">>> Novo departamento criado: {nome} (ID: {departamento_id})")
         
         db.session.commit()
         current_app.logger.info(">>> Departamento salvo no banco com sucesso!")
+        
+        # Se há dados de cronogramas/aulas enviados via JSON, salvar
+        if request.is_json:
+            dept_id = departamento_id if not request.form.get('id') else request.form.get('id')
+            return jsonify({'sucesso': True, 'departamento_id': dept_id})
+        
         return redirect(url_for('departamentos.lista_departamentos'))
         
     except Exception as e:

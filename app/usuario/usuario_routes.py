@@ -111,11 +111,14 @@ def painel():
             from app.departamentos.departamentos_model import CronogramaDepartamento
             from datetime import date
             
-            # Buscar todas as atividades do departamento (sem filtro de data para debug)
+            # Buscar próximas atividades do departamento que devem aparecer no painel
+            hoje = date.today()
             atividades_departamento = CronogramaDepartamento.query.filter(
                 CronogramaDepartamento.departamento_id == current_user.departamento_id,
-                CronogramaDepartamento.ativo == True
-            ).order_by(CronogramaDepartamento.data_evento.desc()).limit(10).all()
+                CronogramaDepartamento.ativo == True,
+                CronogramaDepartamento.exibir_no_painel == True,
+                CronogramaDepartamento.data_evento >= hoje
+            ).order_by(CronogramaDepartamento.data_evento.asc()).limit(10).all()
         except Exception as e:
             current_app.logger.error(f"Erro ao buscar atividades: {e}")
             atividades_departamento = []
