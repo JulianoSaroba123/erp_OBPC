@@ -69,11 +69,8 @@ class Usuario(UserMixin, db.Model):
         return self.nivel_acesso in ['master', 'administrador', 'Admin', 'lider_departamento']
     
     def eh_lider_departamento(self):
-        """Verifica se é líder de departamento ou se está vinculado a um departamento"""
-        # Master e Admin também podem ver atividades do departamento se estiverem vinculados
-        if self.nivel_acesso in ['master', 'administrador', 'Admin'] and self.departamento_id is not None:
-            return True
-        # Líder de departamento precisa estar vinculado
+        """Verifica se é APENAS líder de departamento (não admin/master)"""
+        # APENAS líder de departamento com vínculo
         return self.nivel_acesso == 'lider_departamento' and self.departamento_id is not None
     
     def tem_acesso_eventos(self):

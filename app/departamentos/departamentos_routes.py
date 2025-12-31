@@ -45,14 +45,19 @@ def lista_departamentos():
         # Forçar refresh da sessão
         db.session.expire_all()
         
-        # Verificar se é líder de departamento
-        if current_user.eh_lider_departamento():
+        # Admin/Master vê TODOS, Líder vê apenas o seu
+        if current_user.nivel_acesso in ['master', 'administrador', 'Admin']:
+            # Admin/Master vê todos
+            departamentos = Departamento.query.all()
+            current_app.logger.info(f">>> ADMIN/MASTER: Mostrando TODOS os departamentos")
+        elif current_user.eh_lider_departamento():
             # Líder vê apenas seu departamento
             departamentos = Departamento.query.filter_by(id=current_user.departamento_id).all()
             current_app.logger.info(f">>> LÍDER DE DEPARTAMENTO: Mostrando apenas departamento ID {current_user.departamento_id}")
         else:
-            # Admin/Master vê todos
-            departamentos = Departamento.query.all()
+            # Outros níveis não veem departamentos
+            departamentos = []
+            current_app.logger.info(f">>> USUÁRIO SEM PERMISSÃO: {current_user.nivel_acesso}")
         
         current_app.logger.info(f">>> LISTAGEM: {len(departamentos)} departamentos encontrados")
         
