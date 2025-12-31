@@ -104,26 +104,24 @@ def painel():
         proximos_eventos = []
         total_eventos_proximos = 0
     
-    # Buscar atividades do departamento se for líder
+    # Buscar atividades de TODOS os departamentos para exibir no painel
     atividades_departamento = []
-    if current_user.eh_lider_departamento():
-        try:
-            from app.departamentos.departamentos_model import CronogramaDepartamento
-            from datetime import date
-            
-            # Buscar próximas atividades do departamento que devem aparecer no painel
-            hoje = date.today()
-            atividades_departamento = CronogramaDepartamento.query.filter(
-                CronogramaDepartamento.departamento_id == current_user.departamento_id,
-                CronogramaDepartamento.ativo == True,
-                CronogramaDepartamento.exibir_no_painel == True,
-                CronogramaDepartamento.data_evento >= hoje
-            ).order_by(CronogramaDepartamento.data_evento.asc()).limit(10).all()
-            
-            current_app.logger.info(f"Painel: {len(atividades_departamento)} atividades para {current_user.nome}")
-        except Exception as e:
-            current_app.logger.error(f"Erro ao buscar atividades: {e}")
-            atividades_departamento = []
+    try:
+        from app.departamentos.departamentos_model import CronogramaDepartamento
+        from datetime import date
+        
+        # Buscar próximas atividades de TODOS os departamentos marcadas para exibir no painel
+        hoje = date.today()
+        atividades_departamento = CronogramaDepartamento.query.filter(
+            CronogramaDepartamento.ativo == True,
+            CronogramaDepartamento.exibir_no_painel == True,
+            CronogramaDepartamento.data_evento >= hoje
+        ).order_by(CronogramaDepartamento.data_evento.asc()).limit(10).all()
+        
+        current_app.logger.info(f"Painel: {len(atividades_departamento)} atividades carregadas")
+    except Exception as e:
+        current_app.logger.error(f"Erro ao buscar atividades: {e}")
+        atividades_departamento = []
     
     return render_template("painel.html", 
                          proximos_eventos=proximos_eventos,

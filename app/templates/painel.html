@@ -138,11 +138,11 @@
     </div>
     {% endif %}
 
-    <!-- Atividades do Departamento (apenas para líderes) -->
-    {% if current_user.eh_lider_departamento() %}
+    <!-- Atividades dos Departamentos (para todos os usuários) -->
+    {% if atividades_departamento %}
     <div class="mb-4">
       <h6 class="fw-semibold text-muted mb-3">
-        <i class="fas fa-church me-2"></i>Atividades do Departamento
+        <i class="fas fa-church me-2"></i>Atividades dos Departamentos
       </h6>
       {% if atividades_departamento %}
       {% for atividade in atividades_departamento %}
@@ -157,7 +157,8 @@
                 <div>
                   <p class="mb-1 fw-semibold" style="color: #374151;">{{ atividade.titulo }}</p>
                   <p class="mb-0 text-muted small">
-                    <i class="fas fa-clock me-1"></i>
+                    <i class="fas fa-church me-1"></i><strong>{{ atividade.departamento.nome }}</strong>
+                    <br><i class="fas fa-clock me-1"></i>
                     {{ atividade.data_formatada }}
                     {% if atividade.horario %}
                     às {{ atividade.horario }}
@@ -170,23 +171,13 @@
                     {% endif %}
                   </p>
                 </div>
-                <span class="badge bg-success">Departamento</span>
+                <span class="badge bg-success">{{ atividade.departamento.nome }}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
       {% endfor %}
-      {% else %}
-      <div class="card activity-card shadow-sm mb-2">
-        <div class="card-body text-center py-4">
-          <i class="fas fa-calendar-plus fa-2x text-muted mb-2"></i>
-          <p class="mb-0 text-muted">Nenhuma atividade cadastrada no cronograma do departamento.</p>
-          <a href="{{ url_for('departamentos.lista_departamentos') }}" class="btn btn-sm btn-outline-success mt-2">
-            <i class="fas fa-plus me-1"></i>Adicionar Atividade
-          </a>
-        </div>
-      </div>
       {% endif %}
     </div>
     {% endif %}
