@@ -108,36 +108,78 @@ def painel():
     atividades_departamento = []
     try:
         from app.departamentos.departamentos_model import CronogramaDepartamento
+        from app.eventos.eventos_model import Evento
         from datetime import date, timedelta
         
         hoje = date.today()
         
-        # ATUALIZAR AUTOMATICAMENTE atividades antigas
+        # ATUALIZAR AUTOMATICAMENTE atividades antigas do cronograma
         atividades_antigas = CronogramaDepartamento.query.filter(
             CronogramaDepartamento.data_evento < hoje
         ).all()
         
         if atividades_antigas:
             for atividade in atividades_antigas:
-                # Atualizar data para 7 dias no futuro
                 atividade.data_evento = hoje + timedelta(days=7)
-                # Garantir que está marcada para exibir no painel
                 atividade.exibir_no_painel = True
                 atividade.ativo = True
             db.session.commit()
             current_app.logger.info(f"Painel: {len(atividades_antigas)} atividades antigas atualizadas")
         
-        # Buscar próximas atividades de TODOS os departamentos marcadas para exibir no painel
-        atividades_departamento = CronogramaDepartamento.query.filter(
+        # BUSCAR CRONOGRAMAS DOS DEPARTAMENTOS
+        cronogramas = CronogramaDepartamento.query.filter(
             CronogramaDepartamento.ativo == True,
             CronogramaDepartamento.exibir_no_painel == True,
             CronogramaDepartamento.data_evento >= hoje
-        ).order_by(CronogramaDepartamento.data_evento.asc()).limit(10).all()
+        ).all()
+        
+        # BUSCAR EVENTOS DOS DEPARTAMENTOS
+        eventos_departamentos = Evento.query.filter(
+            Evento.departamento_id.isnot(None),
+            Evento.data_inicio >= datetime.now()
+        ).all()
+        
+        # COMBINAR cronogramas e eventos em uma única lista
+        atividades_combinadas = []
+        
+        # Adicionar cronogramas
+        for cronograma in cronogramas:
+            atividades_combinadas.append({
+                'tipo': 'cronograma',
+                'titulo': cronograma.titulo,
+                'descricao': cronograma.descricao,
+                'data_evento': cronograma.data_evento,
+                'data_formatada': cronograma.data_formatada,
+                'horario': cronograma.horario,
+                'local': cronograma.local,
+                'responsavel': cronograma.responsavel,
+                'departamento': cronograma.departamento
+            })
+        
+        # Adicionar eventos de departamentos
+        for evento in eventos_departamentos:
+            if evento.departamento:
+                atividades_combinadas.append({
+                    'tipo': 'evento',
+                    'titulo': evento.titulo,
+                    'descricao': evento.descricao,
+                    'data_evento': evento.data_inicio.date() if evento.data_inicio else None,
+                    'data_formatada': evento.data_inicio.strftime('%d %b') if evento.data_inicio else '',
+                    'horario': evento.data_inicio.strftime('%H:%M') if evento.data_inicio else '',
+                    'local': evento.local,
+                    'responsavel': evento.responsavel,
+                    'departamento': evento.departamento
+                })
+        
+        # Ordenar por data
+        atividades_departamento = sorted(atividades_combinadas, key=lambda x: x['data_evento'])[:10]
         
         total_atividades = len(atividades_departamento)
-        current_app.logger.info(f"Painel: {total_atividades} atividades carregadas")
+        current_app.logger.info(f"Painel: {total_atividades} atividades carregadas ({len(cronogramas)} cronogramas + {len(eventos_departamentos)} eventos)")
     except Exception as e:
         current_app.logger.error(f"Erro ao buscar atividades: {e}")
+        import traceback
+        traceback.print_exc()
         atividades_departamento = []
         total_atividades = 0
     
