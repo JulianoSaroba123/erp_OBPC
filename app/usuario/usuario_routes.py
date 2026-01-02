@@ -374,7 +374,7 @@ def perfil():
 # ---------- ROTA ADMINISTRATIVA: ATUALIZAR ATIVIDADES ----------
 @usuario_bp.route("/admin/atualizar-atividades-painel")
 @login_required
-@requer_nivel_acesso(NivelAcesso.ADMIN)
+@requer_nivel_acesso(NivelAcesso.ADMINISTRADOR)
 def atualizar_atividades_painel():
     """Atualiza atividades existentes para aparecerem no painel"""
     from app.departamentos.departamentos_model import CronogramaDepartamento
