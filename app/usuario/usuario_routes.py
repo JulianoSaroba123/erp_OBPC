@@ -112,6 +112,7 @@ def painel():
         from datetime import date, timedelta
         
         hoje = date.today()
+        hoje_datetime = datetime.now()
         
         # ATUALIZAR AUTOMATICAMENTE atividades antigas do cronograma
         atividades_antigas = CronogramaDepartamento.query.filter(
@@ -124,7 +125,29 @@ def painel():
                 atividade.exibir_no_painel = True
                 atividade.ativo = True
             db.session.commit()
-            current_app.logger.info(f"Painel: {len(atividades_antigas)} atividades antigas atualizadas")
+            current_app.logger.info(f"Painel: {len(atividades_antigas)} cronogramas antigos atualizados")
+        
+        # ATUALIZAR AUTOMATICAMENTE eventos antigos dos departamentos
+        eventos_antigos = Evento.query.filter(
+            Evento.departamento_id.isnot(None),
+            Evento.data_inicio < hoje_datetime
+        ).all()
+        
+        if eventos_antigos:
+            for evento in eventos_antigos:
+                # Manter a hora original, apenas atualizar a data
+                hora_original = evento.data_inicio.time()
+                nova_data_inicio = datetime.combine(hoje + timedelta(days=7), hora_original)
+                
+                # Calcular duração do evento
+                if evento.data_fim:
+                    duracao = evento.data_fim - evento.data_inicio
+                    evento.data_fim = nova_data_inicio + duracao
+                
+                evento.data_inicio = nova_data_inicio
+            
+            db.session.commit()
+            current_app.logger.info(f"Painel: {len(eventos_antigos)} eventos antigos atualizados")
         
         # BUSCAR CRONOGRAMAS DOS DEPARTAMENTOS
         cronogramas = CronogramaDepartamento.query.filter(
@@ -133,11 +156,13 @@ def painel():
             CronogramaDepartamento.data_evento >= hoje
         ).all()
         
-        # BUSCAR EVENTOS DOS DEPARTAMENTOS
+        # BUSCAR EVENTOS DOS DEPARTAMENTOS (futuros)
         eventos_departamentos = Evento.query.filter(
             Evento.departamento_id.isnot(None),
-            Evento.data_inicio >= datetime.now()
+            Evento.data_inicio >= hoje_datetime
         ).all()
+        
+        current_app.logger.info(f"Painel: {len(cronogramas)} cronogramas e {len(eventos_departamentos)} eventos encontrados")
         
         # COMBINAR cronogramas e eventos em uma única lista
         atividades_combinadas = []
