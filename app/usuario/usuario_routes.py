@@ -416,7 +416,7 @@ def atualizar_atividades_painel():
             CronogramaDepartamento.data_evento >= hoje
         ).count()
         
-        flash(f"✅ Atividades atualizadas! {atualizadas} marcadas para painel, {datas_atualizadas} datas atualizadas. Total no painel: {total_painel}", "success")
+        flash(f"Atividades atualizadas! {atualizadas} marcadas para painel, {datas_atualizadas} datas atualizadas. Total no painel: {total_painel}", "success")
         
     except Exception as e:
         current_app.logger.error(f"Erro ao atualizar atividades: {e}")
