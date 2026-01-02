@@ -95,7 +95,7 @@ class CronogramaDepartamento(db.Model):
     horario = db.Column(db.String(50))  # Ex: "19h30"
     local = db.Column(db.String(200))  # Ex: "Sala de reuniões"
     responsavel = db.Column(db.String(100))  # Quem é responsável pelo evento
-    exibir_no_painel = db.Column(db.Boolean, default=False)  # Se deve aparecer no dashboard
+    exibir_no_painel = db.Column(db.Boolean, default=True)  # Se deve aparecer no dashboard
     ativo = db.Column(db.Boolean, default=True)
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
     

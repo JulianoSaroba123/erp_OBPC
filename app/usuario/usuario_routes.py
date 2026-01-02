@@ -108,10 +108,26 @@ def painel():
     atividades_departamento = []
     try:
         from app.departamentos.departamentos_model import CronogramaDepartamento
-        from datetime import date
+        from datetime import date, timedelta
+        
+        hoje = date.today()
+        
+        # ATUALIZAR AUTOMATICAMENTE atividades antigas
+        atividades_antigas = CronogramaDepartamento.query.filter(
+            CronogramaDepartamento.data_evento < hoje
+        ).all()
+        
+        if atividades_antigas:
+            for atividade in atividades_antigas:
+                # Atualizar data para 7 dias no futuro
+                atividade.data_evento = hoje + timedelta(days=7)
+                # Garantir que está marcada para exibir no painel
+                atividade.exibir_no_painel = True
+                atividade.ativo = True
+            db.session.commit()
+            current_app.logger.info(f"Painel: {len(atividades_antigas)} atividades antigas atualizadas")
         
         # Buscar próximas atividades de TODOS os departamentos marcadas para exibir no painel
-        hoje = date.today()
         atividades_departamento = CronogramaDepartamento.query.filter(
             CronogramaDepartamento.ativo == True,
             CronogramaDepartamento.exibir_no_painel == True,
