@@ -284,7 +284,7 @@ def adicionar_cronograma(departamento_id):
             horario=data.get('horario', ''),
             local=data.get('local', ''),
             responsavel=data.get('responsavel', ''),
-            exibir_no_painel=data.get('exibir_no_painel', False)
+            exibir_no_painel=data.get('exibir_no_painel', True)  # True por padrão
         )
         
         db.session.add(cronograma)

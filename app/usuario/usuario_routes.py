@@ -369,3 +369,57 @@ def perfil():
         return redirect(url_for("usuario.perfil"))
 
     return render_template("usuario/perfil.html")
+
+
+# ---------- ROTA ADMINISTRATIVA: ATUALIZAR ATIVIDADES ----------
+@usuario_bp.route("/admin/atualizar-atividades-painel")
+@login_required
+@requer_nivel_acesso(NivelAcesso.ADMIN)
+def atualizar_atividades_painel():
+    """Atualiza atividades existentes para aparecerem no painel"""
+    from app.departamentos.departamentos_model import CronogramaDepartamento
+    from datetime import date, timedelta
+    
+    try:
+        hoje = date.today()
+        todas_atividades = CronogramaDepartamento.query.all()
+        
+        atualizadas = 0
+        datas_atualizadas = 0
+        
+        for atividade in todas_atividades:
+            modificado = False
+            
+            # Garantir que exibir_no_painel seja True
+            if not atividade.exibir_no_painel:
+                atividade.exibir_no_painel = True
+                modificado = True
+                atualizadas += 1
+            
+            # Se a data já passou, atualizar para uma data futura
+            if atividade.data_evento < hoje:
+                atividade.data_evento = hoje + timedelta(days=7)
+                modificado = True
+                datas_atualizadas += 1
+            
+            # Garantir que está ativo
+            if not atividade.ativo:
+                atividade.ativo = True
+                modificado = True
+        
+        db.session.commit()
+        
+        # Contar atividades que aparecerão no painel
+        total_painel = CronogramaDepartamento.query.filter(
+            CronogramaDepartamento.ativo == True,
+            CronogramaDepartamento.exibir_no_painel == True,
+            CronogramaDepartamento.data_evento >= hoje
+        ).count()
+        
+        flash(f"✅ Atividades atualizadas! {atualizadas} marcadas para painel, {datas_atualizadas} datas atualizadas. Total no painel: {total_painel}", "success")
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao atualizar atividades: {e}")
+        flash(f"Erro ao atualizar atividades: {str(e)}", "danger")
+    
+    return redirect(url_for("usuario.painel"))
