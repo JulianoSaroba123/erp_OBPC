@@ -90,7 +90,14 @@ def lista_departamentos():
 @login_required
 def novo_departamento():
     """Exibe formulário para cadastro de novo departamento"""
-    return render_template('departamentos/cadastro_departamento.html')
+    # Buscar líderes cadastrados
+    from app.membros.membros_model import Membro
+    lideres = Membro.query.filter_by(tipo='Lider', status='Ativo').order_by(Membro.nome).all()
+    membros = Membro.query.filter_by(status='Ativo').order_by(Membro.nome).all()
+    
+    return render_template('departamentos/cadastro_departamento.html', 
+                         lideres=lideres,
+                         membros=membros)
 
 @departamentos_bp.route('/departamentos/salvar', methods=['POST'])
 @login_required
@@ -186,7 +193,16 @@ def editar_departamento(id):
     """Carrega dados do departamento para edição"""
     try:
         departamento = Departamento.query.get_or_404(id)
-        return render_template('departamentos/cadastro_departamento.html', departamento=departamento)
+        
+        # Buscar líderes cadastrados
+        from app.membros.membros_model import Membro
+        lideres = Membro.query.filter_by(tipo='Lider', status='Ativo').order_by(Membro.nome).all()
+        membros = Membro.query.filter_by(status='Ativo').order_by(Membro.nome).all()
+        
+        return render_template('departamentos/cadastro_departamento.html', 
+                             departamento=departamento,
+                             lideres=lideres,
+                             membros=membros)
     except Exception as e:
         flash(f'Erro ao carregar dados do departamento: {str(e)}', 'danger')
         return redirect(url_for('departamentos.lista_departamentos'))

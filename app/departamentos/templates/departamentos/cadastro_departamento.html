@@ -101,12 +101,15 @@
                                     <i class="fas fa-user-crown text-warning me-1"></i>
                                     Líder Principal
                                 </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="lider" 
-                                       name="lider" 
-                                       value="{{ departamento.lider if departamento else '' }}"
-                                       placeholder="Nome do líder do departamento">
+                                <select class="form-select" id="lider" name="lider">
+                                    <option value="">Selecione o líder...</option>
+                                    {% for lider_obj in lideres %}
+                                    <option value="{{ lider_obj.nome }}" 
+                                            {% if departamento and departamento.lider == lider_obj.nome %}selected{% endif %}>
+                                        {{ lider_obj.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                                 <div class="form-text">Responsável principal pelo departamento</div>
                             </div>
                             
@@ -115,12 +118,15 @@
                                     <i class="fas fa-user-check text-info me-1"></i>
                                     Vice-Líder
                                 </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="vice_lider" 
-                                       name="vice_lider" 
-                                       value="{{ departamento.vice_lider if departamento else '' }}"
-                                       placeholder="Nome do vice-líder">
+                                <select class="form-select" id="vice_lider" name="vice_lider">
+                                    <option value="">Selecione o vice-líder...</option>
+                                    {% for membro in membros %}
+                                    <option value="{{ membro.nome }}" 
+                                            {% if departamento and departamento.vice_lider == membro.nome %}selected{% endif %}>
+                                        {{ membro.nome }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
                                 <div class="form-text">Segundo responsável do departamento</div>
                             </div>
                         </div>
