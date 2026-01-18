@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Minha Agenda Pastoral{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-dark mb-1">
+                        <i class="fas fa-calendar-alt text-success me-2"></i>
+                        Minha Agenda Pastoral
+                    </h2>
+                    <p class="text-muted">Gerencie suas atividades e compromissos ministeriais</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('agenda_pastoral.atividades_hoje') }}" class="btn btn-info me-2">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        Hoje
+                    </a>
+                    <a href="{{ url_for('agenda_pastoral.nova_atividade') }}" class="btn btn-success">
+                        <i class="fas fa-plus me-2"></i>
+                        Nova Atividade
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatísticas -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total</h5>
+                    <h2>{{ total }}</h2>
+                    <small>Atividades no mês</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Concluídas</h5>
+                    <h2>{{ concluidas }}</h2>
+                    <small>Atividades finalizadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Pendentes</h5>
+                    <h2>{{ pendentes }}</h2>
+                    <small>Atividades a fazer</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Mês</label>
+                    <select name="mes" class="form-select">
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if m == mes %}selected{% endif %}>
+                            {{ ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][m-1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Ano</label>
+                    <input type="number" name="ano" class="form-control" value="{{ ano }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Tipo</label>
+                    <select name="tipo" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="Visita" {% if tipo_filtro == 'Visita' %}selected{% endif %}>Visita</option>
+                        <option value="Reunião" {% if tipo_filtro == 'Reunião' %}selected{% endif %}>Reunião</option>
+                        <option value="Estudo" {% if tipo_filtro == 'Estudo' %}selected{% endif %}>Estudo</option>
+                        <option value="Aconselhamento" {% if tipo_filtro == 'Aconselhamento' %}selected{% endif %}>Aconselhamento</option>
+                        <option value="Culto" {% if tipo_filtro == 'Culto' %}selected{% endif %}>Culto</option>
+                        <option value="Administrativo" {% if tipo_filtro == 'Administrativo' %}selected{% endif %}>Administrativo</option>
+                        <option value="Outros" {% if tipo_filtro == 'Outros' %}selected{% endif %}>Outros</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="Pendente" {% if status_filtro == 'Pendente' %}selected{% endif %}>Pendente</option>
+                        <option value="Em Andamento" {% if status_filtro == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
+                        <option value="Concluída" {% if status_filtro == 'Concluída' %}selected{% endif %}>Concluída</option>
+                        <option value="Cancelada" {% if status_filtro == 'Cancelada' %}selected{% endif %}>Cancelada</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-2"></i>Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Atividades -->
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                Atividades
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if atividades %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="40"></th>
+                            <th>Data/Hora</th>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Local</th>
+                            <th>Prioridade</th>
+                            <th>Status</th>
+                            <th width="150">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for atividade in atividades %}
+                        <tr class="{% if atividade.concluida %}table-success{% endif %}">
+                            <td>
+                                <input type="checkbox" 
+                                       class="form-check-input" 
+                                       {% if atividade.concluida %}checked{% endif %}
+                                       onchange="concluirAtividade({{ atividade.id }})">
+                            </td>
+                            <td>
+                                <strong>{{ atividade.data.strftime('%d/%m/%Y') }}</strong>
+                                {% if atividade.hora_inicio %}
+                                <br><small class="text-muted">
+                                    {{ atividade.hora_inicio.strftime('%H:%M') }}
+                                    {% if atividade.hora_fim %}
+                                    - {{ atividade.hora_fim.strftime('%H:%M') }}
+                                    {% endif %}
+                                </small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong class="{% if atividade.concluida %}text-decoration-line-through{% endif %}">
+                                    {{ atividade.titulo }}
+                                </strong>
+                                {% if atividade.descricao %}
+                                <br><small class="text-muted">{{ atividade.descricao[:80] }}...</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if atividade.tipo_atividade %}
+                                <span class="badge bg-info">{{ atividade.tipo_atividade }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ atividade.local or '-' }}</small>
+                            </td>
+                            <td>
+                                {% if atividade.prioridade == 'Urgente' %}
+                                <span class="badge bg-danger">{{ atividade.prioridade }}</span>
+                                {% elif atividade.prioridade == 'Alta' %}
+                                <span class="badge bg-warning text-dark">{{ atividade.prioridade }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ atividade.prioridade }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if atividade.status == 'Concluída' %}
+                                <span class="badge bg-success">{{ atividade.status }}</span>
+                                {% elif atividade.status == 'Em Andamento' %}
+                                <span class="badge bg-primary">{{ atividade.status }}</span>
+                                {% elif atividade.status == 'Cancelada' %}
+                                <span class="badge bg-dark">{{ atividade.status }}</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">{{ atividade.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('agenda_pastoral.editar_atividade', id=atividade.id) }}" 
+                                   class="btn btn-sm btn-primary" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button onclick="excluirAtividade({{ atividade.id }})" 
+                                        class="btn btn-sm btn-danger" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Nenhuma atividade encontrada para este período.</p>
+                <a href="{{ url_for('agenda_pastoral.nova_atividade') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>
+                    Adicionar Primeira Atividade
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function concluirAtividade(id) {
+    fetch(`/agenda-pastoral/${id}/concluir`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+function excluirAtividade(id) {
+    if (confirm('Tem certeza que deseja excluir esta atividade?')) {
+        fetch(`/agenda-pastoral/${id}/excluir`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+}
+</script>
+{% endblock %}

@@ -541,6 +541,9 @@
       <!-- Eventos - Todos podem ver -->
       <a href="{{ url_for('eventos.lista_eventos') }}"><i class="fa-solid fa-calendar-days"></i><span>Eventos</span></a>
       
+      <!-- Agenda Pastoral - Todos podem ver (cada um vê sua própria agenda) -->
+      <a href="{{ url_for('agenda_pastoral.lista_agenda') }}"><i class="fa-solid fa-calendar-check"></i><span>Minha Agenda</span></a>
+      
       <!-- Configurações - Apenas Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_configuracoes() %}
       <a href="{{ url_for('configuracoes.configuracoes') }}"><i class="fa-solid fa-gear"></i><span>Configurações</span></a>
