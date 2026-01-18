@@ -450,6 +450,11 @@ def adicionar_aula(departamento_id):
         if data.get('data_fim'):
             data_fim = datetime.strptime(data['data_fim'], '%Y-%m-%d').date()
         
+        # Converter exibir_no_painel de string para booleano (FormData envia como string)
+        exibir_painel = data.get('exibir_no_painel', False)
+        if isinstance(exibir_painel, str):
+            exibir_painel = exibir_painel.lower() in ['true', '1', 'yes', 'on']
+        
         # Criar aula
         aula = AulaDepartamento(
             departamento_id=departamento_id,
@@ -463,8 +468,8 @@ def adicionar_aula(departamento_id):
             data_fim=data_fim,
             max_alunos=int(data['max_alunos']) if data.get('max_alunos') else None,
             material_necessario=data.get('material_necessario', ''),
-            arquivo_anexo=arquivo_nome,  # Novo campo
-            exibir_no_painel=data.get('exibir_no_painel', False)
+            arquivo_anexo=arquivo_nome,
+            exibir_no_painel=exibir_painel
         )
         
         db.session.add(aula)
