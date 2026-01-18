@@ -245,7 +245,7 @@
                                         </label>
                                         <div class="row align-items-center">
                                             <div class="col-md-3">
-                                                <img src="{{ url_for('static', filename=config.logo.replace('static/', '') if config.logo else 'logo_obpc_novo.jpg') }}" 
+                                                <img src="{{ url_for('static', filename=config.logo if config.logo else 'logo_obpc_novo.jpg') }}" 
                                                      alt="Logo da Igreja" class="img-fluid border rounded" style="max-height: 100px;">
                                             </div>
                                             <div class="col-md-9">

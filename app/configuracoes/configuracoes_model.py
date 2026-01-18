@@ -29,7 +29,7 @@ class Configuracao(db.Model):
     cep = db.Column(db.String(9), nullable=True)  # Formato: 12345-678
     telefone = db.Column(db.String(20), nullable=True)
     email = db.Column(db.String(100), nullable=True)
-    logo = db.Column(db.String(255), nullable=True, default='static/logo_obpc_novo.jpg')
+    logo = db.Column(db.String(255), nullable=True, default='logo_obpc_novo.jpg')
     
     # Diretoria da Igreja
     presidente = db.Column(db.String(100), nullable=True)  # Pastor Dirigente

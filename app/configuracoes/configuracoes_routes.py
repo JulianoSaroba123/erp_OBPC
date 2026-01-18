@@ -195,28 +195,30 @@ def upload_logo():
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f"logo_igreja_{timestamp}.{file_extension}"
         
-        # Definir caminho para salvar (dentro da pasta static)
-        static_dir = os.path.join(current_app.root_path, '..', 'static')
+        # Definir caminho para salvar (dentro de app/static/)
+        static_dir = os.path.join(current_app.root_path, 'static')
         file_path = os.path.join(static_dir, filename)
         
         # Criar diretório se não existir
         os.makedirs(static_dir, exist_ok=True)
+        current_app.logger.info(f'Diretório static: {static_dir}')
         
         # Salvar arquivo
         file.save(file_path)
         current_app.logger.info(f'Arquivo salvo em: {file_path}')
         
-        # Caminho relativo para salvar no banco
-        relative_path = f"static/{filename}"
-        current_app.logger.info(f'Caminho relativo para o banco: {relative_path}')
+        # Caminho relativo para usar no template (sem 'static/' porque url_for já adiciona)
+        # Salvar no banco apenas o nome do arquivo
+        relative_path = filename
+        current_app.logger.info(f'Nome do arquivo para o banco: {relative_path}')
         
         # Atualizar configuração
         config = Configuracao.obter_configuracao()
         current_app.logger.info(f'Logo anterior: {config.logo}')
         
         # Remover logo anterior se existir
-        if config.logo and config.logo != relative_path:
-            old_logo_path = os.path.join(current_app.root_path, '..', config.logo)
+        if config.logo and config.logo != relative_path and config.logo != 'logo_obpc_novo.jpg':
+            old_logo_path = os.path.join(current_app.root_path, 'static', config.logo)
             if os.path.exists(old_logo_path):
                 try:
                     os.remove(old_logo_path)
