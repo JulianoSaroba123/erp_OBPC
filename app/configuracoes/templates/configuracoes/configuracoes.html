@@ -797,9 +797,16 @@ function uploadLogo(file) {
             // Atualizar src da imagem com o novo caminho
             const img = document.querySelector('img[alt="Logo da Igreja"]');
             if (img && data.logo_path) {
-                const newSrc = '{{ url_for("static", filename="") }}' + data.logo_path.replace('static/', '');
+                // Forçar recarga da imagem com timestamp para evitar cache
+                const timestamp = new Date().getTime();
+                const newSrc = '{{ url_for("static", filename="") }}' + data.filename + '?v=' + timestamp;
                 console.log('Atualizando src da imagem para:', newSrc);
                 img.src = newSrc;
+                
+                // Forçar recarga após um pequeno delay
+                setTimeout(() => {
+                    img.src = newSrc;
+                }, 100);
             }
         } else {
             console.log('Erro no upload:', data.message);

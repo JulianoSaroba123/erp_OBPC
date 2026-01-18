@@ -204,12 +204,15 @@ def upload_logo():
         
         # Salvar arquivo
         file.save(file_path)
+        current_app.logger.info(f'Arquivo salvo em: {file_path}')
         
         # Caminho relativo para salvar no banco
         relative_path = f"static/{filename}"
+        current_app.logger.info(f'Caminho relativo para o banco: {relative_path}')
         
         # Atualizar configuração
         config = Configuracao.obter_configuracao()
+        current_app.logger.info(f'Logo anterior: {config.logo}')
         
         # Remover logo anterior se existir
         if config.logo and config.logo != relative_path:
@@ -222,9 +225,10 @@ def upload_logo():
                     current_app.logger.warning(f'Erro ao remover logo anterior: {str(e)}')
         
         config.logo = relative_path
+        current_app.logger.info(f'Nova logo definida: {config.logo}')
         
         if config.salvar():
-            current_app.logger.info(f'Logo da igreja atualizada: {filename}')
+            current_app.logger.info(f'Logo da igreja atualizada com sucesso: {filename}')
             return jsonify({
                 'success': True, 
                 'message': 'Logo atualizada com sucesso!', 
