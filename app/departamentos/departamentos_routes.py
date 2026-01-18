@@ -104,6 +104,12 @@ def novo_departamento():
 def salvar_departamento():
     """Salva novo departamento ou atualiza departamento existente"""
     try:
+        print("="*60)
+        print("[DEBUG] Rota salvar_departamento chamada!")
+        print(f"[DEBUG] Metodo: {request.method}")
+        print(f"[DEBUG] Form data: {dict(request.form)}")
+        print("="*60)
+        
         current_app.logger.info(">>> Rota salvar_departamento chamada!")
         
         # Captura dados do formulário
@@ -118,6 +124,12 @@ def salvar_departamento():
         possui_aulas = bool(request.form.get('possui_aulas'))  # Checkbox retorna valor ou None
         planejamento_aulas = request.form.get('planejamento_aulas', '').strip()
         
+        print(f"[DEBUG] Dados capturados:")
+        print(f"  - ID: {departamento_id}")
+        print(f"  - Nome: {nome}")
+        print(f"  - Lider: {lider}")
+        print(f"  - Status: {status}")
+        
         current_app.logger.info(f">>> Dados recebidos - Nome: {nome}, Lider: {lider}, ID: {departamento_id}")
         
         # Validação básica
@@ -131,6 +143,7 @@ def salvar_departamento():
         
         if departamento_id:
             # Atualizar departamento existente
+            print(f"[DEBUG] Atualizando departamento ID: {departamento_id}")
             departamento = Departamento.query.get_or_404(departamento_id)
             departamento.nome = nome
             departamento.lider = lider if lider else None
@@ -142,6 +155,7 @@ def salvar_departamento():
             departamento.possui_aulas = possui_aulas
             departamento.planejamento_aulas = planejamento_aulas if planejamento_aulas else None
             
+            print(f"[DEBUG] Departamento atualizado: {departamento.nome}")
             flash('Departamento atualizado com sucesso!', 'success')
         else:
             # Verificar se já existe departamento com o mesmo nome
@@ -170,6 +184,7 @@ def salvar_departamento():
             current_app.logger.info(f">>> Novo departamento criado: {nome} (ID: {departamento_id})")
         
         db.session.commit()
+        print("[DEBUG] Commit realizado com sucesso!")
         current_app.logger.info(">>> Departamento salvo no banco com sucesso!")
         
         # Se há dados de cronogramas/aulas enviados via JSON, salvar
@@ -177,10 +192,15 @@ def salvar_departamento():
             dept_id = departamento_id if not request.form.get('id') else request.form.get('id')
             return jsonify({'sucesso': True, 'departamento_id': dept_id})
         
+        print(f"[DEBUG] Redirecionando para lista_departamentos")
         return redirect(url_for('departamentos.lista_departamentos'))
         
     except Exception as e:
         db.session.rollback()
+        print(f"[ERRO] Exceção ao salvar departamento: {str(e)}")
+        print(f"[ERRO] Tipo: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         current_app.logger.error(f">>> ERRO ao salvar departamento: {str(e)}")
         import traceback
         traceback.print_exc()
