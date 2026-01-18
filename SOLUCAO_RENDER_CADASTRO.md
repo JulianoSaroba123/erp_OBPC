@@ -21,9 +21,14 @@ python configurar_banco_render_completo.py
 ```
 
 Este script irá:
-- ✅ Criar todas as 26 tabelas necessárias
+- ✅ Criar todas as 26+ tabelas necessárias
 - ✅ Adicionar as colunas extras na tabela membros (CPF, número, bairro, etc.)
 - ✅ Criar o usuário admin (se não existir)
+
+**Se aparecer aviso sobre agenda_pastoral, execute também:**
+```bash
+python criar_agenda_pastoral_render.py
+```
 
 ### Passo 3: Aguardar Conclusão
 

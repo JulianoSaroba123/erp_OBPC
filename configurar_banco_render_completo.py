@@ -39,12 +39,18 @@ def configurar_banco_render():
             tabelas = inspector.get_table_names()
             print(f"Total de tabelas: {len(tabelas)}")
             
-            # Verificar se tabela membros existe
+            # Verificar se tabelas importantes existem
             if 'membros' not in tabelas:
                 print("ERRO: Tabela membros nao foi criada!")
                 return
             
             print("Tabela membros encontrada")
+            
+            # Verificar se agenda_pastoral existe
+            if 'agenda_pastoral' in tabelas:
+                print("Tabela agenda_pastoral encontrada")
+            else:
+                print("AVISO: Tabela agenda_pastoral nao encontrada (sera criada)")
             
             # PASSO 2: Adicionar colunas extras
             print("\n[2/3] Verificando colunas da tabela membros...")
@@ -117,10 +123,19 @@ def configurar_banco_render():
             print("=" * 60)
             print(f"\nTabelas criadas: {len(tabelas)}")
             print(f"Colunas extras adicionadas: {colunas_adicionadas}")
+            
+            # Verificar agenda_pastoral novamente
+            tabelas_final = inspector.get_table_names()
+            if 'agenda_pastoral' not in tabelas_final:
+                print("\nAVISO: Tabela agenda_pastoral NAO foi criada!")
+                print("Execute tambem: python criar_agenda_pastoral_render.py")
+            
             print("\nVoce pode agora:")
             print("1. Acessar o sistema no Render")
             print("2. Fazer login com admin@obpc.com / admin123")
             print("3. Cadastrar membros com todos os campos")
+            if 'agenda_pastoral' in tabelas_final:
+                print("4. Usar a Agenda Pastoral")
             print("=" * 60)
             
         except Exception as e:
