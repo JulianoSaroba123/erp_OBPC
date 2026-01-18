@@ -163,6 +163,7 @@
                                     <option value="">Selecione...</option>
                                     <option value="Solteiro" {% if membro and membro.estado_civil == 'Solteiro' %}selected{% endif %}>Solteiro(a)</option>
                                     <option value="Casado" {% if membro and membro.estado_civil == 'Casado' %}selected{% endif %}>Casado(a)</option>
+                                    <option value="União Estável" {% if membro and membro.estado_civil == 'União Estável' %}selected{% endif %}>União Estável</option>
                                     <option value="Divorciado" {% if membro and membro.estado_civil == 'Divorciado' %}selected{% endif %}>Divorciado(a)</option>
                                     <option value="Viúvo" {% if membro and membro.estado_civil == 'Viúvo' %}selected{% endif %}>Viúvo(a)</option>
                                 </select>
