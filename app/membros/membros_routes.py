@@ -82,6 +82,12 @@ def salvar_membro():
         cep = request.form.get('cep', '').strip()
         data_nascimento = request.form.get('data_nascimento')
         data_batismo = request.form.get('data_batismo')
+        estado_civil = request.form.get('estado_civil', '').strip()
+        curso_teologia = request.form.get('curso_teologia') == 'on'  # Checkbox
+        nivel_teologia = request.form.get('nivel_teologia', '').strip()
+        instituto = request.form.get('instituto', '').strip()
+        deseja_servir = request.form.get('deseja_servir') == 'on'  # Checkbox
+        area_servir = request.form.get('area_servir', '').strip()
         status = request.form.get('status', 'Ativo')
         tipo = request.form.get('tipo', 'Membro')  # Novo campo tipo
         observacoes = request.form.get('observacoes', '').strip()
@@ -124,6 +130,12 @@ def salvar_membro():
             membro.cep = cep if cep else None
             membro.data_nascimento = data_nasc_obj
             membro.data_batismo = data_bat_obj
+            membro.estado_civil = estado_civil if estado_civil else None
+            membro.curso_teologia = curso_teologia
+            membro.nivel_teologia = nivel_teologia if nivel_teologia else None
+            membro.instituto = instituto if instituto else None
+            membro.deseja_servir = deseja_servir
+            membro.area_servir = area_servir if area_servir else None
             membro.status = status
             membro.tipo = tipo  # Atualizar tipo
             membro.observacoes = observacoes if observacoes else None
@@ -144,6 +156,12 @@ def salvar_membro():
                 cep=cep if cep else None,
                 data_nascimento=data_nasc_obj,
                 data_batismo=data_bat_obj,
+                estado_civil=estado_civil if estado_civil else None,
+                curso_teologia=curso_teologia,
+                nivel_teologia=nivel_teologia if nivel_teologia else None,
+                instituto=instituto if instituto else None,
+                deseja_servir=deseja_servir,
+                area_servir=area_servir if area_servir else None,
                 status=status,
                 tipo=tipo,  # Incluir tipo no novo membro
                 observacoes=observacoes if observacoes else None

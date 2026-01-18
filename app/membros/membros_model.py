@@ -17,6 +17,12 @@ class Membro(db.Model):
     cep = db.Column(db.String(10))
     data_nascimento = db.Column(db.Date)
     data_batismo = db.Column(db.Date)
+    estado_civil = db.Column(db.String(20))  # Solteiro, Casado, Divorciado, Viúvo
+    curso_teologia = db.Column(db.Boolean, default=False)  # Se faz ou fez curso de teologia
+    nivel_teologia = db.Column(db.String(20))  # Básico, Médio, Pleno
+    instituto = db.Column(db.String(200))  # Nome do instituto
+    deseja_servir = db.Column(db.Boolean, default=False)  # Se deseja servir em alguma área
+    area_servir = db.Column(db.String(200))  # Qual área deseja servir
     status = db.Column(db.String(20), default='Ativo')
     tipo = db.Column(db.String(20), default='Membro')  # Membro, Obreiro, Lider
     observacoes = db.Column(db.Text)
@@ -41,6 +47,12 @@ class Membro(db.Model):
             'cep': self.cep,
             'data_nascimento': self.data_nascimento.strftime('%Y-%m-%d') if self.data_nascimento else None,
             'data_batismo': self.data_batismo.strftime('%Y-%m-%d') if self.data_batismo else None,
+            'estado_civil': self.estado_civil,
+            'curso_teologia': self.curso_teologia,
+            'nivel_teologia': self.nivel_teologia,
+            'instituto': self.instituto,
+            'deseja_servir': self.deseja_servir,
+            'area_servir': self.area_servir,
             'status': self.status,
             'observacoes': self.observacoes,
             'data_cadastro': self.data_cadastro.strftime('%Y-%m-%d %H:%M:%S') if self.data_cadastro else None

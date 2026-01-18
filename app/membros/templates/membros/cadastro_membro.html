@@ -156,6 +156,17 @@
                                        maxlength="14">
                                 <div class="form-text">Cadastro de Pessoa Física</div>
                             </div>
+                            
+                            <div class="col-md-6">
+                                <label for="estado_civil" class="form-label fw-bold">Estado Civil</label>
+                                <select class="form-select" id="estado_civil" name="estado_civil">
+                                    <option value="">Selecione...</option>
+                                    <option value="Solteiro" {% if membro and membro.estado_civil == 'Solteiro' %}selected{% endif %}>Solteiro(a)</option>
+                                    <option value="Casado" {% if membro and membro.estado_civil == 'Casado' %}selected{% endif %}>Casado(a)</option>
+                                    <option value="Divorciado" {% if membro and membro.estado_civil == 'Divorciado' %}selected{% endif %}>Divorciado(a)</option>
+                                    <option value="Viúvo" {% if membro and membro.estado_civil == 'Viúvo' %}selected{% endif %}>Viúvo(a)</option>
+                                </select>
+                            </div>
                         </div>
                         
                         <div class="row g-3 mb-4">
@@ -175,6 +186,93 @@
                                        id="data_batismo" 
                                        name="data_batismo" 
                                        value="{{ membro.data_batismo.strftime('%Y-%m-%d') if membro and membro.data_batismo else '' }}">
+                            </div>
+                        </div>
+                        
+                        <!-- Formação Teológica -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-graduation-cap me-2"></i>
+                                    Formação Teológica
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="curso_teologia" 
+                                           name="curso_teologia"
+                                           onchange="toggleCursoTeologia()"
+                                           {% if membro and membro.curso_teologia %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold" for="curso_teologia">
+                                        Curso de Teologia
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div id="campos-teologia" style="{% if not membro or not membro.curso_teologia %}display: none;{% endif %}">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <label for="nivel_teologia" class="form-label fw-bold">Nível</label>
+                                        <select class="form-select" id="nivel_teologia" name="nivel_teologia">
+                                            <option value="">Selecione...</option>
+                                            <option value="Básico" {% if membro and membro.nivel_teologia == 'Básico' %}selected{% endif %}>Básico</option>
+                                            <option value="Médio" {% if membro and membro.nivel_teologia == 'Médio' %}selected{% endif %}>Médio</option>
+                                            <option value="Pleno" {% if membro and membro.nivel_teologia == 'Pleno' %}selected{% endif %}>Pleno</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="col-md-8">
+                                        <label for="instituto" class="form-label fw-bold">Instituto</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               id="instituto" 
+                                               name="instituto" 
+                                               value="{{ membro.instituto if membro else '' }}"
+                                               placeholder="Nome do instituto ou seminário">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Área de Serviço -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-hands-helping me-2"></i>
+                                    Deseja Servir na Igreja?
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-3">
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" 
+                                           type="checkbox" 
+                                           id="deseja_servir" 
+                                           name="deseja_servir"
+                                           onchange="toggleAreaServir()"
+                                           {% if membro and membro.deseja_servir %}checked{% endif %}>
+                                    <label class="form-check-label fw-bold" for="deseja_servir">
+                                        Deseja Servir
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-9" id="campo-area-servir" style="{% if not membro or not membro.deseja_servir %}display: none;{% endif %}">
+                                <label for="area_servir" class="form-label fw-bold">Qual área deseja servir?</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="area_servir" 
+                                       name="area_servir" 
+                                       value="{{ membro.area_servir if membro else '' }}"
+                                       placeholder="Ex: Louvor, Ensino, Evangelismo, Mídia, etc.">
+                                <div class="form-text">Informe a área ou ministério de interesse</div>
                             </div>
                         </div>
 
@@ -435,6 +533,35 @@ function toggleTipoAreas() {
         areaObreiro.style.display = 'block';
     } else if (tipoSelect.value === 'Lider') {
         areaLider.style.display = 'block';
+    }
+}
+
+// Função para mostrar/ocultar campos de curso de teologia
+function toggleCursoTeologia() {
+    const cursoCheck = document.getElementById('curso_teologia');
+    const camposTeologia = document.getElementById('campos-teologia');
+    
+    if (cursoCheck.checked) {
+        camposTeologia.style.display = 'block';
+    } else {
+        camposTeologia.style.display = 'none';
+        // Limpa os campos quando desmarca
+        document.getElementById('nivel_teologia').value = '';
+        document.getElementById('instituto').value = '';
+    }
+}
+
+// Função para mostrar/ocultar campo de área de serviço
+function toggleAreaServir() {
+    const desejaServirCheck = document.getElementById('deseja_servir');
+    const campoAreaServir = document.getElementById('campo-area-servir');
+    
+    if (desejaServirCheck.checked) {
+        campoAreaServir.style.display = 'block';
+    } else {
+        campoAreaServir.style.display = 'none';
+        // Limpa o campo quando desmarca
+        document.getElementById('area_servir').value = '';
     }
 }
 
