@@ -531,38 +531,46 @@ document.querySelector('form').addEventListener('submit', async function(e) {
             
             // Salvar cada aula via AJAX
             for (let item of novasAulas) {
-                const aulaData = {
-                    titulo: item.querySelector('.aula-titulo').value,
-                    descricao: item.querySelector('.aula-descricao').value,
-                    professora: item.querySelector('.aula-professora').value,
-                    dia_semana: item.querySelector('.aula-dia-semana').value,
-                    horario: item.querySelector('.aula-horario').value,
-                    local: item.querySelector('.aula-local').value,
-                    data_inicio: item.querySelector('.aula-data-inicio').value,
-                    data_fim: item.querySelector('.aula-data-fim').value,
-                    max_alunos: item.querySelector('.aula-max-alunos').value,
-                    material_necessario: item.querySelector('.aula-material').value,
-                    exibir_no_painel: item.querySelector('.aula-painel').checked
-                };
+                // Usar FormData para enviar arquivo junto
+                const formData = new FormData();
+                formData.append('titulo', item.querySelector('.aula-titulo').value);
+                formData.append('descricao', item.querySelector('.aula-descricao').value);
+                formData.append('professora', item.querySelector('.aula-professora').value);
+                formData.append('dia_semana', item.querySelector('.aula-dia-semana').value);
+                formData.append('horario', item.querySelector('.aula-horario').value);
+                formData.append('local', item.querySelector('.aula-local').value);
+                formData.append('data_inicio', item.querySelector('.aula-data-inicio').value);
+                formData.append('data_fim', item.querySelector('.aula-data-fim').value);
+                formData.append('max_alunos', item.querySelector('.aula-max-alunos').value);
+                formData.append('material_necessario', item.querySelector('.aula-material').value);
+                formData.append('exibir_no_painel', item.querySelector('.aula-painel').checked);
+                
+                // Adicionar arquivo se selecionado
+                const arquivoInput = item.querySelector('.aula-arquivo');
+                if (arquivoInput.files && arquivoInput.files[0]) {
+                    formData.append('arquivo', arquivoInput.files[0]);
+                }
                 
                 try {
                     const response = await fetch(`/departamentos/${departamentoId}/aulas/adicionar`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(aulaData)
+                        body: formData  // Não definir Content-Type, o navegador faz automaticamente
                     });
                     
-                    if (!response.ok) {
+                    const result = await response.json();
+                    
+                    if (!response.ok || result.erro) {
                         todosOk = false;
-                        console.error('Erro ao salvar aula:', await response.text());
+                        console.error('Erro ao salvar aula:', result.erro || await response.text());
+                        alert(`Erro ao salvar aula: ${result.erro || 'Erro desconhecido'}`);
                     } else {
+                        console.log('Aula salva com sucesso:', result);
                         item.removeAttribute('data-temp');
                     }
                 } catch (error) {
                     todosOk = false;
                     console.error('Erro ao salvar aula:', error);
+                    alert(`Erro ao salvar aula: ${error.message}`);
                 }
             }
             
