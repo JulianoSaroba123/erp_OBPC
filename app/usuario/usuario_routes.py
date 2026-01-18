@@ -208,11 +208,35 @@ def painel():
         atividades_departamento = []
         total_atividades = 0
     
+    # Buscar aulas que devem aparecer no painel
+    aulas_painel = []
+    try:
+        from app.departamentos.departamentos_model import AulaDepartamento, Departamento
+        
+        aulas = db.session.query(AulaDepartamento).\
+            join(Departamento).\
+            filter(
+                AulaDepartamento.exibir_no_painel == True,
+                AulaDepartamento.ativo == True,
+                Departamento.status == 'Ativo'
+            ).\
+            order_by(AulaDepartamento.criado_em.desc()).\
+            limit(10).all()
+        
+        aulas_painel = aulas
+        current_app.logger.info(f"Painel: {len(aulas_painel)} aulas encontradas para exibição")
+    except Exception as e:
+        current_app.logger.error(f"Erro ao buscar aulas: {e}")
+        import traceback
+        traceback.print_exc()
+        aulas_painel = []
+    
     return render_template("painel.html", 
                          proximos_eventos=proximos_eventos,
                          total_eventos_proximos=total_eventos_proximos,
                          atividades_departamento=atividades_departamento,
-                         total_atividades=total_atividades)
+                         total_atividades=total_atividades,
+                         aulas_painel=aulas_painel)
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
 @usuario_bp.route("/usuarios")

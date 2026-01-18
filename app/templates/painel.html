@@ -55,6 +55,10 @@
     border-color: #FF6B35;
     box-shadow: 0 5px 15px rgba(255, 107, 53, 0.1);
   }
+  
+  .bg-purple {
+    background-color: #8b5cf6 !important;
+  }
 </style>
 
 <div class="container mt-4">
@@ -187,6 +191,62 @@
       </div>
       {% endfor %}
       {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Aulas dos Departamentos -->
+    {% if aulas_painel %}
+    <div class="mb-4">
+      <h6 class="fw-semibold text-muted mb-3">
+        <i class="fas fa-graduation-cap me-2"></i>Aulas e Cursos
+      </h6>
+      {% for aula in aulas_painel %}
+      <div class="card activity-card shadow-sm mb-2">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="rounded-circle bg-light p-3 me-3" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;">
+              <i class="fa-solid fa-book-open text-white"></i>
+            </div>
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <p class="mb-1 fw-semibold" style="color: #374151;">{{ aula.titulo }}</p>
+                  <p class="mb-0 text-muted small">
+                    <i class="fas fa-church me-1"></i><strong>{{ aula.departamento.nome }}</strong>
+                    {% if aula.professora %}
+                    <br><i class="fas fa-chalkboard-teacher me-1"></i>{{ aula.professora }}
+                    {% endif %}
+                    {% if aula.dia_semana %}
+                    <br><i class="fas fa-calendar me-1"></i>{{ aula.dia_semana }}
+                    {% if aula.horario %}
+                    às {{ aula.horario }}
+                    {% endif %}
+                    {% endif %}
+                    {% if aula.local %}
+                    <br><i class="fas fa-map-marker-alt me-1"></i>{{ aula.local }}
+                    {% endif %}
+                    {% if aula.duracao_formatada %}
+                    <br><i class="fas fa-clock me-1"></i>{{ aula.duracao_formatada }}
+                    {% endif %}
+                  </p>
+                </div>
+                <div class="text-end">
+                  <span class="badge bg-purple mb-2">Aula</span>
+                  {% if aula.arquivo_anexo %}
+                  <br>
+                  <a href="/departamentos/uploads/aulas/{{ aula.arquivo_anexo }}" 
+                     class="btn btn-sm btn-outline-primary mt-1" 
+                     target="_blank">
+                    <i class="fas fa-file-download me-1"></i>Material
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
     </div>
     {% endif %}
 
