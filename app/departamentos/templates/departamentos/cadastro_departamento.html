@@ -424,6 +424,39 @@ h6.text-primary {
 .aula-item {
     border-left: 4px solid #28a745;
 }
+
+/* Preview de arquivo */
+.arquivo-preview {
+    animation: fadeIn 0.3s ease;
+}
+
+.arquivo-preview .alert {
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.arquivo-preview .arquivo-nome {
+    flex: 1;
+    margin-right: 10px;
+    word-break: break-all;
+}
+
+.arquivo-preview .btn-close {
+    padding: 0.5rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 </style>
 
 <script>
@@ -742,8 +775,18 @@ function adicionarAula() {
                     </label>
                     <input type="file" class="form-control form-control-sm aula-arquivo" 
                            accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.bmp,.webp" 
-                           title="Anexe materiais didáticos, apostilas, imagens, etc.">
+                           title="Anexe materiais didáticos, apostilas, imagens, etc."
+                           onchange="mostrarArquivoSelecionado(this)">
                     <small class="text-muted">PDF, DOC, TXT, JPG, JPEG, PNG (máx. 5MB)</small>
+                    
+                    <!-- Preview do arquivo selecionado -->
+                    <div class="arquivo-preview mt-2" style="display:none;">
+                        <div class="alert alert-info alert-dismissible fade show p-2 mb-0" role="alert">
+                            <i class="fas fa-file me-1"></i>
+                            <span class="arquivo-nome"></span>
+                            <button type="button" class="btn-close btn-close-sm" onclick="removerArquivo(this)" aria-label="Remover"></button>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                     <div class="form-check form-switch">
@@ -933,6 +976,47 @@ function carregarAulasExistentes(departamentoId) {
             }
         })
         .catch(error => console.error('Erro ao carregar aulas:', error));
+}
+
+// ============================================================================
+// FUNÇÕES DE GERENCIAMENTO DE ARQUIVOS
+// ============================================================================
+
+function mostrarArquivoSelecionado(input) {
+    const aulaDiv = input.closest('.aula-item');
+    const preview = aulaDiv.querySelector('.arquivo-preview');
+    const nomeSpan = preview.querySelector('.arquivo-nome');
+    
+    if (input.files && input.files[0]) {
+        const arquivo = input.files[0];
+        const tamanhoMB = (arquivo.size / (1024 * 1024)).toFixed(2);
+        
+        // Verificar tamanho
+        if (arquivo.size > 5 * 1024 * 1024) {
+            alert('Arquivo muito grande! Tamanho máximo: 5MB');
+            input.value = '';
+            preview.style.display = 'none';
+            return;
+        }
+        
+        // Mostrar nome e tamanho do arquivo
+        nomeSpan.textContent = `${arquivo.name} (${tamanhoMB} MB)`;
+        preview.style.display = 'block';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+function removerArquivo(button) {
+    const aulaDiv = button.closest('.aula-item');
+    const inputArquivo = aulaDiv.querySelector('.aula-arquivo');
+    const preview = aulaDiv.querySelector('.arquivo-preview');
+    
+    // Limpar input file
+    inputArquivo.value = '';
+    
+    // Esconder preview
+    preview.style.display = 'none';
 }
 
 // Função para mostrar/ocultar seção de aulas
