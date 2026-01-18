@@ -486,8 +486,10 @@ document.querySelector('form').addEventListener('submit', async function(e) {
     if (departamentoId) {
         // Capturar todos os cronogramas novos (data-temp="true")
         const novosCronogramas = document.querySelectorAll('.cronograma-item[data-temp="true"]');
+        const novasAulas = document.querySelectorAll('.aula-item[data-temp="true"]');
         
-        if (novosCronogramas.length > 0) {
+        // Se há cronogramas OU aulas para salvar
+        if (novosCronogramas.length > 0 || novasAulas.length > 0) {
             e.preventDefault(); // Impedir submit temporariamente
             
             let todosOk = true;
@@ -525,9 +527,6 @@ document.querySelector('form').addEventListener('submit', async function(e) {
                     console.error('Erro ao salvar cronograma:', error);
                 }
             }
-            
-            // Capturar todas as aulas novas
-            const novasAulas = document.querySelectorAll('.aula-item[data-temp="true"]');
             
             // Salvar cada aula via AJAX
             for (let item of novasAulas) {
