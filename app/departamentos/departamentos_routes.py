@@ -416,22 +416,27 @@ def listar_aulas(departamento_id):
 @login_required
 def adicionar_aula(departamento_id):
     """Adiciona aula via AJAX ou formulário"""
+    print(f"[DEBUG] Iniciando adicionar_aula para departamento {departamento_id}")
     try:
         # Verificar se é requisição AJAX (JSON) ou formulário
         if request.is_json:
             # Requisição AJAX - sem arquivo
             data = request.get_json()
             arquivo_nome = None
+            print(f"[DEBUG] Requisição JSON recebida: {data}")
         else:
             # Requisição de formulário - com possível arquivo
             data = request.form.to_dict()
+            print(f"[DEBUG] Requisição FormData recebida: {data}")
             
             # Processar arquivo se enviado
             arquivo_nome = None
             if 'arquivo' in request.files:
                 file = request.files['arquivo']
                 if file and file.filename:
+                    print(f"[DEBUG] Arquivo recebido: {file.filename}")
                     arquivo_nome = save_uploaded_file(file, departamento_id)
+                    print(f"[DEBUG] Arquivo salvo como: {arquivo_nome}")
         
         # Validar dados
         if not data.get('titulo'):
@@ -452,10 +457,13 @@ def adicionar_aula(departamento_id):
         
         # Converter exibir_no_painel de string para booleano (FormData envia como string)
         exibir_painel = data.get('exibir_no_painel', False)
+        print(f"[DEBUG] exibir_no_painel original: {exibir_painel} (tipo: {type(exibir_painel)})")
         if isinstance(exibir_painel, str):
             exibir_painel = exibir_painel.lower() in ['true', '1', 'yes', 'on']
+        print(f"[DEBUG] exibir_no_painel convertido: {exibir_painel} (tipo: {type(exibir_painel)})")
         
         # Criar aula
+        print(f"[DEBUG] Criando aula: {data['titulo']}")
         aula = AulaDepartamento(
             departamento_id=departamento_id,
             titulo=data['titulo'],
@@ -474,28 +482,29 @@ def adicionar_aula(departamento_id):
         
         db.session.add(aula)
         db.session.commit()
+        print(f"[DEBUG] Aula salva com sucesso! ID: {aula.id}")
         
-        if request.is_json:
-            return jsonify({
-                'sucesso': True,
-                'aula': {
-                    'id': aula.id,
-                    'titulo': aula.titulo,
-                    'professora': aula.professora,
-                    'dia_semana': aula.dia_semana,
-                    'horario': aula.horario,
-                    'local': aula.local,
-                    'duracao_formatada': aula.duracao_formatada,
-                    'arquivo_anexo': aula.arquivo_anexo,
-                    'exibir_no_painel': aula.exibir_no_painel
-                }
-            })
-        else:
-            flash(f'Aula "{aula.titulo}" adicionada com sucesso!', 'success')
-            return redirect(url_for('departamentos.editar_departamento', id=departamento_id))
+        # SEMPRE retornar JSON para requisições FormData (AJAX)
+        return jsonify({
+            'sucesso': True,
+            'aula': {
+                'id': aula.id,
+                'titulo': aula.titulo,
+                'professora': aula.professora,
+                'dia_semana': aula.dia_semana,
+                'horario': aula.horario,
+                'local': aula.local,
+                'duracao_formatada': aula.duracao_formatada,
+                'arquivo_anexo': aula.arquivo_anexo,
+                'exibir_no_painel': aula.exibir_no_painel
+            }
+        })
         
     except Exception as e:
         db.session.rollback()
+        print(f"[ERRO] Erro ao adicionar aula: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'erro': str(e)}), 500
 
 @departamentos_bp.route('/aulas/<int:aula_id>/excluir', methods=['DELETE'])

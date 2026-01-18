@@ -556,11 +556,21 @@ document.querySelector('form').addEventListener('submit', async function(e) {
                         body: formData  // Não definir Content-Type, o navegador faz automaticamente
                     });
                     
+                    // Verificar se a resposta é JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        console.error('Resposta não é JSON:', text);
+                        todosOk = false;
+                        alert('Erro no servidor. Verifique os logs do Render.');
+                        continue;
+                    }
+                    
                     const result = await response.json();
                     
                     if (!response.ok || result.erro) {
                         todosOk = false;
-                        console.error('Erro ao salvar aula:', result.erro || await response.text());
+                        console.error('Erro ao salvar aula:', result.erro);
                         alert(`Erro ao salvar aula: ${result.erro || 'Erro desconhecido'}`);
                     } else {
                         console.log('Aula salva com sucesso:', result);
