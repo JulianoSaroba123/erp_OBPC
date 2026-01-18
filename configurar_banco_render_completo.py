@@ -62,7 +62,8 @@ def configurar_banco_render():
                 'nivel_teologia': 'VARCHAR(20)',
                 'instituto': 'VARCHAR(200)',
                 'deseja_servir': 'BOOLEAN DEFAULT FALSE',
-                'area_servir': 'VARCHAR(200)'
+                'area_servir': 'VARCHAR(200)',
+                'tipo': "VARCHAR(20) DEFAULT 'Membro'"
             }
             
             # Adiciona colunas faltantes

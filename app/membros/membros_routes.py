@@ -92,8 +92,13 @@ def salvar_membro():
         tipo = request.form.get('tipo', 'Membro')  # Novo campo tipo
         observacoes = request.form.get('observacoes', '').strip()
         
+        # Log para debug
+        print(f"[DEBUG] Tentando salvar membro: {nome}")
+        print(f"[DEBUG] ID: {membro_id}")
+        
         # Validação básica
         if not nome:
+            print("[DEBUG] ERRO: Nome vazio!")
             flash('Nome é obrigatório!', 'danger')
             return redirect(url_for('membros.novo_membro'))
         
@@ -104,14 +109,18 @@ def salvar_membro():
         if data_nascimento:
             try:
                 data_nasc_obj = datetime.strptime(data_nascimento, '%Y-%m-%d').date()
-            except ValueError:
+                print(f"[DEBUG] Data nascimento convertida: {data_nasc_obj}")
+            except ValueError as e:
+                print(f"[DEBUG] ERRO ao converter data nascimento: {e}")
                 flash('Data de nascimento inválida!', 'danger')
                 return redirect(url_for('membros.novo_membro'))
         
         if data_batismo:
             try:
                 data_bat_obj = datetime.strptime(data_batismo, '%Y-%m-%d').date()
-            except ValueError:
+                print(f"[DEBUG] Data batismo convertida: {data_bat_obj}")
+            except ValueError as e:
+                print(f"[DEBUG] ERRO ao converter data batismo: {e}")
                 flash('Data de batismo inválida!', 'danger')
                 return redirect(url_for('membros.novo_membro'))
         
@@ -169,12 +178,18 @@ def salvar_membro():
             
             db.session.add(novo_membro)
             flash('Membro cadastrado com sucesso!', 'success')
+            print(f"[DEBUG] Novo membro adicionado à sessão: {novo_membro.nome}")
         
         db.session.commit()
+        print(f"[DEBUG] Commit realizado com sucesso!")
         return redirect(url_for('membros.lista_membros'))
         
     except Exception as e:
         db.session.rollback()
+        print(f"[ERRO] Exceção ao salvar membro: {str(e)}")
+        print(f"[ERRO] Tipo do erro: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         flash(f'Erro ao salvar membro: {str(e)}', 'danger')
         return redirect(url_for('membros.novo_membro'))
 
