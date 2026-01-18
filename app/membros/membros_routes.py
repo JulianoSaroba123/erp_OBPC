@@ -71,9 +71,12 @@ def salvar_membro():
         # Captura dados do formulário
         membro_id = request.form.get('id')
         nome = request.form.get('nome', '').strip()
+        cpf = request.form.get('cpf', '').strip()
         telefone = request.form.get('telefone', '').strip()
         email = request.form.get('email', '').strip()
         endereco = request.form.get('endereco', '').strip()
+        numero = request.form.get('numero', '').strip()
+        bairro = request.form.get('bairro', '').strip()
         cidade = request.form.get('cidade', '').strip()
         estado = request.form.get('estado', '').strip()
         cep = request.form.get('cep', '').strip()
@@ -110,9 +113,12 @@ def salvar_membro():
             # Atualizar membro existente
             membro = Membro.query.get_or_404(membro_id)
             membro.nome = nome
+            membro.cpf = cpf if cpf else None
             membro.telefone = telefone if telefone else None
             membro.email = email if email else None
             membro.endereco = endereco if endereco else None
+            membro.numero = numero if numero else None
+            membro.bairro = bairro if bairro else None
             membro.cidade = cidade if cidade else None
             membro.estado = estado if estado else None
             membro.cep = cep if cep else None
@@ -127,9 +133,12 @@ def salvar_membro():
             # Criar novo membro
             novo_membro = Membro(
                 nome=nome,
+                cpf=cpf if cpf else None,
                 telefone=telefone if telefone else None,
                 email=email if email else None,
                 endereco=endereco if endereco else None,
+                numero=numero if numero else None,
+                bairro=bairro if bairro else None,
                 cidade=cidade if cidade else None,
                 estado=estado if estado else None,
                 cep=cep if cep else None,

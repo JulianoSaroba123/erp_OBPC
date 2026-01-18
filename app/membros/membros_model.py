@@ -6,9 +6,12 @@ class Membro(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
+    cpf = db.Column(db.String(14))  # CPF com formatação XXX.XXX.XXX-XX
     telefone = db.Column(db.String(20))
     email = db.Column(db.String(120))
     endereco = db.Column(db.String(200))
+    numero = db.Column(db.String(10))  # Número do endereço
+    bairro = db.Column(db.String(100))  # Bairro
     cidade = db.Column(db.String(100))
     estado = db.Column(db.String(2))
     cep = db.Column(db.String(10))
@@ -27,9 +30,12 @@ class Membro(db.Model):
         return {
             'id': self.id,
             'nome': self.nome,
+            'cpf': self.cpf,
             'telefone': self.telefone,
             'email': self.email,
             'endereco': self.endereco,
+            'numero': self.numero,
+            'bairro': self.bairro,
             'cidade': self.cidade,
             'estado': self.estado,
             'cep': self.cep,

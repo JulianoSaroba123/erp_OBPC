@@ -146,6 +146,20 @@
                         
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
+                                <label for="cpf" class="form-label fw-bold">CPF</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="cpf" 
+                                       name="cpf" 
+                                       value="{{ membro.cpf if membro else '' }}"
+                                       placeholder="000.000.000-00"
+                                       maxlength="14">
+                                <div class="form-text">Cadastro de Pessoa Física</div>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
                                 <label for="data_nascimento" class="form-label fw-bold">Data de Nascimento</label>
                                 <input type="date" 
                                        class="form-control" 
@@ -175,14 +189,24 @@
                         </div>
                         
                         <div class="row g-3 mb-4">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <label for="endereco" class="form-label fw-bold">Endereço</label>
                                 <input type="text" 
                                        class="form-control" 
                                        id="endereco" 
                                        name="endereco" 
                                        value="{{ membro.endereco if membro else '' }}"
-                                       placeholder="Rua, Avenida, número">
+                                       placeholder="Rua, Avenida">
+                            </div>
+                            
+                            <div class="col-md-2">
+                                <label for="numero" class="form-label fw-bold">Número</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="numero" 
+                                       name="numero" 
+                                       value="{{ membro.numero if membro else '' }}"
+                                       placeholder="Nº">
                             </div>
                             
                             <div class="col-md-4">
@@ -205,7 +229,17 @@
                         </div>
                         
                         <div class="row g-3 mb-4">
-                            <div class="col-md-8">
+                            <div class="col-md-4">
+                                <label for="bairro" class="form-label fw-bold">Bairro</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="bairro" 
+                                       name="bairro" 
+                                       value="{{ membro.bairro if membro else '' }}"
+                                       placeholder="Nome do bairro">
+                            </div>
+                            
+                            <div class="col-md-5">
                                 <label for="cidade" class="form-label fw-bold">Cidade</label>
                                 <input type="text" 
                                        class="form-control" 
@@ -215,7 +249,7 @@
                                        placeholder="Nome da cidade">
                             </div>
                             
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="estado" class="form-label fw-bold">Estado</label>
                                 <select class="form-select" id="estado" name="estado">
                                     <option value="">Selecione...</option>
@@ -452,6 +486,10 @@ async function buscarCEP(cep) {
             document.getElementById('endereco').value = data.logradouro;
         }
         
+        if (data.bairro) {
+            document.getElementById('bairro').value = data.bairro;
+        }
+        
         if (data.localidade) {
             document.getElementById('cidade').value = data.localidade;
         }
@@ -467,6 +505,7 @@ async function buscarCEP(cep) {
         
         // Efeito visual nos campos preenchidos
         animarCampoPreenchido('endereco');
+        animarCampoPreenchido('bairro');
         animarCampoPreenchido('cidade');
         animarCampoPreenchido('estado');
         
@@ -519,6 +558,23 @@ document.addEventListener('DOMContentLoaded', function() {
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    }
+    
+    // Máscara para CPF
+    const cpfInput = document.getElementById('cpf');
+    if (cpfInput) {
+        cpfInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+            
+            // Aplica a máscara
+            if (value.length <= 11) {
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d)/, '$1.$2');
+                value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+            }
+            
+            e.target.value = value;
         });
     }
 });
