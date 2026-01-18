@@ -63,8 +63,21 @@ def lista_agenda():
                              concluidas=concluidas,
                              pendentes=pendentes)
     except Exception as e:
+        print(f"[ERRO] Erro ao carregar agenda: {str(e)}")
+        import traceback
+        traceback.print_exc()
         flash(f'Erro ao carregar agenda: {str(e)}', 'danger')
-        return render_template('agenda_pastoral/lista_agenda.html', atividades=[])
+        # Retornar com valores padrão
+        hoje = date.today()
+        return render_template('agenda_pastoral/lista_agenda.html', 
+                             atividades=[], 
+                             mes=hoje.month,
+                             ano=hoje.year,
+                             status_filtro='',
+                             tipo_filtro='',
+                             total=0,
+                             concluidas=0,
+                             pendentes=0)
 
 @agenda_pastoral_bp.route('/agenda-pastoral/nova', methods=['GET', 'POST'])
 @login_required

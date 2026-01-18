@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Minha Agenda Pastoral{% endblock %}
+{% block titulo %}Atividades de Hoje{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -10,15 +10,15 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <h2 class="text-dark mb-1">
-                        <i class="fas fa-calendar-alt text-success me-2"></i>
-                        Minha Agenda Pastoral
+                        <i class="fas fa-calendar-day text-info me-2"></i>
+                        Atividades de Hoje
                     </h2>
-                    <p class="text-muted">Gerencie suas atividades e compromissos ministeriais</p>
+                    <p class="text-muted">{{ data.strftime('%d de %B de %Y') }}</p>
                 </div>
                 <div>
-                    <a href="{{ url_for('agenda_pastoral.atividades_hoje') }}" class="btn btn-info me-2">
-                        <i class="fas fa-calendar-day me-2"></i>
-                        Hoje
+                    <a href="{{ url_for('agenda_pastoral.lista_agenda') }}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        Ver Agenda Completa
                     </a>
                     <a href="{{ url_for('agenda_pastoral.nova_atividade') }}" class="btn btn-success">
                         <i class="fas fa-plus me-2"></i>
@@ -29,105 +29,17 @@
         </div>
     </div>
 
-    <!-- Estatísticas -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Total</h5>
-                    <h2>{{ total }}</h2>
-                    <small>Atividades no mês</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Concluídas</h5>
-                    <h2>{{ concluidas }}</h2>
-                    <small>Atividades finalizadas</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <h5 class="card-title">Pendentes</h5>
-                    <h2>{{ pendentes }}</h2>
-                    <small>Atividades a fazer</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="GET" class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label">Mês</label>
-                    <select name="mes" class="form-select">
-                        {% for m in range(1, 13) %}
-                        <option value="{{ m }}" {% if m == mes %}selected{% endif %}>
-                            {{ ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][m-1] }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Ano</label>
-                    <input type="number" name="ano" class="form-control" value="{{ ano }}">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Tipo</label>
-                    <select name="tipo" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="Visita" {% if tipo_filtro == 'Visita' %}selected{% endif %}>Visita</option>
-                        <option value="Reunião" {% if tipo_filtro == 'Reunião' %}selected{% endif %}>Reunião</option>
-                        <option value="Estudo" {% if tipo_filtro == 'Estudo' %}selected{% endif %}>Estudo</option>
-                        <option value="Aconselhamento" {% if tipo_filtro == 'Aconselhamento' %}selected{% endif %}>Aconselhamento</option>
-                        <option value="Culto" {% if tipo_filtro == 'Culto' %}selected{% endif %}>Culto</option>
-                        <option value="Administrativo" {% if tipo_filtro == 'Administrativo' %}selected{% endif %}>Administrativo</option>
-                        <option value="Outros" {% if tipo_filtro == 'Outros' %}selected{% endif %}>Outros</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="">Todos</option>
-                        <option value="Pendente" {% if status_filtro == 'Pendente' %}selected{% endif %}>Pendente</option>
-                        <option value="Em Andamento" {% if status_filtro == 'Em Andamento' %}selected{% endif %}>Em Andamento</option>
-                        <option value="Concluída" {% if status_filtro == 'Concluída' %}selected{% endif %}>Concluída</option>
-                        <option value="Cancelada" {% if status_filtro == 'Cancelada' %}selected{% endif %}>Cancelada</option>
-                    </select>
-                </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-2"></i>Filtrar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Lista de Atividades -->
     <div class="card">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">
-                <i class="fas fa-list me-2"></i>
-                Atividades
-            </h5>
-        </div>
-        <div class="card-body p-0">
+        <div class="card-body">
             {% if atividades %}
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead class="table-light">
                         <tr>
                             <th width="40"></th>
-                            <th>Data/Hora</th>
-                            <th>Título</th>
+                            <th>Horário</th>
+                            <th>Atividade</th>
                             <th>Tipo</th>
                             <th>Local</th>
                             <th>Prioridade</th>
@@ -145,14 +57,13 @@
                                        onchange="concluirAtividade({{ atividade.id }})">
                             </td>
                             <td>
-                                <strong>{{ atividade.data.strftime('%d/%m/%Y') }}</strong>
                                 {% if atividade.hora_inicio %}
-                                <br><small class="text-muted">
-                                    {{ atividade.hora_inicio.strftime('%H:%M') }}
-                                    {% if atividade.hora_fim %}
-                                    - {{ atividade.hora_fim.strftime('%H:%M') }}
-                                    {% endif %}
-                                </small>
+                                <strong>{{ atividade.hora_inicio.strftime('%H:%M') }}</strong>
+                                {% if atividade.hora_fim %}
+                                <br><small class="text-muted">até {{ atividade.hora_fim.strftime('%H:%M') }}</small>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted">Sem horário</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -160,7 +71,7 @@
                                     {{ atividade.titulo }}
                                 </strong>
                                 {% if atividade.descricao %}
-                                <br><small class="text-muted">{{ atividade.descricao[:80] }}...</small>
+                                <br><small class="text-muted">{{ atividade.descricao }}</small>
                                 {% endif %}
                             </td>
                             <td>
@@ -208,12 +119,12 @@
             </div>
             {% else %}
             <div class="text-center py-5">
-                <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">Nenhuma atividade encontrada</h5>
-                <p class="text-muted">Você ainda não tem atividades cadastradas para este período.</p>
+                <i class="fas fa-smile fa-3x text-success mb-3"></i>
+                <h5 class="text-muted">Nenhuma atividade para hoje!</h5>
+                <p class="text-muted">Você está livre hoje ou pode adicionar uma nova atividade.</p>
                 <a href="{{ url_for('agenda_pastoral.nova_atividade') }}" class="btn btn-primary mt-3">
                     <i class="fas fa-plus me-2"></i>
-                    Adicionar Primeira Atividade
+                    Adicionar Atividade
                 </a>
             </div>
             {% endif %}
