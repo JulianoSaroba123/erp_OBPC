@@ -965,6 +965,64 @@ document.addEventListener('DOMContentLoaded', function() {
         carregarCronogramasExistentes(departamentoId);
         carregarAulasExistentes(departamentoId);
     }
+    
+    // Configurar auto-preenchimento de contato ao selecionar líder
+    configurarAutoPreenchimentoContato();
 });
+
+// Auto-preencher contato quando selecionar líder
+function configurarAutoPreenchimentoContato() {
+    // Criar objeto com dados dos líderes
+    const lideresData = {
+        {% for lider_obj in lideres %}
+        "{{ lider_obj.nome }}": {
+            telefone: "{{ lider_obj.telefone or '' }}",
+            email: "{{ lider_obj.email or '' }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Criar objeto com dados de todos os membros (para vice-líder)
+    const membrosData = {
+        {% for membro in membros %}
+        "{{ membro.nome }}": {
+            telefone: "{{ membro.telefone or '' }}",
+            email: "{{ membro.email or '' }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+    
+    // Ao selecionar líder principal
+    document.getElementById('lider').addEventListener('change', function() {
+        const liderNome = this.value;
+        const campoContato = document.getElementById('contato');
+        
+        if (liderNome && lideresData[liderNome]) {
+            const dados = lideresData[liderNome];
+            let contato = '';
+            
+            if (dados.telefone) {
+                contato = dados.telefone;
+            }
+            if (dados.email) {
+                contato += (contato ? ' / ' : '') + dados.email;
+            }
+            
+            if (contato) {
+                campoContato.value = contato;
+            }
+        }
+    });
+    
+    // Ao selecionar vice-líder (opcional, caso queira adicionar contato secundário)
+    document.getElementById('vice_lider').addEventListener('change', function() {
+        const viceLiderNome = this.value;
+        
+        if (viceLiderNome && membrosData[viceLiderNome]) {
+            // Aqui você pode optar por adicionar o contato do vice ao campo
+            // ou criar um campo específico para contato do vice-líder
+        }
+    });
+}
 </script>
 {% endblock %}
