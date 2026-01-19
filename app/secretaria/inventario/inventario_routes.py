@@ -295,7 +295,7 @@ def gerar_pdf_inventario_reportlab(itens, inventario_por_categoria, valor_total,
         else:
             # Fallback para logos padrão
             try:
-                fallback_logos = ['Logo_OBPC.jpg', 'logo_obpc_novo.jpg', 'logo_igreja_20251014_210556.jpg', 'logo_obpc.ico']
+                fallback_logos = ['logo_obpc_novo.jpg', 'Logo_OBPC.jpg']
                 for fallback_logo in fallback_logos:
                     try:
                         logo_path = os.path.join(current_app.static_folder, fallback_logo)

@@ -285,30 +285,39 @@ def gerar_pdf_ata_reportlab(ata, config):
         # Construir conteúdo
         story = []
         
-        # Logo da igreja (se existir)
+        # Logo da igreja das configurações
         try:
-            # Primeiro tenta o logo principal OBPC
-            logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
-            if os.path.exists(logo_path):
-                logo = Image(logo_path, width=120, height=120)
-                logo.hAlign = 'CENTER'
-                story.append(logo)
-                story.append(Spacer(1, 10))
-            else:
-                # Fallback para outros logos disponíveis
-                fallback_logos = ['logo_obpc_novo.jpg', 'logo_igreja_20251014_210556.jpg', 'logo_obpc.ico']
+            logo_adicionado = False
+            
+            # Primeiro tenta usar a logo das configurações
+            if config.logo:
+                logo_path = os.path.join(current_app.static_folder, config.logo)
+                if os.path.exists(logo_path):
+                    current_app.logger.info(f'Usando logo das configurações: {logo_path}')
+                    logo = Image(logo_path, width=120, height=120)
+                    logo.hAlign = 'CENTER'
+                    story.append(logo)
+                    story.append(Spacer(1, 10))
+                    logo_adicionado = True
+            
+            # Se não conseguiu usar a logo das configurações, tenta fallbacks
+            if not logo_adicionado:
+                fallback_logos = ['logo_obpc_novo.jpg', 'Logo_OBPC.jpg']
                 for fallback_logo in fallback_logos:
                     try:
                         logo_path = os.path.join(current_app.static_folder, fallback_logo)
                         if os.path.exists(logo_path):
+                            current_app.logger.info(f'Usando logo fallback: {logo_path}')
                             logo = Image(logo_path, width=120, height=120)
                             logo.hAlign = 'CENTER' 
                             story.append(logo)
                             story.append(Spacer(1, 10))
                             break
-                    except:
+                    except Exception as e:
+                        current_app.logger.warning(f'Erro ao carregar logo {fallback_logo}: {str(e)}')
                         continue
         except Exception as e:
+            current_app.logger.error(f'Erro ao processar logo: {str(e)}')
             # Se não conseguir carregar logo, continua sem ele
             pass
         

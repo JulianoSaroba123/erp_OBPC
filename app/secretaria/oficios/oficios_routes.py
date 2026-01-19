@@ -303,13 +303,19 @@ def gerar_pdf_oficio_reportlab(oficio, config):
                     story.append(logo)
                     story.append(Spacer(1, 10))
                 else:
-                    # Fallback para logo OBPC se o da configuração não existir
-                    logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
-                    if os.path.exists(logo_path):
-                        logo = Image(logo_path, width=80, height=80)
-                        logo.hAlign = 'CENTER'
-                        story.append(logo)
-                        story.append(Spacer(1, 10))
+                    # Fallback para logos disponíveis
+                    fallback_logos = ['logo_obpc_novo.jpg', 'Logo_OBPC.jpg']
+                    for fallback_logo in fallback_logos:
+                        try:
+                            logo_path = os.path.join(current_app.static_folder, fallback_logo)
+                            if os.path.exists(logo_path):
+                                logo = Image(logo_path, width=80, height=80)
+                                logo.hAlign = 'CENTER'
+                                story.append(logo)
+                                story.append(Spacer(1, 10))
+                                break
+                        except:
+                            continue
         except Exception as e:
             # Se não conseguir carregar logo, continua sem ele
             pass
