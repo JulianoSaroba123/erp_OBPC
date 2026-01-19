@@ -95,6 +95,17 @@ def cadastro():
 @usuario_bp.route("/painel")
 @login_required
 def painel():
+    # Buscar contagem de membros e obreiros
+    total_membros = 0
+    total_obreiros = 0
+    try:
+        from app.membros.membros_model import Membro
+        total_membros = Membro.query.filter_by(status='Ativo').count()
+        total_obreiros = Membro.query.filter_by(tipo='Obreiro', status='Ativo').count()
+        current_app.logger.info(f"Painel: {total_membros} membros, {total_obreiros} obreiros")
+    except Exception as e:
+        current_app.logger.error(f"Erro ao buscar membros/obreiros: {e}")
+    
     # Buscar dados para o painel
     try:
         from app.eventos.eventos_model import Evento
@@ -236,7 +247,9 @@ def painel():
                          total_eventos_proximos=total_eventos_proximos,
                          atividades_departamento=atividades_departamento,
                          total_atividades=total_atividades,
-                         aulas_painel=aulas_painel)
+                         aulas_painel=aulas_painel,
+                         total_membros=total_membros,
+                         total_obreiros=total_obreiros)
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
 @usuario_bp.route("/usuarios")
