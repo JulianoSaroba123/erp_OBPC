@@ -668,31 +668,37 @@ def salvar_carteira():
                         import uuid
                         filename = secure_filename(foto.filename)
                         name, ext = os.path.splitext(filename)
-                        unique_filename = f"{uuid.uuid4().hex}_{name}{ext}"
+                        unique_filename = f"carteira_{uuid.uuid4().hex}{ext}"
                         
-                        # Definir pasta de upload
-                        upload_folder = os.path.join(current_app.static_folder, 'uploads', 'fotos_membros')
+                        # Definir pasta de upload dentro de app/static
+                        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'fotos_membros')
                         os.makedirs(upload_folder, exist_ok=True)
+                        
+                        current_app.logger.info(f'Pasta de upload: {upload_folder}')
                         
                         # Remover foto anterior se existir (para edições)
                         old_photo_path = None
                         if carteira_id:
                             carteira_existente = CarteiraMembro.query.get(carteira_id)
                             if carteira_existente and carteira_existente.foto_caminho:
-                                old_photo_path = os.path.join(current_app.static_folder, carteira_existente.foto_caminho)
+                                old_photo_path = os.path.join(current_app.root_path, 'static', carteira_existente.foto_caminho)
                         
                         # Salvar arquivo
                         filepath = os.path.join(upload_folder, unique_filename)
                         foto.save(filepath)
+                        current_app.logger.info(f'Foto salva em: {filepath}')
                         
-                        # Atualizar caminho no banco (relativo à pasta static)
+                        # Atualizar caminho no banco (relativo à pasta static, SEM 'static/' no início)
                         carteira.foto_caminho = f'uploads/fotos_membros/{unique_filename}'
+                        current_app.logger.info(f'Caminho salvo no banco: {carteira.foto_caminho}')
                         
                         # Remover foto antiga após salvar a nova
                         if old_photo_path and os.path.exists(old_photo_path):
                             try:
                                 os.remove(old_photo_path)
-                            except:
+                                current_app.logger.info(f'Foto antiga removida: {old_photo_path}')
+                            except Exception as e:
+                                current_app.logger.warning(f'Erro ao remover foto antiga: {str(e)}')
                                 pass  # Ignora erro ao remover foto antiga
                                 
                     else:
