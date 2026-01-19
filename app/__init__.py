@@ -73,6 +73,18 @@ def create_app():
             return "text-danger"
         return ""
 
+    # Context processor para disponibilizar configurações em todos os templates
+    @app.context_processor
+    def inject_config():
+        """Injeta as configurações da igreja em todos os templates"""
+        from app.configuracoes.configuracoes_model import Configuracao
+        try:
+            config = Configuracao.obter_configuracao()
+            return dict(igreja_config=config)
+        except Exception as e:
+            app.logger.warning(f'Erro ao carregar configurações para template: {str(e)}')
+            return dict(igreja_config=None)
+
     # Cria as tabelas no primeiro uso (pode depois mover isso pro script separado)
     with app.app_context():
         db.create_all()

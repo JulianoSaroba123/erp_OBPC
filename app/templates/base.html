@@ -442,8 +442,13 @@
   <!-- MENU LATERAL -->
   <div class="sidebar" id="sidebar">
     <div class="logo">
-      <img src="{{ url_for('static', filename='Logo_OBPC.jpg') }}" alt="Logo OBPC" 
+      {% if igreja_config and igreja_config.logo %}
+      <img src="{{ url_for('static', filename=igreja_config.logo) }}" alt="Logo {{ igreja_config.nome_igreja }}" 
+           onerror="this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}';" />
+      {% else %}
+      <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" alt="Logo OBPC" 
            onerror="this.style.display='none';" />
+      {% endif %}
       <h2>OBPC</h2>
       <p>Tietê-SP</p>
     </div>
