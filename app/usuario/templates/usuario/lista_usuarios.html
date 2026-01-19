@@ -214,11 +214,13 @@ function excluirUsuario(userId, nome) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
             }
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                alert(data.message);
                 location.reload();
             } else {
                 alert(data.message);
@@ -226,7 +228,7 @@ function excluirUsuario(userId, nome) {
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Erro ao excluir usuário');
+            alert('Erro ao excluir usuário: ' + error.message);
         });
     }
 }

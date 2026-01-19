@@ -409,21 +409,34 @@ def toggle_status_usuario(user_id):
 @requer_nivel_acesso('master')
 def excluir_usuario(user_id):
     """Excluir usuário (apenas master)"""
-    usuario = Usuario.query.get_or_404(user_id)
-    
-    # Master não pode ser excluído
-    if usuario.nivel_acesso == 'master':
-        return jsonify({"success": False, "message": "Usuários master não podem ser excluídos!"})
-    
-    # Não pode excluir a si mesmo
-    if usuario.id == current_user.id:
-        return jsonify({"success": False, "message": "Você não pode excluir sua própria conta!"})
-    
-    nome = usuario.nome
-    db.session.delete(usuario)
-    db.session.commit()
-    
-    return jsonify({"success": True, "message": f"Usuário {nome} excluído com sucesso!"})
+    try:
+        usuario = Usuario.query.get_or_404(user_id)
+        
+        current_app.logger.info(f'Tentando excluir usuário ID: {user_id}, Nome: {usuario.nome}, Nível: {usuario.nivel_acesso}')
+        
+        # Master não pode ser excluído
+        if usuario.nivel_acesso == 'master':
+            current_app.logger.warning(f'Tentativa de excluir usuário master: {usuario.nome}')
+            return jsonify({"success": False, "message": "Usuários master não podem ser excluídos!"})
+        
+        # Não pode excluir a si mesmo
+        if usuario.id == current_user.id:
+            current_app.logger.warning(f'Usuário tentou excluir a própria conta: {usuario.nome}')
+            return jsonify({"success": False, "message": "Você não pode excluir sua própria conta!"})
+        
+        nome = usuario.nome
+        db.session.delete(usuario)
+        db.session.commit()
+        
+        current_app.logger.info(f'Usuário excluído com sucesso: {nome}')
+        return jsonify({"success": True, "message": f"Usuário {nome} excluído com sucesso!"})
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Erro ao excluir usuário ID {user_id}: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "message": f"Erro ao excluir usuário: {str(e)}"}), 500
 
 def pode_criar_nivel(nivel_criador, nivel_novo):
     """Verifica se um nível pode criar outro nível"""
