@@ -147,7 +147,7 @@
     <footer>
         <div class="assinatura">
             <div class="linha-assinatura"></div>
-            <p>{{ config.presidente or 'Pastor Dirigente' }}<br><strong>Dirigente</strong></p>
+            <p>{{ config.presidente or 'Pastor Dirigente' }}{% if config.rm_presidente %} - RM: {{ config.rm_presidente }}{% endif %}<br><strong>Dirigente</strong></p>
         </div>
         
         <div class="assinatura">

@@ -33,6 +33,8 @@ class Configuracao(db.Model):
     
     # Diretoria da Igreja
     presidente = db.Column(db.String(100), nullable=True)  # Pastor Dirigente
+    rm_presidente = db.Column(db.String(20), nullable=True)  # Registro Ministerial
+    validade_rm_presidente = db.Column(db.Date, nullable=True)  # Validade do RM
     vice_presidente = db.Column(db.String(100), nullable=True)  # Pastora
     primeiro_secretario = db.Column(db.String(100), nullable=True)  # 1º Secretário
     segundo_secretario = db.Column(db.String(100), nullable=True)  # 2º Secretário

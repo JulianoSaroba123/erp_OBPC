@@ -265,7 +265,7 @@
     <div class="assinaturas">
         <div class="assinatura">
             <div class="linha-assinatura"></div>
-            <p><strong>{{ config.presidente or 'Pastor Dirigente' }}</strong><br>Dirigente</p>
+            <p><strong>{{ config.presidente or 'Pastor Dirigente' }}{% if config.rm_presidente %} - RM: {{ config.rm_presidente }}{% endif %}</strong><br>Dirigente</p>
         </div>
         
         <div class="assinatura">

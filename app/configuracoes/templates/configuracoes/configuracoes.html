@@ -126,6 +126,24 @@
                                                value="{{ config.presidente or '' }}" placeholder="Nome do presidente">
                                     </div>
 
+                                    <!-- RM do Presidente -->
+                                    <div class="col-md-3 mb-3">
+                                        <label for="rm_presidente" class="form-label">
+                                            <i class="fas fa-id-card me-1"></i> RM (Registro Ministerial)
+                                        </label>
+                                        <input type="text" class="form-control" id="rm_presidente" name="rm_presidente" 
+                                               value="{{ config.rm_presidente or '' }}" placeholder="Número do RM">
+                                    </div>
+
+                                    <!-- Validade do RM -->
+                                    <div class="col-md-3 mb-3">
+                                        <label for="validade_rm_presidente" class="form-label">
+                                            <i class="fas fa-calendar-check me-1"></i> Validade do RM
+                                        </label>
+                                        <input type="date" class="form-control" id="validade_rm_presidente" name="validade_rm_presidente" 
+                                               value="{{ config.validade_rm_presidente.strftime('%Y-%m-%d') if config.validade_rm_presidente else '' }}">
+                                    </div>
+
                                     <!-- Vice-Presidente (Pastora) -->
                                     <div class="col-md-6 mb-3">
                                         <label for="vice_presidente" class="form-label">

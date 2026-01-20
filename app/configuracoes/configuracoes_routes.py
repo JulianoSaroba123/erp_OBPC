@@ -73,6 +73,18 @@ def salvar_configuracoes():
             
             # Diretoria da Igreja
             config.presidente = request.form.get('presidente', '').strip()
+            config.rm_presidente = request.form.get('rm_presidente', '').strip()
+            
+            # Processar validade do RM
+            validade_rm_str = request.form.get('validade_rm_presidente', '').strip()
+            if validade_rm_str:
+                try:
+                    config.validade_rm_presidente = datetime.strptime(validade_rm_str, '%Y-%m-%d').date()
+                except ValueError:
+                    config.validade_rm_presidente = None
+            else:
+                config.validade_rm_presidente = None
+            
             config.vice_presidente = request.form.get('vice_presidente', '').strip()
             config.primeiro_secretario = request.form.get('primeiro_secretario', '').strip()
             config.segundo_secretario = request.form.get('segundo_secretario', '').strip()
