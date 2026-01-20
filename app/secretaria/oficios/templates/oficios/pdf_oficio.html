@@ -146,7 +146,7 @@
     <!-- Cabeçalho institucional -->
     <div class="cabecalho">
         {% if config.logo and config.exibir_logo_relatorio %}
-            <img src="{{ (base_url or request.url_root) }}{{ config.logo }}" alt="Logo da Igreja" class="logo">
+            <img src="{{ (base_url or request.url_root) }}static/{{ config.logo }}" alt="Logo da Igreja" class="logo">
         {% endif %}
     </div>
 

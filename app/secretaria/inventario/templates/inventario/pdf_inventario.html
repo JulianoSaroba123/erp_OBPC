@@ -162,7 +162,7 @@
 <body>
     <div class="cabecalho">
         {% if config.logo and config.exibir_logo_relatorio %}
-            <img src="{{ (base_url or request.url_root) }}{{ config.logo }}" alt="Logo da Igreja" class="logo">
+            <img src="{{ (base_url or request.url_root) }}static/{{ config.logo }}" alt="Logo da Igreja" class="logo">
         {% endif %}
         <h2>{{ config.nome_igreja }}</h2>
         <h3>{{ config.endereco_completo() if config.endereco_completo() else 'Endereço não informado' }}</h3>
