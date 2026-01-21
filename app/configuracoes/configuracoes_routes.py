@@ -61,9 +61,6 @@ def salvar_configuracoes():
         
         # Atualizar campos baseado na aba
         if aba_ativa == 'gerais':
-            # Preservar logo atual (não deve ser alterado na aba gerais)
-            logo_atual = config.logo
-            
             # Dados Institucionais
             config.nome_igreja = request.form.get('nome_igreja', '').strip()
             config.cnpj = request.form.get('cnpj', '').strip()
@@ -74,8 +71,7 @@ def salvar_configuracoes():
             config.telefone = request.form.get('telefone', '').strip()
             config.email = request.form.get('email', '').strip()
             
-            # Restaurar logo
-            config.logo = logo_atual
+            # Logo é gerenciada pela rota de upload separada, não precisa ser tocada aqui
             
             # Diretoria da Igreja
             config.presidente = request.form.get('presidente', '').strip()
