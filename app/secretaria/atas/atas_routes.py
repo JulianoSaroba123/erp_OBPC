@@ -294,7 +294,7 @@ def gerar_pdf_ata_reportlab(ata, config):
                 logo_path = os.path.join(current_app.static_folder, config.logo)
                 if os.path.exists(logo_path):
                     current_app.logger.info(f'Usando logo das configurações: {logo_path}')
-                    logo = Image(logo_path, width=120, height=120)
+                    logo = Image(logo_path, width=150, height=150)
                     logo.hAlign = 'CENTER'
                     story.append(logo)
                     story.append(Spacer(1, 10))
@@ -308,7 +308,7 @@ def gerar_pdf_ata_reportlab(ata, config):
                         logo_path = os.path.join(current_app.static_folder, fallback_logo)
                         if os.path.exists(logo_path):
                             current_app.logger.info(f'Usando logo fallback: {logo_path}')
-                            logo = Image(logo_path, width=120, height=120)
+                            logo = Image(logo_path, width=150, height=150)
                             logo.hAlign = 'CENTER' 
                             story.append(logo)
                             story.append(Spacer(1, 10))

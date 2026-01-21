@@ -284,7 +284,7 @@ def gerar_pdf_inventario_reportlab(itens, inventario_por_categoria, valor_total,
                 # Caminho do logo configurado pelo usuário
                 logo_path = os.path.join(current_app.root_path, '..', config.logo)
                 if os.path.exists(logo_path):
-                    logo = Image(logo_path, width=80, height=80)
+                    logo = Image(logo_path, width=150, height=150)
                     logo.hAlign = 'CENTER'
                     story.append(logo)
                     story.append(Spacer(1, 10))
@@ -300,7 +300,7 @@ def gerar_pdf_inventario_reportlab(itens, inventario_por_categoria, valor_total,
                     try:
                         logo_path = os.path.join(current_app.static_folder, fallback_logo)
                         if os.path.exists(logo_path):
-                            logo = Image(logo_path, width=80, height=80)
+                            logo = Image(logo_path, width=150, height=150)
                             logo.hAlign = 'CENTER'
                             story.append(logo)
                             story.append(Spacer(1, 10))
