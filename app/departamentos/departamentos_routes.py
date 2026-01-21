@@ -523,6 +523,150 @@ def excluir_aula(aula_id):
         return jsonify({'erro': str(e)}), 500
 
 
+@departamentos_bp.route('/aulas/<int:aula_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_aula(aula_id):
+    """Edita uma aula existente"""
+    try:
+        aula = AulaDepartamento.query.get_or_404(aula_id)
+        
+        if request.method == 'POST':
+            # Processar dados
+            if request.is_json:
+                data = request.get_json()
+                arquivo_nome = None
+            else:
+                data = request.form.to_dict()
+                
+                # Processar arquivo se enviado
+                arquivo_nome = None
+                if 'arquivo' in request.files:
+                    file = request.files['arquivo']
+                    if file and file.filename:
+                        arquivo_nome = save_uploaded_file(file, aula.departamento_id)
+                        # Excluir arquivo anterior se existir
+                        if aula.arquivo_anexo:
+                            old_file_path = os.path.join(UPLOAD_FOLDER, str(aula.departamento_id), aula.arquivo_anexo)
+                            if os.path.exists(old_file_path):
+                                os.remove(old_file_path)
+            
+            # Atualizar aula
+            aula.titulo = data.get('titulo', aula.titulo)
+            aula.descricao = data.get('descricao', aula.descricao)
+            aula.professora = data.get('professora', '')
+            aula.dia_semana = data.get('dia_semana', '')
+            aula.horario = data.get('horario', '')
+            aula.local = data.get('local', '')
+            aula.material_necessario = data.get('material_necessario', '')
+            
+            # Atualizar datas se fornecidas
+            if data.get('data_inicio'):
+                aula.data_inicio = datetime.strptime(data['data_inicio'], '%Y-%m-%d').date()
+            if data.get('data_fim'):
+                aula.data_fim = datetime.strptime(data['data_fim'], '%Y-%m-%d').date()
+            
+            # Atualizar arquivo se houver novo
+            if arquivo_nome:
+                aula.arquivo_anexo = arquivo_nome
+            
+            # Atualizar exibir_no_painel
+            exibir_painel = data.get('exibir_no_painel', False)
+            if isinstance(exibir_painel, str):
+                exibir_painel = exibir_painel.lower() in ['true', '1', 'yes', 'on']
+            aula.exibir_no_painel = exibir_painel
+            
+            db.session.commit()
+            
+            if request.is_json:
+                return jsonify({'sucesso': True, 'mensagem': 'Aula atualizada com sucesso!'})
+            else:
+                flash('Aula atualizada com sucesso!', 'success')
+                return redirect(url_for('departamentos.editar_departamento', id=aula.departamento_id))
+        
+        # GET - retornar dados da aula
+        if request.is_json or request.args.get('format') == 'json':
+            return jsonify({
+                'id': aula.id,
+                'titulo': aula.titulo,
+                'descricao': aula.descricao,
+                'professora': aula.professora,
+                'dia_semana': aula.dia_semana,
+                'horario': aula.horario,
+                'local': aula.local,
+                'data_inicio': aula.data_inicio.strftime('%Y-%m-%d') if aula.data_inicio else '',
+                'data_fim': aula.data_fim.strftime('%Y-%m-%d') if aula.data_fim else '',
+                'material_necessario': aula.material_necessario,
+                'arquivo_anexo': aula.arquivo_anexo,
+                'exibir_no_painel': aula.exibir_no_painel
+            })
+        
+    except Exception as e:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({'erro': str(e)}), 500
+        else:
+            flash(f'Erro ao editar aula: {str(e)}', 'danger')
+            return redirect(url_for('departamentos.lista_departamentos'))
+
+
+@departamentos_bp.route('/cronogramas/<int:cronograma_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_cronograma(cronograma_id):
+    """Edita uma atividade/cronograma existente"""
+    try:
+        cronograma = CronogramaDepartamento.query.get_or_404(cronograma_id)
+        
+        if request.method == 'POST':
+            # Processar dados
+            data = request.get_json() if request.is_json else request.form.to_dict()
+            
+            # Atualizar cronograma
+            cronograma.titulo = data.get('titulo', cronograma.titulo)
+            cronograma.descricao = data.get('descricao', cronograma.descricao)
+            cronograma.horario = data.get('horario', '')
+            cronograma.local = data.get('local', '')
+            cronograma.responsavel = data.get('responsavel', '')
+            
+            # Atualizar data se fornecida
+            if data.get('data_evento'):
+                cronograma.data_evento = datetime.strptime(data['data_evento'], '%Y-%m-%d').date()
+            
+            # Atualizar exibir_no_painel
+            exibir_painel = data.get('exibir_no_painel', False)
+            if isinstance(exibir_painel, str):
+                exibir_painel = exibir_painel.lower() in ['true', '1', 'yes', 'on']
+            cronograma.exibir_no_painel = exibir_painel
+            
+            db.session.commit()
+            
+            if request.is_json:
+                return jsonify({'sucesso': True, 'mensagem': 'Atividade atualizada com sucesso!'})
+            else:
+                flash('Atividade atualizada com sucesso!', 'success')
+                return redirect(url_for('departamentos.editar_departamento', id=cronograma.departamento_id))
+        
+        # GET - retornar dados do cronograma
+        if request.is_json or request.args.get('format') == 'json':
+            return jsonify({
+                'id': cronograma.id,
+                'titulo': cronograma.titulo,
+                'descricao': cronograma.descricao,
+                'data_evento': cronograma.data_evento.strftime('%Y-%m-%d') if cronograma.data_evento else '',
+                'horario': cronograma.horario,
+                'local': cronograma.local,
+                'responsavel': cronograma.responsavel,
+                'exibir_no_painel': cronograma.exibir_no_painel
+            })
+        
+    except Exception as e:
+        db.session.rollback()
+        if request.is_json:
+            return jsonify({'erro': str(e)}), 500
+        else:
+            flash(f'Erro ao editar atividade: {str(e)}', 'danger')
+            return redirect(url_for('departamentos.lista_departamentos'))
+
+
 # ============================================================================
 # ROTAS PARA PAINEL DE DASHBOARD
 # ============================================================================
