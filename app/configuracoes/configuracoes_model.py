@@ -91,6 +91,7 @@ class Configuracao(db.Model):
                 cnpj='12.345.678/0001-90',
                 dirigente='Pastor João Silva',
                 tesoureiro='Maria Santos',
+                logo='logo_obpc_novo.jpg',  # Logo padrão
                 # Diretoria
                 presidente='Pastor João Silva',
                 vice_presidente='Pastora Ana Silva',
