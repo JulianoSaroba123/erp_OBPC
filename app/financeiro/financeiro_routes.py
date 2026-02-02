@@ -1988,6 +1988,106 @@ def excluir_comprovante(id):
     # Redirecionar de volta para a edição
     return redirect(url_for('financeiro.editar_lancamento', id=id))
 
+@financeiro_bp.route('/financeiro/upload-comprovantes/<int:id>', methods=['POST'])
+@login_required
+def upload_comprovantes(id):
+    """Upload de múltiplos comprovantes para um lançamento"""
+    try:
+        from app.financeiro.comprovante_model import Comprovante
+        import uuid
+        
+        lancamento = Lancamento.query.get_or_404(id)
+        
+        # Verificar se há arquivos
+        if 'comprovantes[]' not in request.files:
+            flash('Nenhum arquivo selecionado', 'warning')
+            return redirect(url_for('financeiro.editar_lancamento', id=id))
+        
+        files = request.files.getlist('comprovantes[]')
+        
+        if not files or files[0].filename == '':
+            flash('Nenhum arquivo selecionado', 'warning')
+            return redirect(url_for('financeiro.editar_lancamento', id=id))
+        
+        arquivos_salvos = 0
+        
+        for file in files:
+            if file and file.filename != '' and allowed_file(file.filename):
+                try:
+                    # Gerar nome único
+                    filename = secure_filename(file.filename)
+                    nome_unico = f"{uuid.uuid4().hex}_{filename}"
+                    
+                    # Criar diretório se não existir
+                    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'comprovantes')
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    # Salvar arquivo
+                    file_path = os.path.join(upload_dir, nome_unico)
+                    file.save(file_path)
+                    
+                    # Obter informações do arquivo
+                    file_size = os.path.getsize(file_path)
+                    
+                    # Criar registro no banco
+                    comprovante = Comprovante(
+                        lancamento_id=lancamento.id,
+                        arquivo=f"/static/uploads/comprovantes/{nome_unico}",
+                        nome_original=filename,
+                        tamanho=file_size,
+                        tipo_mime=file.content_type
+                    )
+                    db.session.add(comprovante)
+                    arquivos_salvos += 1
+                    
+                except Exception as e:
+                    current_app.logger.error(f'Erro ao processar arquivo {file.filename}: {str(e)}')
+                    continue
+        
+        if arquivos_salvos > 0:
+            db.session.commit()
+            flash(f'{arquivos_salvos} comprovante(s) adicionado(s) com sucesso!', 'success')
+        else:
+            flash('Nenhum arquivo foi processado', 'warning')
+        
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'Erro ao fazer upload de comprovantes: {str(e)}')
+        flash(f'Erro ao fazer upload: {str(e)}', 'danger')
+    
+    return redirect(url_for('financeiro.editar_lancamento', id=id))
+
+@financeiro_bp.route('/financeiro/excluir-comprovante-multiplo/<int:comprovante_id>', methods=['POST'])
+@login_required
+def excluir_comprovante_multiplo(comprovante_id):
+    """Exclui um comprovante específico da lista de múltiplos comprovantes"""
+    try:
+        from app.financeiro.comprovante_model import Comprovante
+        import os
+        
+        comprovante = Comprovante.query.get_or_404(comprovante_id)
+        lancamento_id = comprovante.lancamento_id
+        
+        # Tentar excluir o arquivo físico
+        try:
+            caminho_completo = os.path.join(current_app.root_path, comprovante.arquivo.lstrip('/'))
+            if os.path.exists(caminho_completo):
+                os.remove(caminho_completo)
+        except Exception as e:
+            current_app.logger.warning(f'Erro ao excluir arquivo físico: {str(e)}')
+        
+        # Excluir registro do banco
+        db.session.delete(comprovante)
+        db.session.commit()
+        
+        flash('Comprovante excluído com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir comprovante: {str(e)}', 'danger')
+    
+    return redirect(url_for('financeiro.editar_lancamento', id=lancamento_id))
+
 @financeiro_bp.route('/financeiro/relatorio')
 @login_required
 def gerar_relatorio():

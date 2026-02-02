@@ -157,45 +157,118 @@
                                       placeholder="Informações adicionais sobre o lançamento (opcional)">{% if lancamento and lancamento.observacoes and lancamento.observacoes != 'None' %}{{ lancamento.observacoes }}{% endif %}</textarea>
                         </div>
 
-                        <!-- Comprovante -->
+                        <!-- Comprovantes -->
                         <div class="mb-3">
-                            <label for="comprovante" class="form-label">Comprovante</label>
+                            <label for="comprovante" class="form-label">
+                                <i class="fas fa-paperclip me-1"></i> Comprovantes
+                            </label>
                             <input type="file" 
                                    class="form-control" 
                                    id="comprovante" 
                                    name="comprovante"
-                                   accept=".jpg,.jpeg,.png,.pdf">
+                                   accept=".jpg,.jpeg,.png,.pdf"
+                                   {% if not lancamento %}disabled{% endif %}>
                             <div class="form-text">
                                 <i class="fas fa-info-circle"></i> 
-                                Formatos aceitos: JPG, PNG, PDF (máx. 5MB)
+                                Formatos aceitos: JPG, PNG, PDF (máx. 5MB por arquivo)
+                                {% if not lancamento %}
+                                    <br><strong>Salve o lançamento primeiro para adicionar comprovantes</strong>
+                                {% endif %}
                             </div>
                             
-                            {% if lancamento and lancamento.tem_comprovante() %}
-                            <div class="mt-2">
-                                <div class="alert alert-info d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-paperclip me-2"></i>
-                                        <div>
-                                            <strong>Comprovante atual:</strong> 
-                                            <a href="{{ lancamento.comprovante }}" target="_blank" class="alert-link">
-                                                {{ lancamento.nome_arquivo_comprovante() }}
-                                            </a>
-                                            {% if lancamento.is_comprovante_imagem() %}
-                                                <i class="fas fa-image text-primary ms-1"></i>
-                                            {% elif lancamento.is_comprovante_pdf() %}
-                                                <i class="fas fa-file-pdf text-danger ms-1"></i>
-                                            {% endif %}
+                            {% if lancamento %}
+                                <!-- Comprovante Legado (se existir) -->
+                                {% if lancamento.comprovante and lancamento.comprovante.strip() %}
+                                <div class="mt-3">
+                                    <h6 class="text-muted"><i class="fas fa-file-alt me-1"></i> Comprovante Principal:</h6>
+                                    <div class="alert alert-info d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center">
+                                            <div>
+                                                <a href="{{ lancamento.comprovante }}" target="_blank" class="alert-link">
+                                                    {{ lancamento.nome_arquivo_comprovante() }}
+                                                </a>
+                                                {% if lancamento.is_comprovante_imagem() %}
+                                                    <i class="fas fa-image text-primary ms-1"></i>
+                                                {% elif lancamento.is_comprovante_pdf() %}
+                                                    <i class="fas fa-file-pdf text-danger ms-1"></i>
+                                                {% endif %}
+                                            </div>
                                         </div>
+                                        <form method="POST" action="{{ url_for('financeiro.excluir_comprovante', id=lancamento.id) }}" 
+                                              onsubmit="return confirm('Tem certeza que deseja excluir este comprovante?');" 
+                                              class="mb-0">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
                                     </div>
-                                    <form method="POST" action="{{ url_for('financeiro.excluir_comprovante', id=lancamento.id) }}" 
-                                          onsubmit="return confirm('Tem certeza que deseja excluir este comprovante?');" 
-                                          class="mb-0">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir comprovante">
-                                            <i class="fas fa-trash-alt"></i> Excluir
-                                        </button>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Lista de Comprovantes Adicionais -->
+                                {% if lancamento.comprovantes and lancamento.comprovantes|length > 0 %}
+                                <div class="mt-3">
+                                    <h6 class="text-muted">
+                                        <i class="fas fa-files me-1"></i> 
+                                        Comprovantes Adicionais ({{ lancamento.comprovantes|length }}):
+                                    </h6>
+                                    <div class="list-group">
+                                        {% for comp in lancamento.comprovantes %}
+                                        <div class="list-group-item d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center flex-grow-1">
+                                                {% if comp.is_imagem() %}
+                                                    <i class="fas fa-image text-primary me-2" style="font-size: 1.5rem;"></i>
+                                                {% elif comp.is_pdf() %}
+                                                    <i class="fas fa-file-pdf text-danger me-2" style="font-size: 1.5rem;"></i>
+                                                {% else %}
+                                                    <i class="fas fa-file text-secondary me-2" style="font-size: 1.5rem;"></i>
+                                                {% endif %}
+                                                <div>
+                                                    <a href="{{ comp.arquivo }}" target="_blank" class="text-decoration-none">
+                                                        <strong>{{ comp.nome_original }}</strong>
+                                                    </a>
+                                                    <br>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-hdd me-1"></i> {{ comp.tamanho_formatado() }}
+                                                        <i class="fas fa-calendar ms-2 me-1"></i> {{ comp.criado_em.strftime('%d/%m/%Y %H:%M') if comp.criado_em else 'N/A' }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <form method="POST" action="{{ url_for('financeiro.excluir_comprovante_multiplo', comprovante_id=comp.id) }}" 
+                                                  onsubmit="return confirm('Tem certeza que deseja excluir este comprovante?');" 
+                                                  class="mb-0">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Formulário para adicionar múltiplos comprovantes -->
+                                <div class="mt-3">
+                                    <form method="POST" 
+                                          action="{{ url_for('financeiro.upload_comprovantes', id=lancamento.id) }}" 
+                                          enctype="multipart/form-data" 
+                                          id="formUploadComprovantes">
+                                        <div class="input-group">
+                                            <input type="file" 
+                                                   class="form-control" 
+                                                   id="comprovantes_multiplos" 
+                                                   name="comprovantes[]"
+                                                   accept=".jpg,.jpeg,.png,.pdf"
+                                                   multiple>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="fas fa-upload me-1"></i> Adicionar Comprovantes
+                                            </button>
+                                        </div>
+                                        <small class="form-text text-muted">
+                                            <i class="fas fa-info-circle"></i> Você pode selecionar múltiplos arquivos de uma vez (Ctrl+Click ou Shift+Click)
+                                        </small>
                                     </form>
                                 </div>
-                            </div>
                             {% endif %}
                         </div>
 

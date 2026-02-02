@@ -31,6 +31,9 @@ class Lancamento(db.Model):
     projeto_id = db.Column(db.Integer, db.ForeignKey('projetos.id'), nullable=True)
     projeto = db.relationship('Projeto', back_populates='lancamentos')
     
+    # Relacionamento com múltiplos comprovantes
+    comprovantes = db.relationship('Comprovante', back_populates='lancamento', cascade='all, delete-orphan')
+    
     def __repr__(self):
         return f'<Lancamento {self.tipo}: R$ {self.valor:.2f} - {self.descricao}>'
     
@@ -76,8 +79,19 @@ class Lancamento(db.Model):
         }
     
     def tem_comprovante(self):
-        """Verifica se o lançamento possui comprovante anexado"""
+        """Verifica se o lançamento possui comprovante anexado (legado ou novos)"""
+        # Verifica comprovantes novos (relacionamento)
+        if self.comprovantes and len(self.comprovantes) > 0:
+            return True
+        # Verifica comprovante antigo (campo único)
         return self.comprovante is not None and self.comprovante.strip() != ''
+    
+    def total_comprovantes(self):
+        """Retorna o total de comprovantes (incluindo campo legado)"""
+        total = len(self.comprovantes) if self.comprovantes else 0
+        if self.comprovante and self.comprovante.strip():
+            total += 1
+        return total
     
     def nome_arquivo_comprovante(self):
         """Retorna apenas o nome do arquivo do comprovante"""
