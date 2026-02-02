@@ -460,15 +460,59 @@ class RelatorioFinanceiro:
             total_entradas_final = entradas_total
             total_saidas_final = saidas_total
         
-        saldo_final = saldo_anterior + total_entradas_final - total_saidas_final
+        saldo_bruto = saldo_anterior + total_entradas_final - total_saidas_final
+        
+        # Calcular total a ser enviado para a sede (30% + despesas fixas)
+        # 1. Calcular 30% administrativo
+        dizimos = 0.0
+        ofertas_alcadas = 0.0
+        
+        if lancamentos:
+            for lancamento in lancamentos:
+                if lancamento.tipo.lower() == 'entrada':
+                    categoria_lower = lancamento.categoria.lower() if lancamento.categoria else ''
+                    valor = lancamento.valor or 0.0
+                    
+                    # Dízimos
+                    if 'dizimo' in categoria_lower or 'dízimo' in categoria_lower:
+                        dizimos += valor
+                    # Ofertas Alçadas (excluindo OMN e Outras Ofertas)
+                    elif 'oferta' in categoria_lower:
+                        if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
+                            continue
+                        elif any(x in categoria_lower for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                            continue
+                        else:
+                            ofertas_alcadas += valor
+        
+        base_calculo = dizimos + ofertas_alcadas
+        valor_administrativo = base_calculo * (self.config.percentual_conselho / 100)
+        
+        # 2. Buscar despesas fixas
+        total_despesas_fixas = 0.0
+        try:
+            from app.financeiro.despesas_fixas_model import DespesaFixaConselho
+            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+            total_despesas_fixas = sum(d.valor_padrao for d in despesas_fixas)
+        except Exception as e:
+            current_app.logger.warning(f'Erro ao buscar despesas fixas: {str(e)}')
+        
+        # 3. Total a ser enviado
+        total_envio_sede = valor_administrativo + total_despesas_fixas
+        
+        # 4. Saldo real disponível
+        saldo_real_disponivel = saldo_bruto - total_envio_sede
         
         dados_resumo = [
             ['DESCRIÇÃO', 'VALOR'],
             ['Saldo Anterior', self._formatar_moeda(saldo_anterior)],
             ['Total de Entradas', f"+{self._formatar_moeda(total_entradas_final)}"],
             ['Total de Saídas', f"-{self._formatar_moeda(total_saidas_final)}"],
-            ['Movimento do Período', self._formatar_moeda(total_entradas_final - total_saidas_final)],
-            ['SALDO FINAL', self._formatar_moeda(saldo_final)]
+            ['Saldo Bruto do Período', self._formatar_moeda(saldo_bruto)],
+            ['(-) Total a Enviar Sede', f"-{self._formatar_moeda(total_envio_sede)}"],
+            ['    • Administrativo (30%)', f"-{self._formatar_moeda(valor_administrativo)}"],
+            ['    • Despesas Fixas', f"-{self._formatar_moeda(total_despesas_fixas)}"],
+            ['SALDO DISPONÍVEL', self._formatar_moeda(saldo_real_disponivel)]
         ]
         
         tabela_resumo = Table(dados_resumo, colWidths=[8*cm, 4*cm])
@@ -481,17 +525,27 @@ class RelatorioFinanceiro:
             ('FONTSIZE', (0, 0), (-1, 0), 12),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             
-            # Dados
-            ('FONTNAME', (0, 1), (-1, -2), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -2), 11),
+            # Dados normais
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -4), 11),
             ('ALIGN', (0, 1), (0, -1), 'LEFT'),
             ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
             
-            # Linha do saldo final
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#f0f8ff')),
+            # Linha "Total a Enviar Sede" em destaque
+            ('BACKGROUND', (0, -4), (-1, -4), colors.HexColor('#FFE4E1')),
+            ('FONTNAME', (0, -4), (-1, -4), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (0, -4), (1, -4), colors.HexColor('#DC143C')),
+            
+            # Sublinhas de detalhamento (administrativo e despesas fixas) - menor e indentadas
+            ('FONTSIZE', (0, -3), (0, -2), 9),
+            ('TEXTCOLOR', (0, -3), (1, -2), colors.grey),
+            ('LEFTPADDING', (0, -3), (0, -2), 20),
+            
+            # Linha do saldo disponível (final)
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#4A7C59')),
             ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, -1), (-1, -1), 14),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#001f3f')),
+            ('TEXTCOLOR', (0, -1), (-1, -1), colors.white),
             
             # Bordas
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
