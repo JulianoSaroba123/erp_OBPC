@@ -1622,8 +1622,12 @@ class RelatorioFinanceiro:
         valor_conselho = totais['valor_conselho']
         
         # Buscar despesas fixas ativas do banco de dados
-        from app.financeiro.despesas_fixas_model import DespesaFixaConselho
-        despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+        try:
+            from app.financeiro.despesas_fixas_model import DespesaFixaConselho
+            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+        except Exception as e:
+            current_app.logger.warning(f'Erro ao buscar despesas fixas: {str(e)}')
+            despesas_fixas = []
         
         # Organizar despesas fixas por nome
         despesas_dict = {
@@ -1647,20 +1651,16 @@ class RelatorioFinanceiro:
             else:
                 despesas_dict['outras'] += despesa.valor_padrao
         
-        # Preparar dados da tabela detalhada
+        # Preparar dados da tabela detalhada - SEMPRE MOSTRAR TODAS AS LINHAS
         dados_total_envio = [
             [f'💼 Administrativo ({int(self.config.percentual_conselho)}%)', self._formatar_moeda(valor_conselho)],
+            ['📊 Contador', self._formatar_moeda(despesas_dict['contador'])],
+            ['🌐 Site', self._formatar_moeda(despesas_dict['site'])],
+            ['💪 Força para Viver', self._formatar_moeda(despesas_dict['forca_viver'])],
+            ['🤝 Auxílio Conchas', self._formatar_moeda(despesas_dict['conchas'])],
         ]
         
-        # Adicionar cada despesa fixa (somente se houver valor)
-        if despesas_dict['contador'] > 0:
-            dados_total_envio.append(['📊 Contador', self._formatar_moeda(despesas_dict['contador'])])
-        if despesas_dict['site'] > 0:
-            dados_total_envio.append(['🌐 Site', self._formatar_moeda(despesas_dict['site'])])
-        if despesas_dict['forca_viver'] > 0:
-            dados_total_envio.append(['💪 Força para Viver', self._formatar_moeda(despesas_dict['forca_viver'])])
-        if despesas_dict['conchas'] > 0:
-            dados_total_envio.append(['🤝 Auxílio Conchas', self._formatar_moeda(despesas_dict['conchas'])])
+        # Adicionar outras despesas fixas se houver
         if despesas_dict['outras'] > 0:
             dados_total_envio.append(['📋 Outras Despesas Fixas', self._formatar_moeda(despesas_dict['outras'])])
         
@@ -1716,7 +1716,8 @@ class RelatorioFinanceiro:
         
         observacao = f"""
         <i>Observação: Este valor representa o total mensal a ser enviado para a Sede, 
-        incluindo o {int(self.config.percentual_conselho)}% administrativo e as despesas fixas cadastradas no sistema.</i>
+        incluindo o {int(self.config.percentual_conselho)}% administrativo e as despesas fixas cadastradas no sistema.
+        Configure os valores em Financeiro > Gerenciar Despesas Fixas.</i>
         """
         
         elementos.append(Spacer(1, 5))
