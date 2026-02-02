@@ -32,7 +32,12 @@ class Lancamento(db.Model):
     projeto = db.relationship('Projeto', back_populates='lancamentos')
     
     # Relacionamento com múltiplos comprovantes
-    comprovantes = db.relationship('Comprovante', back_populates='lancamento', cascade='all, delete-orphan')
+    # Usar lazy='dynamic' para evitar carregamento automático e problemas de import
+    comprovantes = db.relationship('Comprovante', 
+                                   foreign_keys='Comprovante.lancamento_id',
+                                   back_populates='lancamento', 
+                                   cascade='all, delete-orphan',
+                                   lazy='dynamic')
     
     def __repr__(self):
         return f'<Lancamento {self.tipo}: R$ {self.valor:.2f} - {self.descricao}>'
@@ -80,15 +85,15 @@ class Lancamento(db.Model):
     
     def tem_comprovante(self):
         """Verifica se o lançamento possui comprovante anexado (legado ou novos)"""
-        # Verifica comprovantes novos (relacionamento)
-        if self.comprovantes and len(self.comprovantes) > 0:
+        # Verifica comprovantes novos (relacionamento dynamic)
+        if self.comprovantes and self.comprovantes.count() > 0:
             return True
         # Verifica comprovante antigo (campo único)
         return self.comprovante is not None and self.comprovante.strip() != ''
     
     def total_comprovantes(self):
         """Retorna o total de comprovantes (incluindo campo legado)"""
-        total = len(self.comprovantes) if self.comprovantes else 0
+        total = self.comprovantes.count() if self.comprovantes else 0
         if self.comprovante and self.comprovante.strip():
             total += 1
         return total

@@ -206,14 +206,14 @@
                                 {% endif %}
                                 
                                 <!-- Lista de Comprovantes Adicionais -->
-                                {% if lancamento.comprovantes and lancamento.comprovantes|length > 0 %}
+                                {% if lancamento.comprovantes and lancamento.comprovantes.count() > 0 %}
                                 <div class="mt-3">
                                     <h6 class="text-muted">
                                         <i class="fas fa-files me-1"></i> 
-                                        Comprovantes Adicionais ({{ lancamento.comprovantes|length }}):
+                                        Comprovantes Adicionais ({{ lancamento.comprovantes.count() }}):
                                     </h6>
                                     <div class="list-group">
-                                        {% for comp in lancamento.comprovantes %}
+                                        {% for comp in lancamento.comprovantes.all() %}
                                         <div class="list-group-item d-flex align-items-center justify-content-between">
                                             <div class="d-flex align-items-center flex-grow-1">
                                                 {% if comp.is_imagem() %}
