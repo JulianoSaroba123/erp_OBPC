@@ -2707,6 +2707,94 @@ def gerar_lancamentos_despesas_fixas():
     
     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
+
+@financeiro_bp.route('/financeiro/gerar-lancamento-administrativo', methods=['POST'])
+@login_required
+def gerar_lancamento_administrativo():
+    """Gera lançamento de saída dos 30% administrativo para a sede"""
+    try:
+        mes = request.form.get('mes', type=int) or datetime.now().month
+        ano = request.form.get('ano', type=int) or datetime.now().year
+        
+        # Buscar configuração do sistema para obter percentual
+        config = Configuracao.obter_configuracao()
+        percentual_conselho = config.percentual_conselho if config else 30.0
+        
+        # Filtrar lançamentos do mês para calcular base
+        lancamentos_mes = Lancamento.query.filter(
+            extract('month', Lancamento.data) == mes,
+            extract('year', Lancamento.data) == ano
+        ).all()
+        
+        # Calcular base do conselho (Dízimos + Ofertas Alçadas)
+        dizimos = 0.0
+        ofertas_alcadas = 0.0
+        
+        for lancamento in lancamentos_mes:
+            if lancamento.tipo.lower() == 'entrada':
+                categoria_lower = lancamento.categoria.lower() if lancamento.categoria else ''
+                valor = lancamento.valor or 0.0
+                
+                # Dízimos
+                if 'dizimo' in categoria_lower or 'dízimo' in categoria_lower:
+                    dizimos += valor
+                # Ofertas Alçadas (excluindo OMN e Outras Ofertas)
+                elif 'oferta' in categoria_lower:
+                    # Excluir OMN
+                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
+                        continue
+                    # Excluir Outras Ofertas
+                    elif any(x in categoria_lower for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                        continue
+                    else:
+                        ofertas_alcadas += valor
+        
+        # Calcular valor do conselho
+        base_calculo = dizimos + ofertas_alcadas
+        valor_conselho = base_calculo * (percentual_conselho / 100)
+        
+        if valor_conselho <= 0:
+            flash(f'Não há base de cálculo para os {percentual_conselho:.0f}% administrativo no mês {mes:02d}/{ano}!', 'warning')
+            return redirect(request.referrer or url_for('financeiro.dashboard_moderno'))
+        
+        # Verificar se já existe lançamento dos 30% para este mês
+        existe = Lancamento.query.filter(
+            extract('month', Lancamento.data) == mes,
+            extract('year', Lancamento.data) == ano,
+            Lancamento.descricao.ilike(f'%{percentual_conselho:.0f}% administrativo%'),
+            Lancamento.tipo.ilike('saída')
+        ).first()
+        
+        if existe:
+            flash(f'Já existe um lançamento de {percentual_conselho:.0f}% administrativo para {mes:02d}/{ano}!', 'warning')
+            return redirect(request.referrer or url_for('financeiro.dashboard_moderno'))
+        
+        # Criar lançamento de saída
+        data_lancamento = date(ano, mes, 1)
+        
+        novo_lancamento = Lancamento(
+            data=data_lancamento,
+            tipo='Saída',
+            categoria='CONTRIB. SEDE',
+            descricao=f'{percentual_conselho:.0f}% Administrativo - Conselho Sede {mes:02d}/{ano}',
+            valor=valor_conselho,
+            conta='Dinheiro',
+            observacoes=f'Base de cálculo: R$ {base_calculo:.2f} (Dízimos: R$ {dizimos:.2f} + Ofertas Alçadas: R$ {ofertas_alcadas:.2f})',
+            origem='automatico'
+        )
+        
+        db.session.add(novo_lancamento)
+        db.session.commit()
+        
+        flash(f'Lançamento de {percentual_conselho:.0f}% administrativo criado: R$ {valor_conselho:.2f} para {mes:02d}/{ano}!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao gerar lançamento administrativo: {str(e)}', 'danger')
+    
+    return redirect(request.referrer or url_for('financeiro.dashboard_moderno'))
+
+
 @financeiro_bp.route('/financeiro/relatorio-caixa/preview')
 @login_required
 def relatorio_caixa_preview():

@@ -262,7 +262,7 @@
 
 <!-- Modal Gerar Lançamentos -->
 <div class="modal fade" id="gerarLancamentosModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title">
@@ -270,74 +270,134 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('financeiro.gerar_lancamentos_despesas_fixas') }}">
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Como funciona:</strong><br>
-                        Esta função cria automaticamente lançamentos de saída para todas as despesas fixas ativas 
-                        no mês selecionado. Os lançamentos serão criados com a categoria configurada em cada despesa.
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Como funciona:</strong><br>
+                    Esta função cria automaticamente lançamentos de saída para o mês selecionado.
+                </div>
+                
+                <!-- Seleção de Mês e Ano -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label for="mes_gerar" class="form-label"><strong>Mês</strong></label>
+                        <select class="form-select" id="mes_gerar" required>
+                            <option value="1">Janeiro</option>
+                            <option value="2">Fevereiro</option>
+                            <option value="3">Março</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Maio</option>
+                            <option value="6">Junho</option>
+                            <option value="7">Julho</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
                     </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label for="mes" class="form-label">Mês</label>
-                            <select class="form-select" id="mes" name="mes" required>
-                                <option value="1">Janeiro</option>
-                                <option value="2">Fevereiro</option>
-                                <option value="3">Março</option>
-                                <option value="4">Abril</option>
-                                <option value="5">Maio</option>
-                                <option value="6">Junho</option>
-                                <option value="7">Julho</option>
-                                <option value="8">Agosto</option>
-                                <option value="9">Setembro</option>
-                                <option value="10">Outubro</option>
-                                <option value="11">Novembro</option>
-                                <option value="12">Dezembro</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="ano" class="form-label">Ano</label>
-                            <input type="number" class="form-control" id="ano" name="ano" 
-                                   value="{{ now.year if now else 2025 }}" min="2020" max="2030" required>
-                        </div>
-                    </div>
-                    
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Atenção:</strong> Lançamentos já existentes não serão duplicados.
-                    </div>
-                    
-                    <div class="mb-3">
-                        <strong>Despesas ativas que serão lançadas:</strong>
-                        <ul class="mt-2">
-                            {% for despesa in despesas_ativas %}
-                            <li>{{ despesa.nome }} - R$ {{ "%.2f"|format(despesa.valor_padrao)|replace(".", ",") }} 
-                                <small class="text-muted">({{ despesa.categoria or 'DESP. FIXAS' }})</small>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                        <strong>Total: R$ {{ "%.2f"|format(total_despesas)|replace(".", ",") }}</strong>
+                    <div class="col-md-6">
+                        <label for="ano_gerar" class="form-label"><strong>Ano</strong></label>
+                        <input type="number" class="form-control" id="ano_gerar" 
+                               value="{{ now.year if now else 2025 }}" min="2020" max="2030" required>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-info">
-                        <i class="fas fa-magic me-1"></i>Gerar Lançamentos
-                    </button>
+                
+                <div class="row">
+                    <!-- Card 1: Despesas Fixas -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="mb-0"><i class="fas fa-list me-2"></i>Despesas Fixas</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Cria lançamentos de saída para todas as despesas fixas ativas:</p>
+                                <ul class="small mb-3">
+                                    {% for despesa in despesas_ativas %}
+                                    <li>{{ despesa.nome }} - <strong>R$ {{ "%.2f"|format(despesa.valor_padrao)|replace(".", ",") }}</strong></li>
+                                    {% endfor %}
+                                </ul>
+                                <strong class="text-primary">Total: R$ {{ "%.2f"|format(total_despesas)|replace(".", ",") }}</strong>
+                            </div>
+                            <div class="card-footer">
+                                <form method="POST" action="{{ url_for('financeiro.gerar_lancamentos_despesas_fixas') }}">
+                                    <input type="hidden" name="mes" id="mes_despesas">
+                                    <input type="hidden" name="ano" id="ano_despesas">
+                                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                                        <i class="fas fa-check me-1"></i>Gerar Despesas Fixas
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Card 2: 30% Administrativo -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="mb-0"><i class="fas fa-percentage me-2"></i>30% Administrativo</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="small">Cria lançamento de saída dos 30% do conselho administrativo calculado sobre:</p>
+                                <ul class="small mb-3">
+                                    <li><strong>Dízimos</strong></li>
+                                    <li><strong>Ofertas Alçadas</strong></li>
+                                    <li class="text-muted"><em>(Exclui OMN e Outras Ofertas)</em></li>
+                                </ul>
+                                <div class="alert alert-success small mb-0">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    O valor será calculado automaticamente com base nos lançamentos do mês.
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <form method="POST" action="{{ url_for('financeiro.gerar_lancamento_administrativo') }}">
+                                    <input type="hidden" name="mes" id="mes_admin">
+                                    <input type="hidden" name="ano" id="ano_admin">
+                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                        <i class="fas fa-percentage me-1"></i>Gerar 30% Administrativo
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </form>
+                
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Atenção:</strong> Lançamentos já existentes não serão duplicados.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// Definir mês atual ao abrir o modal
+// Definir mês atual ao abrir o modal e sincronizar valores
 document.getElementById('gerarLancamentosModal').addEventListener('show.bs.modal', function () {
     const mesAtual = new Date().getMonth() + 1;
-    document.getElementById('mes').value = mesAtual;
+    const anoAtual = new Date().getFullYear();
+    document.getElementById('mes_gerar').value = mesAtual;
+    document.getElementById('ano_gerar').value = anoAtual;
+    atualizarCamposOcultos();
 });
+
+// Atualizar campos ocultos quando mês/ano mudar
+document.getElementById('mes_gerar').addEventListener('change', atualizarCamposOcultos);
+document.getElementById('ano_gerar').addEventListener('change', atualizarCamposOcultos);
+
+function atualizarCamposOcultos() {
+    const mes = document.getElementById('mes_gerar').value;
+    const ano = document.getElementById('ano_gerar').value;
+    
+    // Atualizar ambos os formulários
+    document.getElementById('mes_despesas').value = mes;
+    document.getElementById('ano_despesas').value = ano;
+    document.getElementById('mes_admin').value = mes;
+    document.getElementById('ano_admin').value = ano;
+}
 
 function editarDespesa(id, nome, descricao, categoria, valor, ativo) {
     document.getElementById('edit_id').value = id;
