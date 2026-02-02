@@ -1998,21 +1998,41 @@ def upload_comprovantes(id):
         
         lancamento = Lancamento.query.get_or_404(id)
         
-        # Verificar se há arquivos
-        if 'comprovantes[]' not in request.files:
+        # Debug - verificar o que está vindo no request
+        current_app.logger.info(f">>> Upload comprovantes - Request.files: {request.files}")
+        current_app.logger.info(f">>> Request.files.keys(): {request.files.keys()}")
+        
+        # Verificar se há arquivos (tentar ambas as formas)
+        files = None
+        if 'comprovantes[]' in request.files:
+            files = request.files.getlist('comprovantes[]')
+            current_app.logger.info(f">>> Encontrado comprovantes[] - Total: {len(files)}")
+        elif 'comprovantes_multiplos' in request.files:
+            files = request.files.getlist('comprovantes_multiplos')
+            current_app.logger.info(f">>> Encontrado comprovantes_multiplos - Total: {len(files)}")
+        
+        if not files:
+            current_app.logger.warning(">>> Nenhum arquivo encontrado no request")
             flash('Nenhum arquivo selecionado', 'warning')
             return redirect(url_for('financeiro.editar_lancamento', id=id))
         
-        files = request.files.getlist('comprovantes[]')
-        
-        if not files or files[0].filename == '':
+        if files[0].filename == '':
+            current_app.logger.warning(">>> Primeiro arquivo está vazio")
             flash('Nenhum arquivo selecionado', 'warning')
             return redirect(url_for('financeiro.editar_lancamento', id=id))
         
         arquivos_salvos = 0
+        erros = []
         
         for file in files:
-            if file and file.filename != '' and allowed_file(file.filename):
+            if file and file.filename != '':
+                current_app.logger.info(f">>> Processando arquivo: {file.filename}")
+                
+                if not allowed_file(file.filename):
+                    erros.append(f"{file.filename} - formato não permitido")
+                    current_app.logger.warning(f">>> Arquivo rejeitado: {file.filename}")
+                    continue
+                
                 try:
                     # Gerar nome único
                     filename = secure_filename(file.filename)
@@ -2025,6 +2045,7 @@ def upload_comprovantes(id):
                     # Salvar arquivo
                     file_path = os.path.join(upload_dir, nome_unico)
                     file.save(file_path)
+                    current_app.logger.info(f">>> Arquivo salvo: {file_path}")
                     
                     # Obter informações do arquivo
                     file_size = os.path.getsize(file_path)
@@ -2039,20 +2060,33 @@ def upload_comprovantes(id):
                     )
                     db.session.add(comprovante)
                     arquivos_salvos += 1
+                    current_app.logger.info(f">>> Comprovante adicionado ao banco: {filename}")
                     
                 except Exception as e:
-                    current_app.logger.error(f'Erro ao processar arquivo {file.filename}: {str(e)}')
+                    erro_msg = f"{file.filename} - {str(e)}"
+                    erros.append(erro_msg)
+                    current_app.logger.error(f'>>> Erro ao processar arquivo {file.filename}: {str(e)}')
+                    import traceback
+                    traceback.print_exc()
                     continue
         
         if arquivos_salvos > 0:
             db.session.commit()
+            current_app.logger.info(f">>> Total de {arquivos_salvos} comprovantes salvos com sucesso")
             flash(f'{arquivos_salvos} comprovante(s) adicionado(s) com sucesso!', 'success')
         else:
+            current_app.logger.warning(">>> Nenhum arquivo foi salvo")
             flash('Nenhum arquivo foi processado', 'warning')
+        
+        if erros:
+            for erro in erros:
+                flash(f'Erro: {erro}', 'danger')
         
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'Erro ao fazer upload de comprovantes: {str(e)}')
+        current_app.logger.error(f'>>> Erro geral no upload de comprovantes: {str(e)}')
+        import traceback
+        traceback.print_exc()
         flash(f'Erro ao fazer upload: {str(e)}', 'danger')
     
     return redirect(url_for('financeiro.editar_lancamento', id=id))
