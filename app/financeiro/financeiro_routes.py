@@ -2884,8 +2884,72 @@ def relatorio_caixa_preview():
         # Calcular saldo do período
         totais['saldo_periodo'] = totais['total_entradas'] - totais['total_saidas']
         
-        # Buscar configuração da igreja
+        # ===== CALCULAR TOTAL A SER ENVIADO PARA SEDE =====
+        # 1. Calcular 30% administrativo (Dízimos + Ofertas Alçadas)
+        dizimos_total = 0
+        ofertas_alcadas_total = 0
+        
+        for lancamento in lancamentos:
+            if lancamento.tipo == 'Entrada':
+                categoria_lower = lancamento.categoria.lower() if lancamento.categoria else ''
+                valor = lancamento.valor or 0
+                
+                # Dízimos
+                if 'dizimo' in categoria_lower or 'dízimo' in categoria_lower:
+                    dizimos_total += valor
+                # Ofertas Alçadas (excluindo OMN e Outras Ofertas)
+                elif 'oferta' in categoria_lower:
+                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
+                        continue
+                    elif any(x in categoria_lower for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                        continue
+                    else:
+                        ofertas_alcadas_total += valor
+        
+        base_calculo_30 = dizimos_total + ofertas_alcadas_total
         config = Configuracao.obter_configuracao()
+        percentual_conselho = config.percentual_conselho if config else 30.0
+        valor_administrativo = base_calculo_30 * (percentual_conselho / 100)
+        
+        # 2. Buscar despesas fixas ativas
+        total_despesas_fixas = 0
+        despesas_fixas_lista = []
+        try:
+            from app.financeiro.despesas_fixas_model import DespesaFixaConselho
+            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+            for despesa in despesas_fixas:
+                total_despesas_fixas += despesa.valor_padrao
+                despesas_fixas_lista.append({
+                    'nome': despesa.nome,
+                    'valor': despesa.valor_padrao
+                })
+        except Exception as e:
+            current_app.logger.warning(f'Erro ao buscar despesas fixas: {str(e)}')
+        
+        # 3. Total a ser enviado e saldo real
+        total_envio_sede = valor_administrativo + total_despesas_fixas
+        
+        # Calcular saldo anterior (acumulado até mês anterior)
+        saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
+        
+        # Saldo bruto = saldo anterior + entradas - saídas
+        saldo_bruto = saldo_anterior + totais['total_entradas'] - totais['total_saidas']
+        
+        # Saldo real disponível = saldo bruto - total a enviar
+        saldo_real_disponivel = saldo_bruto - total_envio_sede
+        
+        # Adicionar aos totais
+        totais['base_calculo_30'] = base_calculo_30
+        totais['valor_administrativo'] = valor_administrativo
+        totais['total_despesas_fixas'] = total_despesas_fixas
+        totais['total_envio_sede'] = total_envio_sede
+        totais['saldo_anterior'] = saldo_anterior
+        totais['saldo_bruto'] = saldo_bruto
+        totais['saldo_real_disponivel'] = saldo_real_disponivel
+        totais['despesas_fixas_lista'] = despesas_fixas_lista
+        totais['percentual_conselho'] = percentual_conselho
+        
+        # Buscar configuração da igreja
         dados_igreja = {
             'nome': config.nome_igreja if config else 'Igreja OBPC',
             'endereco': config.endereco if config else '',
