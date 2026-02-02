@@ -17,6 +17,9 @@ from app.escala_ministerial.escala_routes import escala_ministerial_bp
 from app.financeiro.routes_conciliacao import conciliacao_bp
 from app.agenda_pastoral.agenda_pastoral_routes import agenda_pastoral_bp
 
+# Importar modelos para garantir registro no SQLAlchemy
+from app.financeiro.comprovante_model import Comprovante  # Necessário para relacionamento em Lancamento
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
