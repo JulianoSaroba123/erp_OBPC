@@ -443,7 +443,7 @@
   <div class="sidebar" id="sidebar">
     <div class="logo">
       {% if igreja_config and igreja_config.logo %}
-      <img src="{{ url_for('static', filename=igreja_config.logo) }}" alt="Logo {{ igreja_config.nome_igreja }}" 
+      <img src="{{ url_for('static', filename=igreja_config.logo) }}?v={{ igreja_config.atualizado_em.timestamp() if igreja_config.atualizado_em else '' }}" alt="Logo {{ igreja_config.nome_igreja }}" 
            onerror="this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}';" />
       {% else %}
       <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" alt="Logo OBPC" 

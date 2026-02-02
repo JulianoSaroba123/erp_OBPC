@@ -263,8 +263,8 @@
                                         </label>
                                         <div class="row align-items-center">
                                             <div class="col-md-3">
-                                                <img src="{{ url_for('static', filename=config.logo if config.logo else 'logo_obpc_novo.jpg') }}" 
-                                                     alt="Logo da Igreja" class="img-fluid border rounded" style="max-height: 100px;">
+                                                <img src="{{ url_for('static', filename=config.logo if config.logo else 'logo_obpc_novo.jpg') }}?v={{ config.atualizado_em.timestamp() if config.atualizado_em else '' }}" 
+                                                     alt="Logo da Igreja" class="img-fluid border rounded" style="max-height: 100px;" id="logo_preview_img">
                                             </div>
                                             <div class="col-md-9">
                                                 <input type="file" class="form-control" id="logo_upload" 
@@ -736,7 +736,7 @@ function previewLogo(input) {
     // Preview da imagem
     const reader = new FileReader();
     reader.onload = function(e) {
-        const img = document.querySelector('img[alt="Logo da Igreja"]');
+        const img = document.getElementById('logo_preview_img');
         if (img) {
             console.log('Atualizando preview da imagem');
             img.src = e.target.result;
@@ -813,18 +813,19 @@ function uploadLogo(file) {
             showAlert('success', data.message);
             
             // Atualizar src da imagem com o novo caminho
-            const img = document.querySelector('img[alt="Logo da Igreja"]');
+            const img = document.getElementById('logo_preview_img');
             if (img && data.logo_path) {
                 // Forçar recarga da imagem com timestamp para evitar cache
                 const timestamp = new Date().getTime();
-                const newSrc = '{{ url_for("static", filename="") }}' + data.filename + '?v=' + timestamp;
+                const newSrc = '{{ url_for("static", filename="") }}' + data.logo_path + '?v=' + timestamp;
                 console.log('Atualizando src da imagem para:', newSrc);
-                img.src = newSrc;
                 
-                // Forçar recarga após um pequeno delay
+                // Limpar cache e atualizar imagem
+                img.src = '';
                 setTimeout(() => {
                     img.src = newSrc;
-                }, 100);
+                    console.log('Imagem atualizada com sucesso');
+                }, 50);
             }
         } else {
             console.log('Erro no upload:', data.message);
@@ -840,10 +841,11 @@ function uploadLogo(file) {
             showAlert('danger', data.message);
             
             // Reverter imagem em caso de erro
-            const img = document.querySelector('img[alt="Logo da Igreja"]');
+            const img = document.getElementById('logo_preview_img');
             if (img) {
-                // Recarregar a imagem original
-                img.src = '{{ url_for("static", filename=config.logo.replace("static/", "") if config.logo else "logo_obpc_novo.jpg") }}';
+                // Recarregar a imagem original com timestamp para evitar cache
+                const timestamp = new Date().getTime();
+                img.src = '{{ url_for("static", filename=config.logo if config.logo else "logo_obpc_novo.jpg") }}?v=' + timestamp;
             }
         }
     })
