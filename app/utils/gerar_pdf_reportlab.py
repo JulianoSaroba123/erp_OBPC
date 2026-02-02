@@ -1603,7 +1603,7 @@ class RelatorioFinanceiro:
         return elementos
     
     def _criar_secao_total_envio_sede(self, totais, envios):
-        """Cria seção do total de envio para sede (conselho + projetos)"""
+        """Cria seção do total de envio para sede (conselho + projetos + despesas fixas)"""
         elementos = []
         
         secao_style = ParagraphStyle(
@@ -1616,24 +1616,59 @@ class RelatorioFinanceiro:
             fontName='Helvetica-Bold'
         )
         
-        elementos.append(Paragraph("TOTAL DE ENVIO PARA SEDE", secao_style))
+        elementos.append(Paragraph("💰 TOTAL A SER ENVIADO PARA SEDE", secao_style))
         
-        # Calcular total dos envios (projetos/contador/etc)
-        total_envio_projetos = sum(envios.values())
-        
-        # Valor do conselho administrativo
+        # Valor do conselho administrativo (30%)
         valor_conselho = totais['valor_conselho']
         
-        # Total geral para sede
-        total_geral_sede = valor_conselho + total_envio_projetos
+        # Buscar despesas fixas ativas do banco de dados
+        from app.financeiro.despesas_fixas_model import DespesaFixaConselho
+        despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
         
-        # Preparar dados da tabela
+        # Organizar despesas fixas por nome
+        despesas_dict = {
+            'contador': 0.0,
+            'site': 0.0,
+            'forca_viver': 0.0,
+            'conchas': 0.0,
+            'outras': 0.0
+        }
+        
+        for despesa in despesas_fixas:
+            nome_lower = despesa.nome.lower()
+            if 'contador' in nome_lower:
+                despesas_dict['contador'] = despesa.valor_padrao
+            elif 'site' in nome_lower:
+                despesas_dict['site'] = despesa.valor_padrao
+            elif 'força' in nome_lower or 'forca' in nome_lower or 'viver' in nome_lower:
+                despesas_dict['forca_viver'] = despesa.valor_padrao
+            elif 'conchas' in nome_lower or 'auxilio' in nome_lower or 'auxílio' in nome_lower:
+                despesas_dict['conchas'] = despesa.valor_padrao
+            else:
+                despesas_dict['outras'] += despesa.valor_padrao
+        
+        # Preparar dados da tabela detalhada
         dados_total_envio = [
-            [f'Valor do Conselho Administrativo ({int(self.config.percentual_conselho)}%)', self._formatar_moeda(valor_conselho)],
-            ['Total dos Projetos/Contador/Ofertas', self._formatar_moeda(total_envio_projetos)],
+            [f'💼 Administrativo ({int(self.config.percentual_conselho)}%)', self._formatar_moeda(valor_conselho)],
         ]
         
-        # Tabela de composição
+        # Adicionar cada despesa fixa (somente se houver valor)
+        if despesas_dict['contador'] > 0:
+            dados_total_envio.append(['📊 Contador', self._formatar_moeda(despesas_dict['contador'])])
+        if despesas_dict['site'] > 0:
+            dados_total_envio.append(['🌐 Site', self._formatar_moeda(despesas_dict['site'])])
+        if despesas_dict['forca_viver'] > 0:
+            dados_total_envio.append(['💪 Força para Viver', self._formatar_moeda(despesas_dict['forca_viver'])])
+        if despesas_dict['conchas'] > 0:
+            dados_total_envio.append(['🤝 Auxílio Conchas', self._formatar_moeda(despesas_dict['conchas'])])
+        if despesas_dict['outras'] > 0:
+            dados_total_envio.append(['📋 Outras Despesas Fixas', self._formatar_moeda(despesas_dict['outras'])])
+        
+        # Calcular total geral
+        total_despesas_fixas = sum(despesas_dict.values())
+        total_geral_sede = valor_conselho + total_despesas_fixas
+        
+        # Tabela de composição detalhada
         tabela_composicao = Table(dados_total_envio, colWidths=[12*cm, 4*cm])
         tabela_composicao.setStyle(TableStyle([
             ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
@@ -1643,15 +1678,16 @@ class RelatorioFinanceiro:
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.HexColor('#F0F8F0')]),  # Verde muito claro
+            ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.HexColor('#F0F8F0'), colors.HexColor('#FFFFFF')]),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#2E86AB')),  # Azul do logo
         ]))
         
         elementos.append(tabela_composicao)
+        elementos.append(Spacer(1, 10))
         
         # Total geral destacado
-        total_geral_dados = [['TOTAL GERAL PARA SEDE', self._formatar_moeda(total_geral_sede)]]
+        total_geral_dados = [['✅ TOTAL A SER ENVIADO', self._formatar_moeda(total_geral_sede)]]
         tabela_total_geral = Table(total_geral_dados, colWidths=[12*cm, 4*cm])
         tabela_total_geral.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#4A7C59')),  # Verde do logo
@@ -1667,7 +1703,25 @@ class RelatorioFinanceiro:
         ]))
         
         elementos.append(tabela_total_geral)
-        elementos.append(Spacer(1, 30))
+        
+        # Observação explicativa
+        obs_style = ParagraphStyle(
+            'ObsEnvio',
+            fontSize=9,
+            textColor=colors.grey,
+            alignment=TA_LEFT,
+            spaceAfter=10,
+            fontName='Helvetica'
+        )
+        
+        observacao = f"""
+        <i>Observação: Este valor representa o total mensal a ser enviado para a Sede, 
+        incluindo o {int(self.config.percentual_conselho)}% administrativo e as despesas fixas cadastradas no sistema.</i>
+        """
+        
+        elementos.append(Spacer(1, 5))
+        elementos.append(Paragraph(observacao, obs_style))
+        elementos.append(Spacer(1, 20))
         
         return elementos
     
