@@ -2280,8 +2280,29 @@ def relatorio_caixa():
         totais['saldo_mes'] = totais['total_entradas'] - totais['total_saidas']
         totais['saldo_acumulado'] = totais['saldo_anterior'] + totais['saldo_mes']
         
-        # Buscar dados de configuração da igreja
+        # Calcular 30% administrativo e despesas fixas
+        base_calculo_30 = totais['total_dizimos'] + totais['total_ofertas']
         config = Configuracao.obter_configuracao()
+        percentual = config.percentual_conselho if config and config.percentual_conselho else 30
+        valor_administrativo = base_calculo_30 * (percentual / 100)
+        
+        # Buscar despesas fixas ativas
+        try:
+            total_despesas_fixas = 0
+            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+            if despesas_fixas:
+                total_despesas_fixas = sum(d.valor_padrao for d in despesas_fixas)
+        except Exception as e:
+            print(f"Erro ao buscar despesas fixas: {e}")
+            total_despesas_fixas = 0
+        
+        # Adicionar ao dict totais
+        totais['trinta_porcento_conselho'] = valor_administrativo
+        totais['despesas_fixas_conselho'] = total_despesas_fixas
+        totais['total_envio_sede'] = valor_administrativo + total_despesas_fixas
+        totais['saldo_real_disponivel'] = totais['saldo_acumulado'] - totais['total_envio_sede']
+        
+        # Buscar dados de configuração da igreja
         dados_igreja = {
             'dirigente': config.presidente if config.presidente else 'Pastor Responsável',
             'tesoureiro': config.primeiro_tesoureiro if config.primeiro_tesoureiro else 'Tesoureiro(a)'
