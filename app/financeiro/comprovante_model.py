@@ -18,8 +18,8 @@ class Comprovante(db.Model):
     tipo_mime = db.Column(db.String(100), nullable=True)  # Tipo MIME do arquivo
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relacionamento com Lancamento
-    lancamento = db.relationship('Lancamento', back_populates='comprovantes')
+    # Relacionamento com Lancamento (apenas referência, sem back_populates para evitar problemas circulares)
+    # O relacionamento principal está em Lancamento.comprovantes
     
     def __repr__(self):
         return f'<Comprovante {self.nome_original}>'

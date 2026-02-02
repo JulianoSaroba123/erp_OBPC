@@ -32,10 +32,9 @@ class Lancamento(db.Model):
     projeto = db.relationship('Projeto', back_populates='lancamentos')
     
     # Relacionamento com múltiplos comprovantes
-    # Usar lazy='dynamic' para evitar carregamento automático e problemas de import
+    # Relacionamento unidirecional para evitar problemas de import circular
     comprovantes = db.relationship('Comprovante', 
                                    foreign_keys='Comprovante.lancamento_id',
-                                   back_populates='lancamento', 
                                    cascade='all, delete-orphan',
                                    lazy='dynamic')
     
