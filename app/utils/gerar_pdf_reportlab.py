@@ -659,7 +659,10 @@ class RelatorioFinanceiro:
         elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
         elementos.append(Spacer(1, 10))
         
-        data_atual = datetime.now().strftime('%d/%m/%Y às %H:%M')
+        # Usar timezone de Brasília (UTC-3)
+        from datetime import timezone, timedelta
+        brasilia_tz = timezone(timedelta(hours=-3))
+        data_atual = datetime.now(brasilia_tz).strftime('%d/%m/%Y às %H:%M')
         elementos.append(Paragraph(f"Relatório gerado em: {data_atual}", self.styles['rodape']))
         
         # Usar rodapé configurado
@@ -1842,8 +1845,11 @@ class RelatorioFinanceiro:
         """Cria rodapé com data e local"""
         elementos = []
         
-        # Data e local
-        data_atual = datetime.now()
+        # Data e local com timezone correto (Brasília UTC-3)
+        from datetime import timezone, timedelta
+        brasilia_tz = timezone(timedelta(hours=-3))
+        data_atual = datetime.now(brasilia_tz)
+        
         meses = [
             '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
