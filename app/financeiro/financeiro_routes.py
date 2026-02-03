@@ -2851,11 +2851,20 @@ def relatorio_sede():
                              data_geracao=date.today())
         
     except Exception as e:
-        print(f"DEBUG: ERRO: {e}")
+        current_app.logger.error(f"Erro ao gerar relatório da sede: {e}")
         import traceback
-        print(f"DEBUG: TRACEBACK: {traceback.format_exc()}")
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
         flash(f'Erro ao gerar relatório da sede: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.lista_lancamentos'))
+        # NÃO redirecionar, mostrar erro no próprio template
+        return render_template('financeiro/relatorio_sede.html',
+                             dados_igreja={'cidade': 'Tietê', 'bairro': 'Centro', 'dirigente': 'Pastor', 'tesoureiro': 'Tesoureiro', 'saldo_anterior': 0},
+                             totais={'dizimos': 0, 'ofertas_alcadas': 0, 'outras_ofertas': 0, 'oferta_omn': 0, 'total_geral': 0, 'despesas_financeiras': 0, 'saldo_mes': 0, 'valor_conselho': 0, 'total_dizimos_ofertas': 0, 'percentual_30': 0},
+                             envios={},
+                             envios_detalhados={},
+                             total_envio_sede=0,
+                             mes=int(request.args.get('mes', 1)),
+                             ano=int(request.args.get('ano', 2026)),
+                             data_geracao=date.today())
 
 @financeiro_bp.route('/financeiro/despesas-fixas', methods=['GET', 'POST'])
 @login_required
