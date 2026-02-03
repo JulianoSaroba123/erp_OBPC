@@ -130,11 +130,19 @@ class Configuracao(db.Model):
     def salvar(self):
         """Salva as alterações da configuração no banco"""
         try:
+            # Forçar atualização do timestamp
             self.atualizado_em = datetime.utcnow()
-            db.session.add(self)  # Garantir que o objeto está na sessão
-            db.session.flush()  # Forçar atualização antes do commit
+            
+            # Garantir que o objeto está na sessão
+            db.session.merge(self)
+            
+            # Commit
             db.session.commit()
-            print(f">>> Configuração salva com sucesso! ID: {self.id}")
+            
+            # Refrescar o objeto para ter os dados mais recentes do banco
+            db.session.refresh(self)
+            
+            print(f">>> Configuração salva com sucesso! ID: {self.id}, Logo: {self.logo}, Atualizado em: {self.atualizado_em}")
             return True
         except Exception as e:
             db.session.rollback()
