@@ -2633,13 +2633,17 @@ def relatorio_sede():
         try:
             from app.configuracoes.configuracoes_model import Configuracao
             config = Configuracao.obter_configuracao_atual()
+            
+            # Calcular saldo anterior (até o final do mês anterior)
+            saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
+            
             if config:
                 dados_igreja = {
                     'cidade': config.cidade or 'Tietê',
                     'bairro': config.bairro or 'Centro', 
-                    'dirigente': config.pastor or 'Pastor Responsável',
-                    'tesoureiro': config.tesoureiro or 'Tesoureiro(a)',
-                    'saldo_anterior': 0.0
+                    'dirigente': config.presidente or config.pastor or 'Pastor Responsável',
+                    'tesoureiro': config.primeiro_tesoureiro or config.tesoureiro or 'Tesoureiro(a)',
+                    'saldo_anterior': saldo_anterior
                 }
             else:
                 dados_igreja = {
@@ -2647,10 +2651,12 @@ def relatorio_sede():
                     'bairro': 'Centro', 
                     'dirigente': 'Pastor Responsável',
                     'tesoureiro': 'Tesoureiro(a)',
-                    'saldo_anterior': 0.0
+                    'saldo_anterior': saldo_anterior
                 }
         except Exception as e:
             print(f"DEBUG: Erro ao buscar configuração: {e}")
+            import traceback
+            traceback.print_exc()
             dados_igreja = {
                 'cidade': 'Tietê',
                 'bairro': 'Centro', 
