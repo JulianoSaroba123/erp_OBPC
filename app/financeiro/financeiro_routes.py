@@ -2266,6 +2266,173 @@ def debug_outras_ofertas():
     
     return html
 
+@financeiro_bp.route('/financeiro/debug-saldo-banco')
+@login_required
+def debug_saldo_banco():
+    """Debug para identificar diferença no saldo do banco"""
+    mes = request.args.get('mes', type=int, default=1)
+    ano = request.args.get('ano', type=int, default=2026)
+    
+    # Buscar TODOS os lançamentos até o mês especificado
+    from datetime import date
+    data_final = date(ano, mes, 28)  # Último dia considerado do mês
+    
+    lancamentos = Lancamento.query.filter(
+        Lancamento.data <= data_final
+    ).order_by(Lancamento.data, Lancamento.id).all()
+    
+    # Separar por conta BANCO
+    saldo_banco = 0
+    entradas_banco = 0
+    saidas_banco = 0
+    lancamentos_banco = []
+    
+    for lanc in lancamentos:
+        conta = (lanc.conta or '').lower()
+        categoria = (lanc.categoria or '').lower()
+        
+        # Apenas BANCO e PIX
+        if 'banco' not in conta and 'pix' not in conta:
+            continue
+        
+        valor = lanc.valor or 0
+        
+        # Verificar se é destinação (não afeta saldo)
+        eh_destinacao = any(x in categoria for x in [
+            'destinação', 'destinacao', 
+            'transferência interna', 'transferencia interna'
+        ])
+        
+        if lanc.tipo == 'Entrada':
+            saldo_banco += valor
+            entradas_banco += valor
+            operacao = 'ENTRADA'
+            cor = 'success'
+        elif lanc.tipo == 'Saída' and not eh_destinacao:
+            saldo_banco -= valor
+            saidas_banco += valor
+            operacao = 'SAÍDA'
+            cor = 'danger'
+        else:
+            operacao = 'DESTINAÇÃO (ignorado)'
+            cor = 'secondary'
+        
+        lancamentos_banco.append({
+            'id': lanc.id,
+            'data': lanc.data,
+            'tipo': lanc.tipo,
+            'categoria': lanc.categoria,
+            'descricao': lanc.descricao or '',
+            'conta': lanc.conta,
+            'valor': valor,
+            'operacao': operacao,
+            'saldo_apos': saldo_banco,
+            'cor': cor,
+            'eh_destinacao': eh_destinacao
+        })
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Debug Saldo Banco - até {mes:02d}/{ano}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-light">
+        <div class="container-fluid mt-4">
+            <h2>🔍 Debug: Saldo do Banco - até {mes:02d}/{ano}</h2>
+            
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <h6 class="text-success">Total Entradas</h6>
+                            <h4>R$ {entradas_banco:.2f}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-danger">
+                        <div class="card-body text-center">
+                            <h6 class="text-danger">Total Saídas</h6>
+                            <h4>R$ {saidas_banco:.2f}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-primary">
+                        <div class="card-body text-center">
+                            <h6 class="text-primary">Saldo Calculado</h6>
+                            <h4>R$ {saldo_banco:.2f}</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <h6 class="text-warning">Saldo Real (Banco)</h6>
+                            <h4>R$ 1.026,90</h4>
+                            <small class="text-danger">Diferença: R$ {saldo_banco - 1026.90:.2f}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <h4>Todos os Lançamentos de BANCO/PIX (ordem cronológica):</h4>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Data</th>
+                            <th>Operação</th>
+                            <th>Categoria</th>
+                            <th>Descrição</th>
+                            <th>Conta</th>
+                            <th>Valor</th>
+                            <th>Saldo Após</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    """
+    
+    for item in lancamentos_banco:
+        html += f"""
+                    <tr class="table-{item['cor']}">
+                        <td>{item['id']}</td>
+                        <td>{item['data'].strftime('%d/%m/%Y')}</td>
+                        <td><strong>{item['operacao']}</strong></td>
+                        <td>{item['categoria']}</td>
+                        <td>{item['descricao'][:50]}</td>
+                        <td>{item['conta']}</td>
+                        <td class="text-end">R$ {item['valor']:.2f}</td>
+                        <td class="text-end"><strong>R$ {item['saldo_apos']:.2f}</strong></td>
+                    </tr>
+        """
+    
+    html += """
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="alert alert-info mt-3">
+                <strong>Instruções:</strong>
+                <ul>
+                    <li>Compare o Saldo Calculado (R$ """ + f"{saldo_banco:.2f}" + """) com o Saldo Real do Banco (R$ 1.026,90)</li>
+                    <li>Procure por lançamentos duplicados, com valores errados ou tipos invertidos</li>
+                    <li>Destinações são ignoradas no cálculo (aparecem em cinza)</li>
+                    <li>Verde = Entradas (+), Vermelho = Saídas (-), Cinza = Destinações (ignoradas)</li>
+                </ul>
+            </div>
+            
+            <a href="/financeiro/relatorio-caixa?mes=""" + str(mes) + """&ano=""" + str(ano) + """" class="btn btn-secondary mb-4">← Voltar ao Relatório</a>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html
+
 @financeiro_bp.route('/financeiro/relatorio-caixa')
 @login_required
 def relatorio_caixa():
