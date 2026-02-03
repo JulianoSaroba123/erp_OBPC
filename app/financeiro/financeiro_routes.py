@@ -2632,7 +2632,7 @@ def relatorio_sede():
         # Buscar dados da configuração
         try:
             from app.configuracoes.configuracoes_model import Configuracao
-            config = Configuracao.obter_configuracao_atual()
+            config = Configuracao.obter_configuracao()
             
             # Calcular saldo anterior (até o final do mês anterior)
             saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
@@ -2641,8 +2641,8 @@ def relatorio_sede():
                 dados_igreja = {
                     'cidade': config.cidade or 'Tietê',
                     'bairro': config.bairro or 'Centro', 
-                    'dirigente': config.presidente or config.pastor or 'Pastor Responsável',
-                    'tesoureiro': config.primeiro_tesoureiro or config.tesoureiro or 'Tesoureiro(a)',
+                    'dirigente': config.presidente or 'Pastor Responsável',
+                    'tesoureiro': config.primeiro_tesoureiro or 'Tesoureiro(a)',
                     'saldo_anterior': saldo_anterior
                 }
             else:
