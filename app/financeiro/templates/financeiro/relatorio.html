@@ -108,17 +108,38 @@
                         </tr>
                         {% endfor %}
                     </tbody>
-                    <tfoot class="table-secondary">
+                    <tfoot class="table-light">
                         <tr>
-                            <td colspan="4" class="fw-bold text-end">TOTAIS:</td>
-                            <td class="fw-bold text-end">
-                                <div class="text-success">Entradas: R$ {{ "%.2f"|format(totais.entradas)|replace(".", ",") }}</div>
-                                <div class="text-danger">Saídas: R$ {{ "%.2f"|format(totais.saidas)|replace(".", ",") }}</div>
-                                <div class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %} border-top pt-1">
-                                    Saldo: R$ {{ "%.2f"|format(totais.saldo)|replace(".", ",") }}
+                            <td colspan="7" class="p-3">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="card border-success h-100">
+                                            <div class="card-body text-center py-2">
+                                                <small class="text-muted d-block">Entradas</small>
+                                                <h5 class="text-success mb-0">R$ {{ "%.2f"|format(totais.entradas)|replace(".", ",") }}</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-danger h-100">
+                                            <div class="card-body text-center py-2">
+                                                <small class="text-muted d-block">Saídas</small>
+                                                <h5 class="text-danger mb-0">R$ {{ "%.2f"|format(totais.saidas)|replace(".", ",") }}</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card border-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %} h-100">
+                                            <div class="card-body text-center py-2">
+                                                <small class="text-muted d-block">Saldo</small>
+                                                <h5 class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %} mb-0">
+                                                    R$ {{ "%.2f"|format(totais.saldo)|replace(".", ",") }}
+                                                </h5>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
-                            <td colspan="2"></td>
                         </tr>
                     </tfoot>
                 </table>
