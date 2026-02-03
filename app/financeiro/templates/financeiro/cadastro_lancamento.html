@@ -166,13 +166,12 @@
                                    class="form-control" 
                                    id="comprovante" 
                                    name="comprovante"
-                                   accept=".jpg,.jpeg,.png,.pdf"
-                                   {% if not lancamento %}disabled{% endif %}>
+                                   accept=".jpg,.jpeg,.png,.pdf">
                             <div class="form-text">
                                 <i class="fas fa-info-circle"></i> 
                                 Formatos aceitos: JPG, PNG, PDF (máx. 5MB por arquivo)
                                 {% if not lancamento %}
-                                    <br><strong>Salve o lançamento primeiro para adicionar comprovantes</strong>
+                                    <br><strong>O comprovante será salvo junto com o lançamento</strong>
                                 {% endif %}
                             </div>
                             
