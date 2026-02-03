@@ -851,35 +851,61 @@ class RelatorioFinanceiro:
         elementos = []
         
         # Logo da configuração no cabeçalho da sede
+        logo_carregada = False
         try:
             # Usar logo da configuração se disponível
-            if self.config.logo and self.config.exibir_logo_relatorio:
+            if self.config and self.config.logo:
+                current_app.logger.info(f'Tentando carregar logo: {self.config.logo}')
+                
                 # Construir caminho absoluto do logo
                 if self.config.logo.startswith('static/'):
                     # Remove 'static/' do início para usar com static_folder
                     logo_filename = self.config.logo.replace('static/', '')
                     logo_path = os.path.join(current_app.static_folder, logo_filename)
-                else:
+                    current_app.logger.info(f'Caminho logo (static/): {logo_path}')
+                elif self.config.logo.startswith('uploads/'):
+                    # Logo está em uploads
                     logo_path = os.path.join(current_app.root_path, '..', self.config.logo)
-            else:
-                # Fallback para logos padrão
+                    current_app.logger.info(f'Caminho logo (uploads/): {logo_path}')
+                else:
+                    # Tenta diretamente
+                    logo_path = os.path.join(current_app.root_path, '..', self.config.logo)
+                    current_app.logger.info(f'Caminho logo (direto): {logo_path}')
+                
+                if os.path.exists(logo_path):
+                    current_app.logger.info(f'Logo encontrada em: {logo_path}')
+                    logo = Image(logo_path, width=180, height=120)
+                    logo.hAlign = 'CENTER'
+                    elementos.append(logo)
+                    elementos.append(Spacer(1, 20))
+                    logo_carregada = True
+                else:
+                    current_app.logger.warning(f'Logo não encontrada em: {logo_path}')
+            
+            # Se não carregou, tenta fallback
+            if not logo_carregada:
+                current_app.logger.info('Tentando logos de fallback...')
                 fallback_logos = ['Logo_OBPC.jpg', 'logo_obpc_novo.jpg', 'logo_igreja_20251025_164525.jpg']
-                logo_path = None
                 for fallback_logo in fallback_logos:
                     test_path = os.path.join(current_app.static_folder, fallback_logo)
+                    current_app.logger.info(f'Testando: {test_path}')
                     if os.path.exists(test_path):
-                        logo_path = test_path
+                        current_app.logger.info(f'Logo fallback encontrada: {test_path}')
+                        logo = Image(test_path, width=180, height=120)
+                        logo.hAlign = 'CENTER'
+                        elementos.append(logo)
+                        elementos.append(Spacer(1, 20))
+                        logo_carregada = True
                         break
-            
-            if logo_path and os.path.exists(logo_path):
-                logo = Image(logo_path, width=180, height=120)
-                logo.hAlign = 'CENTER'
-                elementos.append(logo)
-                elementos.append(Spacer(1, 20))
+                
+                if not logo_carregada:
+                    current_app.logger.warning('Nenhuma logo encontrada (nem configuração nem fallback)')
+                    
         except Exception as e:
             # Log do erro para debug
-            current_app.logger.warning(f'Erro ao carregar logo: {str(e)}')
-            pass
+            current_app.logger.error(f'Erro ao carregar logo no PDF: {str(e)}')
+            import traceback
+            current_app.logger.error(traceback.format_exc())
         
         # Título principal centralizado
         titulo_style = ParagraphStyle(
