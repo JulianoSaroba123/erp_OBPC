@@ -162,49 +162,50 @@
         <div class="col-lg-10">
             <div class="card">
                 <div class="card-body p-5">
-                    <!-- Cabeçalho Oficial -->
+                    <!-- Cabeçalho Oficial com Logo -->
                     <div class="text-center mb-4">
+                        {% if igreja_config and igreja_config.logo %}
+                        <img src="{{ url_for('static', filename=igreja_config.logo) }}?v={{ igreja_config.atualizado_em.timestamp() if igreja_config.atualizado_em else '' }}" 
+                             alt="Logo OBPC" 
+                             style="max-width: 150px; height: auto; margin-bottom: 15px;"
+                             onerror="this.style.display='none';">
+                        {% endif %}
                         <h3 class="fw-bold text-primary">OBPC - O BRASIL PARA CRISTO</h3>
-                        <h4 class="text-dark">RELATÓRIO MENSAL</h4>
+                        <h5 class="text-secondary">{{ dados_igreja.cidade }} - SP</h5>
+                        <h4 class="text-dark mt-3">RELATÓRIO MENSAL OFICIAL</h4>
                         <hr class="border-primary border-2">
                     </div>
 
                     <!-- Dados da Igreja -->
                     <div class="row mb-4">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <td class="fw-bold">Cidade:</td>
-                                    <td>{{ dados_igreja.cidade }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold">Bairro:</td>
-                                    <td>{{ dados_igreja.bairro }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold">Mês/Ano:</td>
-                                    <td>{{ "%02d"|format(mes) }}/{{ ano }}</td>
-                                </tr>
-                            </table>
+                        <div class="col-md-4">
+                            <div class="card border-primary h-100">
+                                <div class="card-body text-center py-3">
+                                    <h6 class="text-muted mb-2">PERÍODO</h6>
+                                    <h5 class="text-primary fw-bold mb-1">{{ "%02d"|format(mes) }}/{{ ano }}</h5>
+                                    <small class="text-muted">{{ ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes-1] }} de {{ ano }}</small>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <td class="fw-bold">Dirigente:</td>
-                                    <td>{{ dados_igreja.dirigente }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold">Tesoureiro:</td>
-                                    <td>{{ dados_igreja.tesoureiro }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="fw-bold">Saldo Anterior:</td>
-                                    <td class="fw-bold {{ dados_igreja.saldo_anterior|valor_negativo_vermelho }}">
+                        <div class="col-md-4">
+                            <div class="card border-success h-100">
+                                <div class="card-body py-3">
+                                    <h6 class="text-muted mb-2"><i class="fas fa-user-tie me-1"></i> RESPONSÁVEIS</h6>
+                                    <p class="mb-1"><strong>Dirigente:</strong><br>{{ dados_igreja.dirigente }}</p>
+                                    <p class="mb-0"><strong>Tesoureiro:</strong><br>{{ dados_igreja.tesoureiro }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border-info h-100">
+                                <div class="card-body text-center py-3">
+                                    <h6 class="text-muted mb-2">SALDO ANTERIOR</h6>
+                                    <h5 class="fw-bold mb-1 {{ dados_igreja.saldo_anterior|valor_negativo_vermelho }}">
                                         {{ dados_igreja.saldo_anterior|valor_com_cor|safe }}
-                                        <br><small class="text-muted">(Acumulado até {% if mes == 1 %}12/{{ ano-1 }}{% else %}{{ "%02d"|format(mes-1) }}/{{ ano }}{% endif %})</small>
-                                    </td>
-                                </tr>
-                            </table>
+                                    </h5>
+                                    <small class="text-muted">Acumulado até {% if mes == 1 %}12/{{ ano-1 }}{% else %}{{ "%02d"|format(mes-1) }}/{{ ano }}{% endif %}</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -263,18 +264,23 @@
                         </table>
 
                         <div class="mt-3">
-                            <div class="alert alert-info border p-3">
-                                <h6 class="fw-bold text-info mb-2">
-                                    <i class="fas fa-info-circle"></i> INFORMAÇÕES IMPORTANTES:
-                                </h6>
-                                <ul class="mb-0 small">
-                                    <li>Do total arrecadado (excluindo OUTRAS OFERTAS), 30% vai para o Conselho da sede: 
-                                        <strong class="text-primary">{{ "R$ %.2f"|format((totais.dizimos + totais.ofertas_alcadas) * 0.30)|replace(".", ",") }}</strong>
-                                    </li>
-                                    <li>As Ofertas OMN são direcionadas diretamente à convenção (não passam pelo caixa local)</li>
-                                    <li>As OUTRAS OFERTAS não entram no cálculo do valor administrativo</li>
-                                    <li>Este relatório serve para comunicação oficial com a igreja sede</li>
-                                </ul>
+                            <div class="alert alert-success border-success p-3">
+                                <div class="row align-items-center">
+                                    <div class="col-md-8">
+                                        <h6 class="fw-bold text-success mb-2">
+                                            <i class="fas fa-check-circle me-2"></i>INFORMAÇÕES IMPORTANTES:
+                                        </h6>
+                                        <p class="mb-1"><i class="fas fa-calculator me-2 text-warning"></i><strong>30% Administrativo:</strong> Calculado sobre Dízimos + Ofertas Alçadas</p>
+                                        <p class="mb-1"><i class="fas fa-globe me-2 text-info"></i><strong>Ofertas OMN:</strong> Enviadas diretamente à convenção</p>
+                                        <p class="mb-0"><i class="fas fa-heart me-2 text-danger"></i><strong>Outras Ofertas:</strong> Não entram no cálculo administrativo</p>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="p-3 bg-white rounded shadow-sm">
+                                            <small class="text-muted d-block">30% para Sede</small>
+                                            <h4 class="text-success fw-bold mb-0">{{ "R$ %.2f"|format((totais.dizimos + totais.ofertas_alcadas) * 0.30)|replace(".", ",") }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -526,45 +532,27 @@
                         </div>
                         {% endif %}
                         
-                        <!-- Seção OMN -->
-                        {% if envios_detalhados.omn %}
-                        <div class="mb-4">
-                            <h6 class="fw-bold text-primary border-bottom pb-2">
-                                <i class="fas fa-globe-americas text-primary me-2"></i>
-                                Ofertas OMN
-                            </h6>
-                            <div class="table-responsive">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-bordered table-striped">
-                                    <thead class="table-primary">
-                                        <tr>
-                                            <th style="width: 20%;">Data</th>
-                                            <th style="width: 40%;">Descrição</th>
-                                            <th style="width: 20%;">Conta</th>
-                                            <th style="width: 20%;" class="text-end">Valor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for item in envios_detalhados.omn %}
-                                        <tr>
-                                            <td class="small">{{ item.data.strftime('%d/%m/%Y') }}</td>
-                                            <td class="small">{{ item.descricao }}</td>
-                                            <td class="small">{{ item.conta }}</td>
-                                            <td class="text-end small fw-bold">{{ "R$ {:,.2f}".format(item.valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        {% if not (envios_detalhados.oferta_voluntaria_conchas or envios_detalhados.site or envios_detalhados.projeto_filipe or envios_detalhados.forca_para_viver or envios_detalhados.contador_sede or envios_detalhados.omn) %}
+                        {% if not (envios_detalhados.oferta_voluntaria_conchas or envios_detalhados.site or envios_detalhados.projeto_filipe or envios_detalhados.forca_para_viver or envios_detalhados.contador_sede) %}
                         <div class="alert alert-info border">
                             <i class="fas fa-info-circle me-2"></i>
                             <strong>Nenhum lançamento de envio foi encontrado para este período.</strong>
                         </div>
                         {% endif %}
+                        
+                        <!-- Resumo das Despesas Fixas -->
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h6 class="fw-bold text-secondary mb-0">
+                                        <i class="fas fa-calculator me-2"></i>TOTAL DE DESPESAS FIXAS MENSAIS:
+                                    </h6>
+                                    <small class="text-muted">Contribuições recorrentes à sede</small>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <h4 class="fw-bold text-danger mb-0">R$ 280,00</h4>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     {% endif %}
 
