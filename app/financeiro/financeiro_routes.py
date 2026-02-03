@@ -2625,76 +2625,67 @@ def relatorio_sede():
         ano = int(request.args.get('ano', date.today().year))
         
         # Buscar dados da configuração
-        try:
-            config = Configuracao.obter_configuracao()
-            
-            # Calcular saldo anterior (até o final do mês anterior)
-            saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
-            
-            if config:
-                dados_igreja = {
-                    'cidade': config.cidade or 'Tietê',
-                    'bairro': config.bairro or 'Centro', 
-                    'dirigente': config.presidente if config.presidente else 'Pastor Responsável',
-                    'tesoureiro': config.primeiro_tesoureiro if config.primeiro_tesoureiro else 'Tesoureiro(a)',
-                    'saldo_anterior': saldo_anterior
-                }
-            else:
-                dados_igreja = {
-                    'cidade': 'Tietê',
-                    'bairro': 'Centro', 
-                    'dirigente': 'Pastor Responsável',
-                    'tesoureiro': 'Tesoureiro(a)',
-                    'saldo_anterior': saldo_anterior
-                }
+        config = Configuracao.obter_configuracao()
+        
+        # Calcular saldo anterior (até o final do mês anterior)
+        saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
+        
+        if config:
+            dados_igreja = {
+                'cidade': config.cidade or 'Tietê',
+                'bairro': config.bairro or 'Centro', 
+                'dirigente': config.presidente if config.presidente else 'Pastor Responsável',
+                'tesoureiro': config.primeiro_tesoureiro if config.primeiro_tesoureiro else 'Tesoureiro(a)',
+                'saldo_anterior': saldo_anterior
+            }
+        else:
+            dados_igreja = {
+                'cidade': 'Tietê',
+                'bairro': 'Centro', 
+                'dirigente': 'Pastor Responsável',
+                'tesoureiro': 'Tesoureiro(a)',
+                'saldo_anterior': saldo_anterior
+            }
         
         # Buscar lançamentos do mês/ano
-        try:
-            lancamentos = Lancamento.query.filter(
-                and_(
-                    extract('month', Lancamento.data) == mes,
-                    extract('year', Lancamento.data) == ano
-                )
-            ).all()
-            
-        except Exception as e:
-            current_app.logger.error(f"Erro ao buscar lançamentos: {e}")
-            lancamentos = []
-        except Exception as e:
-            current_app.logger.error(f"Erro ao buscar lançamentos: {e}")
-            lancamentos = []
+        lancamentos = Lancamento.query.filter(
+            and_(
+                extract('month', Lancamento.data) == mes,
+                extract('year', Lancamento.data) == ano
+            )
+        ).all()
         
         # Calcular totais com lógica corrigida
         total_dizimos = sum(l.valor for l in lancamentos if l.tipo == 'Entrada' and l.categoria and 'dízimo' in l.categoria.lower())
-            
-            # Ofertas Alçadas: Primeiro verificar se NÃO é OMN ou Outras Ofertas
-            total_ofertas_alcadas = sum(
-                l.valor for l in lancamentos 
-                if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower()
-                and not ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower())
-                and not any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
-            )
-            
-            # Outras Ofertas: Apenas ofertas com palavras-chave específicas
-            total_outras_ofertas = sum(
-                l.valor for l in lancamentos 
-                if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower() 
-                and any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
-            )
-            
-            # Oferta OMN: Apenas com OMN ou missionária
-            total_ofertas_omn = sum(
-                l.valor for l in lancamentos 
-                if l.tipo == 'Entrada' and l.categoria 
-                and ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower() or 'missionária' in l.categoria.lower())
-            )
-            total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'Saída')
-            
-            # Total para cálculo dos 30% do Conselho Administrativo
-            # IMPORTANTE: Apenas Dízimos + Ofertas Alçadas computam para o conselho
-            # Outras Ofertas e Oferta OMN NÃO computam
-            total_dizimos_ofertas = total_dizimos + total_ofertas_alcadas
-            
+        
+        # Ofertas Alçadas: Primeiro verificar se NÃO é OMN ou Outras Ofertas
+        total_ofertas_alcadas = sum(
+            l.valor for l in lancamentos 
+            if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower()
+            and not ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower())
+            and not any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
+        )
+        
+        # Outras Ofertas: Apenas ofertas com palavras-chave específicas
+        total_outras_ofertas = sum(
+            l.valor for l in lancamentos 
+            if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower() 
+            and any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
+        )
+        
+        # Oferta OMN: Apenas com OMN ou missionária
+        total_ofertas_omn = sum(
+            l.valor for l in lancamentos 
+            if l.tipo == 'Entrada' and l.categoria 
+            and ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower() or 'missionária' in l.categoria.lower())
+        )
+        total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'Saída')
+        
+        # Total para cálculo dos 30% do Conselho Administrativo
+        # IMPORTANTE: Apenas Dízimos + Ofertas Alçadas computam para o conselho
+        # Outras Ofertas e Oferta OMN NÃO computam
+        total_dizimos_ofertas = total_dizimos + total_ofertas_alcadas
+        
         # Calcular 30% sobre dízimos e ofertas alçadas (base do conselho)
         valor_conselho_30 = total_dizimos_ofertas * 0.30
         
