@@ -2637,14 +2637,21 @@ def relatorio_sede():
             # Calcular saldo anterior (até o final do mês anterior)
             saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
             
+            # DEBUG: Mostrar dados da config
+            print(f"DEBUG Config - ID: {config.id if config else 'None'}")
+            print(f"DEBUG Config - Presidente: {config.presidente if config else 'None'}")
+            print(f"DEBUG Config - Primeiro Tesoureiro: {config.primeiro_tesoureiro if config else 'None'}")
+            print(f"DEBUG Config - Cidade: {config.cidade if config else 'None'}")
+            
             if config:
                 dados_igreja = {
                     'cidade': config.cidade or 'Tietê',
                     'bairro': config.bairro or 'Centro', 
-                    'dirigente': config.presidente or 'Pastor Responsável',
-                    'tesoureiro': config.primeiro_tesoureiro or 'Tesoureiro(a)',
+                    'dirigente': config.presidente if config.presidente else 'Pastor Responsável',
+                    'tesoureiro': config.primeiro_tesoureiro if config.primeiro_tesoureiro else 'Tesoureiro(a)',
                     'saldo_anterior': saldo_anterior
                 }
+                print(f"DEBUG Dados Igreja: {dados_igreja}")
             else:
                 dados_igreja = {
                     'cidade': 'Tietê',
