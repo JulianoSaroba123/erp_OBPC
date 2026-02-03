@@ -2142,6 +2142,130 @@ def gerar_relatorio():
         flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
+@financeiro_bp.route('/financeiro/debug-outras-ofertas')
+@login_required
+def debug_outras_ofertas():
+    """Debug para identificar problema nas Outras Ofertas"""
+    mes = request.args.get('mes', type=int, default=1)
+    ano = request.args.get('ano', type=int, default=2026)
+    
+    # Buscar lançamentos
+    lancamentos = Lancamento.query.filter(
+        extract('month', Lancamento.data) == mes,
+        extract('year', Lancamento.data) == ano,
+        Lancamento.tipo == 'Entrada'
+    ).order_by(Lancamento.data, Lancamento.id).all()
+    
+    # Classificar
+    debug_info = []
+    totais_debug = {
+        'outras_ofertas_banco': 0,
+        'ofertas_banco': 0,
+        'dizimos_banco': 0,
+        'omn_banco': 0
+    }
+    
+    for lanc in lancamentos:
+        conta = lanc.conta.lower() if lanc.conta else 'dinheiro'
+        categoria = lanc.categoria.lower() if lanc.categoria else ''
+        valor = lanc.valor or 0
+        eh_banco = 'banco' in conta or 'pix' in conta
+        
+        if not eh_banco:
+            continue  # Mostrar apenas banco
+        
+        classificacao = None
+        cor = ''
+        
+        # Dízimos
+        if 'dízimo' in categoria or 'dizimo' in categoria:
+            classificacao = 'DÍZIMOS'
+            totais_debug['dizimos_banco'] += valor
+            cor = 'success'
+        # OMN
+        elif 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+            classificacao = 'OMN'
+            totais_debug['omn_banco'] += valor
+            cor = 'info'
+        # Outras Ofertas
+        elif 'oferta' in categoria and any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+            classificacao = 'OUTRAS OFERTAS'
+            totais_debug['outras_ofertas_banco'] += valor
+            cor = 'warning'
+            debug_info.append({
+                'id': lanc.id,
+                'data': lanc.data,
+                'categoria': lanc.categoria,
+                'conta': lanc.conta,
+                'valor': valor,
+                'classificacao': classificacao,
+                'cor': cor
+            })
+        # Ofertas Alçadas
+        elif 'oferta' in categoria:
+            classificacao = 'OFERTAS ALÇADAS'
+            totais_debug['ofertas_banco'] += valor
+            cor = 'primary'
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Debug Outras Ofertas - {mes:02d}/{ano}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-light">
+        <div class="container mt-4">
+            <h2>🔍 Debug: Outras Ofertas Banco - {mes:02d}/{ano}</h2>
+            
+            <div class="alert alert-info">
+                <strong>Totais Calculados (Banco apenas):</strong><br>
+                Dízimos: R$ {totais_debug['dizimos_banco']:.2f}<br>
+                Ofertas Alçadas: R$ {totais_debug['ofertas_banco']:.2f}<br>
+                <strong>Outras Ofertas: R$ {totais_debug['outras_ofertas_banco']:.2f}</strong><br>
+                OMN: R$ {totais_debug['omn_banco']:.2f}
+            </div>
+            
+            <h4>Lançamentos Classificados como "OUTRAS OFERTAS BANCO":</h4>
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Data</th>
+                        <th>Categoria ORIGINAL</th>
+                        <th>Conta</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+    """
+    
+    if debug_info:
+        for item in debug_info:
+            html += f"""
+                    <tr class="table-{item['cor']}">
+                        <td>{item['id']}</td>
+                        <td>{item['data'].strftime('%d/%m/%Y')}</td>
+                        <td><strong>{item['categoria']}</strong></td>
+                        <td>{item['conta']}</td>
+                        <td>R$ {item['valor']:.2f}</td>
+                    </tr>
+            """
+    else:
+        html += '<tr><td colspan="5" class="text-center text-muted">Nenhum lançamento classificado como Outras Ofertas Banco</td></tr>'
+    
+    html += """
+                </tbody>
+            </table>
+            
+            <a href="/financeiro/relatorio-caixa?mes=""" + str(mes) + """&ano=""" + str(ano) + """" class="btn btn-secondary">← Voltar ao Relatório</a>
+        </div>
+    </body>
+    </html>
+    """
+    
+    return html
+
 @financeiro_bp.route('/financeiro/relatorio-caixa')
 @login_required
 def relatorio_caixa():
