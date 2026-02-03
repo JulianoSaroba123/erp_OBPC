@@ -302,42 +302,7 @@
                         </table>
                     </div>
 
-                    <!-- Valor do Conselho -->
-                    <div class="mb-5">
-                        <h5 class="fw-bold text-warning mb-4">
-                            <i class="fas fa-users"></i> VALOR DO CONSELHO ADMINISTRATIVO
-                        </h5>
-                        
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="table-responsive">
-                                    <table class="table table-striped table-bordered">
-                                        <thead class="table-warning">
-                                            <tr>
-                                                <th class="fw-bold" style="width: 60%;">DESCRIÇÃO</th>
-                                                <th class="fw-bold text-end" style="width: 40%;">VALOR</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr class="table-light">
-                                                <td class="fw-bold">Base para cálculo (Dízimos + Ofertas Alçadas)</td>
-                                                <td class="text-end fw-bold text-info">
-                                                    {{ "R$ %.2f"|format(totais.total_dizimos_ofertas)|replace(".", ",") }}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td class="fw-bold">Valor a ser entregue à sede (30% da base)</td>
-                                                <td class="text-end fw-bold {{ totais.valor_conselho|valor_negativo_vermelho or 'text-warning' }}">
-                                                    {{ totais.valor_conselho|valor_com_cor|safe }}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
+                    
                     <!-- DETALHAMENTO DOS ENVIOS -->
                     {% if envios_detalhados %}
                     <div class="mb-5 detalhamento-envios">
