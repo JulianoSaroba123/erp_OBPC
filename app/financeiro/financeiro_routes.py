@@ -2614,34 +2614,22 @@ def relatorio_caixa():
 @login_required
 def relatorio_sede():
     """Gera relatório oficial para igreja sede"""
+    from datetime import date
+    from app.configuracoes.configuracoes_model import Configuracao
+    from app.financeiro.financeiro_model import Lancamento
+    from sqlalchemy import and_, extract
+    
     try:
-        print("DEBUG: Inicio relatorio_sede")
-        
         # Obter parâmetros da URL ou valores padrão
-        mes = int(request.args.get('mes', 12))
-        ano = int(request.args.get('ano', 2025))
-        
-        print(f"DEBUG: Processando mês {mes}, ano {ano}")
-        print(f"DEBUG: Parâmetros da URL: {dict(request.args)}")
-        
-        print(f"DEBUG: Mês: {mes}, Ano: {ano}")
-        print(f"DEBUG: Mês: {mes}, Ano: {ano}")
-        
-        print("DEBUG: Criando dados básicos")
+        mes = int(request.args.get('mes', date.today().month))
+        ano = int(request.args.get('ano', date.today().year))
         
         # Buscar dados da configuração
         try:
-            from app.configuracoes.configuracoes_model import Configuracao
             config = Configuracao.obter_configuracao()
             
             # Calcular saldo anterior (até o final do mês anterior)
             saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
-            
-            # DEBUG: Mostrar dados da config
-            print(f"DEBUG Config - ID: {config.id if config else 'None'}")
-            print(f"DEBUG Config - Presidente: {config.presidente if config else 'None'}")
-            print(f"DEBUG Config - Primeiro Tesoureiro: {config.primeiro_tesoureiro if config else 'None'}")
-            print(f"DEBUG Config - Cidade: {config.cidade if config else 'None'}")
             
             if config:
                 dados_igreja = {
@@ -2651,7 +2639,6 @@ def relatorio_sede():
                     'tesoureiro': config.primeiro_tesoureiro if config.primeiro_tesoureiro else 'Tesoureiro(a)',
                     'saldo_anterior': saldo_anterior
                 }
-                print(f"DEBUG Dados Igreja: {dados_igreja}")
             else:
                 dados_igreja = {
                     'cidade': 'Tietê',
@@ -2660,23 +2647,9 @@ def relatorio_sede():
                     'tesoureiro': 'Tesoureiro(a)',
                     'saldo_anterior': saldo_anterior
                 }
-        except Exception as e:
-            print(f"DEBUG: Erro ao buscar configuração: {e}")
-            import traceback
-            traceback.print_exc()
-            dados_igreja = {
-                'cidade': 'Tietê',
-                'bairro': 'Centro', 
-                'dirigente': 'Pastor Responsável',
-                'tesoureiro': 'Tesoureiro(a)',
-                'saldo_anterior': 0.0
-            }
         
         # Buscar lançamentos do mês/ano
         try:
-            from app.financeiro.financeiro_model import Lancamento
-            from sqlalchemy import and_, extract
-            
             lancamentos = Lancamento.query.filter(
                 and_(
                     extract('month', Lancamento.data) == mes,
@@ -2684,10 +2657,15 @@ def relatorio_sede():
                 )
             ).all()
             
-            print(f"DEBUG: Encontrados {len(lancamentos)} lançamentos")
-            
-            # Calcular totais com lógica corrigida
-            total_dizimos = sum(l.valor for l in lancamentos if l.tipo == 'Entrada' and l.categoria and 'dízimo' in l.categoria.lower())
+        except Exception as e:
+            current_app.logger.error(f"Erro ao buscar lançamentos: {e}")
+            lancamentos = []
+        except Exception as e:
+            current_app.logger.error(f"Erro ao buscar lançamentos: {e}")
+            lancamentos = []
+        
+        # Calcular totais com lógica corrigida
+        total_dizimos = sum(l.valor for l in lancamentos if l.tipo == 'Entrada' and l.categoria and 'dízimo' in l.categoria.lower())
             
             # Ofertas Alçadas: Primeiro verificar se NÃO é OMN ou Outras Ofertas
             total_ofertas_alcadas = sum(
@@ -2717,19 +2695,8 @@ def relatorio_sede():
             # Outras Ofertas e Oferta OMN NÃO computam
             total_dizimos_ofertas = total_dizimos + total_ofertas_alcadas
             
-            # Calcular 30% sobre dízimos e ofertas alçadas (base do conselho)
-            valor_conselho_30 = total_dizimos_ofertas * 0.30
-            
-        except Exception as e:
-            print(f"DEBUG: Erro ao buscar lançamentos: {e}")
-            lancamentos = []
-            total_dizimos = 0
-            total_ofertas_alcadas = 0
-            total_outras_ofertas = 0
-            total_ofertas_omn = 0
-            total_despesas = 0
-            total_dizimos_ofertas = 0
-            valor_conselho_30 = 0
+        # Calcular 30% sobre dízimos e ofertas alçadas (base do conselho)
+        valor_conselho_30 = total_dizimos_ofertas * 0.30
         
         # Total geral de entradas
         total_entradas = total_dizimos + total_ofertas_alcadas + total_outras_ofertas + total_ofertas_omn
@@ -2802,43 +2769,11 @@ def relatorio_sede():
             
             total_envio_sede = sum(envios.values())
             
-            # Adicionar ofertas OMN automaticamente aos envios detalhados
-            for lancamento in lancamentos:
-                if lancamento.tipo == 'Entrada' and lancamento.categoria:
-                    categoria_lower = lancamento.categoria.lower()
-                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower:
-                        envios_detalhados['omn'].append({
-                            'data': lancamento.data,
-                            'descricao': lancamento.categoria,
-                            'conta': getattr(lancamento, 'conta', None),
-                            'valor': float(lancamento.valor) if lancamento.valor else 0
-                        })
-            
-            print(f"DEBUG: Envios encontrados: {envios}")
-            print(f"DEBUG: Total envio sede: {total_envio_sede}")
-            
         except Exception as e:
-            print(f"DEBUG: Erro ao buscar envios: {e}")
-            envios = {
-                'oferta_voluntaria_conchas': 0.0,
-                'site': 0.0,
-                'projeto_filipe': 0.0,
-                'forca_para_viver': 0.0,
-                'contador_sede': 0.0
-            }
-            envios_detalhados = {
-                'oferta_voluntaria_conchas': [],
-                'site': [],
-                'projeto_filipe': [],
-                'forca_para_viver': [],
-                'contador_sede': [],
-                'omn': []
-            }
+            current_app.logger.error(f"Erro ao buscar envios: {e}")
+            envios = {}
+            envios_detalhados = {}
             total_envio_sede = 0
-        
-        print("DEBUG: Tentando renderizar template")
-        
-        from datetime import date
         
         return render_template('financeiro/relatorio_sede.html',
                              dados_igreja=dados_igreja,
