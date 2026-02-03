@@ -176,37 +176,30 @@
                         <hr class="border-primary border-2">
                     </div>
 
-                    <!-- Dados da Igreja -->
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <div class="card border-primary h-100">
-                                <div class="card-body text-center py-3">
-                                    <h6 class="text-muted mb-2">PERÍODO</h6>
-                                    <h5 class="text-primary fw-bold mb-1">{{ "%02d"|format(mes) }}/{{ ano }}</h5>
-                                    <small class="text-muted">{{ ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes-1] }} de {{ ano }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card border-success h-100">
-                                <div class="card-body py-3">
-                                    <h6 class="text-muted mb-2"><i class="fas fa-user-tie me-1"></i> RESPONSÁVEIS</h6>
-                                    <p class="mb-1"><strong>Dirigente:</strong><br>{{ dados_igreja.dirigente }}</p>
-                                    <p class="mb-0"><strong>Tesoureiro:</strong><br>{{ dados_igreja.tesoureiro }}</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card border-info h-100">
-                                <div class="card-body text-center py-3">
-                                    <h6 class="text-muted mb-2">SALDO ANTERIOR</h6>
-                                    <h5 class="fw-bold mb-1 {{ dados_igreja.saldo_anterior|valor_negativo_vermelho }}">
-                                        {{ dados_igreja.saldo_anterior|valor_com_cor|safe }}
-                                    </h5>
-                                    <small class="text-muted">Acumulado até {% if mes == 1 %}12/{{ ano-1 }}{% else %}{{ "%02d"|format(mes-1) }}/{{ ano }}{% endif %}</small>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- Tabela de Informações (igual ao PDF) -->
+                    <div class="mb-4">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 15%; font-weight: bold;">Cidade:</td>
+                                    <td style="width: 35%;">{{ dados_igreja.cidade|upper }}</td>
+                                    <td style="width: 15%; font-weight: bold;">Dirigente:</td>
+                                    <td style="width: 35%;">{{ dados_igreja.dirigente }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold;">Bairro:</td>
+                                    <td>{{ dados_igreja.bairro|upper }}</td>
+                                    <td style="font-weight: bold;">Tesoureiro:</td>
+                                    <td>{{ dados_igreja.tesoureiro }}</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-weight: bold;">Mês/Ano:</td>
+                                    <td>{{ "%02d"|format(mes) }}/{{ ano }}</td>
+                                    <td style="font-weight: bold;">Data Relatório:</td>
+                                    <td>{{ now().strftime('%d/%m/%Y') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
 
                     <hr class="my-4">
