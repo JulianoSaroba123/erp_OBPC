@@ -10,6 +10,7 @@ Modelo para gerenciar todas as configurações do sistema
 
 from app.extensoes import db
 from datetime import datetime
+from sqlalchemy import inspect, text
 
 class Configuracao(db.Model):
     """Modelo para configurações gerais do sistema"""
@@ -73,10 +74,75 @@ class Configuracao(db.Model):
     
     def __repr__(self):
         return f'<Configuracao {self.nome_igreja}>'
+
+    @staticmethod
+    def _ensure_schema_sqlite():
+        """Garante colunas faltantes na tabela configuracoes (SQLite)."""
+        try:
+            if db.engine.dialect.name != 'sqlite':
+                return
+
+            inspector = inspect(db.engine)
+            if not inspector.has_table('configuracoes'):
+                return
+
+            existentes = {col['name'] for col in inspector.get_columns('configuracoes')}
+            colunas = {
+                'nome_igreja': 'VARCHAR(200)',
+                'cnpj': 'VARCHAR(18)',
+                'dirigente': 'VARCHAR(100)',
+                'tesoureiro': 'VARCHAR(100)',
+                'cidade': 'VARCHAR(100)',
+                'bairro': 'VARCHAR(100)',
+                'endereco': 'VARCHAR(200)',
+                'cep': 'VARCHAR(9)',
+                'telefone': 'VARCHAR(20)',
+                'email': 'VARCHAR(100)',
+                'logo': 'VARCHAR(255)',
+                'logo_version': 'INTEGER',
+                'presidente': 'VARCHAR(100)',
+                'rm_presidente': 'VARCHAR(20)',
+                'validade_rm_presidente': 'DATE',
+                'vice_presidente': 'VARCHAR(100)',
+                'primeiro_secretario': 'VARCHAR(100)',
+                'segundo_secretario': 'VARCHAR(100)',
+                'primeiro_tesoureiro': 'VARCHAR(100)',
+                'segundo_tesoureiro': 'VARCHAR(100)',
+                'banco_padrao': 'VARCHAR(100)',
+                'percentual_conselho': 'FLOAT',
+                'saldo_inicial': 'FLOAT',
+                'rodape_relatorio': 'VARCHAR(255)',
+                'exibir_logo_relatorio': 'BOOLEAN',
+                'campo_assinatura_1': 'VARCHAR(100)',
+                'campo_assinatura_2': 'VARCHAR(100)',
+                'fonte_relatorio': 'VARCHAR(50)',
+                'tema': 'VARCHAR(20)',
+                'cor_principal': 'VARCHAR(7)',
+                'cor_secundaria': 'VARCHAR(7)',
+                'cor_destaque': 'VARCHAR(7)',
+                'mensagem_painel': 'TEXT',
+                'backup_automatico': 'BOOLEAN',
+                'notificacoes_email': 'BOOLEAN',
+                'idioma': 'VARCHAR(5)',
+                'fuso_horario': 'VARCHAR(50)',
+                'criado_em': 'DATETIME',
+                'atualizado_em': 'DATETIME'
+            }
+
+            faltantes = [(nome, ddl) for nome, ddl in colunas.items() if nome not in existentes]
+            if not faltantes:
+                return
+
+            with db.engine.begin() as conn:
+                for nome, ddl in faltantes:
+                    conn.execute(text(f'ALTER TABLE configuracoes ADD COLUMN {nome} {ddl}'))
+        except Exception as e:
+            print(f'Erro ao garantir schema de configuracoes: {str(e)}')
     
     @staticmethod
     def obter_configuracao():
         """Retorna a configuração única do sistema (ID=1) ou cria uma padrão"""
+        Configuracao._ensure_schema_sqlite()
         config = Configuracao.query.filter_by(id=1).first()
         
         if not config:
