@@ -2596,8 +2596,8 @@ def relatorio_caixa():
         
         # Buscar dados de configuração da igreja
         dados_igreja = {
-            'dirigente': config.presidente if config.presidente else 'Pastor Responsável',
-            'tesoureiro': config.primeiro_tesoureiro if config.primeiro_tesoureiro else 'Tesoureiro(a)'
+            'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
+            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)')
         }
         
         return render_template('financeiro/relatorio_caixa.html',
@@ -2631,22 +2631,14 @@ def relatorio_sede():
         # Calcular saldo anterior (até o final do mês anterior)
         saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
         
-        if config:
-            dados_igreja = {
-                'cidade': config.cidade or 'Tietê',
-                'bairro': config.bairro or 'Centro', 
-                'dirigente': config.presidente if config.presidente else 'Pastor Responsável',
-                'tesoureiro': config.primeiro_tesoureiro if config.primeiro_tesoureiro else 'Tesoureiro(a)',
-                'saldo_anterior': saldo_anterior
-            }
-        else:
-            dados_igreja = {
-                'cidade': 'Tietê',
-                'bairro': 'Centro', 
-                'dirigente': 'Pastor Responsável',
-                'tesoureiro': 'Tesoureiro(a)',
-                'saldo_anterior': saldo_anterior
-            }
+        # Buscar dados da igreja de forma defensiva
+        dados_igreja = {
+            'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else 'Tietê'),
+            'bairro': (config.bairro if config and hasattr(config, 'bairro') and config.bairro else 'Centro'), 
+            'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
+            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)'),
+            'saldo_anterior': saldo_anterior
+        }
         
         # Buscar lançamentos do mês/ano
         lancamentos = Lancamento.query.filter(
@@ -3215,14 +3207,14 @@ def relatorio_caixa_preview():
         totais['despesas_fixas_lista'] = despesas_fixas_lista
         totais['percentual_conselho'] = percentual_conselho
         
-        # Buscar configuração da igreja
+        # Buscar configuração da igreja de forma defensiva
         dados_igreja = {
-            'nome': config.nome_igreja if config else 'Igreja OBPC',
-            'endereco': config.endereco if config else '',
-            'cidade': config.cidade if config else '',
-            'pastor': config.presidente if config and config.presidente else (config.pastor if config else ''),
-            'tesoureiro': config.primeiro_tesoureiro if config and config.primeiro_tesoureiro else (config.tesoureiro if config else ''),
-            'logo': config.logo if config and config.logo else 'logo_obpc_novo.jpg'
+            'nome': (config.nome_igreja if config and hasattr(config, 'nome_igreja') and config.nome_igreja else 'Igreja OBPC'),
+            'endereco': (config.endereco if config and hasattr(config, 'endereco') and config.endereco else ''),
+            'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else ''),
+            'pastor': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else (config.pastor if config and hasattr(config, 'pastor') else '')),
+            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else (config.tesoureiro if config and hasattr(config, 'tesoureiro') else '')),
+            'logo': (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg')
         }
         
         return render_template('financeiro/relatorio_caixa_preview.html',
