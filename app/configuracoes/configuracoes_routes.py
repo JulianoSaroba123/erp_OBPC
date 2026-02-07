@@ -25,15 +25,26 @@ configuracoes_bp = Blueprint('configuracoes', __name__, url_prefix='/configuraco
 @login_required
 def configuracoes():
     """Exibe o formulário de configurações com abas"""
+    current_app.logger.info(f'>>> ROTA CONFIGURACOES ACESSADA - Usuário: {current_user.nome}, Nível: {current_user.nivel_acesso}')
+    
+    # Verificar permissão explicitamente
+    if not current_user.tem_acesso_configuracoes():
+        current_app.logger.warning(f'>>> ACESSO NEGADO - Usuário {current_user.nome} não tem permissão')
+        flash('Você não tem permissão para acessar configurações', 'danger')
+        return redirect(url_for('usuario.painel'))
+    
     try:
+        current_app.logger.info('>>> Chamando Configuracao.obter_configuracao()')
         # Obter configuração única (cria se não existir)
         config = Configuracao.obter_configuracao()
+        current_app.logger.info(f'>>> Config obtida: {config}')
         
         # Forçar refresh para garantir dados mais recentes do banco
         if config:
+            current_app.logger.info('>>> Fazendo refresh do config')
             db.session.expire(config)
             db.session.refresh(config)
-            current_app.logger.info(f'Configurações carregadas - Logo atual: {config.logo}')
+            current_app.logger.info(f'>>> Configurações carregadas - Logo atual: {config.logo}')
         
         # Dados para os formulários
         context = {
@@ -45,11 +56,14 @@ def configuracoes():
             'timestamp_reload': datetime.now().timestamp()  # Força reload sem cache
         }
         
+        current_app.logger.info('>>> Renderizando template configuracoes.html')
         return render_template('configuracoes/configuracoes.html', **context)
         
     except Exception as e:
-        current_app.logger.error(f'Erro ao carregar configurações: {str(e)}')
-        flash('Erro ao carregar configurações do sistema', 'danger')
+        current_app.logger.error(f'>>> ERRO ao carregar configurações: {str(e)}')
+        import traceback
+        current_app.logger.error(f'>>> TRACEBACK: {traceback.format_exc()}')
+        flash(f'Erro ao carregar configurações do sistema: {str(e)}', 'danger')
         return redirect(url_for('usuario.painel'))
 
 
