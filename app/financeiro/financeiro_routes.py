@@ -2437,7 +2437,7 @@ def debug_saldo_banco():
 @login_required
 def relatorio_caixa():
     """Gera relatório de caixa interno mensal"""
-    current_app.logger.info('>>> ROTA RELATORIO_CAIXA ACESSADA')
+    current_app.logger.info('>>> ENTRANDO EM relatorio_caixa()')
     try:
         # Pegar mês e ano da query string com validação
         mes = request.args.get('mes', type=int)
@@ -2613,7 +2613,7 @@ def relatorio_caixa():
                              data_geracao=datetime.now())
         
     except Exception as e:
-        current_app.logger.error(f'>>> ERRO ao gerar relatório de caixa: {str(e)}')
+        current_app.logger.error(f'>>> ERRO em relatorio_caixa: {str(e)}')
         import traceback
         current_app.logger.error(f'>>> TRACEBACK: {traceback.format_exc()}')
         flash(f'Erro ao gerar relatório de caixa: {str(e)}', 'danger')
@@ -3064,7 +3064,7 @@ def gerar_lancamento_administrativo():
 @login_required
 def relatorio_caixa_preview():
     """Preview HTML do relatório de caixa antes de gerar PDF"""
-    current_app.logger.info('>>> ROTA RELATORIO_CAIXA_PREVIEW ACESSADA')
+    current_app.logger.info('>>> ENTRANDO EM relatorio_caixa_preview()')
     try:
         # Pegar mês e ano da query string com validação
         mes = request.args.get('mes', type=int)
@@ -3238,7 +3238,7 @@ def relatorio_caixa_preview():
                              data_geracao=datetime.now())
     
     except Exception as e:
-        current_app.logger.error(f'>>> ERRO ao gerar preview do relatório: {str(e)}')
+        current_app.logger.error(f'>>> ERRO em relatorio_caixa_preview: {str(e)}')
         import traceback
         current_app.logger.error(f'>>> TRACEBACK: {traceback.format_exc()}')
         flash(f'Erro ao gerar preview do relatório: {str(e)}', 'danger')
