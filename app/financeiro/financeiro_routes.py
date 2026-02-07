@@ -2437,10 +2437,12 @@ def debug_saldo_banco():
 @login_required
 def relatorio_caixa():
     """Gera relatório de caixa interno mensal"""
+    current_app.logger.info('>>> ROTA RELATORIO_CAIXA ACESSADA')
     try:
         # Pegar mês e ano da query string com validação
         mes = request.args.get('mes', type=int)
         ano = request.args.get('ano', type=int)
+        current_app.logger.info(f'>>> Parâmetros: mes={mes}, ano={ano}')
         
         # Se não foram fornecidos na URL, usar o mês/ano padrão
         if mes is None:
@@ -2573,8 +2575,10 @@ def relatorio_caixa():
         
         # Calcular 30% administrativo e despesas fixas
         base_calculo_30 = totais['total_dizimos'] + totais['total_ofertas']
+        current_app.logger.info('>>> Obtendo configuração...')
         config = Configuracao.obter_configuracao()
-        percentual = config.percentual_conselho if config and config.percentual_conselho else 30
+        current_app.logger.info(f'>>> Config obtida: {config}')
+        percentual = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         valor_administrativo = base_calculo_30 * (percentual / 100)
         
         # Buscar despesas fixas ativas
@@ -2600,6 +2604,7 @@ def relatorio_caixa():
             'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)')
         }
         
+        current_app.logger.info('>>> Renderizando template relatorio_caixa.html')
         return render_template('financeiro/relatorio_caixa.html',
                              totais=totais,
                              mes=mes,
@@ -2608,6 +2613,9 @@ def relatorio_caixa():
                              data_geracao=datetime.now())
         
     except Exception as e:
+        current_app.logger.error(f'>>> ERRO ao gerar relatório de caixa: {str(e)}')
+        import traceback
+        current_app.logger.error(f'>>> TRACEBACK: {traceback.format_exc()}')
         flash(f'Erro ao gerar relatório de caixa: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
@@ -3056,10 +3064,12 @@ def gerar_lancamento_administrativo():
 @login_required
 def relatorio_caixa_preview():
     """Preview HTML do relatório de caixa antes de gerar PDF"""
+    current_app.logger.info('>>> ROTA RELATORIO_CAIXA_PREVIEW ACESSADA')
     try:
         # Pegar mês e ano da query string com validação
         mes = request.args.get('mes', type=int)
         ano = request.args.get('ano', type=int)
+        current_app.logger.info(f'>>> Parâmetros: mes={mes}, ano={ano}')
         
         # Se não foram fornecidos na URL, usar o mês/ano atual
         if mes is None:
@@ -3217,6 +3227,7 @@ def relatorio_caixa_preview():
             'logo': (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg')
         }
         
+        current_app.logger.info('>>> Renderizando template relatorio_caixa_preview.html')
         return render_template('financeiro/relatorio_caixa_preview.html',
                              lancamentos=lancamentos,
                              mes=mes,
@@ -3227,6 +3238,9 @@ def relatorio_caixa_preview():
                              data_geracao=datetime.now())
     
     except Exception as e:
+        current_app.logger.error(f'>>> ERRO ao gerar preview do relatório: {str(e)}')
+        import traceback
+        current_app.logger.error(f'>>> TRACEBACK: {traceback.format_exc()}')
         flash(f'Erro ao gerar preview do relatório: {str(e)}', 'danger')
         return redirect(url_for('financeiro.relatorio_caixa', mes=mes, ano=ano))
 
