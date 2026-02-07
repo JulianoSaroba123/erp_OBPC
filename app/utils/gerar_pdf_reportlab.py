@@ -500,8 +500,9 @@ class RelatorioFinanceiro:
         # 3. Total a ser enviado
         total_envio_sede = valor_administrativo + total_despesas_fixas
         
-        # 4. Saldo real disponível
-        saldo_real_disponivel = saldo_bruto - total_envio_sede
+        # 4. Saldo real disponível = igual ao saldo bruto
+        # (Administrativo e Despesas Fixas JÁ estão incluídas nas saídas, são apenas informativos)
+        saldo_real_disponivel = saldo_bruto
         
         dados_resumo = [
             ['DESCRIÇÃO', 'VALOR'],
@@ -509,10 +510,10 @@ class RelatorioFinanceiro:
             ['Total de Entradas', f"+{self._formatar_moeda(total_entradas_final)}"],
             ['Total de Saídas', f"-{self._formatar_moeda(total_saidas_final)}"],
             ['Saldo Bruto do Período', self._formatar_moeda(saldo_bruto)],
-            ['(-) Total a Enviar Sede', f"-{self._formatar_moeda(total_envio_sede)}"],
-            ['    • Administrativo (30%)', f"-{self._formatar_moeda(valor_administrativo)}"],
-            ['    • Despesas Fixas', f"-{self._formatar_moeda(total_despesas_fixas)}"],
-            ['SALDO DISPONÍVEL', self._formatar_moeda(saldo_real_disponivel)]
+            ['(INFORME) Total a Enviar Sede', f"{self._formatar_moeda(total_envio_sede)}"],
+            ['    • Administrativo (30%)', f"{self._formatar_moeda(valor_administrativo)}"],
+            ['    • Despesas Fixas', f"{self._formatar_moeda(total_despesas_fixas)}"],
+            ['SALDO DISPONÍVEL', self._formatar_moeda(saldo_bruto)]
         ]
         
         tabela_resumo = Table(dados_resumo, colWidths=[8*cm, 4*cm])
@@ -542,7 +543,7 @@ class RelatorioFinanceiro:
             ('LEFTPADDING', (0, -3), (0, -2), 20),
             
             # Linha do saldo disponível (final)
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#4A7C59')),
+            # Cor será definida dinamicamente abaixo (verde se positivo, vermelho se negativo)
             ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
             ('FONTSIZE', (0, -1), (-1, -1), 14),
             ('TEXTCOLOR', (0, -1), (-1, -1), colors.white),
@@ -558,11 +559,17 @@ class RelatorioFinanceiro:
         estilo_resumo.append(('TEXTCOLOR', (1, 2), (1, 2), colors.green))  # Entradas
         estilo_resumo.append(('TEXTCOLOR', (1, 3), (1, 3), colors.red))    # Saídas
         
-        # Cor para movimento do período
-        if entradas_total - saidas_total >= 0:
+        # Cor para movimento do período (Saldo Bruto)
+        if saldo_bruto >= 0:
             estilo_resumo.append(('TEXTCOLOR', (1, 4), (1, 4), colors.green))
         else:
             estilo_resumo.append(('TEXTCOLOR', (1, 4), (1, 4), colors.red))
+        
+        # Cor para Saldo Disponível (verde se positivo, vermelho se negativo)
+        if saldo_bruto >= 0:
+            estilo_resumo.append(('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#4A7C59')))  # Verde
+        else:
+            estilo_resumo.append(('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#DC143C')))  # Vermelho
         
         tabela_resumo.setStyle(TableStyle(estilo_resumo))
         elementos.append(tabela_resumo)

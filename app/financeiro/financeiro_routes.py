@@ -2591,7 +2591,8 @@ def relatorio_caixa():
         totais['trinta_porcento_conselho'] = valor_administrativo
         totais['despesas_fixas_conselho'] = total_despesas_fixas
         totais['total_envio_sede'] = valor_administrativo + total_despesas_fixas
-        totais['saldo_real_disponivel'] = totais['saldo_acumulado'] - totais['total_envio_sede']
+        # Saldo real disponível = saldo acumulado (não subtrair total_envio_sede pois já está nas saídas)
+        totais['saldo_real_disponivel'] = totais['saldo_acumulado']
         
         # Buscar dados de configuração da igreja
         dados_igreja = {
@@ -3199,8 +3200,9 @@ def relatorio_caixa_preview():
         # Saldo bruto = saldo anterior + entradas - saídas
         saldo_bruto = saldo_anterior + totais['total_entradas'] - totais['total_saidas']
         
-        # Saldo real disponível = saldo bruto - total a enviar
-        saldo_real_disponivel = saldo_bruto - total_envio_sede
+        # Saldo real disponível = igual ao saldo bruto
+        # (Administrativo e Despesas Fixas JÁ estão incluídas nas saídas, são apenas informativos)
+        saldo_real_disponivel = saldo_bruto
         
         # Adicionar aos totais
         totais['base_calculo_30'] = base_calculo_30
