@@ -263,7 +263,7 @@
                                         </label>
                                         <div class="row align-items-center">
                                             <div class="col-md-3">
-                                                <img src="{{ url_for('static', filename=config.logo if config.logo else 'logo_obpc_novo.jpg') }}?v={{ timestamp_reload if timestamp_reload else config.atualizado_em.timestamp() if config.atualizado_em else '' }}" 
+                                                <img src="{{ url_for('static', filename=config.logo if config.logo else 'logo_obpc_novo.jpg') }}?v={{ config.logo_version or 1 }}" 
                                                      alt="Logo da Igreja" class="img-fluid border rounded" style="max-height: 100px;" id="logo_preview_img" 
                                                      onerror="this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}'">
                                             </div>

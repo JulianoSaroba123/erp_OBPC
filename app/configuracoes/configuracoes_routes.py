@@ -249,8 +249,9 @@ def upload_logo():
         
         # Atualizar logo no banco
         config.logo = relative_path
+        config.logo_version = (config.logo_version or 0) + 1  # Incrementar versão
         config.atualizado_em = datetime.utcnow()
-        current_app.logger.info(f'Nova logo definida: {config.logo}')
+        current_app.logger.info(f'Nova logo definida: {config.logo}, Versão: {config.logo_version}')
         
         # Forçar commit imediato
         try:
@@ -265,7 +266,8 @@ def upload_logo():
                 'message': 'Logo atualizada com sucesso!', 
                 'logo_path': relative_path,
                 'filename': filename,
-                'logo_atual': config.logo
+                'logo_atual': config.logo,
+                'logo_version': config.logo_version
             })
         except Exception as e:
             db.session.rollback()

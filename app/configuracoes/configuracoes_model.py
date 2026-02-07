@@ -30,6 +30,7 @@ class Configuracao(db.Model):
     telefone = db.Column(db.String(20), nullable=True)
     email = db.Column(db.String(100), nullable=True)
     logo = db.Column(db.String(255), nullable=True, default='logo_obpc_novo.jpg')
+    logo_version = db.Column(db.Integer, nullable=False, default=1)  # Versão da logo para cache-busting
     
     # Diretoria da Igreja
     presidente = db.Column(db.String(100), nullable=True)  # Pastor Dirigente
