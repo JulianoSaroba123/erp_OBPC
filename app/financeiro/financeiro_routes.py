@@ -3220,9 +3220,9 @@ def relatorio_caixa_preview():
             'nome': config.nome_igreja if config else 'Igreja OBPC',
             'endereco': config.endereco if config else '',
             'cidade': config.cidade if config else '',
-            'pastor': config.pastor if config else '',
-            'tesoureiro': config.tesoureiro if config else '',
-            'logo': config.logo_igreja if config else None
+            'pastor': config.presidente if config and config.presidente else (config.pastor if config else ''),
+            'tesoureiro': config.primeiro_tesoureiro if config and config.primeiro_tesoureiro else (config.tesoureiro if config else ''),
+            'logo': config.logo if config and config.logo else 'logo_obpc_novo.jpg'
         }
         
         return render_template('financeiro/relatorio_caixa_preview.html',
@@ -3231,6 +3231,7 @@ def relatorio_caixa_preview():
                              ano=ano,
                              totais=totais,
                              dados_igreja=dados_igreja,
+                             config=config,
                              data_geracao=datetime.now())
     
     except Exception as e:
@@ -3419,9 +3420,9 @@ def relatorio_sede_preview():
             'nome': config.nome_igreja if config else 'Igreja OBPC',
             'endereco': config.endereco if config else '',
             'cidade': config.cidade if config else '',
-            'pastor': config.pastor if config else '',
-            'tesoureiro': config.tesoureiro if config else '',
-            'logo': config.logo_igreja if config else None
+            'pastor': config.presidente if config and config.presidente else '',
+            'tesoureiro': config.primeiro_tesoureiro if config and config.primeiro_tesoureiro else '',
+            'logo': config.logo if config and config.logo else 'logo_obpc_novo.jpg'
         }
         
         return render_template('financeiro/relatorio_sede_preview.html',
@@ -3433,6 +3434,7 @@ def relatorio_sede_preview():
                              envios_detalhados=envios_detalhados,
                              total_envio_sede=total_envio_sede,
                              dados_igreja=dados_igreja,
+                             config=config,
                              data_geracao=datetime.now())
     
     except Exception as e:

@@ -38,8 +38,8 @@
                     <!-- Cabeçalho do Relatório -->
                     <div class="text-center mb-4">
                         {% if dados_igreja.logo %}
-                        <img src="{{ url_for('static', filename='uploads/logos/' + dados_igreja.logo) }}" 
-                             alt="Logo" style="max-height: 80px;" class="mb-3">
+                        <img src="{{ url_for('static', filename=dados_igreja.logo) }}?v={{ config.atualizado_em.timestamp() if config and config.atualizado_em else '' }}" 
+                             alt="Logo" style="max-height: 80px;" class="mb-3" onerror="this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}'">
                         {% endif %}
                         
                         <h4 class="fw-bold text-dark">{{ dados_igreja.nome }}</h4>

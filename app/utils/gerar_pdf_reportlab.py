@@ -317,7 +317,8 @@ class RelatorioFinanceiro:
                 '100.0%'
             ])
             
-            tabela_entradas = Table(dados_entradas, colWidths=[8*cm, 5*cm, 3*cm])  # Larguras ainda mais amplas
+            # Ajustar larguras para evitar sobreposição
+            tabela_entradas = Table(dados_entradas, colWidths=[9*cm, 4.5*cm, 2.5*cm])
             self._aplicar_estilo_tabela_resumo(tabela_entradas, colors.green)
             elementos.append(tabela_entradas)
             elementos.append(Spacer(1, 15))
@@ -351,13 +352,16 @@ class RelatorioFinanceiro:
                 '100.0%'
             ])
             
-            tabela_saidas = Table(dados_saidas, colWidths=[8*cm, 5*cm, 3*cm])  # Larguras ainda mais amplas
+            # Ajustar larguras para evitar sobreposição
+            tabela_saidas = Table(dados_saidas, colWidths=[9*cm, 4.5*cm, 2.5*cm])
             self._aplicar_estilo_tabela_resumo(tabela_saidas, colors.red)
             elementos.append(tabela_saidas)
             elementos.append(Spacer(1, 20))
             
             # Seção 3: Resumo por Tipo de Conta
-            elementos.append(Paragraph("RESUMO POR CONTA", self.styles['cabecalho_secao']))
+            # Usar KeepTogether para manter a tabela na mesma página
+            elementos_conta = []
+            elementos_conta.append(Paragraph("RESUMO POR CONTA", self.styles['cabecalho_secao']))
             
             totais_conta = self._calcular_totais_por_conta(lancamentos)
             
@@ -377,9 +381,14 @@ class RelatorioFinanceiro:
                     self._formatar_moeda(saldo)
                 ])
             
-            tabela_conta = Table(dados_conta, colWidths=[4*cm, 4*cm, 4*cm, 4*cm])  # Larguras ajustadas
+            # Ajustar larguras para evitar sobreposição
+            tabela_conta = Table(dados_conta, colWidths=[5*cm, 3.5*cm, 3.5*cm, 4*cm])
             self._aplicar_estilo_tabela_resumo(tabela_conta, colors.HexColor('#001f3f'))
-            elementos.append(tabela_conta)
+            elementos_conta.append(tabela_conta)
+            
+            # Manter tudo junto na mesma página
+            from reportlab.platypus import KeepTogether
+            elementos.append(KeepTogether(elementos_conta))
             elementos.append(Spacer(1, 20))
         
         # Seção 4: Distribuição Visual (Gráfico Textual)
@@ -414,7 +423,8 @@ class RelatorioFinanceiro:
                 
                 dados_distribuicao.append(linha)
             
-            tabela_distribuicao = Table(dados_distribuicao, colWidths=[4*cm, 2.5*cm, 4*cm, 2.5*cm])
+            # Ajustar larguras para evitar sobreposição
+            tabela_distribuicao = Table(dados_distribuicao, colWidths=[5*cm, 3*cm, 5*cm, 3*cm])
             
             estilo_distribuicao = [
                 # Cabeçalho
@@ -516,7 +526,8 @@ class RelatorioFinanceiro:
             ['SALDO DISPONÍVEL', self._formatar_moeda(saldo_bruto)]
         ]
         
-        tabela_resumo = Table(dados_resumo, colWidths=[8*cm, 4*cm])
+        # Ajustar larguras para evitar sobreposição
+        tabela_resumo = Table(dados_resumo, colWidths=[10*cm, 5*cm])
         
         estilo_resumo = [
             # Cabeçalho

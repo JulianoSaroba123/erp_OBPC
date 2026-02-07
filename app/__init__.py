@@ -83,6 +83,9 @@ def create_app():
         from app.configuracoes.configuracoes_model import Configuracao
         try:
             config = Configuracao.obter_configuracao()
+            # Forçar refresh da sessão para obter dados mais recentes
+            if config:
+                db.session.refresh(config)
             return dict(igreja_config=config)
         except Exception as e:
             app.logger.warning(f'Erro ao carregar configurações para template: {str(e)}')

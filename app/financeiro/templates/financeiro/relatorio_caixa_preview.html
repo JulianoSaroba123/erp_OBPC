@@ -38,8 +38,8 @@
                     <!-- Cabeçalho do Relatório -->
                     <div class="text-center mb-4">
                         {% if dados_igreja.logo %}
-                        <img src="{{ url_for('static', filename='uploads/logos/' + dados_igreja.logo) }}" 
-                             alt="Logo" style="max-height: 80px;" class="mb-3">
+                        <img src="{{ url_for('static', filename=dados_igreja.logo) }}?v={{ config.atualizado_em.timestamp() if config and config.atualizado_em else '' }}" 
+                             alt="Logo" style="max-height: 80px;" class="mb-3" onerror="this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}'">
                         {% endif %}
                         
                         <h4 class="fw-bold text-dark">{{ dados_igreja.nome }}</h4>
@@ -58,22 +58,26 @@
                                 <h6 class="text-success fw-bold mb-3">
                                     <i class="fas fa-arrow-up me-1"></i> ENTRADAS
                                 </h6>
-                                <table class="table table-sm table-borderless">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <colgroup>
+                                        <col style="width: 60%;">
+                                        <col style="width: 40%;">
+                                    </colgroup>
                                     <tr>
-                                        <td><strong>Banco:</strong></td>
-                                        <td class="text-end {{ totais.entradas_banco|valor_negativo_vermelho }}">{{ totais.entradas_banco|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>Banco:</strong></td>
+                                        <td class="text-end text-nowrap {{ totais.entradas_banco|valor_negativo_vermelho }}">{{ totais.entradas_banco|valor_com_cor|safe }}</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>Dinheiro:</strong></td>
-                                        <td class="text-end {{ totais.entradas_dinheiro|valor_negativo_vermelho }}">{{ totais.entradas_dinheiro|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>Dinheiro:</strong></td>
+                                        <td class="text-end text-nowrap {{ totais.entradas_dinheiro|valor_negativo_vermelho }}">{{ totais.entradas_dinheiro|valor_com_cor|safe }}</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>PIX:</strong></td>
-                                        <td class="text-end {{ totais.entradas_pix|valor_negativo_vermelho }}">{{ totais.entradas_pix|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>PIX:</strong></td>
+                                        <td class="text-end text-nowrap {{ totais.entradas_pix|valor_negativo_vermelho }}">{{ totais.entradas_pix|valor_com_cor|safe }}</td>
                                     </tr>
                                     <tr class="border-top">
-                                        <td><strong>Total Entradas:</strong></td>
-                                        <td class="text-end fw-bold {{ totais.total_entradas|valor_negativo_vermelho }}">{{ totais.total_entradas|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>Total Entradas:</strong></td>
+                                        <td class="text-end text-nowrap fw-bold {{ totais.total_entradas|valor_negativo_vermelho }}">{{ totais.total_entradas|valor_com_cor|safe }}</td>
                                     </tr>
                                 </table>
                             </div>
@@ -84,22 +88,26 @@
                                 <h6 class="text-danger fw-bold mb-3">
                                     <i class="fas fa-arrow-down me-1"></i> SAÍDAS
                                 </h6>
-                                <table class="table table-sm table-borderless">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <colgroup>
+                                        <col style="width: 60%;">
+                                        <col style="width: 40%;">
+                                    </colgroup>
                                     <tr>
-                                        <td><strong>Banco:</strong></td>
-                                        <td class="text-end {{ totais.saidas_banco|valor_negativo_vermelho }}">{{ totais.saidas_banco|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>Banco:</strong></td>
+                                        <td class="text-end text-nowrap {{ totais.saidas_banco|valor_negativo_vermelho }}">{{ totais.saidas_banco|valor_com_cor|safe }}</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>Dinheiro:</strong></td>
-                                        <td class="text-end {{ totais.saidas_dinheiro|valor_negativo_vermelho }}">{{ totais.saidas_dinheiro|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>Dinheiro:</strong></td>
+                                        <td class="text-end text-nowrap {{ totais.saidas_dinheiro|valor_negativo_vermelho }}">{{ totais.saidas_dinheiro|valor_com_cor|safe }}</td>
                                     </tr>
                                     <tr>
-                                        <td><strong>PIX:</strong></td>
-                                        <td class="text-end {{ totais.saidas_pix|valor_negativo_vermelho }}">{{ totais.saidas_pix|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>PIX:</strong></td>
+                                        <td class="text-end text-nowrap {{ totais.saidas_pix|valor_negativo_vermelho }}">{{ totais.saidas_pix|valor_com_cor|safe }}</td>
                                     </tr>
                                     <tr class="border-top">
-                                        <td><strong>Total Saídas:</strong></td>
-                                        <td class="text-end fw-bold {{ totais.total_saidas|valor_negativo_vermelho }}">{{ totais.total_saidas|valor_com_cor|safe }}</td>
+                                        <td class="text-nowrap"><strong>Total Saídas:</strong></td>
+                                        <td class="text-end text-nowrap fw-bold {{ totais.total_saidas|valor_negativo_vermelho }}">{{ totais.total_saidas|valor_com_cor|safe }}</td>
                                     </tr>
                                 </table>
                             </div>
@@ -114,32 +122,36 @@
                             </h6>
                             
                             <div class="alert alert-warning p-3">
-                                <table class="table table-sm mb-0" style="background: transparent;">
+                                <table class="table table-sm mb-0" style="background: transparent; table-layout: fixed;">
+                                    <colgroup>
+                                        <col style="width: 65%;">
+                                        <col style="width: 35%;">
+                                    </colgroup>
                                     <tbody>
                                         <tr>
                                             <td class="border-0" style="padding-left: 0;">
-                                                <i class="fas fa-arrow-circle-right me-2"></i>Administrativo ({{ totais.percentual_conselho|int }}%)
+                                                <i class="fas fa-arrow-circle-right me-2"></i><span class="text-nowrap">Administrativo ({{ totais.percentual_conselho|int }}%)</span>
                                             </td>
-                                            <td class="text-end border-0" style="width: 30%;">
+                                            <td class="text-end text-nowrap border-0">
                                                 <strong>{{ "R$ %.2f"|format(totais.valor_administrativo)|replace('.', ',') }}</strong>
                                             </td>
                                         </tr>
                                         <tr>
                                             <td class="border-0" style="padding-left: 0;">
-                                                <i class="fas fa-file-invoice-dollar me-2"></i>Despesas Fixas do Conselho
+                                                <i class="fas fa-file-invoice-dollar me-2"></i><span class="text-nowrap">Despesas Fixas do Conselho</span>
                                             </td>
-                                            <td class="text-end border-0">
+                                            <td class="text-end text-nowrap border-0">
                                                 <strong>{{ "R$ %.2f"|format(totais.total_despesas_fixas)|replace('.', ',') }}</strong>
                                             </td>
                                         </tr>
                                         <tr style="border-top: 2px solid #856404;">
                                             <td class="pt-2" style="padding-left: 0;">
-                                                <strong style="font-size: 1.1em;">
+                                                <strong class="text-nowrap" style="font-size: 1.05em;">
                                                     <i class="fas fa-money-bill-wave me-2"></i>TOTAL A ENVIAR:
                                                 </strong>
                                             </td>
-                                            <td class="text-end pt-2">
-                                                <strong style="font-size: 1.2em; color: #DC143C;">
+                                            <td class="text-end text-nowrap pt-2">
+                                                <strong style="font-size: 1.15em; color: #DC143C;">
                                                     {{ "R$ %.2f"|format(totais.total_envio_sede)|replace('.', ',') }}
                                                 </strong>
                                             </td>
@@ -170,18 +182,22 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <table class="table table-sm">
+                                <table class="table table-sm table-bordered">
+                                    <colgroup>
+                                        <col style="width: 60%;">
+                                        <col style="width: 40%;">
+                                    </colgroup>
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Categoria de Entrada</th>
-                                            <th class="text-end">Valor</th>
+                                            <th class="text-nowrap">Categoria de Entrada</th>
+                                            <th class="text-end text-nowrap">Valor</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for categoria, valor in totais.entradas_por_categoria.items() %}
                                         <tr>
-                                            <td>{{ categoria }}</td>
-                                            <td class="text-end {{ valor|valor_negativo_vermelho }}">{{ valor|valor_com_cor|safe }}</td>
+                                            <td style="word-wrap: break-word; max-width: 0;">{{ categoria }}</td>
+                                            <td class="text-end text-nowrap {{ valor|valor_negativo_vermelho }}">{{ valor|valor_com_cor|safe }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -189,18 +205,22 @@
                             </div>
                             
                             <div class="col-md-6">
-                                <table class="table table-sm">
+                                <table class="table table-sm table-bordered">
+                                    <colgroup>
+                                        <col style="width: 60%;">
+                                        <col style="width: 40%;">
+                                    </colgroup>
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Categoria de Saída</th>
-                                            <th class="text-end">Valor</th>
+                                            <th class="text-nowrap">Categoria de Saída</th>
+                                            <th class="text-end text-nowrap">Valor</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for categoria, valor in totais.saidas_por_categoria.items() %}
                                         <tr>
-                                            <td>{{ categoria }}</td>
-                                            <td class="text-end {{ valor|valor_negativo_vermelho }}">{{ valor|valor_com_cor|safe }}</td>
+                                            <td style="word-wrap: break-word; max-width: 0;">{{ categoria }}</td>
+                                            <td class="text-end text-nowrap {{ valor|valor_negativo_vermelho }}">{{ valor|valor_com_cor|safe }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -271,6 +291,38 @@ h4, h5, h6 {
 
 .text-primary {
     color: #0066cc !important;
+}
+
+/* Ajustes para evitar sobreposição */
+.table td, .table th {
+    vertical-align: middle;
+    white-space: normal;
+}
+
+.text-nowrap {
+    white-space: nowrap !important;
+}
+
+/* Garantir que valores monetários não quebrem */
+.table td.text-end {
+    min-width: 100px;
+}
+
+/* Ajuste para categorias longas */
+.table td[style*="word-wrap"] {
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Melhoria nas bordas das tabelas */
+.table-bordered {
+    border: 1px solid #dee2e6;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #dee2e6;
+    padding: 0.5rem;
 }
 </style>
 {% endblock %}

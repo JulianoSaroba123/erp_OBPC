@@ -818,6 +818,8 @@ function uploadLogo(file) {
                 // Forçar recarga da imagem com timestamp para evitar cache
                 const timestamp = new Date().getTime();
                 const newSrc = '{{ url_for("static", filename="") }}' + data.logo_path + '?v=' + timestamp;
+                console.log('Logo salva! Caminho:', data.logo_path);
+                console.log('Logo atual no banco:', data.logo_atual || data.logo_path);
                 console.log('Atualizando src da imagem para:', newSrc);
                 
                 // Limpar cache e atualizar imagem
@@ -825,7 +827,14 @@ function uploadLogo(file) {
                 setTimeout(() => {
                     img.src = newSrc;
                     console.log('Imagem atualizada com sucesso');
-                }, 50);
+                    
+                    // Atualizar todas as outras logos no documento
+                    document.querySelectorAll('img[alt="Logo da Igreja"], img[alt*="Logo"]').forEach(logoImg => {
+                        if (logoImg !== img) {
+                            logoImg.src = newSrc;
+                        }
+                    });
+                }, 100);
             }
         } else {
             console.log('Erro no upload:', data.message);

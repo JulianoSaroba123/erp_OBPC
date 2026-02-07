@@ -230,8 +230,8 @@ def upload_logo():
         config = Configuracao.obter_configuracao()
         current_app.logger.info(f'Logo anterior: {config.logo}')
         
-        # Remover logo anterior se existir
-        if config.logo and config.logo != relative_path and config.logo != 'logo_obpc_novo.jpg':
+        # Remover logo anterior se existir e não for a padrão
+        if config.logo and config.logo != relative_path and config.logo != 'logo_obpc_novo.jpg' and 'logo_igreja_' in config.logo:
             old_logo_path = os.path.join(current_app.root_path, 'static', config.logo)
             if os.path.exists(old_logo_path):
                 try:
@@ -240,22 +240,33 @@ def upload_logo():
                 except Exception as e:
                     current_app.logger.warning(f'Erro ao remover logo anterior: {str(e)}')
         
+        # Atualizar logo no banco
         config.logo = relative_path
+        config.atualizado_em = datetime.utcnow()
         current_app.logger.info(f'Nova logo definida: {config.logo}')
         
-        if config.salvar():
-            current_app.logger.info(f'Logo da igreja atualizada com sucesso: {filename}')
+        # Forçar commit imediato
+        try:
+            db.session.add(config)
+            db.session.flush()
+            db.session.commit()
+            db.session.refresh(config)
+            current_app.logger.info(f'Logo salva no banco com sucesso! Logo atual: {config.logo}')
+            
             return jsonify({
                 'success': True, 
                 'message': 'Logo atualizada com sucesso!', 
                 'logo_path': relative_path,
-                'filename': filename
+                'filename': filename,
+                'logo_atual': config.logo
             })
-        else:
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f'Erro ao salvar logo no banco: {str(e)}')
             # Remover arquivo se não conseguiu salvar no banco
             if os.path.exists(file_path):
                 os.remove(file_path)
-            return jsonify({'success': False, 'message': 'Erro ao salvar no banco de dados'})
+            return jsonify({'success': False, 'message': f'Erro ao salvar no banco de dados: {str(e)}'})
             
     except Exception as e:
         current_app.logger.error(f'Erro ao fazer upload da logo: {str(e)}')
