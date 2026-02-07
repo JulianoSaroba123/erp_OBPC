@@ -76,19 +76,20 @@ class Configuracao(db.Model):
         return f'<Configuracao {self.nome_igreja}>'
 
     @staticmethod
-    def _ensure_schema_sqlite():
-        """Garante colunas faltantes na tabela configuracoes (SQLite)."""
+    def _ensure_schema():
+        """Garante colunas faltantes na tabela configuracoes (SQLite e PostgreSQL)."""
         try:
-            if db.engine.dialect.name != 'sqlite':
-                return
-
             inspector = inspect(db.engine)
             if not inspector.has_table('configuracoes'):
                 return
 
             existentes = {col['name'] for col in inspector.get_columns('configuracoes')}
+            
+            # Definir tipos baseado no dialeto
+            is_postgres = db.engine.dialect.name == 'postgresql'
+            
             colunas = {
-                'nome_igreja': 'VARCHAR(200)',
+                'nome_igreja': 'VARCHAR(200)' if not is_postgres else 'VARCHAR(200)',
                 'cnpj': 'VARCHAR(18)',
                 'dirigente': 'VARCHAR(100)',
                 'tesoureiro': 'VARCHAR(100)',
@@ -99,7 +100,7 @@ class Configuracao(db.Model):
                 'telefone': 'VARCHAR(20)',
                 'email': 'VARCHAR(100)',
                 'logo': 'VARCHAR(255)',
-                'logo_version': 'INTEGER',
+                'logo_version': 'INTEGER' if not is_postgres else 'INTEGER DEFAULT 1',
                 'presidente': 'VARCHAR(100)',
                 'rm_presidente': 'VARCHAR(20)',
                 'validade_rm_presidente': 'DATE',
@@ -109,8 +110,8 @@ class Configuracao(db.Model):
                 'primeiro_tesoureiro': 'VARCHAR(100)',
                 'segundo_tesoureiro': 'VARCHAR(100)',
                 'banco_padrao': 'VARCHAR(100)',
-                'percentual_conselho': 'FLOAT',
-                'saldo_inicial': 'FLOAT',
+                'percentual_conselho': 'FLOAT' if not is_postgres else 'DOUBLE PRECISION',
+                'saldo_inicial': 'FLOAT' if not is_postgres else 'DOUBLE PRECISION',
                 'rodape_relatorio': 'VARCHAR(255)',
                 'exibir_logo_relatorio': 'BOOLEAN',
                 'campo_assinatura_1': 'VARCHAR(100)',
@@ -125,24 +126,29 @@ class Configuracao(db.Model):
                 'notificacoes_email': 'BOOLEAN',
                 'idioma': 'VARCHAR(5)',
                 'fuso_horario': 'VARCHAR(50)',
-                'criado_em': 'DATETIME',
-                'atualizado_em': 'DATETIME'
+                'criado_em': 'TIMESTAMP' if is_postgres else 'DATETIME',
+                'atualizado_em': 'TIMESTAMP' if is_postgres else 'DATETIME'
             }
 
             faltantes = [(nome, ddl) for nome, ddl in colunas.items() if nome not in existentes]
             if not faltantes:
                 return
 
+            print(f'>>> Adicionando {len(faltantes)} colunas faltantes em configuracoes ({db.engine.dialect.name})...')
             with db.engine.begin() as conn:
                 for nome, ddl in faltantes:
-                    conn.execute(text(f'ALTER TABLE configuracoes ADD COLUMN {nome} {ddl}'))
+                    try:
+                        conn.execute(text(f'ALTER TABLE configuracoes ADD COLUMN {nome} {ddl}'))
+                        print(f'  ✓ Coluna {nome} adicionada')
+                    except Exception as col_error:
+                        print(f'  ✗ Erro ao adicionar {nome}: {str(col_error)}')
         except Exception as e:
             print(f'Erro ao garantir schema de configuracoes: {str(e)}')
     
     @staticmethod
     def obter_configuracao():
         """Retorna a configuração única do sistema (ID=1) ou cria uma padrão"""
-        Configuracao._ensure_schema_sqlite()
+        Configuracao._ensure_schema()
         config = Configuracao.query.filter_by(id=1).first()
         
         if not config:
