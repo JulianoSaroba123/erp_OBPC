@@ -2442,25 +2442,34 @@ def relatorio_caixa():
         # Pegar mês e ano da query string com validação
         mes = request.args.get('mes', type=int)
         ano = request.args.get('ano', type=int)
-        current_app.logger.info(f'>>> Parâmetros: mes={mes}, ano={ano}')
+        current_app.logger.info(f'>>> Parâmetros recebidos: mes={mes}, ano={ano}')
         
-        # Se não foram fornecidos na URL, usar o mês/ano padrão
+        # Se não foram fornecidos na URL, usar o mês/ano atual
+        hoje = datetime.now()
         if mes is None:
-            mes = 12
+            mes = hoje.month
         if ano is None:
-            ano = 2025
+            ano = hoje.year
+        
+        current_app.logger.info(f'>>> Usando: mes={mes}, ano={ano}')
         
         # Validar valores
         if mes < 1 or mes > 12:
-            mes = 12
+            mes = hoje.month
         if ano < 2020 or ano > 2030:
-            ano = 2025
+            ano = hoje.year
+        
+        current_app.logger.info(f'>>> Após validação: mes={mes}, ano={ano}')
         
         # Filtrar lançamentos do mês
         lancamentos = Lancamento.query.filter(
             extract('month', Lancamento.data) == mes,
             extract('year', Lancamento.data) == ano
         ).all()
+        
+        current_app.logger.info(f'>>> Lançamentos encontrados: {len(lancamentos)}')
+        if lancamentos:
+            current_app.logger.info(f'>>> Primeiro lançamento: {lancamentos[0].descricao} - {lancamentos[0].data}')
         
         # Inicializar totais (PIX agrupado com BANCO)
         totais = {
@@ -3069,25 +3078,32 @@ def relatorio_caixa_preview():
         # Pegar mês e ano da query string com validação
         mes = request.args.get('mes', type=int)
         ano = request.args.get('ano', type=int)
-        current_app.logger.info(f'>>> Parâmetros: mes={mes}, ano={ano}')
+        current_app.logger.info(f'>>> Parâmetros recebidos: mes={mes}, ano={ano}')
         
         # Se não foram fornecidos na URL, usar o mês/ano atual
+        hoje = datetime.now()
         if mes is None:
-            mes = datetime.now().month
+            mes = hoje.month
         if ano is None:
-            ano = datetime.now().year
+            ano = hoje.year
+        
+        current_app.logger.info(f'>>> Usando: mes={mes}, ano={ano}')
         
         # Validar valores
         if mes < 1 or mes > 12:
-            mes = datetime.now().month
+            mes = hoje.month
         if ano < 2020 or ano > 2030:
-            ano = datetime.now().year
+            ano = hoje.year
+        
+        current_app.logger.info(f'>>> Após validação: mes={mes}, ano={ano}')
         
         # Filtrar lançamentos do mês
         lancamentos = Lancamento.query.filter(
             extract('month', Lancamento.data) == mes,
             extract('year', Lancamento.data) == ano
         ).all()
+        
+        current_app.logger.info(f'>>> Lançamentos encontrados para preview: {len(lancamentos)}')
         
         # Calcular totais (usando mesma lógica da rota principal)
         totais = {
