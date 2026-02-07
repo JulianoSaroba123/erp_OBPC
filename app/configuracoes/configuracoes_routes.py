@@ -29,13 +29,20 @@ def configuracoes():
         # Obter configuração única (cria se não existir)
         config = Configuracao.obter_configuracao()
         
+        # Forçar refresh para garantir dados mais recentes do banco
+        if config:
+            db.session.expire(config)
+            db.session.refresh(config)
+            current_app.logger.info(f'Configurações carregadas - Logo atual: {config.logo}')
+        
         # Dados para os formulários
         context = {
             'config': config,
             'temas_disponiveis': Configuracao.get_temas_disponiveis(),
             'fontes_disponiveis': Configuracao.get_fontes_disponiveis(),
             'bancos_disponiveis': Configuracao.get_bancos_disponiveis(),
-            'aba_ativa': request.args.get('aba', 'gerais')
+            'aba_ativa': request.args.get('aba', 'gerais'),
+            'timestamp_reload': datetime.now().timestamp()  # Força reload sem cache
         }
         
         return render_template('configuracoes/configuracoes.html', **context)
