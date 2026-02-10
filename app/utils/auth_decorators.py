@@ -68,7 +68,12 @@ def requer_gerencia_usuarios(f):
                     return jsonify({'success': False, 'message': 'Usuário não autenticado'}), 401
                 return redirect(url_for('usuario.login', next=request.url))
             
-            if not current_user.pode_gerenciar_usuarios():
+            # Debug: Verificar permissão de gerenciar usuários
+            pode_gerenciar = current_user.pode_gerenciar_usuarios()
+            print(f"PERMISSION_CHECK: nivel_acesso={current_user.nivel_acesso} pode_gerenciar={pode_gerenciar}", flush=True)
+            sys.stdout.flush()
+            
+            if not pode_gerenciar:
                 # Verifica se é uma requisição AJAX/JSON
                 if request.is_json or request.headers.get('Content-Type') == 'application/json':
                     return jsonify({'success': False, 'message': 'Acesso negado. Apenas administradores podem gerenciar usuários.'}), 403
