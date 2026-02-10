@@ -70,6 +70,12 @@ def configurar_notificacoes():
             except:
                 config.dias_antes = 1
             
+            # Nova: hora de notificação automática
+            try:
+                config.hora_notificacao_automatica = request.form.get('hora_notificacao_automatica', '08:00')
+            except:
+                config.hora_notificacao_automatica = '08:00'
+            
             db.session.commit()
             flash('Configurações salvas com sucesso!', 'success')
             return redirect(url_for('notificacoes.configurar_notificacoes'))

@@ -97,5 +97,10 @@ def create_app():
     # Cria as tabelas no primeiro uso (pode depois mover isso pro script separado)
     with app.app_context():
         db.create_all()
+        
+        # Iniciar scheduler de tarefas agendadas
+        from app.notificacoes.tarefas_agendadas import iniciar_scheduler
+        iniciar_scheduler(app)
 
     return app
+

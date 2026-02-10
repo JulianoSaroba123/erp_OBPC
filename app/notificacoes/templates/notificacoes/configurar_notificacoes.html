@@ -233,60 +233,83 @@
             </div>
         </div>
 
-        <!-- Configurações Gerais -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card shadow-sm border-0">
-                    <div class="card-header bg-white border-bottom">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-cog text-secondary me-2"></i>
-                            Configurações Gerais de Notificações
-                        </h5>
+    <!-- Configurações Gerais -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white border-bottom">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cog text-secondary me-2"></i>
+                        Configurações Gerais de Notificações
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Alerta de Notificações Automáticas Ativas -->
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="fas fa-bell me-2"></i>
+                        <strong>✅ Notificações Automáticas Ativas!</strong>
+                        <p class="mt-2 mb-0">
+                            O sistema verificará diariamente por aniversariantes às <strong id="horario-notificacao">08:00</strong> da manhã.
+                        </p>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                    <div class="card-body">
-                        <!-- Notificar Aniversariantes -->
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" 
-                                           id="notificar_aniversariantes" name="notificar_aniversariantes"
-                                           {% if config.notificar_aniversariantes %}checked{% endif %}>
-                                    <label class="form-check-label" for="notificar_aniversariantes">
-                                        Enviar notificação ao próprio aniversariante
-                                    </label>
-                                </div>
+
+                    <!-- Horário de Notificação Automática -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label"><strong>Horário de Notificação Automática</strong></label>
+                            <input type="time" class="form-control" id="hora-input" name="hora_notificacao_automatica" 
+                                   value="{{ config.hora_notificacao_automatica or '08:00' }}" 
+                                   onchange="document.getElementById('horario-notificacao').textContent = this.value">
+                            <small class="text-muted">Hora do dia que o sistema verifica aniversariantes</small>
+                        </div>
+                    </div>
+
+                    <!-- Notificar Aniversariantes -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" 
+                                       id="notificar_aniversariantes" name="notificar_aniversariantes"
+                                       {% if config.notificar_aniversariantes %}checked{% endif %}>
+                                <label class="form-check-label" for="notificar_aniversariantes">
+                                    Enviar notificação ao próprio aniversariante
+                                </label>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Notificar Admin -->
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" 
-                                           id="notificar_admin" name="notificar_admin"
-                                           {% if config.notificar_admin %}checked{% endif %}>
-                                    <label class="form-check-label" for="notificar_admin">
-                                        Notificar administrador sobre aniversários
-                                    </label>
-                                </div>
+                    <!-- Notificar Admin -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" 
+                                       id="notificar_admin" name="notificar_admin"
+                                       {% if config.notificar_admin %}checked{% endif %}>
+                                <label class="form-check-label" for="notificar_admin">
+                                    <strong>Notificar administrador sobre aniversários</strong>
+                                    <br>
+                                    <small class="text-muted">Você receberá uma notificação automática todos os dias se houver aniversariantes</small>
+                                </label>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Dias Antes -->
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label"><strong>Notificar com antecedência</strong></label>
-                                <div class="input-group">
-                                    <input type="number" class="form-control" name="dias_antes" 
-                                           value="{{ config.dias_antes or 0 }}" min="0" max="30">
-                                    <span class="input-group-text">dias antes</span>
-                                </div>
+                    <!-- Dias Antes -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label"><strong>Notificar com antecedência</strong></label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" name="dias_antes" 
+                                       value="{{ config.dias_antes or 0 }}" min="0" max="30">
+                                <span class="input-group-text">dias antes</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
         <!-- Botões de Ação -->
         <div class="row mb-4">

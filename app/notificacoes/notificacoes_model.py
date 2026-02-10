@@ -29,6 +29,7 @@ class ConfiguracaoNotificacoes(db.Model):
     notificar_aniversariantes = db.Column(db.Boolean, default=False)  # Notificar membros sobre seu próprio aniversário
     notificar_admin = db.Column(db.Boolean, default=True)  # Notificar admin sobre aniversários
     dias_antes = db.Column(db.Integer, default=1)  # Notificar quantos dias antes
+    hora_notificacao_automatica = db.Column(db.String(5), default='08:00')  # Horário HH:MM para notificações automáticas
     
     # Auditoria
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)

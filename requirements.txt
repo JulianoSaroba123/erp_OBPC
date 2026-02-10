@@ -13,6 +13,7 @@ xlsxwriter==3.1.9
 requests==2.31.0
 Pillow==10.1.0
 twilio==9.0.0
+APScheduler==3.10.4
 
 # Para geração de executável
 pyinstaller==6.3.0
