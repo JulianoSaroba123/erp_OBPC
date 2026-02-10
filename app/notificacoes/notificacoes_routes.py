@@ -80,6 +80,9 @@ def configurar_notificacoes():
         from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes
         config = ConfiguracaoNotificacoes()
         return render_template('notificacoes/configurar_notificacoes.html', config=config)
+
+
+@notificacoes_bp.route('/notificacoes/testar-email', methods=['POST'])
 @login_required
 @requer_admin
 def testar_email():
