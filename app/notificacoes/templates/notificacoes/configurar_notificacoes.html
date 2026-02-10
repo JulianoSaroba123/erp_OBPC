@@ -210,7 +210,7 @@
                                         1. Acesse <a href="https://www.gupshup.io" target="_blank">gupshup.io</a><br>
                                         2. Crie uma conta e configure WhatsApp<br>
                                         3. Obtenha a API Key nas Settings<br>
-                                        4. Use a URL: https://api.gupshup.io/sm/api/v1/msg/send/
+                                        4. Use a URL padrão abaixo (não é necessário mudar)
                                     </small>
                                 </div>
                                 <div class="row mb-3">
@@ -232,8 +232,8 @@
                                     <div class="col-12">
                                         <label class="form-label"><strong>URL da API</strong></label>
                                         <input type="url" class="form-control" name="whatsapp_api_url"
-                                               value="{{ config.whatsapp_api_url or 'https://api.gupshup.io/sm/api/v1/msg/send/' }}"
-                                               placeholder="https://api.gupshup.io/sm/api/v1/msg/send/">
+                                               value="{{ config.whatsapp_api_url or 'https://api.gupshup.io/sm/api/v1/message/send' }}"
+                                               placeholder="https://api.gupshup.io/sm/api/v1/message/send">
                                     </div>
                                 </div>
                             </div>

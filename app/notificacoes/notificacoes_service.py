@@ -357,11 +357,14 @@ class ServicoNotificacoes:
             # Payload para Gupshup (usa form-data)
             payload = {
                 'phone': numero_limpo,
-                'message': mensagem
+                'message': mensagem,
+                'channel': 'whatsapp'
             }
             
-            # URL pode ter ou não a barra final
-            url = config.whatsapp_api_url.rstrip('/')
+            # Usar URL corrigida (padrão: https://api.gupshup.io/sm/api/v1/message/send)
+            url = config.whatsapp_api_url.strip() if config.whatsapp_api_url else ''
+            if not url or 'message/send' not in url:
+                url = 'https://api.gupshup.io/sm/api/v1/message/send'
             
             response = requests.post(
                 url,
@@ -369,6 +372,9 @@ class ServicoNotificacoes:
                 headers=headers,
                 timeout=10
             )
+            
+            # Log para debug
+            logger.info(f"Gupshup POST para: {url}, Status: {response.status_code}, Response: {response.text[:200]}")
             
             if response.status_code in [200, 201, 202]:
                 # Registrar no histórico
@@ -389,7 +395,7 @@ class ServicoNotificacoes:
                     'mensagem': 'WhatsApp enviado com sucesso'
                 }
             else:
-                raise Exception(f"Erro na API Gupshup: {response.status_code} - {response.text}")
+                raise Exception(f"Erro na API: {response.status_code} - {response.text}")
         
         except Exception as e:
             logger.error(f"Erro ao enviar WhatsApp via Gupshup: {str(e)}")
