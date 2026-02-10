@@ -132,9 +132,15 @@ class Usuario(UserMixin, db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     try:
+        import sys
         usuario = Usuario.query.get(int(user_id))
-        print(f"🔍 [USER_LOADER] ID={user_id} → {'OK: ' + usuario.email if usuario else 'NÃO ENCONTRADO'}")
+        msg = f"USER_LOADER: ID={user_id} -> {'OK: ' + usuario.email if usuario else 'NAO_ENCONTRADO'}"
+        print(msg, flush=True)
+        sys.stdout.flush()
         return usuario
     except Exception as e:
-        print(f"❌ [USER_LOADER] ERRO ID={user_id}: {str(e)}")
+        import sys
+        msg = f"USER_LOADER ERRO: ID={user_id} -> {str(e)}"
+        print(msg, flush=True)
+        sys.stdout.flush()
         return None

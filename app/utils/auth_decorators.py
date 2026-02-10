@@ -54,12 +54,15 @@ def requer_gerencia_usuarios(f):
     def decorated_function(*args, **kwargs):
         try:
             from flask import session
+            import sys
             # Debug: Log informações de autenticação
-            print(f"🔐 [AUTH] Path={request.path} | Authenticated={current_user.is_authenticated}")
-            print(f"🍪 [AUTH] SID={session.get('_id', 'N/A')[:10] if session.get('_id') else 'N/A'}... | user_id={session.get('_user_id', 'N/A')}")
+            print(f"AUTH_CHECK: Path={request.path} Authenticated={current_user.is_authenticated}", flush=True)
+            print(f"AUTH_SESSION: user_id={session.get('_user_id', 'N/A')}", flush=True)
+            sys.stdout.flush()
             
             if not current_user.is_authenticated:
-                print(f"⛔ [AUTH] NÃO AUTENTICADO! Redirect → /login?next={request.url}")
+                print(f"AUTH_DENIED: Redirect to login (next={request.url})", flush=True)
+                sys.stdout.flush()
                 # Verifica se é uma requisição AJAX/JSON
                 if request.is_json or request.headers.get('Content-Type') == 'application/json':
                     return jsonify({'success': False, 'message': 'Usuário não autenticado'}), 401

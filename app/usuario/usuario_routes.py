@@ -41,11 +41,13 @@ def login():
                 
                 # Marcar sessão como permanente para durar as 24h configuradas
                 from flask import session
+                import sys
                 session.permanent = True
                 
                 # Debug: Log informações de sessão
-                print(f"✅ [LOGIN] User={usuario.id} ({usuario.email}) | Remember={bool(lembrar)} | Permanent={session.permanent}")
-                print(f"🍪 [SESSION] SID={session.get('_id', 'N/A')[:10]}... | user_id={session.get('_user_id', 'N/A')}")
+                print(f"LOGIN_SUCCESS: User={usuario.id} ({usuario.email}) Remember={bool(lembrar)} Permanent={session.permanent}", flush=True)
+                print(f"SESSION_DATA: user_id={session.get('_user_id', 'N/A')}", flush=True)
+                sys.stdout.flush()
                 
                 flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")
                 
