@@ -43,6 +43,10 @@ def login():
                 from flask import session
                 session.permanent = True
                 
+                # Debug: Log informações de sessão
+                current_app.logger.info(f"[LOGIN] Usuário {usuario.id} ({usuario.email}) logado. Session ID: {session.get('_id', 'N/A')}")
+                current_app.logger.info(f"[LOGIN] Remember: {bool(lembrar)}, Permanent: {session.permanent}")
+                
                 flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")
                 
                 # Verificar se há uma URL de destino (next)

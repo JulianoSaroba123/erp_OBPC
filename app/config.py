@@ -39,11 +39,14 @@ class Config:
     SESSION_COOKIE_NAME = 'obpc_session'
     SESSION_COOKIE_HTTPONLY = True  # Proteção XSS
     SESSION_COOKIE_SAMESITE = 'Lax'  # Proteção CSRF
+    SESSION_COOKIE_PATH = '/'
     
     # Ajustes para producao (Render) em HTTPS
     if DATABASE_URL:
         SESSION_COOKIE_SECURE = True
-        SESSION_COOKIE_PATH = '/'
+        PREFERRED_URL_SCHEME = 'https'
+        # Remove o domínio para permitir que o navegador defina automaticamente
+        SESSION_COOKIE_DOMAIN = None
     else:
         SESSION_COOKIE_SECURE = False
     

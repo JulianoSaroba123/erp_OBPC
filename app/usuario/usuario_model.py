@@ -131,4 +131,12 @@ class Usuario(UserMixin, db.Model):
 # Callback do Flask-Login para carregar usuário
 @login_manager.user_loader
 def load_user(user_id):
-    return Usuario.query.get(int(user_id))
+    try:
+        from flask import current_app
+        usuario = Usuario.query.get(int(user_id))
+        current_app.logger.info(f"[USER_LOADER] Carregando usuário ID {user_id}: {'OK' if usuario else 'NÃO ENCONTRADO'}")
+        return usuario
+    except Exception as e:
+        from flask import current_app
+        current_app.logger.error(f"[USER_LOADER] Erro ao carregar usuário {user_id}: {str(e)}")
+        return None
