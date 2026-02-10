@@ -258,7 +258,7 @@
                         <div class="col-md-4">
                             <label class="form-label"><strong>Horário de Notificação Automática</strong></label>
                             <input type="time" class="form-control" id="hora-input" name="hora_notificacao_automatica" 
-                                   value="{{ config.get('hora_notificacao_automatica', '08:00') if config.__dict__.get('hora_notificacao_automatica') else config.hora_notificacao_automatica if hasattr(config, 'hora_notificacao_automatica') else '08:00' }}" 
+                                   value="{{ config.hora_notificacao_automatica if config and hasattr(config, 'hora_notificacao_automatica') and config.hora_notificacao_automatica else '08:00' }}" 
                                    onchange="document.getElementById('horario-notificacao').textContent = this.value">
                             <small class="text-muted">Hora do dia que o sistema verifica aniversariantes</small>
                         </div>
