@@ -132,11 +132,9 @@ class Usuario(UserMixin, db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     try:
-        from flask import current_app
         usuario = Usuario.query.get(int(user_id))
-        current_app.logger.info(f"[USER_LOADER] Carregando usuário ID {user_id}: {'OK' if usuario else 'NÃO ENCONTRADO'}")
+        print(f"🔍 [USER_LOADER] ID={user_id} → {'OK: ' + usuario.email if usuario else 'NÃO ENCONTRADO'}")
         return usuario
     except Exception as e:
-        from flask import current_app
-        current_app.logger.error(f"[USER_LOADER] Erro ao carregar usuário {user_id}: {str(e)}")
+        print(f"❌ [USER_LOADER] ERRO ID={user_id}: {str(e)}")
         return None

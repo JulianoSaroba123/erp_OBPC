@@ -44,8 +44,8 @@ def login():
                 session.permanent = True
                 
                 # Debug: Log informações de sessão
-                current_app.logger.info(f"[LOGIN] Usuário {usuario.id} ({usuario.email}) logado. Session ID: {session.get('_id', 'N/A')}")
-                current_app.logger.info(f"[LOGIN] Remember: {bool(lembrar)}, Permanent: {session.permanent}")
+                print(f"✅ [LOGIN] User={usuario.id} ({usuario.email}) | Remember={bool(lembrar)} | Permanent={session.permanent}")
+                print(f"🍪 [SESSION] SID={session.get('_id', 'N/A')[:10]}... | user_id={session.get('_user_id', 'N/A')}")
                 
                 flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")
                 
