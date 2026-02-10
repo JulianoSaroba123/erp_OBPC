@@ -27,11 +27,27 @@ def adicionar_coluna():
             
             print("Adicionando coluna hora_notificacao_automatica...")
             
-            # Usar comando SQL direto para adicionar coluna
+            # Usar comando SQL direto para PostgreSQL - fazer em passos
+            # Passo 1: Adicionar coluna
             db.session.execute(text(
                 "ALTER TABLE configuracao_notificacoes "
-                "ADD COLUMN hora_notificacao_automatica VARCHAR(5) DEFAULT '08:00'"
+                "ADD COLUMN hora_notificacao_automatica VARCHAR(5)"
             ))
+            print("  - Coluna adicionada")
+            
+            # Passo 2: Atualizar linhas existentes
+            db.session.execute(text(
+                "UPDATE configuracao_notificacoes SET hora_notificacao_automatica = '08:00'"
+            ))
+            print("  - Dados preenchidos")
+            
+            # Passo 3: Tornar NOT NULL
+            db.session.execute(text(
+                "ALTER TABLE configuracao_notificacoes "
+                "ALTER COLUMN hora_notificacao_automatica SET NOT NULL"
+            ))
+            print("  - Coluna ajustada")
+            
             db.session.commit()
             
             print("✅ Coluna adicionada com sucesso!")
@@ -39,7 +55,16 @@ def adicionar_coluna():
             
         except Exception as e:
             db.session.rollback()
+            erro_str = str(e).lower()
+            
+            # Se a coluna já existe, não é erro
+            if 'already exists' in erro_str or 'already' in erro_str:
+                print("✅ Coluna já existe (ou foi criada antes)!")
+                return True
+            
             print(f"❌ Erro: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
 
 if __name__ == '__main__':

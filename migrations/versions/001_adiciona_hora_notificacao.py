@@ -17,12 +17,18 @@ depends_on = None
 
 
 def upgrade():
-    # Adicionar coluna com valor padrão
+    # Adicionar coluna
     op.add_column('configuracao_notificacoes', 
                    sa.Column('hora_notificacao_automatica', 
                             sa.String(5), 
-                            nullable=True,
-                            server_default='08:00'))
+                            nullable=True))
+    
+    # Adicionar valor padrão
+    op.execute("UPDATE configuracao_notificacoes SET hora_notificacao_automatica = '08:00' WHERE hora_notificacao_automatica IS NULL")
+    op.alter_column('configuracao_notificacoes', 'hora_notificacao_automatica',
+                    existing_type=sa.String(5),
+                    nullable=False,
+                    existing_nullable=True)
 
 
 def downgrade():
