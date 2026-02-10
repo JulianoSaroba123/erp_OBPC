@@ -74,40 +74,67 @@ class ServicoNotificacoes:
                 server.send_message(msg)
             
             # Registrar no histórico
-            historico = HistoricoNotificacoes(
-                tipo='email',
-                destinatario=destinatario,
-                titulo=assunto,
-                mensagem=corpo_html,
-                status='enviado'
-            )
-            db.session.add(historico)
-            db.session.commit()
+            try:
+                historico = HistoricoNotificacoes(
+                    tipo='email',
+                    destinatario=destinatario,
+                    titulo=assunto,
+                    mensagem=corpo_html[:500],  # Limitar tamanho
+                    status='enviado',
+                    erro_mensagem=None
+                )
+                db.session.add(historico)
+                db.session.commit()
+            except Exception as e_hist:
+                db.session.rollback()
+                logger.error(f"Erro ao registrar histórico: {str(e_hist)}")
             
-            logger.info(f"Email enviado com sucesso para {destinatario}")
             return {
                 'sucesso': True,
                 'mensagem': 'Email enviado com sucesso'
             }
         
-        except Exception as e:
-            logger.error(f"Erro ao enviar email: {str(e)}")
+        except smtplib.SMTPAuthenticationError:
+            db.session.rollback()
+            msg_erro = 'Erro de autenticação SMTP. Verifique usuário e senha'
+            logger.error(msg_erro)
+            return {
+                'sucesso': False,
+                'mensagem': msg_erro
+            }
+        
+        except smtplib.SMTPException as e:
+            db.session.rollback()
+            msg_erro = f'Erro ao enviar email: {str(e)}'
+            logger.error(msg_erro)
             
-            # Registrar erro no histórico
-            historico = HistoricoNotificacoes(
-                tipo='email',
-                destinatario=destinatario,
-                titulo=assunto,
-                mensagem=corpo_html,
-                status='erro',
-                erro_mensagem=str(e)
-            )
-            db.session.add(historico)
-            db.session.commit()
+            # Tenta registrar no histórico
+            try:
+                historico = HistoricoNotificacoes(
+                    tipo='email',
+                    destinatario=destinatario,
+                    titulo=assunto,
+                    mensagem=corpo_html[:500],
+                    status='erro',
+                    erro_mensagem=msg_erro[:500]
+                )
+                db.session.add(historico)
+                db.session.commit()
+            except:
+                db.session.rollback()
             
             return {
                 'sucesso': False,
-                'mensagem': f'Erro ao enviar email: {str(e)}'
+                'mensagem': msg_erro
+            }
+        
+        except Exception as e:
+            db.session.rollback()
+            msg_erro = f'Erro desconhecido: {str(e)}'
+            logger.error(msg_erro)
+            return {
+                'sucesso': False,
+                'mensagem': msg_erro
             }
     
     @staticmethod
