@@ -363,6 +363,9 @@ class ServicoNotificacoes:
             
             # Usar URL corrigida (padrão: https://api.gupshup.io/sm/api/v1/message/send)
             url = config.whatsapp_api_url.strip() if config.whatsapp_api_url else ''
+            # Corrigir URLs antigas que usam "msg/send" para "message/send"
+            if url:
+                url = url.replace('/msg/send', '/message/send')
             if not url or 'message/send' not in url:
                 url = 'https://api.gupshup.io/sm/api/v1/message/send'
             
