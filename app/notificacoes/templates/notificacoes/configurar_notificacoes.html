@@ -96,8 +96,14 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label"><strong>Senha SMTP</strong></label>
-                                    <input type="password" class="form-control" name="smtp_senha"
-                                           placeholder="Deixe em branco para manter a senha atual">
+                                    <div class="input-group">
+                                        <input type="password" class="form-control" id="smtp_senha_input" name="smtp_senha"
+                                               placeholder="Deixe em branco para manter a senha atual">
+                                        <button class="btn btn-outline-secondary" type="button" id="toggle_senha_smtp" 
+                                                onclick="toggleSenha('smtp_senha_input', 'toggle_senha_smtp')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
                                     <small class="text-muted">Para Gmail, use uma senha de app</small>
                                 </div>
                             </div>
@@ -175,8 +181,15 @@
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label"><strong>Auth Token</strong></label>
-                                        <input type="password" class="form-control" name="whatsapp_auth_token"
-                                               placeholder="Deixe em branco para manter o token atual">
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="whatsapp_auth_input" 
+                                                   name="whatsapp_auth_token"
+                                                   placeholder="Deixe em branco para manter o token atual">
+                                            <button class="btn btn-outline-secondary" type="button" id="toggle_whatsapp_auth"
+                                                    onclick="toggleSenha('whatsapp_auth_input', 'toggle_whatsapp_auth')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="row mb-3">
@@ -203,8 +216,15 @@
                                 <div class="row mb-3">
                                     <div class="col-12">
                                         <label class="form-label"><strong>API Key</strong></label>
-                                        <input type="password" class="form-control" name="whatsapp_api_key"
-                                               placeholder="Deixe em branco para manter a chave atual">
+                                        <div class="input-group">
+                                            <input type="password" class="form-control" id="whatsapp_api_input"
+                                                   name="whatsapp_api_key"
+                                                   placeholder="Deixe em branco para manter a chave atual">
+                                            <button class="btn btn-outline-secondary" type="button" id="toggle_whatsapp_api"
+                                                    onclick="toggleSenha('whatsapp_api_input', 'toggle_whatsapp_api')">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="row mb-3">
@@ -478,5 +498,22 @@ document.getElementById('btn-testar-whatsapp').addEventListener('click', functio
         alert('Erro: ' + error.message);
     });
 });
+
+// Função para mostrar/esconder senhas
+function toggleSenha(inputId, buttonId) {
+    const input = document.getElementById(inputId);
+    const button = document.getElementById(buttonId);
+    const icon = button.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
 </script>
 {% endblock %}
