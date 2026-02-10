@@ -44,13 +44,18 @@ def configurar_notificacoes():
                 
                 # Atualizar configurações de WhatsApp
                 config.whatsapp_habilitado = request.form.get('whatsapp_habilitado') == 'on'
-                config.whatsapp_provider = request.form.get('whatsapp_provider', 'twilio')
-                config.whatsapp_account_sid = request.form.get('whatsapp_account_sid', '').strip()
+                provider = request.form.get('whatsapp_provider', 'twilio')
+                config.whatsapp_provider = provider
+                
+                if provider == 'gupshup':
+                    config.whatsapp_account_sid = request.form.get('gupshup_app_name', '').strip()
+                    config.whatsapp_numero = request.form.get('gupshup_source_number', '').strip()
+                else:
+                    config.whatsapp_account_sid = request.form.get('whatsapp_account_sid', '').strip()
+                    config.whatsapp_numero = request.form.get('whatsapp_numero', '').strip()
                 
                 if request.form.get('whatsapp_auth_token'):
                     config.whatsapp_auth_token = request.form.get('whatsapp_auth_token')
-                
-                config.whatsapp_numero = request.form.get('whatsapp_numero', '').strip()
                 
                 if request.form.get('whatsapp_api_key'):
                     config.whatsapp_api_key = request.form.get('whatsapp_api_key')

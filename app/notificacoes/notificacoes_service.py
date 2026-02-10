@@ -333,20 +333,32 @@ class ServicoNotificacoes:
         """Envia WhatsApp via Gupshup API"""
         try:
             import requests
+            import json
             
             config = ServicoNotificacoes.obter_configuracao()
             
             # Validar configuração
-            if not config.whatsapp_api_key or not config.whatsapp_api_url:
+            if not config.whatsapp_api_key:
                 return {
                     'sucesso': False,
-                    'mensagem': 'API Key ou URL do Gupshup não configurados'
+                    'mensagem': 'API Key do Gupshup não configurada'
+                }
+            if not config.whatsapp_numero:
+                return {
+                    'sucesso': False,
+                    'mensagem': 'Número de origem (WhatsApp) não configurado'
+                }
+            if not config.whatsapp_account_sid:
+                return {
+                    'sucesso': False,
+                    'mensagem': 'App name do Gupshup não configurado'
                 }
             
-            # Headers para Gupshup - usar apiKey no formato correto
+            # Headers para Gupshup
             headers = {
-                'Authorization': f'apiKey {config.whatsapp_api_key}',
-                'Content-Type': 'application/x-www-form-urlencoded'
+                'apikey': config.whatsapp_api_key,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'accept': 'application/json'
             }
             
             # Garantir que o número está no formato correto (apenas dígitos + ou 55)
@@ -354,20 +366,28 @@ class ServicoNotificacoes:
             if not numero_limpo.startswith('55'):
                 numero_limpo = '55' + numero_limpo
             
-            # Payload para Gupshup (usa form-data)
-            payload = {
-                'phone': numero_limpo,
-                'message': mensagem,
-                'channel': 'whatsapp'
+            origem_limpa = config.whatsapp_numero.replace('+', '').replace(' ', '').replace('-', '')
+            if not origem_limpa.startswith('55'):
+                origem_limpa = '55' + origem_limpa
+            
+            mensagem_obj = {
+                "type": "text",
+                "text": mensagem
             }
             
-            # Usar URL corrigida (padrão: https://api.gupshup.io/sm/api/v1/message/send)
+            # Payload para Gupshup (usa form-data)
+            payload = {
+                'channel': 'whatsapp',
+                'source': origem_limpa,
+                'destination': numero_limpo,
+                'message': json.dumps(mensagem_obj),
+                'src.name': config.whatsapp_account_sid
+            }
+            
+            # Usar URL correta do endpoint WhatsApp
             url = config.whatsapp_api_url.strip() if config.whatsapp_api_url else ''
-            # Corrigir URLs antigas que usam "msg/send" para "message/send"
-            if url:
-                url = url.replace('/msg/send', '/message/send')
-            if not url or 'message/send' not in url:
-                url = 'https://api.gupshup.io/sm/api/v1/message/send'
+            if not url or '/wa/api/v1/msg' not in url:
+                url = 'https://api.gupshup.io/wa/api/v1/msg'
             
             response = requests.post(
                 url,
