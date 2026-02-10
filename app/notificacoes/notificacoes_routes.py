@@ -100,8 +100,8 @@ def configurar_notificacoes():
             if not hasattr(config, 'hora_notificacao_automatica'):
                 config.hora_notificacao_automatica = '08:00'
             return render_template('notificacoes/configurar_notificacoes.html', config=config)
-        except:
-            flash(f'Erro ao carregar configurações: {str(e)}', 'danger')
+        except Exception as e2:
+            flash(f'Erro ao carregar configurações: {str(e2)}', 'danger')
             # Criar objeto config vazio com atributos padrão
             from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes
             config = ConfiguracaoNotificacoes()
@@ -112,9 +112,6 @@ def configurar_notificacoes():
             config.notificar_admin = True
             config.dias_antes = 0
             return render_template('notificacoes/configurar_notificacoes.html', config=config)
-
-
-@notificacoes_bp.route('/notificacoes/testar-email', methods=['POST'])
 @login_required
 @requer_admin
 def testar_email():
