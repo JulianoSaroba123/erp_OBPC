@@ -191,6 +191,9 @@ class ServicoNotificacoes:
             elif config.whatsapp_provider == 'uma-msg':
                 return ServicoNotificacoes._enviar_whatsapp_umamsg(numero, mensagem, membro_id)
             
+            elif config.whatsapp_provider == 'gupshup':
+                return ServicoNotificacoes._enviar_whatsapp_gupshup(numero, mensagem, membro_id)
+            
             else:
                 return {
                     'sucesso': False,
@@ -323,6 +326,84 @@ class ServicoNotificacoes:
             return {
                 'sucesso': False,
                 'mensagem': f'Erro ao enviar WhatsApp via Uma-msg: {str(e)}'
+            }
+    
+    @staticmethod
+    def _enviar_whatsapp_gupshup(numero, mensagem, membro_id=None):
+        """Envia WhatsApp via Gupshup API"""
+        try:
+            import requests
+            
+            config = ServicoNotificacoes.obter_configuracao()
+            
+            # Validar configuração
+            if not config.whatsapp_api_key or not config.whatsapp_api_url:
+                return {
+                    'sucesso': False,
+                    'mensagem': 'API Key ou URL do Gupshup não configurados'
+                }
+            
+            # Headers para Gupshup
+            headers = {
+                'Authorization': config.whatsapp_api_key,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            # Payload para Gupshup (usa form-data, não JSON)
+            payload = {
+                'phone': numero,
+                'message': mensagem
+            }
+            
+            response = requests.post(
+                config.whatsapp_api_url,
+                data=payload,
+                headers=headers,
+                timeout=10
+            )
+            
+            if response.status_code in [200, 201]:
+                # Registrar no histórico
+                historico = HistoricoNotificacoes(
+                    tipo='whatsapp',
+                    destinatario=numero,
+                    membro_id=membro_id,
+                    titulo='Notificação WhatsApp',
+                    mensagem=mensagem,
+                    status='enviado'
+                )
+                db.session.add(historico)
+                db.session.commit()
+                
+                logger.info(f"WhatsApp enviado com sucesso para {numero} via Gupshup")
+                return {
+                    'sucesso': True,
+                    'mensagem': 'WhatsApp enviado com sucesso'
+                }
+            else:
+                raise Exception(f"Erro na API Gupshup: {response.status_code} - {response.text}")
+        
+        except Exception as e:
+            logger.error(f"Erro ao enviar WhatsApp via Gupshup: {str(e)}")
+            
+            try:
+                historico = HistoricoNotificacoes(
+                    tipo='whatsapp',
+                    destinatario=numero,
+                    membro_id=membro_id,
+                    titulo='Notificação WhatsApp',
+                    mensagem=mensagem,
+                    status='erro',
+                    erro_mensagem=str(e)[:500]
+                )
+                db.session.add(historico)
+                db.session.commit()
+            except:
+                db.session.rollback()
+            
+            return {
+                'sucesso': False,
+                'mensagem': f'Erro ao enviar WhatsApp via Gupshup: {str(e)}'
             }
     
     @staticmethod
