@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash,
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensoes import db
 from app.usuario.usuario_model import Usuario, NivelAcesso
+from app.usuario.painel_model import FavoritoPainel, ConfiguracaoPainel
 from app.departamentos.departamentos_model import Departamento
 from app.utils.auth_decorators import requer_gerencia_usuarios, requer_nivel_acesso
 from datetime import datetime
@@ -106,6 +107,19 @@ def painel():
     except Exception as e:
         current_app.logger.error(f"Erro ao buscar membros/obreiros: {e}")
     
+    # Carregar configurações do painel do usuário
+    config_painel = ConfiguracaoPainel.query.filter_by(usuario_id=current_user.id).first()
+    if not config_painel:
+        config_painel = ConfiguracaoPainel(usuario_id=current_user.id)
+        db.session.add(config_painel)
+        db.session.commit()
+    
+    # Carregar favoritos do usuário
+    favoritos_usuario = FavoritoPainel.query.filter_by(usuario_id=current_user.id).all()
+    mapa_favoritos = {
+        f"{f.tipo_item}_{f.item_id}": f for f in favoritos_usuario
+    }
+    
     # Buscar dados para o painel
     try:
         from app.eventos.eventos_model import Evento
@@ -180,7 +194,11 @@ def painel():
         
         # Adicionar cronogramas
         for cronograma in cronogramas:
+            chave_favorito = f"cronograma_{cronograma.id}"
+            eh_favorito = chave_favorito in mapa_favoritos
+            
             atividades_combinadas.append({
+                'id': cronograma.id,
                 'tipo': 'cronograma',
                 'titulo': cronograma.titulo,
                 'descricao': cronograma.descricao,
@@ -189,13 +207,19 @@ def painel():
                 'horario': cronograma.horario,
                 'local': cronograma.local,
                 'responsavel': cronograma.responsavel,
-                'departamento': cronograma.departamento
+                'departamento': cronograma.departamento,
+                'eh_favorito': eh_favorito,
+                'pinado': mapa_favoritos.get(chave_favorito, {}).pinado if eh_favorito else False
             })
         
         # Adicionar eventos de departamentos
         for evento in eventos_departamentos:
             if evento.departamento:
+                chave_favorito = f"evento_{evento.id}"
+                eh_favorito = chave_favorito in mapa_favoritos
+                
                 atividades_combinadas.append({
+                    'id': evento.id,
                     'tipo': 'evento',
                     'titulo': evento.titulo,
                     'descricao': evento.descricao,
@@ -204,11 +228,37 @@ def painel():
                     'horario': evento.data_inicio.strftime('%H:%M') if evento.data_inicio else '',
                     'local': evento.local,
                     'responsavel': evento.responsavel,
-                    'departamento': evento.departamento
+                    'departamento': evento.departamento,
+                    'eh_favorito': eh_favorito,
+                    'pinado': mapa_favoritos.get(chave_favorito, {}).pinado if eh_favorito else False
                 })
         
-        # Ordenar por data
-        atividades_departamento = sorted(atividades_combinadas, key=lambda x: x['data_evento'])[:10]
+        # APLICAR FILTRO DE DEPARTAMENTO se selecionado
+        if config_painel.departamento_selecionado and not config_painel.mostrar_todos_departamentos:
+            atividades_combinadas = [
+                a for a in atividades_combinadas 
+                if a['departamento'] and a['departamento'].id == config_painel.departamento_selecionado
+            ]
+        
+        # APLICAR ORDENAÇÃO
+        if config_painel.ordenar_por == 'departamento':
+            atividades_combinadas = sorted(
+                atividades_combinadas,
+                key=lambda x: (not x.get('pinado', False), x['departamento'].nome if x['departamento'] else '', x['data_evento'])
+            )
+        elif config_painel.ordenar_por == 'titulo':
+            atividades_combinadas = sorted(
+                atividades_combinadas,
+                key=lambda x: (not x.get('pinado', False), x['titulo'], x['data_evento'])
+            )
+        else:  # padrão: por data
+            atividades_combinadas = sorted(
+                atividades_combinadas,
+                key=lambda x: (not x.get('pinado', False), x['data_evento'])
+            )
+        
+        # Limitar a 10 itens
+        atividades_departamento = atividades_combinadas[:10]
         
         total_atividades = len(atividades_departamento)
         current_app.logger.info(f"Painel: {total_atividades} atividades carregadas ({len(cronogramas)} cronogramas + {len(eventos_departamentos)} eventos)")
@@ -234,7 +284,16 @@ def painel():
             order_by(AulaDepartamento.criado_em.desc()).\
             limit(10).all()
         
-        aulas_painel = aulas
+        # Adicionar informação de favorito às aulas
+        aulas_com_favorito = []
+        for aula in aulas:
+            chave_favorito = f"aula_{aula.id}"
+            eh_favorito = chave_favorito in mapa_favoritos
+            aula.eh_favorito = eh_favorito
+            aula.pinado = mapa_favoritos.get(chave_favorito, {}).pinado if eh_favorito else False
+            aulas_com_favorito.append(aula)
+        
+        aulas_painel = aulas_com_favorito
         current_app.logger.info(f"Painel: {len(aulas_painel)} aulas encontradas para exibição")
     except Exception as e:
         current_app.logger.error(f"Erro ao buscar aulas: {e}")
@@ -281,7 +340,203 @@ def painel():
                          aulas_painel=aulas_painel,
                          aniversariantes_hoje=aniversariantes_hoje,
                          total_membros=total_membros,
-                         total_obreiros=total_obreiros)
+                         total_obreiros=total_obreiros,
+                         config_painel=config_painel,
+                         departamentos=Departamento.query.filter_by(status='Ativo').order_by(Departamento.nome).all())
+
+
+# ---------- APIs DO PAINEL (FAVORITOS E CONFIGURAÇÕES) ----------
+@usuario_bp.route("/painel/favoritar", methods=["POST"])
+@login_required
+def favoritar_item():
+    """Favoritar um item do painel (atividade, aula, evento)"""
+    try:
+        dados = request.get_json()
+        tipo_item = dados.get('tipo_item')  # 'atividade', 'aula', 'evento'
+        item_id = dados.get('item_id')
+        nome_item = dados.get('nome_item')
+        departamento_id = dados.get('departamento_id')
+        
+        if not all([tipo_item, item_id, nome_item]):
+            return jsonify({'erro': 'Dados incompletos'}), 400
+        
+        # Verificar se já existe
+        existente = FavoritoPainel.query.filter_by(
+            usuario_id=current_user.id,
+            tipo_item=tipo_item,
+            item_id=item_id
+        ).first()
+        
+        if existente:
+            return jsonify({'erro': 'Item já está favoritado'}), 409
+        
+        # Criar novo favorito
+        favorito = FavoritoPainel(
+            usuario_id=current_user.id,
+            tipo_item=tipo_item,
+            item_id=item_id,
+            nome_item=nome_item,
+            departamento_id=departamento_id,
+            pinado=True
+        )
+        
+        db.session.add(favorito)
+        db.session.commit()
+        
+        return jsonify({
+            'mensagem': 'Item favoritado com sucesso',
+            'id': favorito.id
+        }), 201
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao favoritar item: {e}")
+        return jsonify({'erro': str(e)}), 500
+
+
+@usuario_bp.route("/painel/desfavoritar/<int:favorito_id>", methods=["DELETE"])
+@login_required
+def desfavoritar_item(favorito_id):
+    """Remover um item dos favoritos do painel"""
+    try:
+        favorito = FavoritoPainel.query.get(favorito_id)
+        
+        if not favorito:
+            return jsonify({'erro': 'Favorito não encontrado'}), 404
+        
+        # Verificar se o usuário é o proprietário
+        if favorito.usuario_id != current_user.id:
+            return jsonify({'erro': 'Acesso negado'}), 403
+        
+        db.session.delete(favorito)
+        db.session.commit()
+        
+        return jsonify({'mensagem': 'Item removido dos favoritos'}), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao desfavoritar item: {e}")
+        return jsonify({'erro': str(e)}), 500
+
+
+@usuario_bp.route("/painel/configuracoes", methods=["POST"])
+@login_required
+def salvar_configuracoes_painel():
+    """Salvar configurações do painel do usuário"""
+    try:
+        dados = request.get_json()
+        
+        # Buscar ou criar configuração do painel
+        config = ConfiguracaoPainel.query.filter_by(usuario_id=current_user.id).first()
+        
+        if not config:
+            config = ConfiguracaoPainel(usuario_id=current_user.id)
+            db.session.add(config)
+        
+        # Atualizar campos se fornecidos
+        if 'departamento_selecionado' in dados:
+            config.departamento_selecionado = dados.get('departamento_selecionado')
+        
+        if 'mostrar_todos_departamentos' in dados:
+            config.mostrar_todos_departamentos = dados.get('mostrar_todos_departamentos', True)
+        
+        if 'mostrar_atividades' in dados:
+            config.mostrar_atividades = dados.get('mostrar_atividades', True)
+        
+        if 'mostrar_aulas' in dados:
+            config.mostrar_aulas = dados.get('mostrar_aulas', True)
+        
+        if 'mostrar_eventos' in dados:
+            config.mostrar_eventos = dados.get('mostrar_eventos', True)
+        
+        if 'mostrar_aniversariantes' in dados:
+            config.mostrar_aniversariantes = dados.get('mostrar_aniversariantes', True)
+        
+        if 'ordenar_por' in dados:
+            ordenacao = dados.get('ordenar_por')
+            if ordenacao in ['data', 'departamento', 'titulo']:
+                config.ordenar_por = ordenacao
+        
+        config.atualizado_em = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'mensagem': 'Configurações salvas com sucesso',
+            'config': {
+                'departamento_selecionado': config.departamento_selecionado,
+                'mostrar_todos_departamentos': config.mostrar_todos_departamentos,
+                'mostrar_atividades': config.mostrar_atividades,
+                'mostrar_aulas': config.mostrar_aulas,
+                'mostrar_eventos': config.mostrar_eventos,
+                'mostrar_aniversariantes': config.mostrar_aniversariantes,
+                'ordenar_por': config.ordenar_por
+            }
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao salvar configurações do painel: {e}")
+        return jsonify({'erro': str(e)}), 500
+
+
+@usuario_bp.route("/painel/configuracoes", methods=["GET"])
+@login_required
+def obter_configuracoes_painel():
+    """Obter configurações do painel do usuário"""
+    try:
+        config = ConfiguracaoPainel.query.filter_by(usuario_id=current_user.id).first()
+        
+        # Retornar valores padrão se não existe configuração
+        if not config:
+            return jsonify({
+                'departamento_selecionado': None,
+                'mostrar_todos_departamentos': True,
+                'mostrar_atividades': True,
+                'mostrar_aulas': True,
+                'mostrar_eventos': True,
+                'mostrar_aniversariantes': True,
+                'ordenar_por': 'data'
+            }), 200
+        
+        return jsonify({
+            'departamento_selecionado': config.departamento_selecionado,
+            'mostrar_todos_departamentos': config.mostrar_todos_departamentos,
+            'mostrar_atividades': config.mostrar_atividades,
+            'mostrar_aulas': config.mostrar_aulas,
+            'mostrar_eventos': config.mostrar_eventos,
+            'mostrar_aniversariantes': config.mostrar_aniversariantes,
+            'ordenar_por': config.ordenar_por
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao obter configurações do painel: {e}")
+        return jsonify({'erro': str(e)}), 500
+
+
+@usuario_bp.route("/painel/favoritos", methods=["GET"])
+@login_required
+def obter_favoritos():
+    """Obter lista de favoritos do usuário"""
+    try:
+        favoritos = FavoritoPainel.query.filter_by(usuario_id=current_user.id).all()
+        
+        return jsonify({
+            'total': len(favoritos),
+            'favoritos': [
+                {
+                    'id': f.id,
+                    'tipo_item': f.tipo_item,
+                    'item_id': f.item_id,
+                    'nome_item': f.nome_item,
+                    'departamento_id': f.departamento_id,
+                    'pinado': f.pinado,
+                    'criado_em': f.criado_em.isoformat() if f.criado_em else None
+                }
+                for f in favoritos
+            ]
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao obter favoritos: {e}")
+        return jsonify({'erro': str(e)}), 500
+
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
 @usuario_bp.route("/usuarios")

@@ -69,6 +69,188 @@
     <span style="color: #6b7280;">Bem-vindo, {{ current_user.nome }}!</span>
   </div>
 
+  <!-- CONTROLES DO PAINEL -->
+  <div class="card shadow-sm mb-4" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: none; border-radius: 15px;">
+    <div class="card-body p-4">
+      <div class="row g-3 align-items-end">
+        <!-- Filtro por Departamento -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold small text-muted">
+            <i class="fas fa-filter me-2"></i>Filtrar por Departamento
+          </label>
+          <select id="filtro-departamento" class="form-select form-select-sm" onchange="salvarFiltro()">
+            <option value="" {% if not config_painel.departamento_selecionado %}selected{% endif %}>Todos os Departamentos</option>
+            {% for depto in departamentos %}
+            <option value="{{ depto.id }}" {% if config_painel.departamento_selecionado == depto.id %}selected{% endif %}>
+              {{ depto.nome }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Ordenação -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold small text-muted">
+            <i class="fas fa-sort me-2"></i>Ordenar por
+          </label>
+          <select id="ordenar-por" class="form-select form-select-sm" onchange="salvarFiltro()">
+            <option value="data" {% if config_painel.ordenar_por == 'data' %}selected{% endif %}>Data (próximas primeiro)</option>
+            <option value="departamento" {% if config_painel.ordenar_por == 'departamento' %}selected{% endif %}>Departamento</option>
+            <option value="titulo" {% if config_painel.ordenar_por == 'titulo' %}selected{% endif %}>Título (A-Z)</option>
+          </select>
+        </div>
+
+        <!-- Botão para mostrar/ocultar filtros avançados -->
+        <div class="col-md-4">
+          <button type="button" class="btn btn-sm btn-outline-info w-100" data-bs-toggle="collapse" data-bs-target="#filtros-avancados">
+            <i class="fas fa-sliders-h me-1"></i> Mostrar/Ocultar Opções
+          </button>
+        </div>
+      </div>
+
+      <!-- FILTROS AVANÇADOS (Mostrar/Ocultar) -->
+      <div class="collapse mt-3" id="filtros-avancados">
+        <div class="row g-3 pt-3 border-top">
+          <div class="col-12">
+            <p class="fw-semibold small text-muted mb-3"><i class="fas fa-eye me-2"></i>Mostrar/Ocultar Seções</p>
+          </div>
+          
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="mostrar-atividades" 
+                     {% if config_painel.mostrar_atividades %}checked{% endif %} 
+                     onchange="salvarFiltro()">
+              <label class="form-check-label small" for="mostrar-atividades">
+                <i class="fas fa-tasks me-1"></i>Atividades dos Departamentos
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="mostrar-aulas" 
+                     {% if config_painel.mostrar_aulas %}checked{% endif %} 
+                     onchange="salvarFiltro()">
+              <label class="form-check-label small" for="mostrar-aulas">
+                <i class="fas fa-graduation-cap me-1"></i>Aulas e Cursos
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="mostrar-eventos" 
+                     {% if config_painel.mostrar_eventos %}checked{% endif %} 
+                     onchange="salvarFiltro()">
+              <label class="form-check-label small" for="mostrar-eventos">
+                <i class="fas fa-calendar-days me-1"></i>Próximos Eventos
+              </label>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="mostrar-aniversariantes" 
+                     {% if config_painel.mostrar_aniversariantes %}checked{% endif %} 
+                     onchange="salvarFiltro()">
+              <label class="form-check-label small" for="mostrar-aniversariantes">
+                <i class="fas fa-birthday-cake me-1"></i>Aniversariantes
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT PARA SALVAR FILTROS -->
+  <script>
+    function salvarFiltro() {
+      const departamento = document.getElementById('filtro-departamento').value;
+      const ordenarPor = document.getElementById('ordenar-por').value;
+      const mostrarAtividades = document.getElementById('mostrar-atividades').checked;
+      const mostrarAulas = document.getElementById('mostrar-aulas').checked;
+      const mostrarEventos = document.getElementById('mostrar-eventos').checked;
+      const mostrarAniversariantes = document.getElementById('mostrar-aniversariantes').checked;
+
+      fetch('{{ url_for("usuario.salvar_configuracoes_painel") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          departamento_selecionado: departamento ? parseInt(departamento) : null,  
+          mostrar_todos_departamentos: !departamento,
+          ordenar_por: ordenarPor,
+          mostrar_atividades: mostrarAtividades,
+          mostrar_aulas: mostrarAulas,
+          mostrar_eventos: mostrarEventos,
+          mostrar_aniversariantes: mostrarAniversariantes
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log('Configurações salvas:', data);
+        // Opcional: mostrar toast de sucesso
+      })
+      .catch(error => console.error('Erro ao salvar:', error));
+    }
+
+    function favoritarItem(tipo, itemId, nomItem, departamentoId) {
+      fetch('{{ url_for("usuario.favoritar_item") }}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tipo_item: tipo,
+          item_id: itemId,
+          nome_item: nomItem,
+          departamento_id: departamentoId
+        })
+      })
+      .then(response => {
+        if (response.status === 201) {
+          console.log('Item favoritado com sucesso');
+          // Atualizar a página ou o ícone
+          location.reload();
+        } else if (response.status === 409) {
+          alert('Este item já está nos favoritos');
+        } else {
+          throw new Error('Erro ao favoritar');
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao favoritar o item');
+      });
+    }
+
+    function desfavoritarItem(favoritoId) {
+      const endpoint = `/usuario/painel/desfavoritar/${favoritoId}`;
+      
+      fetch(endpoint, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          console.log('Item removido dos favoritos');
+          // Atualizar a página
+          location.reload();
+        } else {
+          throw new Error('Erro ao remover');
+        }
+      })
+      .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao remover dos favoritos');
+      });
+    }
+  </script>
+
   <div class="row g-4 mb-5">
     <div class="col-md-3">
       <div class="card dashboard-card shadow p-4 text-center">
@@ -213,7 +395,12 @@
             <div class="flex-grow-1">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <p class="mb-1 fw-semibold" style="color: #374151;">{{ atividade.titulo }}</p>
+                  <p class="mb-1 fw-semibold" style="color: #374151;">
+                    {% if atividade.pinado %}
+                    <i class="fas fa-thumbtack me-1" style="color: #FF6B35;"></i>
+                    {% endif %}
+                    {{ atividade.titulo }}
+                  </p>
                   <p class="mb-0 text-muted small">
                     <i class="fas fa-church me-1"></i><strong>{{ atividade.departamento.nome }}</strong>
                     <br><i class="fas fa-clock me-1"></i>
@@ -229,7 +416,19 @@
                     {% endif %}
                   </p>
                 </div>
-                <span class="badge bg-success">{{ atividade.departamento.nome }}</span>
+                <div class="text-end">
+                  <span class="badge bg-success mb-2">{{ atividade.departamento.nome }}</span>
+                  <br>
+                  {% if atividade.eh_favorito %}
+                  <button class="btn btn-sm btn-warning" type="button" onclick="desfavoritarItem({{ atividade.id }})">
+                    <i class="fas fa-star"></i>
+                  </button>
+                  {% else %}
+                  <button class="btn btn-sm btn-outline-warning" type="button" onclick="favoritarItem('{{ atividade.tipo }}', {{ atividade.id }}, '{{ atividade.titulo | escape }}', {{ atividade.departamento.id }})">
+                    <i class="fas fa-star"></i>
+                  </button>
+                  {% endif %}
+                </div>
               </div>
             </div>
           </div>
@@ -256,7 +455,12 @@
             <div class="flex-grow-1">
               <div class="d-flex justify-content-between align-items-start">
                 <div>
-                  <p class="mb-1 fw-semibold" style="color: #374151;">{{ aula.titulo }}</p>
+                  <p class="mb-1 fw-semibold" style="color: #374151;">
+                    {% if aula.pinado %}
+                    <i class="fas fa-thumbtack me-1" style="color: #FF6B35;"></i>
+                    {% endif %}
+                    {{ aula.titulo }}
+                  </p>
                   <p class="mb-0 text-muted small">
                     <i class="fas fa-church me-1"></i><strong>{{ aula.departamento.nome }}</strong>
                     {% if aula.professora %}
@@ -278,10 +482,20 @@
                 </div>
                 <div class="text-end">
                   <span class="badge bg-purple mb-2">Aula</span>
+                  <br>
+                  {% if aula.eh_favorito %}
+                  <button class="btn btn-sm btn-warning mb-2" type="button" onclick="desfavoritarItem({{ aula.id }})">
+                    <i class="fas fa-star"></i>
+                  </button>
+                  {% else %}
+                  <button class="btn btn-sm btn-outline-warning mb-2" type="button" onclick="favoritarItem('aula', {{ aula.id }}, '{{ aula.titulo | escape }}', {{ aula.departamento.id }})">
+                    <i class="fas fa-star"></i>
+                  </button>
+                  {% endif %}
                   {% if aula.arquivo_anexo %}
                   <br>
                   <a href="/departamentos/uploads/aulas/{{ aula.arquivo_anexo }}" 
-                     class="btn btn-sm btn-outline-primary mt-1" 
+                     class="btn btn-sm btn-outline-primary" 
                      target="_blank">
                     <i class="fas fa-file-download me-1"></i>Material
                   </a>
