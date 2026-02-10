@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Aniversariantes do Mês{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho da página -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-dark mb-1">
+                        <i class="fas fa-birthday-cake text-primary me-2"></i>
+                        Aniversariantes de {{ mes_nome }}
+                    </h2>
+                    <p class="text-muted">Celebre com aqueles que fazem aniversário este mês</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('membros.lista_membros') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Voltar à Lista
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estatística de aniversariantes -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 bg-gradient-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-birthday-cake fa-3x mb-3 opacity-75"></i>
+                    <h3 class="fw-bold mb-1">{{ total }}</h3>
+                    <p class="mb-0">Aniversariantes em {{ mes_nome }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Aniversariantes -->
+    <div class="row">
+        <div class="col-12">
+            {% if aniversariantes %}
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white border-bottom">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-calendar-alt text-secondary me-2"></i>
+                            Lista de Aniversariantes
+                        </h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            {% for item in aniversariantes %}
+                                <div class="list-group-item 
+                                    {% if item.status == 'hoje' %}bg-warning bg-opacity-10 border-start border-warning border-5
+                                    {% elif item.status == 'proximo' %}border-start border-primary border-3
+                                    {% else %}border-start border-secondary border-2 opacity-75{% endif %}">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-1 text-center">
+                                            <div class="rounded-circle bg-primary text-white d-inline-flex align-items-center justify-content-center" 
+                                                 style="width: 50px; height: 50px; font-size: 1.2rem;">
+                                                <i class="fas fa-gift"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <h6 class="mb-1 fw-bold">
+                                                {{ item.membro.nome }}
+                                                {% if item.status == 'hoje' %}
+                                                    <span class="badge bg-warning text-dark ms-2">
+                                                        <i class="fas fa-star me-1"></i>Hoje!
+                                                    </span>
+                                                {% endif %}
+                                            </h6>
+                                            <p class="mb-0 text-muted small">
+                                                <i class="fas fa-cake-candles me-1"></i>
+                                                {{ item.dia }} de {{ mes_nome }} - {{ item.idade }} anos
+                                            </p>
+                                        </div>
+                                        <div class="col-md-3">
+                                            {% if item.membro.telefone %}
+                                                <p class="mb-0 text-muted small">
+                                                    <i class="fas fa-phone me-1"></i>
+                                                    {{ item.membro.telefone }}
+                                                </p>
+                                            {% endif %}
+                                            {% if item.membro.email %}
+                                                <p class="mb-0 text-muted small">
+                                                    <i class="fas fa-envelope me-1"></i>
+                                                    {{ item.membro.email }}
+                                                </p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="col-md-3 text-end">
+                                            {% if item.status == 'hoje' %}
+                                                <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                                                    <i class="fas fa-birthday-cake me-2"></i>Hoje!
+                                                </span>
+                                            {% elif item.status == 'proximo' %}
+                                                <span class="badge bg-primary fs-6 px-3 py-2">
+                                                    Em {{ item.dias_restantes }} 
+                                                    {% if item.dias_restantes == 1 %}dia{% else %}dias{% endif %}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary fs-6 px-3 py-2">
+                                                    Há {{ item.dias_restantes }} 
+                                                    {% if item.dias_restantes == 1 %}dia{% else %}dias{% endif %}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Mensagem quando não há aniversariantes -->
+                <div class="card shadow-sm border-0">
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-birthday-cake fa-4x text-muted mb-3 opacity-50"></i>
+                        <h4 class="text-muted mb-2">Nenhum aniversariante em {{ mes_nome }}</h4>
+                        <p class="text-muted">Não há membros fazendo aniversário este mês.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Dica -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-info border-0 shadow-sm">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Dica:</strong> Entre em contato com os aniversariantes para enviar suas felicitações! 
+                Os destacados em amarelo fazem aniversário hoje.
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.list-group-item {
+    transition: all 0.3s ease;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa !important;
+    transform: translateX(5px);
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--primary-green) 0%, #0d5450 100%);
+}
+
+.badge {
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .col-md-1, .col-md-3, .col-md-5 {
+        text-align: center !important;
+        margin-bottom: 10px;
+    }
+}
+</style>
+{% endblock %}

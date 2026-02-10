@@ -242,12 +242,44 @@ def painel():
         traceback.print_exc()
         aulas_painel = []
     
+    # Buscar aniversariantes do dia para destaque no painel
+    aniversariantes_hoje = []
+    try:
+        from app.membros.membros_model import Membro
+        from sqlalchemy import extract
+        
+        hoje = datetime.now()
+        mes_atual = hoje.month
+        dia_atual = hoje.day
+        
+        aniversariantes = Membro.query.filter(
+            extract('month', Membro.data_nascimento) == mes_atual,
+            extract('day', Membro.data_nascimento) == dia_atual,
+            Membro.status == 'Ativo'
+        ).all()
+        
+        for membro in aniversariantes:
+            if membro.data_nascimento:
+                idade = hoje.year - membro.data_nascimento.year
+                aniversariantes_hoje.append({
+                    'nome': membro.nome,
+                    'idade': idade,
+                    'telefone': membro.telefone,
+                    'email': membro.email
+                })
+        
+        current_app.logger.info(f"Painel: {len(aniversariantes_hoje)} aniversariantes hoje")
+    except Exception as e:
+        current_app.logger.error(f"Erro ao buscar aniversariantes: {e}")
+        aniversariantes_hoje = []
+    
     return render_template("painel.html", 
                          proximos_eventos=proximos_eventos,
                          total_eventos_proximos=total_eventos_proximos,
                          atividades_departamento=atividades_departamento,
                          total_atividades=total_atividades,
                          aulas_painel=aulas_painel,
+                         aniversariantes_hoje=aniversariantes_hoje,
                          total_membros=total_membros,
                          total_obreiros=total_obreiros)
 

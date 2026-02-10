@@ -3,6 +3,7 @@ from flask_login import login_required
 from app.extensoes import db
 from app.membros.membros_model import Membro
 from datetime import datetime
+from sqlalchemy import extract
 
 membros_bp = Blueprint('membros', __name__, template_folder='templates')
 
@@ -247,3 +248,64 @@ def lista_lideres():
     except Exception as e:
         flash(f'Erro ao carregar lista de líderes: {str(e)}', 'danger')
         return render_template('membros/lista_lideres.html', lideres=[])
+
+@membros_bp.route('/aniversariantes')
+@login_required
+def aniversariantes():
+    """Lista todos os aniversariantes do mês atual"""
+    try:
+        # Obter mês e ano atual
+        mes_atual = datetime.now().month
+        ano_atual = datetime.now().year
+        
+        # Buscar membros que fazem aniversário no mês atual
+        aniversariantes_mes = Membro.query.filter(
+            extract('month', Membro.data_nascimento) == mes_atual
+        ).order_by(extract('day', Membro.data_nascimento)).all()
+        
+        # Calcular idade e dias restantes para cada aniversariante
+        hoje = datetime.now().date()
+        aniversariantes_info = []
+        
+        for membro in aniversariantes_mes:
+            if membro.data_nascimento:
+                # Calcular idade
+                idade = ano_atual - membro.data_nascimento.year
+                
+                # Data do aniversário neste ano
+                aniversario_este_ano = membro.data_nascimento.replace(year=ano_atual)
+                
+                # Calcular dias restantes
+                dias_restantes = (aniversario_este_ano - hoje).days
+                
+                # Status do aniversário
+                if dias_restantes < 0:
+                    status = 'passou'
+                elif dias_restantes == 0:
+                    status = 'hoje'
+                else:
+                    status = 'proximo'
+                
+                aniversariantes_info.append({
+                    'membro': membro,
+                    'idade': idade,
+                    'dias_restantes': abs(dias_restantes),
+                    'status': status,
+                    'dia': membro.data_nascimento.day
+                })
+        
+        # Nome do mês atual
+        meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+        mes_nome = meses[mes_atual]
+        
+        return render_template('membros/aniversariantes.html', 
+                             aniversariantes=aniversariantes_info,
+                             mes_nome=mes_nome,
+                             total=len(aniversariantes_info))
+    except Exception as e:
+        flash(f'Erro ao carregar aniversariantes: {str(e)}', 'danger')
+        return render_template('membros/aniversariantes.html', 
+                             aniversariantes=[],
+                             mes_nome='',
+                             total=0)
