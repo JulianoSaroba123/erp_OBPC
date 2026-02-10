@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import Config
 from app.extensoes import db, login_manager
@@ -29,6 +29,14 @@ def create_app():
 
     # Ajusta cabecalhos de proxy (Render) para preservar HTTPS
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+    # Forca HTTPS em producao para garantir cookies seguros
+    @app.before_request
+    def enforce_https():
+        if app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('postgresql://'):
+            proto = request.headers.get('X-Forwarded-Proto', 'http')
+            if proto != 'https':
+                return redirect(request.url.replace('http://', 'https://', 1), code=301)
 
     # Inicializa extensões
     db.init_app(app)

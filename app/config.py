@@ -12,6 +12,7 @@ class Config:
         if DATABASE_URL.startswith('postgres://'):
             DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
+        PREFERRED_URL_SCHEME = 'https'
         SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': 10,
             'pool_timeout': 30,
