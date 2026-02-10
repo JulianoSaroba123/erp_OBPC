@@ -83,8 +83,16 @@ def configurar_notificacoes():
         return render_template('notificacoes/configurar_notificacoes.html', config=config)
     
     except Exception as e:
-        flash(f'Erro ao carregar configurações: {str(e)}', 'danger')
-        return render_template('notificacoes/configurar_notificacoes.html', config=None)
+        # Se houver erro, criar configuração padrão
+        try:
+            config = ServicoNotificacoes.obter_configuracao()
+            return render_template('notificacoes/configurar_notificacoes.html', config=config)
+        except:
+            flash(f'Erro ao carregar configurações: {str(e)}', 'danger')
+            # Criar objeto config vazio para o template
+            from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes
+            config = ConfiguracaoNotificacoes()
+            return render_template('notificacoes/configurar_notificacoes.html', config=config)
 
 
 @notificacoes_bp.route('/notificacoes/testar-email', methods=['POST'])

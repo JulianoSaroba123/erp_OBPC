@@ -25,7 +25,6 @@
         </div>
     </div>
 
-    {% if config %}
     <form method="POST" id="form-notificacoes">
         <!-- Configurações de Email -->
         <div class="row mb-4">
@@ -44,7 +43,7 @@
                                 <div class="form-check form-switch form-check-lg">
                                     <input class="form-check-input" type="checkbox" 
                                            id="email_habilitado" name="email_habilitado"
-                                           {% if config.email_habilitado %}checked{% endif %}>
+                                           {% if config and config.email_habilitado %}checked{% endif %}>
                                     <label class="form-check-label" for="email_habilitado">
                                         <strong>Habilitar Notificações por Email</strong>
                                     </label>
@@ -52,20 +51,20 @@
                             </div>
                         </div>
 
-                        <div id="email-config" style="display: {% if config.email_habilitado %}block{% else %}none{% endif %};">
+                        <div id="email-config" style="display: {% if config and config.email_habilitado %}block{% else %}none{% endif %};">
                             <!-- Email Remetente -->
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label"><strong>Email Remetente</strong></label>
                                     <input type="email" class="form-control" name="email_remetente"
-                                           value="{{ config.email_remetente or '' }}"
+                                           value="{{ (config.email_remetente if config else '') or '' }}"
                                            placeholder="noticias@igrejaobpc.com.br">
                                     <small class="text-muted">Email que envia as notificações</small>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label"><strong>Email Admin</strong></label>
                                     <input type="email" class="form-control" name="email_admin"
-                                           value="{{ config.email_admin or '' }}"
+                                           value="{{ (config.email_admin if config else '') or '' }}"
                                            placeholder="admin@igrejaobpc.com.br">
                                     <small class="text-muted">Email para receber notificações de aniversários</small>
                                 </div>
@@ -325,7 +324,6 @@
             </div>
         </div>
     </form>
-    {% endif %}
 </div>
 
 <!-- Modal Teste Email -->
