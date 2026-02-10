@@ -98,6 +98,29 @@ def create_app():
     with app.app_context():
         db.create_all()
         
+        # Verificar e adicionar coluna casa falte
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+            
+            if 'configuracao_notificacoes' in inspector.get_table_names():
+                colunas = {col['name'] for col in inspector.get_columns('configuracao_notificacoes')}
+                
+                # Se falta a coluna hora_notificacao_automatica, adicionar
+                if 'hora_notificacao_automatica' not in colunas:
+                    try:
+                        db.session.execute(text("""
+                            ALTER TABLE configuracao_notificacoes
+                            ADD COLUMN hora_notificacao_automatica VARCHAR(5) DEFAULT '08:00'
+                        """))
+                        db.session.commit()
+                        app.logger.info("✅ Coluna 'hora_notificacao_automatica' adicionada")
+                    except Exception as e:
+                        db.session.rollback()
+                        app.logger.warning(f"⚠️  Não foi possível adicionar coluna: {str(e)}")
+        except Exception as e:
+            app.logger.warning(f"⚠️  Erro ao verificar schema: {str(e)}")
+        
         # Iniciar scheduler de tarefas agendadas
         from app.notificacoes.tarefas_agendadas import iniciar_scheduler
         iniciar_scheduler(app)
