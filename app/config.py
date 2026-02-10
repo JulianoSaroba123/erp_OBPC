@@ -38,6 +38,13 @@ class Config:
     SESSION_COOKIE_SECURE = False  # True apenas em HTTPS
     SESSION_COOKIE_HTTPONLY = True  # Proteção XSS
     SESSION_COOKIE_SAMESITE = 'Lax'  # Proteção CSRF
+
+    # Ajustes para producao (Render) em HTTPS
+    if DATABASE_URL:
+        SESSION_COOKIE_SECURE = True
+        SESSION_COOKIE_SAMESITE = 'None'
     
     # Flask-Login
     REMEMBER_COOKIE_DURATION = timedelta(days=7)  # "Lembrar de mim" por 7 dias
+    if DATABASE_URL:
+        REMEMBER_COOKIE_SECURE = True

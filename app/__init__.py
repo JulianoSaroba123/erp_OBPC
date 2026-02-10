@@ -1,4 +1,5 @@
 from flask import Flask
+from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import Config
 from app.extensoes import db, login_manager
 from app.usuario.usuario_routes import usuario_bp
@@ -25,6 +26,9 @@ from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes, Histor
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Ajusta cabecalhos de proxy (Render) para preservar HTTPS
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     # Inicializa extensões
     db.init_app(app)
