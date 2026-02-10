@@ -4,6 +4,7 @@
 Flask==3.0.0
 Flask-Login==0.6.3
 Flask-SQLAlchemy==3.1.1
+Flask-Mail==0.9.1
 Werkzeug==3.0.1
 reportlab==4.0.7
 weasyprint==61.2
@@ -11,6 +12,7 @@ pandas==2.1.4
 xlsxwriter==3.1.9
 requests==2.31.0
 Pillow==10.1.0
+twilio==9.0.0
 
 # Para geração de executável
 pyinstaller==6.3.0

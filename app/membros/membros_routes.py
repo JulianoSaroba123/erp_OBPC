@@ -7,6 +7,113 @@ from sqlalchemy import extract
 
 membros_bp = Blueprint('membros', __name__, template_folder='templates')
 
+# ============================================================================
+# FUNÇÕES AUXILIARES
+# ============================================================================
+
+def enviar_notificacoes_aniversario(membros_aniversariantes):
+    """Envia notificações de aniversário para membros"""
+    try:
+        from app.notificacoes.notificacoes_service import ServicoNotificacoes
+        
+        config = ServicoNotificacoes.obter_configuracao()
+        
+        if not config.notificar_admin and not config.notificar_aniversariantes:
+            return
+        
+        for membro_info in membros_aniversariantes:
+            membro = membro_info['membro']
+            
+            # Preparar dados do email
+            nome = membro.nome
+            idade = membro_info['idade']
+            data_aniversario = membro.data_nascimento.strftime('%d/%m') if membro.data_nascimento else 'N/A'
+            
+            # ========== Notificar o próprio membro ==========
+            if config.notificar_aniversariantes and membro.email:
+                corpo_html = f"""
+                <html>
+                    <body style="font-family: Arial, sans-serif;">
+                        <div style="background: linear-gradient(135deg, #eab308, #fbbf24); color: #000; padding: 20px; border-radius: 10px;">
+                            <h2>🎉 Feliz Aniversário, {nome}!</h2>
+                            <p>Que o Senhor abençoe sua vida abundantemente neste novo ano!</p>
+                            <p><strong>Data:</strong> {data_aniversario}</p>
+                            <p><strong>Idade:</strong> {idade} anos</p>
+                            <p style="margin-top: 20px; font-size: 14px;">
+                                A comunidade da Igreja OBPC expressa seus melhores votos para você.
+                            </p>
+                            <p style="margin-top: 30px; font-size: 12px; opacity: 0.7;">
+                                Este é um email automático. Não responda.
+                            </p>
+                        </div>
+                    </body>
+                </html>
+                """
+                
+                ServicoNotificacoes.enviar_email(
+                    destinatario=membro.email,
+                    assunto=f'🎉 Feliz Aniversário, {nome}!',
+                    corpo_html=corpo_html
+                )
+            
+            # ========== Notificar administrador ==========
+            if config.notificar_admin and config.email_admin:
+                corpo_html = f"""
+                <html>
+                    <body style="font-family: Arial, sans-serif;">
+                        <div style="background: linear-gradient(135deg, #228b22, #0d5450); color: white; padding: 20px; border-radius: 10px;">
+                            <h2>📢 Aniversário de Membro</h2>
+                            <p><strong>Nome:</strong> {nome}</p>
+                            <p><strong>Data:</strong> {data_aniversario}</p>
+                            <p><strong>Idade:</strong> {idade} anos</p>
+                            {f'<p><strong>Email:</strong> {membro.email}</p>' if membro.email else ''}
+                            {f'<p><strong>Telefone:</strong> {membro.telefone}</p>' if membro.telefone else ''}
+                            <p style="margin-top: 20px; color: #eab308;">
+                                ⭐ Lembre-se de entrar em contato para desejar felicidades!
+                            </p>
+                            <p style="margin-top: 30px; font-size: 12px; opacity: 0.7;">
+                                Este é um email automático. Não responda.
+                            </p>
+                        </div>
+                    </body>
+                </html>
+                """
+                
+                ServicoNotificacoes.enviar_email(
+                    destinatario=config.email_admin,
+                    assunto=f'📢 Aniversário de {nome}',
+                    corpo_html=corpo_html
+                )
+            
+            # ========== Notificar via WhatsApp ==========
+            if config.whatsapp_habilitado and membro.telefone:
+                mensagem = f"""🎉 Feliz Aniversário, {nome}!
+
+Que o Senhor abençoe sua vida abundantemente neste novo ano!
+
+Data: {data_aniversario}
+Idade: {idade} anos
+
+A comunidade da Igreja OBPC deseja-lhe um excelente aniversário! 🙏"""
+                
+                # Formatar número para WhatsApp (55XXXXXXXXXXX)
+                numero = membro.telefone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+                if not numero.startswith('55'):
+                    numero = '55' + numero
+                
+                ServicoNotificacoes.enviar_whatsapp(
+                    numero=numero,
+                    mensagem=mensagem,
+                    membro_id=membro.id
+                )
+    
+    except ImportError:
+        # Se o módulo de notificações não estiver disponível, apenas ignora
+        pass
+    except Exception as e:
+        print(f"Erro ao enviar notificações de aniversário: {str(e)}")
+
+
 @membros_bp.route('/membros')
 @login_required
 def lista_membros():
@@ -266,6 +373,7 @@ def aniversariantes():
         # Calcular idade e dias restantes para cada aniversariante
         hoje = datetime.now().date()
         aniversariantes_info = []
+        aniversariantes_hoje = []
         
         for membro in aniversariantes_mes:
             if membro.data_nascimento:
@@ -286,13 +394,23 @@ def aniversariantes():
                 else:
                     status = 'proximo'
                 
-                aniversariantes_info.append({
+                info = {
                     'membro': membro,
                     'idade': idade,
                     'dias_restantes': abs(dias_restantes),
                     'status': status,
                     'dia': membro.data_nascimento.day
-                })
+                }
+                
+                aniversariantes_info.append(info)
+                
+                # Separar aniversariantes de hoje para notificação
+                if status == 'hoje':
+                    aniversariantes_hoje.append(info)
+        
+        # Enviar notificações para aniversariantes de hoje
+        if aniversariantes_hoje:
+            enviar_notificacoes_aniversario(aniversariantes_hoje)
         
         # Nome do mês atual
         meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

@@ -16,9 +16,11 @@ from app.midia.midia_routes import midia_bp
 from app.escala_ministerial.escala_routes import escala_ministerial_bp
 from app.financeiro.routes_conciliacao import conciliacao_bp
 from app.agenda_pastoral.agenda_pastoral_routes import agenda_pastoral_bp
+from app.notificacoes.notificacoes_routes import notificacoes_bp
 
 # Importar modelos para garantir registro no SQLAlchemy
 from app.financeiro.comprovante_model import Comprovante  # Necessário para relacionamento em Lancamento
+from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes, HistoricoNotificacoes  # Modelos de notificações
 
 def create_app():
     app = Flask(__name__)
@@ -48,6 +50,7 @@ def create_app():
     app.register_blueprint(escala_ministerial_bp)
     app.register_blueprint(conciliacao_bp)
     app.register_blueprint(agenda_pastoral_bp)
+    app.register_blueprint(notificacoes_bp)
 
     # Registro de filtros Jinja2
     @app.template_filter('mes_nome_completo')
