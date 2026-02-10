@@ -27,12 +27,7 @@ def requer_admin(f):
 def configurar_notificacoes():
     """Página de configuração de notificações"""
     try:
-        # Garantir que a configuração existe
         config = ServicoNotificacoes.obter_configuracao()
-        
-        # Garantir que os atributos existem
-        if not hasattr(config, 'hora_notificacao_automatica'):
-            config.hora_notificacao_automatica = '08:00'
         
         if request.method == 'POST':
             try:
@@ -41,12 +36,7 @@ def configurar_notificacoes():
                 config.email_remetente = request.form.get('email_remetente', '').strip()
                 config.email_admin = request.form.get('email_admin', '').strip()
                 config.smtp_server = request.form.get('smtp_server', '').strip()
-                
-                try:
-                    config.smtp_porta = int(request.form.get('smtp_porta', 587))
-                except:
-                    config.smtp_porta = 587
-                
+                config.smtp_porta = int(request.form.get('smtp_porta', 587)) if request.form.get('smtp_porta') else 587
                 config.smtp_usuario = request.form.get('smtp_usuario', '').strip()
                 
                 if request.form.get('smtp_senha'):
@@ -70,17 +60,8 @@ def configurar_notificacoes():
                 # Configurações gerais
                 config.notificar_aniversariantes = request.form.get('notificar_aniversariantes') == 'on'
                 config.notificar_admin = request.form.get('notificar_admin') == 'on'
-                
-                try:
-                    config.dias_antes = int(request.form.get('dias_antes', 1))
-                except:
-                    config.dias_antes = 1
-                
-                # Nova: hora de notificação automática
-                try:
-                    config.hora_notificacao_automatica = request.form.get('hora_notificacao_automatica', '08:00') or '08:00'
-                except:
-                    config.hora_notificacao_automatica = '08:00'
+                config.dias_antes = int(request.form.get('dias_antes', 1)) if request.form.get('dias_antes') else 1
+                config.hora_notificacao_automatica = request.form.get('hora_notificacao_automatica', '08:00') or '08:00'
                 
                 db.session.commit()
                 flash('Configurações salvas com sucesso!', 'success')
@@ -88,30 +69,17 @@ def configurar_notificacoes():
             
             except Exception as e:
                 db.session.rollback()
-                flash(f'Erro ao salvar configurações: {str(e)}', 'danger')
+                flash(f'Erro ao salvar: {str(e)[:100]}', 'danger')
                 return redirect(url_for('notificacoes.configurar_notificacoes'))
         
         return render_template('notificacoes/configurar_notificacoes.html', config=config)
     
     except Exception as e:
-        # Se houver erro crítico, tentar criar configuração
-        try:
-            config = ServicoNotificacoes.obter_configuracao()
-            if not hasattr(config, 'hora_notificacao_automatica'):
-                config.hora_notificacao_automatica = '08:00'
-            return render_template('notificacoes/configurar_notificacoes.html', config=config)
-        except Exception as e2:
-            flash(f'Erro ao carregar configurações: {str(e2)}', 'danger')
-            # Criar objeto config vazio com atributos padrão
-            from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes
-            config = ConfiguracaoNotificacoes()
-            config.hora_notificacao_automatica = '08:00'
-            config.email_habilitado = False
-            config.whatsapp_habilitado = False
-            config.notificar_aniversariantes = True
-            config.notificar_admin = True
-            config.dias_antes = 0
-            return render_template('notificacoes/configurar_notificacoes.html', config=config)
+        flash(f'Erro ao carregar: {str(e)[:100]}', 'danger')
+        # Retornar com config padrão (vazio)
+        from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes
+        config = ConfiguracaoNotificacoes()
+        return render_template('notificacoes/configurar_notificacoes.html', config=config)
 @login_required
 @requer_admin
 def testar_email():
