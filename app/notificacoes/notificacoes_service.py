@@ -343,26 +343,34 @@ class ServicoNotificacoes:
                     'mensagem': 'API Key ou URL do Gupshup não configurados'
                 }
             
-            # Headers para Gupshup
+            # Headers para Gupshup - usar apiKey no formato correto
             headers = {
-                'Authorization': config.whatsapp_api_key,
+                'Authorization': f'apiKey {config.whatsapp_api_key}',
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
             
-            # Payload para Gupshup (usa form-data, não JSON)
+            # Garantir que o número está no formato correto (apenas dígitos + ou 55)
+            numero_limpo = numero.replace('+', '').replace(' ', '').replace('-', '')
+            if not numero_limpo.startswith('55'):
+                numero_limpo = '55' + numero_limpo
+            
+            # Payload para Gupshup (usa form-data)
             payload = {
-                'phone': numero,
+                'phone': numero_limpo,
                 'message': mensagem
             }
             
+            # URL pode ter ou não a barra final
+            url = config.whatsapp_api_url.rstrip('/')
+            
             response = requests.post(
-                config.whatsapp_api_url,
+                url,
                 data=payload,
                 headers=headers,
                 timeout=10
             )
             
-            if response.status_code in [200, 201]:
+            if response.status_code in [200, 201, 202]:
                 # Registrar no histórico
                 historico = HistoricoNotificacoes(
                     tipo='whatsapp',
