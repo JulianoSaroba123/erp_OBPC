@@ -36,14 +36,16 @@ class Config:
     
     # Configurações de sessão
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)  # Sessão dura 24 horas
-    SESSION_COOKIE_SECURE = False  # True apenas em HTTPS
+    SESSION_COOKIE_NAME = 'obpc_session'
     SESSION_COOKIE_HTTPONLY = True  # Proteção XSS
     SESSION_COOKIE_SAMESITE = 'Lax'  # Proteção CSRF
-
+    
     # Ajustes para producao (Render) em HTTPS
     if DATABASE_URL:
         SESSION_COOKIE_SECURE = True
-        SESSION_COOKIE_SAMESITE = 'None'
+        SESSION_COOKIE_PATH = '/'
+    else:
+        SESSION_COOKIE_SECURE = False
     
     # Flask-Login
     REMEMBER_COOKIE_DURATION = timedelta(days=7)  # "Lembrar de mim" por 7 dias

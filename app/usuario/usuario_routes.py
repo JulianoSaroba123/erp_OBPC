@@ -38,6 +38,11 @@ def login():
                 
                 # Login com sessão persistente se marcou "lembrar"
                 login_user(usuario, remember=bool(lembrar))
+                
+                # Marcar sessão como permanente para durar as 24h configuradas
+                from flask import session
+                session.permanent = True
+                
                 flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")
                 
                 # Verificar se há uma URL de destino (next)
