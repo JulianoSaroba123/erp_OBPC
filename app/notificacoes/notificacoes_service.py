@@ -18,12 +18,38 @@ class ServicoNotificacoes:
     @staticmethod
     def obter_configuracao():
         """Obtém configuração de notificações, criando padrão se necessário"""
-        config = ConfiguracaoNotificacoes.query.first()
-        if not config:
+        try:
+            config = ConfiguracaoNotificacoes.query.first()
+            if not config:
+                try:
+                    config = ConfiguracaoNotificacoes()
+                    db.session.add(config)
+                    db.session.commit()
+                except Exception as e:
+                    db.session.rollback()
+                    # Se não conseguir criar no banco, retornar objeto em memória
+                    config = ConfiguracaoNotificacoes()
+                    config.id = 1
+                    config.email_habilitado = False
+                    config.whatsapp_habilitado = False
+                    config.notificar_aniversariantes = True
+                    config.notificar_admin = True
+                    config.dias_antes = 0
+                    config.hora_notificacao_automatica = '08:00'
+                    logger.warning(f"Não conseguiu criar configuração no banco: {str(e)}")
+            return config
+        except Exception as e:
+            logger.error(f"Erro ao obter configuração: {str(e)}")
+            # Retornar objeto padrão em memória se falhar
             config = ConfiguracaoNotificacoes()
-            db.session.add(config)
-            db.session.commit()
-        return config
+            config.id = 1
+            config.email_habilitado = False
+            config.whatsapp_habilitado = False
+            config.notificar_aniversariantes = True
+            config.notificar_admin = True
+            config.dias_antes = 0
+            config.hora_notificacao_automatica = '08:00'
+            return config
     
     @staticmethod
     def enviar_email(destinatario, assunto, corpo_html, corpo_texto=None):
