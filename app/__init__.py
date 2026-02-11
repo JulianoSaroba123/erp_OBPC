@@ -127,6 +127,23 @@ def create_app():
             iniciar_scheduler(app)
         except Exception as e:
             app.logger.warning(f"⚠️  Erro ao iniciar scheduler: {str(e)}")
+        
+        # DEBUG: Listar usuários e permissões (apenas em produção com DATABASE_URL)
+        if app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('postgresql'):
+            try:
+                from app.usuario.usuario_model import Usuario
+                import sys
+                usuarios = Usuario.query.all()
+                print("\n" + "="*70, flush=True)
+                print("DEBUG: USUARIOS E PERMISSOES NO BANCO:", flush=True)
+                print("="*70, flush=True)
+                for u in usuarios:
+                    pode_gerenciar = u.pode_gerenciar_usuarios()
+                    print(f"ID={u.id} | Email={u.email} | Nivel='{u.nivel_acesso}' | PodeGerenciar={pode_gerenciar}", flush=True)
+                print("="*70 + "\n", flush=True)
+                sys.stdout.flush()
+            except Exception as e:
+                print(f"DEBUG: Erro ao listar usuarios: {str(e)}", flush=True)
 
     return app
 
