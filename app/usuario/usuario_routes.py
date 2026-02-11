@@ -551,6 +551,7 @@ def obter_favoritos():
 
 # ---------- GERENCIAMENTO DE USUÁRIOS ----------
 @usuario_bp.route("/usuarios")
+@login_required
 @requer_gerencia_usuarios
 def lista_usuarios():
     """Lista todos os usuários para administração"""
@@ -558,6 +559,7 @@ def lista_usuarios():
     return render_template("usuario/lista_usuarios.html", usuarios=usuarios)
 
 @usuario_bp.route("/usuarios/novo", methods=["GET", "POST"])
+@login_required
 @requer_gerencia_usuarios
 def novo_usuario():
     """Criar novo usuário"""
@@ -618,6 +620,7 @@ def novo_usuario():
     return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
 
 @usuario_bp.route("/usuarios/<int:user_id>/editar", methods=["GET", "POST"])
+@login_required
 @requer_gerencia_usuarios
 def editar_usuario(user_id):
     """Editar usuário existente"""
@@ -684,6 +687,7 @@ def editar_usuario(user_id):
     return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
 
 @usuario_bp.route("/usuarios/<int:user_id>/toggle-status", methods=["POST"])
+@login_required
 @requer_gerencia_usuarios
 def toggle_status_usuario(user_id):
     """Ativar/desativar usuário"""
@@ -704,6 +708,7 @@ def toggle_status_usuario(user_id):
     return jsonify({"success": True, "message": f"Usuário {status} com sucesso!", "ativo": usuario.ativo})
 
 @usuario_bp.route("/usuarios/<int:user_id>/excluir", methods=["POST"])
+@login_required
 @requer_nivel_acesso('master')
 def excluir_usuario(user_id):
     """Excluir usuário (apenas master)"""
