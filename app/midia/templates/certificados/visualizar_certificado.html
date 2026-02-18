@@ -107,66 +107,127 @@
                     </div>
 
                     <!-- Texto principal do certificado -->
-                    <div style="text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 10px;">
+                        {% if certificado.tipo_certificado == 'Batismo' %}
+                        <!-- Texto introdutório mais rico para Batismo -->
                         <p style="
                             color: #000; 
-                            font-size: 14px; 
-                            line-height: 1.5; 
-                            margin-bottom: 25px;
+                            font-size: 15px; 
+                            line-height: 1.6; 
+                            margin-bottom: 15px;
                             text-align: justify;
                             text-justify: inter-word;
                         ">
-                            Certificamos que <strong style="color: #1e40af; font-size: 14px; text-decoration: underline;">{{ certificado.nome_pessoa }}</strong>
-                            {% if certificado.tipo_certificado == 'Batismo' %}
-                            foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo, em {{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê.
-                            {% elif certificado.tipo_certificado == 'Apresentação' %}
-                            foi apresentado(a) ao Senhor Jesus Cristo, em {{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê{% if certificado.padrinhos %}, 
-                            sendo acompanhado(a) pelos padrinhos: <strong style="color: #1e40af;">{{ certificado.padrinhos }}</strong>{% endif %}.
-                            {% endif %}
+                            Certificamos perante a Igreja de Cristo e para os devidos fins que 
+                            <strong style="color: #1e40af; font-size: 16px;">{{ certificado.nome_pessoa }}</strong>{% if certificado.filiacao %}, 
+                            filho(a) de <strong style="color: #1e40af;">{{ certificado.filiacao }}</strong>,{% endif %}
+                            foi batizado(a) nas águas por imersão, em obediência ao mandamento de Nosso Senhor Jesus Cristo, 
+                            em nome do Pai, do Filho e do Espírito Santo, no dia 
+                            <strong style="color: #1e40af;">{{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
+                            na {{ certificado.local_evento if certificado.local_evento else 'Igreja OBPC - Tietê/SP' }}.
                         </p>
 
-                        <!-- Espaço para assinatura -->
-                        <div style="text-align: center; margin: 20px 0;">
-                            <div style="
-                                border-bottom: 1px dotted #666;
-                                width: 250px;
-                                margin: 0 auto 5px auto;
-                                height: 15px;
-                            "></div>
-                            <p style="color: #666; font-size: 11px; margin: 0; font-style: italic;">
-                                Assinatura
-                            </p>
+                        <!-- Informação adicional sobre o batismo -->
+                        <p style="
+                            color: #333; 
+                            font-size: 13px; 
+                            line-height: 1.5; 
+                            margin-bottom: 18px;
+                            text-align: justify;
+                            text-justify: inter-word;
+                            font-style: italic;
+                        ">
+                            Este ato simboliza a morte para o pecado e ressurreição para uma nova vida em Cristo Jesus, 
+                            declarando publicamente sua fé e compromisso com o Evangelho. Que o Senhor confirme em seu 
+                            coração a graça e a salvação que há em Cristo Jesus.
+                        </p>
+
+                        {% elif certificado.tipo_certificado == 'Apresentação' %}
+                        <!-- Texto para Apresentação -->
+                        <p style="
+                            color: #000; 
+                            font-size: 15px; 
+                            line-height: 1.6; 
+                            margin-bottom: 20px;
+                            text-align: justify;
+                            text-justify: inter-word;
+                        ">
+                            Certificamos que <strong style="color: #1e40af; font-size: 15px;">{{ certificado.nome_pessoa }}</strong>
+                            foi apresentado(a) ao Senhor Jesus Cristo, em {{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}, 
+                            na {{ certificado.local_evento if certificado.local_evento else 'Igreja OBPC - Tietê' }}{% if certificado.padrinhos %}, 
+                            sendo acompanhado(a) pelos padrinhos: <strong style="color: #1e40af;">{{ certificado.padrinhos }}</strong>{% endif %}.
+                        </p>
+                        {% endif %}
+
+                        <!-- Linha para assinatura -->
+                        <div style="display: flex; justify-content: space-around; margin: 18px 0 15px 0; gap: 30px;">
+                            <div style="text-align: center; flex: 1;">
+                                <div style="
+                                    border-bottom: 1px solid #333;
+                                    width: 100%;
+                                    margin: 0 auto 5px auto;
+                                    height: 15px;
+                                "></div>
+                                <p style="color: #333; font-size: 11px; margin: 0; font-weight: bold;">
+                                    {{ certificado.pastor_responsavel if certificado.pastor_responsavel else 'Pastor Responsável' }}
+                                </p>
+                                <p style="color: #666; font-size: 10px; margin: 0; font-style: italic;">Ministro Oficiante</p>
+                            </div>
+
+                            <div style="text-align: center; flex: 1;">
+                                <div style="
+                                    border-bottom: 1px solid #333;
+                                    width: 100%;
+                                    margin: 0 auto 5px auto;
+                                    height: 15px;
+                                "></div>
+                                <p style="color: #333; font-size: 11px; margin: 0; font-weight: bold;">Secretário(a)</p>
+                                <p style="color: #666; font-size: 10px; margin: 0; font-style: italic;">Secretaria da Igreja</p>
+                            </div>
                         </div>
 
-                        <!-- Versículo bíblico -->
+                        {% if certificado.tipo_certificado == 'Batismo' %}
+                        <!-- Versículo bíblico para Batismo -->
                         <div style="
                             background: #eff6ff;
-                            border-left: 3px solid #000000;
-                            padding: 12px 15px;
-                            margin: 15px 0;
-                            border-radius: 0 3px 3px 0;
+                            border-left: 3px solid #1e40af;
+                            border-right: 3px solid #1e40af;
+                            padding: 10px 15px;
+                            margin: 12px 0;
+                            border-radius: 5px;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                         ">
-                            {% if certificado.tipo_certificado == 'Batismo' %}
-                            <p style="color: #000000; font-size: 12px; font-style: italic; margin: 0; line-height: 1.4; text-align: center;">
-                                <em>"Portanto, vão e façam discípulos de todas as nações, batizando-os em nome do Pai e do Filho e do Espírito Santo."</em>
+                            <p style="color: #1e40af; font-size: 12px; font-style: italic; margin: 0 0 5px 0; line-height: 1.5; text-align: center; font-weight: 500;">
+                                "Portanto, vão e façam discípulos de todas as nações, batizando-os em nome do Pai e do Filho e do Espírito Santo."
                             </p>
-                            <p style="color: #000000; font-size: 11px; font-weight: bold; margin: 3px 0 0 0; text-align: center;">
+                            <p style="color: #000000; font-size: 10px; font-weight: bold; margin: 0; text-align: center;">
                                 Mateus 28:19
                             </p>
-                            {% elif certificado.tipo_certificado == 'Apresentação' %}
-                            <p style="color: #000000; font-size: 12px; font-style: italic; margin: 0; line-height: 1.4; text-align: center;">
-                                <em>"Deixem vir a mim as crianças, não as impeçam; pois o Reino dos céus pertence aos que são semelhantes a elas."</em>
+                        </div>
+                        {% elif certificado.tipo_certificado == 'Apresentação' %}
+                        <!-- Versículo bíblico para Apresentação -->
+                        <div style="
+                            background: #eff6ff;
+                            border-left: 3px solid #1e40af;
+                            border-right: 3px solid #1e40af;
+                            padding: 10px 15px;
+                            margin: 12px 0;
+                            border-radius: 5px;
+                        ">
+                            <p style="color: #1e40af; font-size: 12px; font-style: italic; margin: 0 0 5px 0; line-height: 1.5; text-align: center;">
+                                "Deixem vir a mim as crianças, não as impeçam; pois o Reino dos céus pertence aos que são semelhantes a elas."
                             </p>
-                            <p style="color: #000000; font-size: 11px; font-weight: bold; margin: 3px 0 0 0; text-align: center;">
+                            <p style="color: #000000; font-size: 10px; font-weight: bold; margin: 0; text-align: center;">
                                 Mateus 19:14
                             </p>
-                            {% endif %}
                         </div>
+                        {% endif %}
                         
-                        <!-- Endereço discreto no rodapé -->
-                        <div style="text-align: center; margin-top: 20px;">
-                            <p style="color: #666; font-size: 10px; margin: 0;">
+                        <!-- Rodapé com informações compacta -->
+                        <div style="text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd;">
+                            <p style="color: #666; font-size: 9px; margin: 0;">
                                 IGREJA O BRASIL PARA CRISTO - RUA EGÍDIO MÓDULO, 261 - TIETÊ/SP
+                                {% if certificado.numero_certificado %}<br>Certificado Nº: {{ certificado.numero_certificado }}{% endif %}
                             </p>
                         </div>
                     </div>
