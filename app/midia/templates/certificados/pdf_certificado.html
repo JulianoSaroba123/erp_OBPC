@@ -298,9 +298,9 @@
             
             <div class="data-local">
                 {% if certificado.local_evento %}
-                    Realizado em {{ certificado.local_evento }} no dia {{ certificado.data_evento.strftime('%d de %B de %Y') }}.
+                    Realizado em {{ certificado.local_evento }} no dia {{ certificado.data_evento|data_por_extenso }}.
                 {% else %}
-                    Realizado no dia {{ certificado.data_evento.strftime('%d de %B de %Y') }}.
+                    Realizado no dia {{ certificado.data_evento|data_por_extenso }}.
                 {% endif %}
                 
                 {% if certificado.pastor_responsavel %}

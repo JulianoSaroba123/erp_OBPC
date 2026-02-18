@@ -454,7 +454,7 @@
                 <div class="details-section">
                     <div class="detail-box">
                         <div class="detail-label">Data da Cerimônia</div>
-                        <div class="detail-value">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '-' }}</div>
+                        <div class="detail-value">{{ certificado.data_evento|data_por_extenso if certificado.data_evento else '-' }}</div>
                     </div>
                     
                     {% if certificado.local_evento %}
@@ -496,7 +496,7 @@
             
             <!-- Data de emissão -->
             <div class="date-info">
-                Emitido em {{ certificado.data_criacao.strftime('%d de %B de %Y') if certificado.data_criacao else 'Data não disponível' }}
+                Emitido em {{ certificado.data_criacao|data_por_extenso if certificado.data_criacao else 'Data não disponível' }}
                 <br>{{ config.nome_igreja if config and config.nome_igreja else 'Sistema OBPC - Organização Batista Pró-Comunhão' }}
             </div>
         </div>

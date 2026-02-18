@@ -118,9 +118,9 @@
                         ">
                             Certificamos que <strong style="color: #1e40af; font-size: 14px; text-decoration: underline;">{{ certificado.nome_pessoa }}</strong>
                             {% if certificado.tipo_certificado == 'Batismo' %}
-                            foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo, em {{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê.
+                            foi batizado(a) nas águas em nome do Pai, do Filho e do Espírito Santo, em {{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê.
                             {% elif certificado.tipo_certificado == 'Apresentação' %}
-                            foi apresentado(a) ao Senhor Jesus Cristo, em {{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê{% if certificado.padrinhos %}, 
+                            foi apresentado(a) ao Senhor Jesus Cristo, em {{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}, na Igreja OBPC - Tietê{% if certificado.padrinhos %}, 
                             sendo acompanhado(a) pelos padrinhos: <strong style="color: #1e40af;">{{ certificado.padrinhos }}</strong>{% endif %}.
                             {% endif %}
                         </p>

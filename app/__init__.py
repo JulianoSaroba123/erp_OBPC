@@ -66,6 +66,26 @@ def create_app():
             9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
         }
         return meses.get(mes, f'Mês {mes}')
+    
+    @app.template_filter('data_por_extenso')
+    def data_por_extenso(data):
+        """Formata data por extenso em português (ex: 22 de Janeiro de 2026)"""
+        if not data:
+            return ''
+        
+        meses = {
+            1: 'janeiro', 2: 'fevereiro', 3: 'março', 4: 'abril',
+            5: 'maio', 6: 'junho', 7: 'julho', 8: 'agosto',
+            9: 'setembro', 10: 'outubro', 11: 'novembro', 12: 'dezembro'
+        }
+        
+        try:
+            dia = data.day
+            mes = meses.get(data.month, '')
+            ano = data.year
+            return f'{dia} de {mes} de {ano}'
+        except:
+            return str(data)
 
     @app.template_filter('valor_com_cor')
     def valor_com_cor(valor):

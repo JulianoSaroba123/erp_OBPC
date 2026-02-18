@@ -260,7 +260,7 @@
         
         <!-- Rodapé -->
         <div class="footer">
-            <p>Emitido em {{ certificado.data_criacao.strftime('%d de %B de %Y') if certificado.data_criacao else 'N/A' }}</p>
+            <p>Emitido em {{ certificado.data_criacao|data_por_extenso if certificado.data_criacao else 'N/A' }}</p>
             <p>Sistema OBPC - Organização Batista Pró-Comunhão</p>
         </div>
     </div>

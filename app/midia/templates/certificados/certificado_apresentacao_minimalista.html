@@ -114,7 +114,7 @@
                     margin-right: auto;
                 ">
                     foi apresentada ao Senhor Jesus Cristo em 
-                    <strong style="color: {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
+                    <strong style="color: {% if certificado.genero == 'feminino' %}#E91E63{% else %}#4A90E2{% endif %};">{{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
                     seguindo o exemplo bíblico, sendo consagrada para uma vida de bênçãos e proteção divina.
                 </p>
                 

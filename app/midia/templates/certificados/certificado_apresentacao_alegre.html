@@ -220,7 +220,7 @@
                     font-family: 'Georgia', 'Times New Roman', serif;
                 ">
                     foi apresentada ao <strong style="color: {{ cor_principal }}; font-weight: 700;">Senhor Jesus Cristo</strong> em 
-                    <strong style="color: {{ cor_principal }}; font-weight: 700;">{{ certificado.data_evento.strftime('%d de %B de %Y') if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
+                    <strong style="color: {{ cor_principal }}; font-weight: 700;">{{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}</strong>, 
                     seguindo o exemplo bíblico, sendo consagrada para uma vida de 
                     <strong style="color: {{ cor_principal }}; font-weight: 700;">bênçãos e proteção divina</strong>. 🙏
                 </p>
