@@ -36,6 +36,7 @@ class Config:
     
     # Configurações de sessão
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)  # Sessão dura 24 horas
+    SESSION_REFRESH_EACH_REQUEST = True  # Renova a sessão a cada requisição
     SESSION_COOKIE_NAME = 'obpc_session'
     SESSION_COOKIE_HTTPONLY = True  # Proteção XSS
     SESSION_COOKIE_SAMESITE = 'Lax'  # Proteção CSRF

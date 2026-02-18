@@ -36,7 +36,10 @@ def create_app():
 
     # Configurações do login
     login_manager.login_view = "usuario.login"
+    login_manager.login_message = "Por favor, faça login para acessar esta página."
     login_manager.login_message_category = "info"
+    login_manager.session_protection = "basic"  # Proteção básica de sessão (menos restritiva que "strong")
+    login_manager.refresh_view = "usuario.login"
 
     # Registro dos Blueprints
     app.register_blueprint(usuario_bp)
