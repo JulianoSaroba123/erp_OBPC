@@ -22,10 +22,10 @@
             <!-- Borda externa azul -->
             <div style="
                 position: absolute; 
-                top: 15px; 
-                left: 15px; 
-                right: 15px; 
-                bottom: 15px; 
+                top: 10px; 
+                left: 10px; 
+                right: 10px; 
+                bottom: 10px; 
                 border: 4px solid #000000;
                 border-radius: 15px;
             "></div>
@@ -33,31 +33,31 @@
             <!-- Borda interna azul -->
             <div style="
                 position: absolute; 
-                top: 30px; 
-                left: 30px; 
-                right: 30px; 
-                bottom: 30px; 
+                top: 20px; 
+                left: 20px; 
+                right: 20px; 
+                bottom: 20px; 
                 border: 2px solid #000000;
                 border-radius: 10px;
             "></div>
         </div>
 
         <!-- Conteúdo do certificado -->
-        <div style="position: relative; z-index: 1; padding: 40px 55px; height: 100%; display: flex; flex-direction: column;">
+        <div style="position: relative; z-index: 1; padding: 28px 40px; height: 100%; display: flex; flex-direction: column;">
             
             <!-- Logo da igreja no centro -->
-            <div style="text-align: center; margin: 5px 0 15px 0;">
+            <div style="text-align: center; margin: 0 0 8px 0;">
                 <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
                      alt="Logo da Igreja" 
-                     style="height: 100px; max-width: 180px; object-fit: contain;"
+                     style="height: 85px; max-width: 160px; object-fit: contain;"
                      onerror="this.style.display='none'">
             </div>
 
             <!-- Título CERTIFICADO -->
-            <div style="text-align: center; margin: 10px 0 12px 0;">
+            <div style="text-align: center; margin: 6px 0 8px 0;">
                 <h2 style="
                     color: #000000;
-                    font-size: 38px;
+                    font-size: 34px;
                     font-weight: bold;
                     margin: 0;
                     letter-spacing: 2px;
@@ -66,31 +66,31 @@
                 
                 <!-- Linha decorativa -->
                 <div style="
-                    width: 120px; 
-                    height: 3px; 
+                    width: 100px; 
+                    height: 2px; 
                     background: #000000; 
-                    margin: 6px auto 10px auto;
+                    margin: 5px auto 7px auto;
                 "></div>
                 
                 <h3 style="
                     color: #000000; 
-                    font-size: 15px; 
+                    font-size: 14px; 
                     margin: 0;
                     font-weight: normal;
-                    letter-spacing: 1.5px;
+                    letter-spacing: 1.3px;
                     text-transform: uppercase;
                 ">DE {{ certificado.tipo_certificado }}</h3>
             </div>
 
             <!-- Texto principal do certificado -->
-            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 10px;">
+            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 5px;">
                 {% if certificado.tipo_certificado == 'Batismo' %}
                 <!-- Texto introdutório mais rico para Batismo -->
                 <p style="
                     color: #000; 
-                    font-size: 15px; 
-                    line-height: 1.6; 
-                    margin-bottom: 15px;
+                    font-size: 14px; 
+                    line-height: 1.5; 
+                    margin-bottom: 10px;
                     text-align: justify;
                     text-justify: inter-word;
                 ">
@@ -106,9 +106,9 @@
                 <!-- Informação adicional sobre o batismo -->
                 <p style="
                     color: #333; 
-                    font-size: 13px; 
-                    line-height: 1.5; 
-                    margin-bottom: 18px;
+                    font-size: 12px; 
+                    line-height: 1.4; 
+                    margin-bottom: 12px;
                     text-align: justify;
                     text-justify: inter-word;
                     font-style: italic;
@@ -136,7 +136,7 @@
                 {% endif %}
 
                 <!-- Linha para assinatura do Pastor -->
-                <div style="display: flex; justify-content: space-around; margin: 18px 0 15px 0; gap: 30px;">
+                <div style="display: flex; justify-content: space-around; margin: 12px 0 10px 0; gap: 25px;">
                     <div style="text-align: center; flex: 1;">
                         <div style="
                             border-bottom: 1px solid #333;
@@ -168,9 +168,9 @@
                     background: #eff6ff;
                     border-left: 3px solid #1e40af;
                     border-right: 3px solid #1e40af;
-                    padding: 10px 15px;
-                    margin: 12px 0;
-                    border-radius: 5px;
+                    padding: 8px 12px;
+                    margin: 8px 0;
+                    border-radius: 4px;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 ">
                     <p style="color: #1e40af; font-size: 12px; font-style: italic; margin: 0 0 5px 0; line-height: 1.5; text-align: center; font-weight: 500;">
@@ -200,7 +200,7 @@
                 {% endif %}
                 
                 <!-- Rodapé com informações da igreja e data de emissão -->
-                <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd;">
+                <div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #ddd;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="text-align: left; flex: 1;">
                             <p style="color: #666; font-size: 9px; margin: 0; line-height: 1.3;">
