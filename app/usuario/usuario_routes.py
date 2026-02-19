@@ -36,10 +36,10 @@ def login():
                 usuario.ultimo_login = datetime.now()
                 db.session.commit()
                 
-                # Login do usuário com Flask-Login
-                login_user(usuario, remember=bool(lembrar), duration=None, fresh=True)
+                # Login SEMPRE com remember=True para garantir persistência
+                login_user(usuario, remember=True)
                 
-                # Garantir que a sessão seja permanente
+                # Sessão permanente (já configurado no before_request global)
                 from flask import session
                 session.permanent = True
                 

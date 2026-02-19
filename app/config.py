@@ -34,34 +34,32 @@ class Config:
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Configurações de sessão
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)  # Sessão dura 24 horas
-    SESSION_REFRESH_EACH_REQUEST = True  # Renova a sessão a cada requisição
+    # Configurações de sessão - OTIMIZADO PARA RENDER
+    PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
+    SESSION_REFRESH_EACH_REQUEST = True
     SESSION_COOKIE_NAME = 'obpc_session'
-    SESSION_COOKIE_HTTPONLY = True  # Proteção XSS
+    SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_PATH = '/'
     
-    # Ajustes para producao (Render) em HTTPS
+    # Configurações específicas por ambiente
     if DATABASE_URL:
-        # IMPORTANTE: Em produção com HTTPS e proxy reverso
+        # PRODUÇÃO (Render) - Configuração conservadora que funciona
         SESSION_COOKIE_SECURE = True  # HTTPS obrigatório
-        SESSION_COOKIE_SAMESITE = 'None'  # Necessário para cookies em proxy reverso
+        SESSION_COOKIE_SAMESITE = 'Lax'  # Lax funciona melhor que None no Render
         PREFERRED_URL_SCHEME = 'https'
-        SESSION_COOKIE_DOMAIN = None
+        SESSION_COOKIE_DOMAIN = None  # Deixar o navegador definir
     else:
-        # Desenvolvimento local HTTP
+        # DESENVOLVIMENTO (Local)
         SESSION_COOKIE_SECURE = False
         SESSION_COOKIE_SAMESITE = 'Lax'
     
-    # Flask-Login
-    REMEMBER_COOKIE_DURATION = timedelta(days=7)  # "Lembrar de mim" por 7 dias
+    # Flask-Login - Cookie "Lembrar de mim"
+    REMEMBER_COOKIE_DURATION = timedelta(days=7)
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_PATH = '/'
     if DATABASE_URL:
-        # Em produção HTTPS
         REMEMBER_COOKIE_SECURE = True
-        REMEMBER_COOKIE_SAMESITE = 'None'
+        REMEMBER_COOKIE_SAMESITE = 'Lax'
     else:
-        # Desenvolvimento local
         REMEMBER_COOKIE_SECURE = False
         REMEMBER_COOKIE_SAMESITE = 'Lax'

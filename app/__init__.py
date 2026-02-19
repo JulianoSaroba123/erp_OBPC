@@ -27,11 +27,7 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Ajusta cabecalhos de proxy (Render) para preservar HTTPS corretamente
-    # x_for=1: X-Forwarded-For (IP do cliente)
-    # x_proto=1: X-Forwarded-Proto (HTTP/HTTPS)
-    # x_host=1: X-Forwarded-Host (hostname)
-    # x_prefix=1: X-Forwarded-Prefix (prefixo de URL)
+    # ProxyFix configurado corretamente para Render.com
     app.wsgi_app = ProxyFix(
         app.wsgi_app,
         x_for=1,
@@ -44,39 +40,18 @@ def create_app():
     db.init_app(app)
     login_manager.init_app(app)
 
-    # Configurações do login
+    # Flask-Login configurações
     login_manager.login_view = "usuario.login"
     login_manager.login_message = "Por favor, faça login para acessar esta página."
     login_manager.login_message_category = "info"
-    login_manager.session_protection = None  # Desabilitar proteção que causa problemas com proxy
-    login_manager.refresh_view = "usuario.login"
+    login_manager.session_protection = None  # Desabilitar para evitar conflitos com proxy
     
-    # Handler para garantir sessão permanente em todas as requisições
+    # Handler crítico: Garantir sessão permanente
     @app.before_request
-    def make_session_permanent():
+    def ensure_session_permanent():
         from flask import session
-        session.permanent = True
-        session.modified = True  # Força atualização do cookie
-
-    # Debug: Log de cookies e sessão
-    @app.after_request
-    def log_cookies_and_session(response):
-        try:
-            from flask import session
-            import sys
-            # Log apenas se houver user_id na sessão (usuário logado)
-            if '_user_id' in session:
-                cookies = response.headers.getlist('Set-Cookie')
-                if cookies:
-                    print(f"COOKIES_SET: {len(cookies)} cookies", flush=True)
-                    for cookie in cookies:
-                        # Não logar o valor completo do cookie por segurança
-                        cookie_name = cookie.split('=')[0]
-                        print(f"  - {cookie_name}", flush=True)
-                sys.stdout.flush()
-        except:
-            pass
-        return response
+        if not session.permanent:
+            session.permanent = True
 
     # Registro dos Blueprints
     app.register_blueprint(usuario_bp)
