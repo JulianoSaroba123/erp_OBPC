@@ -41,6 +41,26 @@ def create_app():
     login_manager.session_protection = "basic"  # Proteção básica de sessão (menos restritiva que "strong")
     login_manager.refresh_view = "usuario.login"
 
+    # Debug: Log de cookies e sessão
+    @app.after_request
+    def log_cookies_and_session(response):
+        try:
+            from flask import session
+            import sys
+            # Log apenas se houver user_id na sessão (usuário logado)
+            if '_user_id' in session:
+                cookies = response.headers.getlist('Set-Cookie')
+                if cookies:
+                    print(f"COOKIES_SET: {len(cookies)} cookies", flush=True)
+                    for cookie in cookies:
+                        # Não logar o valor completo do cookie por segurança
+                        cookie_name = cookie.split('=')[0]
+                        print(f"  - {cookie_name}", flush=True)
+                sys.stdout.flush()
+        except:
+            pass
+        return response
+
     # Registro dos Blueprints
     app.register_blueprint(usuario_bp)
     app.register_blueprint(membros_bp)

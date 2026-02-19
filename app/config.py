@@ -44,7 +44,7 @@ class Config:
     
     # Ajustes para producao (Render) em HTTPS
     if DATABASE_URL:
-        SESSION_COOKIE_SECURE = True
+        SESSION_COOKIE_SECURE = False  # Temporariamente False para debug
         PREFERRED_URL_SCHEME = 'https'
         # Remove o domínio para permitir que o navegador defina automaticamente
         SESSION_COOKIE_DOMAIN = None
@@ -53,5 +53,7 @@ class Config:
     
     # Flask-Login
     REMEMBER_COOKIE_DURATION = timedelta(days=7)  # "Lembrar de mim" por 7 dias
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = 'Lax'
     if DATABASE_URL:
-        REMEMBER_COOKIE_SECURE = True
+        REMEMBER_COOKIE_SECURE = False  # Temporariamente False para debug

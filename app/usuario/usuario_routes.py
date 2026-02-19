@@ -44,9 +44,16 @@ def login():
                 import sys
                 session.permanent = True
                 
-                # Debug: Log informações de sessão
-                print(f"LOGIN_SUCCESS: User={usuario.id} ({usuario.email}) Remember={bool(lembrar)} Permanent={session.permanent}", flush=True)
-                print(f"SESSION_DATA: user_id={session.get('_user_id', 'N/A')}", flush=True)
+                # Debug: Log informações de sessão DETALHADAS
+                print(f"=== LOGIN SUCCESS ===", flush=True)
+                print(f"User: ID={usuario.id} Email={usuario.email} Nivel={usuario.nivel_acesso}", flush=True)
+                print(f"Remember: {bool(lembrar)}", flush=True)
+                print(f"Session Permanent: {session.permanent}", flush=True)
+                print(f"Session Keys: {list(session.keys())}", flush=True)
+                print(f"Session user_id: {session.get('_user_id', 'N/A')}", flush=True)
+                print(f"Current User Authenticated: {current_user.is_authenticated}", flush=True)
+                print(f"Session ID: {session.get('_id', 'N/A')}", flush=True)
+                print(f"===================", flush=True)
                 sys.stdout.flush()
                 
                 flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")

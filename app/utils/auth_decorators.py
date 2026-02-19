@@ -51,24 +51,20 @@ def requer_nivel_acesso(*niveis_permitidos):
 def requer_gerencia_usuarios(f):
     """Decorador para gerenciamento de usuários"""
     @wraps(f)
+    @login_required  # Adicionar login_required explicitamente
     def decorated_function(*args, **kwargs):
         try:
             from flask import session
             import sys
             # Debug: Log informações de autenticação
             print(f"AUTH_CHECK: Path={request.path} Authenticated={current_user.is_authenticated}", flush=True)
-            print(f"AUTH_SESSION: user_id={session.get('_user_id', 'N/A')}", flush=True)
+            if hasattr(current_user, 'id'):
+                print(f"AUTH_USER: ID={current_user.id} Email={current_user.email} Nivel={current_user.nivel_acesso}", flush=True)
+            print(f"AUTH_SESSION: user_id={session.get('_user_id', 'N/A')} keys={list(session.keys())}", flush=True)
             sys.stdout.flush()
             
-            if not current_user.is_authenticated:
-                print(f"AUTH_DENIED: Redirect to login (next={request.url})", flush=True)
-                sys.stdout.flush()
-                # Verifica se é uma requisição AJAX/JSON
-                if request.is_json or request.headers.get('Content-Type') == 'application/json':
-                    return jsonify({'success': False, 'message': 'Usuário não autenticado'}), 401
-                return redirect(url_for('usuario.login', next=request.url))
-            
-            # Debug: Verificar permissão de gerenciar usuários
+            # A verificação de is_authenticated já foi feita pelo @login_required
+            # Apenas verificar permissão
             pode_gerenciar = current_user.pode_gerenciar_usuarios()
             print(f"PERMISSION_CHECK: nivel_acesso={current_user.nivel_acesso} pode_gerenciar={pode_gerenciar}", flush=True)
             sys.stdout.flush()
@@ -82,8 +78,14 @@ def requer_gerencia_usuarios(f):
             
             return f(*args, **kwargs)
         except Exception as e:
+            import sys
+            print(f"AUTH_ERROR: {str(e)}", flush=True)
+            import traceback
+            traceback.print_exc()
+            sys.stdout.flush()
             if request.is_json or request.headers.get('Content-Type') == 'application/json':
                 return jsonify({'success': False, 'message': 'Erro ao processar requisição'}), 500
+            flash('Erro ao verificar permissões. Tente fazer login novamente.', 'danger')
             return redirect(url_for('usuario.login'))
     return decorated_function
 
