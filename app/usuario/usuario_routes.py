@@ -554,7 +554,21 @@ def lista_usuarios():
         current_app.logger.error(f"Erro ao listar usuários: {e}")
         flash("Erro ao carregar lista de usuários.", "danger")
         usuarios = []
-    return render_template("usuario/lista_usuarios.html", usuarios=usuarios)
+    
+    # Calcular estatísticas no Python (evitar expressões complexas no Jinja2)
+    total = len(usuarios)
+    ativos = sum(1 for u in usuarios if u.ativo)
+    inativos = total - ativos
+    admins = sum(1 for u in usuarios if u.nivel_acesso in ('administrador', 'master', 'Admin'))
+    
+    return render_template(
+        "usuario/lista_usuarios.html",
+        usuarios=usuarios,
+        total_usuarios=total,
+        usuarios_ativos=ativos,
+        usuarios_inativos=inativos,
+        total_admins=admins
+    )
 
 @usuario_bp.route("/usuarios/debug-info")
 @login_required

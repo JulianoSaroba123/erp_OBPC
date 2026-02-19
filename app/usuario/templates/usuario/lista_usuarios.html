@@ -36,7 +36,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="mb-0">{{ usuarios|length }}</h4>
+                            <h4 class="mb-0">{{ total_usuarios }}</h4>
                             <small>Total de Usuários</small>
                         </div>
                         <i class="fas fa-users fa-2x opacity-75"></i>
@@ -49,7 +49,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="mb-0">{{ usuarios|selectattr('ativo')|list|length }}</h4>
+                            <h4 class="mb-0">{{ usuarios_ativos }}</h4>
                             <small>Usuários Ativos</small>
                         </div>
                         <i class="fas fa-check-circle fa-2x opacity-75"></i>
@@ -62,7 +62,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="mb-0">{{ usuarios|rejectattr('ativo')|list|length }}</h4>
+                            <h4 class="mb-0">{{ usuarios_inativos }}</h4>
                             <small>Usuários Inativos</small>
                         </div>
                         <i class="fas fa-times-circle fa-2x opacity-75"></i>
@@ -75,7 +75,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h4 class="mb-0">{{ usuarios|selectattr('nivel_acesso', 'equalto', 'administrador')|list|length + usuarios|selectattr('nivel_acesso', 'equalto', 'master')|list|length }}</h4>
+                            <h4 class="mb-0">{{ total_admins }}</h4>
                             <small>Administradores</small>
                         </div>
                         <i class="fas fa-user-shield fa-2x opacity-75"></i>

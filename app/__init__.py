@@ -139,12 +139,13 @@ def create_app():
     def inject_config():
         """Injeta as configurações da igreja em todos os templates"""
         from app.configuracoes.configuracoes_model import Configuracao
+        from datetime import datetime
         try:
             config = Configuracao.query.filter_by(id=1).first()
-            return dict(igreja_config=config)
+            return dict(igreja_config=config, current_year=datetime.now().year)
         except Exception as e:
             app.logger.warning(f'Erro ao carregar configurações para template: {str(e)}')
-            return dict(igreja_config=None)
+            return dict(igreja_config=None, current_year=datetime.now().year)
 
     # Cria as tabelas no primeiro uso (pode depois mover isso pro script separado)
     with app.app_context():
