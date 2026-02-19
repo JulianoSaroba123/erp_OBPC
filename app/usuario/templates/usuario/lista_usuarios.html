@@ -187,7 +187,7 @@
 <script>
 function toggleStatus(userId) {
     if (confirm('Tem certeza que deseja alterar o status deste usuário?')) {
-        fetch(`/usuario/usuarios/${userId}/toggle-status`, {
+        fetch(`/usuarios/${userId}/toggle-status`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -210,7 +210,7 @@ function toggleStatus(userId) {
 
 function excluirUsuario(userId, nome) {
     if (confirm(`Tem certeza que deseja EXCLUIR o usuário "${nome}"?\n\nEsta ação não pode ser desfeita!`)) {
-        fetch(`/usuario/usuarios/${userId}/excluir`, {
+        fetch(`/usuarios/${userId}/excluir`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
