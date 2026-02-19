@@ -548,8 +548,41 @@ def obter_favoritos():
 @requer_gerencia_usuarios
 def lista_usuarios():
     """Lista todos os usuários para administração"""
-    usuarios = Usuario.query.order_by(Usuario.nome).all()
+    try:
+        usuarios = Usuario.query.order_by(Usuario.nome).all()
+    except Exception as e:
+        current_app.logger.error(f"Erro ao listar usuários: {e}")
+        flash("Erro ao carregar lista de usuários.", "danger")
+        usuarios = []
     return render_template("usuario/lista_usuarios.html", usuarios=usuarios)
+
+@usuario_bp.route("/usuarios/debug-info")
+@login_required
+def debug_info():
+    """Rota de diagnóstico - retorna informações de debug"""
+    from flask import jsonify
+    import traceback
+    info = {
+        'user_id': current_user.id,
+        'user_email': current_user.email,
+        'user_nivel': current_user.nivel_acesso,
+        'pode_gerenciar': current_user.pode_gerenciar_usuarios(),
+        'authenticated': current_user.is_authenticated,
+    }
+    try:
+        usuarios = Usuario.query.order_by(Usuario.nome).all()
+        info['total_usuarios'] = len(usuarios)
+        info['query_ok'] = True
+    except Exception as e:
+        info['query_error'] = str(e)
+        info['traceback'] = traceback.format_exc()
+    try:
+        from app.configuracoes.configuracoes_model import Configuracao
+        config = Configuracao.obter_configuracao()
+        info['config_ok'] = True
+    except Exception as e:
+        info['config_error'] = str(e)
+    return jsonify(info)
 
 @usuario_bp.route("/usuarios/novo", methods=["GET", "POST"])
 @requer_gerencia_usuarios
