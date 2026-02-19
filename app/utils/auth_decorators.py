@@ -22,64 +22,67 @@ def requer_nivel_acesso(*niveis_permitidos):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            try:
-                if not current_user.is_authenticated:
-                    # Verifica se é uma requisição AJAX/JSON
-                    if request.is_json or request.headers.get('Content-Type') == 'application/json':
-                        return jsonify({'success': False, 'message': 'Usuário não autenticado'}), 401
-                    return redirect(url_for('usuario.login'))
-                
-                if current_user.nivel_acesso not in niveis_permitidos:
-                    # Verifica se é uma requisição AJAX/JSON
-                    if request.is_json or request.headers.get('Content-Type') == 'application/json':
-                        return jsonify({
-                            'success': False, 
-                            'message': f'Acesso negado. Nível necessário: {", ".join(niveis_permitidos)}'
-                        }), 403
-                    flash(f'Acesso negado. Nível necessário: {", ".join(niveis_permitidos)}', 'danger')
-                    return redirect(url_for(current_user.get_menu_principal()))
-                
-                return f(*args, **kwargs)
-            except Exception as e:
-                # Fallback em caso de erro
+            # Verificar autenticação
+            if not current_user.is_authenticated:
                 if request.is_json or request.headers.get('Content-Type') == 'application/json':
-                    return jsonify({'success': False, 'message': 'Erro ao processar requisição'}), 500
-                return redirect(url_for('usuario.login'))
+                    return jsonify({'success': False, 'message': 'Usuário não autenticado'}), 401
+                flash('Por favor, faça login para acessar esta página.', 'info')
+                return redirect(url_for('usuario.login', next=request.url))
+            
+            # Verificar nível de acesso
+            if current_user.nivel_acesso not in niveis_permitidos:
+                if request.is_json or request.headers.get('Content-Type') == 'application/json':
+                    return jsonify({
+                        'success': False, 
+                        'message': f'Acesso negado. Nível necessário: {", ".join(niveis_permitidos)}'
+                    }), 403
+                flash(f'Acesso negado. Nível necessário: {", ".join(niveis_permitidos)}', 'danger')
+                return redirect(url_for(current_user.get_menu_principal()))
+            
+            return f(*args, **kwargs)
         return decorated_function
     return decorator
 
 def requer_gerencia_usuarios(f):
     """Decorador para gerenciamento de usuários"""
     @wraps(f)
-    @login_required  # Adicionar login_required explicitamente
     def decorated_function(*args, **kwargs):
-        try:
-            from flask import session
-            import sys
-            # Debug: Log informações de autenticação
-            print(f"AUTH_CHECK: Path={request.path} Authenticated={current_user.is_authenticated}", flush=True)
-            if hasattr(current_user, 'id'):
-                print(f"AUTH_USER: ID={current_user.id} Email={current_user.email} Nivel={current_user.nivel_acesso}", flush=True)
-            print(f"AUTH_SESSION: user_id={session.get('_user_id', 'N/A')} keys={list(session.keys())}", flush=True)
+        from flask import session
+        import sys
+        
+        # Debug: Log informações de autenticação
+        print(f"\n=== REQUER_GERENCIA_USUARIOS ===", flush=True)
+        print(f"Path: {request.path}", flush=True)
+        print(f"Authenticated: {current_user.is_authenticated}", flush=True)
+        
+        # Verificar se está autenticado
+        if not current_user.is_authenticated:
+            print(f"AUTH_DENIED: User not authenticated", flush=True)
             sys.stdout.flush()
+            flash('Por favor, faça login para acessar esta página.', 'info')
+            return redirect(url_for('usuario.login', next=request.url))
+        
+        # Usuário está autenticado
+        try:
+            print(f"User: ID={current_user.id} Email={current_user.email} Nivel={current_user.nivel_acesso}", flush=True)
+            print(f"Session user_id: {session.get('_user_id', 'N/A')}", flush=True)
             
-            # A verificação de is_authenticated já foi feita pelo @login_required
-            # Apenas verificar permissão
+            # Verificar permissão
             pode_gerenciar = current_user.pode_gerenciar_usuarios()
-            print(f"PERMISSION_CHECK: nivel_acesso={current_user.nivel_acesso} pode_gerenciar={pode_gerenciar}", flush=True)
+            print(f"Pode gerenciar usuarios: {pode_gerenciar}", flush=True)
+            print(f"================================\n", flush=True)
             sys.stdout.flush()
             
             if not pode_gerenciar:
-                # Verifica se é uma requisição AJAX/JSON
                 if request.is_json or request.headers.get('Content-Type') == 'application/json':
                     return jsonify({'success': False, 'message': 'Acesso negado. Apenas administradores podem gerenciar usuários.'}), 403
                 flash('Acesso negado. Apenas administradores podem gerenciar usuários.', 'danger')
                 return redirect(url_for(current_user.get_menu_principal()))
             
             return f(*args, **kwargs)
+            
         except Exception as e:
-            import sys
-            print(f"AUTH_ERROR: {str(e)}", flush=True)
+            print(f"ERROR in requer_gerencia_usuarios: {str(e)}", flush=True)
             import traceback
             traceback.print_exc()
             sys.stdout.flush()
