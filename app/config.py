@@ -39,21 +39,29 @@ class Config:
     SESSION_REFRESH_EACH_REQUEST = True  # Renova a sessão a cada requisição
     SESSION_COOKIE_NAME = 'obpc_session'
     SESSION_COOKIE_HTTPONLY = True  # Proteção XSS
-    SESSION_COOKIE_SAMESITE = 'Lax'  # Proteção CSRF
     SESSION_COOKIE_PATH = '/'
     
     # Ajustes para producao (Render) em HTTPS
     if DATABASE_URL:
-        SESSION_COOKIE_SECURE = False  # Temporariamente False para debug
+        # IMPORTANTE: Em produção com HTTPS e proxy reverso
+        SESSION_COOKIE_SECURE = True  # HTTPS obrigatório
+        SESSION_COOKIE_SAMESITE = 'None'  # Necessário para cookies em proxy reverso
         PREFERRED_URL_SCHEME = 'https'
-        # Remove o domínio para permitir que o navegador defina automaticamente
         SESSION_COOKIE_DOMAIN = None
     else:
+        # Desenvolvimento local HTTP
         SESSION_COOKIE_SECURE = False
+        SESSION_COOKIE_SAMESITE = 'Lax'
     
     # Flask-Login
     REMEMBER_COOKIE_DURATION = timedelta(days=7)  # "Lembrar de mim" por 7 dias
     REMEMBER_COOKIE_HTTPONLY = True
-    REMEMBER_COOKIE_SAMESITE = 'Lax'
+    REMEMBER_COOKIE_PATH = '/'
     if DATABASE_URL:
-        REMEMBER_COOKIE_SECURE = False  # Temporariamente False para debug
+        # Em produção HTTPS
+        REMEMBER_COOKIE_SECURE = True
+        REMEMBER_COOKIE_SAMESITE = 'None'
+    else:
+        # Desenvolvimento local
+        REMEMBER_COOKIE_SECURE = False
+        REMEMBER_COOKIE_SAMESITE = 'Lax'

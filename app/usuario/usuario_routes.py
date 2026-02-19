@@ -36,25 +36,12 @@ def login():
                 usuario.ultimo_login = datetime.now()
                 db.session.commit()
                 
-                # Login com sessão persistente se marcou "lembrar"
-                login_user(usuario, remember=bool(lembrar))
+                # Login do usuário com Flask-Login
+                login_user(usuario, remember=bool(lembrar), duration=None, fresh=True)
                 
-                # Marcar sessão como permanente para durar as 24h configuradas
+                # Garantir que a sessão seja permanente
                 from flask import session
-                import sys
                 session.permanent = True
-                
-                # Debug: Log informações de sessão DETALHADAS
-                print(f"=== LOGIN SUCCESS ===", flush=True)
-                print(f"User: ID={usuario.id} Email={usuario.email} Nivel={usuario.nivel_acesso}", flush=True)
-                print(f"Remember: {bool(lembrar)}", flush=True)
-                print(f"Session Permanent: {session.permanent}", flush=True)
-                print(f"Session Keys: {list(session.keys())}", flush=True)
-                print(f"Session user_id: {session.get('_user_id', 'N/A')}", flush=True)
-                print(f"Current User Authenticated: {current_user.is_authenticated}", flush=True)
-                print(f"Session ID: {session.get('_id', 'N/A')}", flush=True)
-                print(f"===================", flush=True)
-                sys.stdout.flush()
                 
                 flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")
                 

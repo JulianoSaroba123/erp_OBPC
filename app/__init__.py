@@ -27,8 +27,18 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Ajusta cabecalhos de proxy (Render) para preservar HTTPS
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+    # Ajusta cabecalhos de proxy (Render) para preservar HTTPS corretamente
+    # x_for=1: X-Forwarded-For (IP do cliente)
+    # x_proto=1: X-Forwarded-Proto (HTTP/HTTPS)
+    # x_host=1: X-Forwarded-Host (hostname)
+    # x_prefix=1: X-Forwarded-Prefix (prefixo de URL)
+    app.wsgi_app = ProxyFix(
+        app.wsgi_app,
+        x_for=1,
+        x_proto=1,
+        x_host=1,
+        x_prefix=1
+    )
 
     # Inicializa extensões
     db.init_app(app)
@@ -38,8 +48,15 @@ def create_app():
     login_manager.login_view = "usuario.login"
     login_manager.login_message = "Por favor, faça login para acessar esta página."
     login_manager.login_message_category = "info"
-    login_manager.session_protection = "basic"  # Proteção básica de sessão (menos restritiva que "strong")
+    login_manager.session_protection = None  # Desabilitar proteção que causa problemas com proxy
     login_manager.refresh_view = "usuario.login"
+    
+    # Handler para garantir sessão permanente em todas as requisições
+    @app.before_request
+    def make_session_permanent():
+        from flask import session
+        session.permanent = True
+        session.modified = True  # Força atualização do cookie
 
     # Debug: Log de cookies e sessão
     @app.after_request
