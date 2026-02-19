@@ -161,17 +161,19 @@
                                     </a>
                                     
                                     {% if usuario.nivel_acesso != 'master' and usuario.id != current_user.id %}
-                                    <button class="btn btn-outline-{{ 'danger' if usuario.ativo else 'success' }} btn-sm" 
-                                            onclick="toggleStatus({{ usuario.id }})" title="{{ 'Desativar' if usuario.ativo else 'Ativar' }}">
-                                        <i class="fas fa-{{ 'ban' if usuario.ativo else 'check' }}"></i>
-                                    </button>
+                                    <form method="POST" action="{{ url_for('usuario.toggle_status_usuario', user_id=usuario.id) }}" style="display:inline">
+                                        <button type="submit" class="btn btn-outline-{{ 'danger' if usuario.ativo else 'success' }} btn-sm" title="{{ 'Desativar' if usuario.ativo else 'Ativar' }}">
+                                            <i class="fas fa-{{ 'ban' if usuario.ativo else 'check' }}"></i>
+                                        </button>
+                                    </form>
                                     {% endif %}
                                     
                                     {% if current_user.nivel_acesso == 'master' and usuario.nivel_acesso != 'master' and usuario.id != current_user.id %}
-                                    <button class="btn btn-outline-danger btn-sm" 
-                                            onclick="excluirUsuario({{ usuario.id }}, '{{ usuario.nome }}')" title="Excluir">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <form method="POST" action="{{ url_for('usuario.excluir_usuario', user_id=usuario.id) }}" style="display:inline" onsubmit="return confirm('Excluir {{ usuario.nome }}? Esta ação não pode ser desfeita!')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
                                     {% endif %}
                                 </div>
                             </td>

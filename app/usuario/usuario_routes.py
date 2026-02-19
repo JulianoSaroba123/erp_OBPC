@@ -742,19 +742,19 @@ def toggle_status_usuario(user_id):
     """Ativar/desativar usuário"""
     usuario = Usuario.query.get_or_404(user_id)
     
-    # Master não pode ser desativado
     if usuario.nivel_acesso == 'master':
-        return jsonify({"success": False, "message": "Usuários master não podem ser desativados!"})
+        flash("Usuários master não podem ser desativados!", "warning")
+        return redirect(url_for('usuario.lista_usuarios'))
     
-    # Não pode desativar a si mesmo
     if usuario.id == current_user.id:
-        return jsonify({"success": False, "message": "Você não pode desativar sua própria conta!"})
+        flash("Você não pode desativar sua própria conta!", "warning")
+        return redirect(url_for('usuario.lista_usuarios'))
     
     usuario.ativo = not usuario.ativo
     db.session.commit()
-    
     status = "ativado" if usuario.ativo else "desativado"
-    return jsonify({"success": True, "message": f"Usuário {status} com sucesso!", "ativo": usuario.ativo})
+    flash(f"Usuário {usuario.nome} {status} com sucesso!", "success")
+    return redirect(url_for('usuario.lista_usuarios'))
 
 @usuario_bp.route("/usuarios/<int:user_id>/excluir", methods=["POST"])
 @requer_nivel_acesso('master')
@@ -763,31 +763,25 @@ def excluir_usuario(user_id):
     try:
         usuario = Usuario.query.get_or_404(user_id)
         
-        current_app.logger.info(f'Tentando excluir usuário ID: {user_id}, Nome: {usuario.nome}, Nível: {usuario.nivel_acesso}')
-        
-        # Master não pode ser excluído
         if usuario.nivel_acesso == 'master':
-            current_app.logger.warning(f'Tentativa de excluir usuário master: {usuario.nome}')
-            return jsonify({"success": False, "message": "Usuários master não podem ser excluídos!"})
+            flash("Usuários master não podem ser excluídos!", "warning")
+            return redirect(url_for('usuario.lista_usuarios'))
         
-        # Não pode excluir a si mesmo
         if usuario.id == current_user.id:
-            current_app.logger.warning(f'Usuário tentou excluir a própria conta: {usuario.nome}')
-            return jsonify({"success": False, "message": "Você não pode excluir sua própria conta!"})
+            flash("Você não pode excluir sua própria conta!", "warning")
+            return redirect(url_for('usuario.lista_usuarios'))
         
         nome = usuario.nome
         db.session.delete(usuario)
         db.session.commit()
-        
-        current_app.logger.info(f'Usuário excluído com sucesso: {nome}')
-        return jsonify({"success": True, "message": f"Usuário {nome} excluído com sucesso!"})
+        flash(f"Usuário {nome} excluído com sucesso!", "success")
+        return redirect(url_for('usuario.lista_usuarios'))
         
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'Erro ao excluir usuário ID {user_id}: {str(e)}')
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "message": f"Erro ao excluir usuário: {str(e)}"}), 500
+        flash(f"Erro ao excluir usuário: {str(e)}", "danger")
+        return redirect(url_for('usuario.lista_usuarios'))
 
 def pode_criar_nivel(nivel_criador, nivel_novo):
     """Verifica se um nível pode criar outro nível"""
