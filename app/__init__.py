@@ -53,6 +53,22 @@ def create_app():
         if not session.permanent:
             session.permanent = True
 
+    # Handler de erro 500 para diagnóstico em produção
+    @app.errorhandler(500)
+    def internal_error(error):
+        import traceback
+        from flask import jsonify, request as req
+        tb = traceback.format_exc()
+        app.logger.error(f"ERRO 500 em {req.path}:\n{tb}")
+        # Se vier de /usuarios, retornar JSON com detalhes
+        if '/usuarios' in req.path:
+            return jsonify({
+                'error': str(error),
+                'path': req.path,
+                'traceback': tb
+            }), 500
+        return f"<h1>Erro Interno</h1><pre>{tb}</pre>", 500
+
     # Registro dos Blueprints
     app.register_blueprint(usuario_bp)
     app.register_blueprint(membros_bp)
@@ -124,10 +140,7 @@ def create_app():
         """Injeta as configurações da igreja em todos os templates"""
         from app.configuracoes.configuracoes_model import Configuracao
         try:
-            config = Configuracao.obter_configuracao()
-            # Forçar refresh da sessão para obter dados mais recentes
-            if config:
-                db.session.refresh(config)
+            config = Configuracao.query.filter_by(id=1).first()
             return dict(igreja_config=config)
         except Exception as e:
             app.logger.warning(f'Erro ao carregar configurações para template: {str(e)}')

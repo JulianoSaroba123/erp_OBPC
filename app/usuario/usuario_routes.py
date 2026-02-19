@@ -573,15 +573,27 @@ def debug_info():
         usuarios = Usuario.query.order_by(Usuario.nome).all()
         info['total_usuarios'] = len(usuarios)
         info['query_ok'] = True
+        info['usuarios_sample'] = [{'id': u.id, 'nome': u.nome} for u in usuarios[:3]]
     except Exception as e:
         info['query_error'] = str(e)
-        info['traceback'] = traceback.format_exc()
+        info['query_traceback'] = traceback.format_exc()
     try:
         from app.configuracoes.configuracoes_model import Configuracao
-        config = Configuracao.obter_configuracao()
-        info['config_ok'] = True
+        config = Configuracao.query.filter_by(id=1).first()
+        info['config_ok'] = config is not None
     except Exception as e:
         info['config_error'] = str(e)
+    try:
+        from app.usuario.painel_model import FavoritoPainel, ConfiguracaoPainel
+        info['painel_model_ok'] = True
+    except Exception as e:
+        info['painel_model_error'] = str(e)
+    try:
+        # Testar render do template manualmente
+        from jinja2 import TemplateError
+        info['template_check'] = 'nao_testado'
+    except Exception as e:
+        info['template_error'] = str(e)
     return jsonify(info)
 
 @usuario_bp.route("/usuarios/novo", methods=["GET", "POST"])

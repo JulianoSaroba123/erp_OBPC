@@ -148,7 +148,13 @@ class Configuracao(db.Model):
     @staticmethod
     def obter_configuracao():
         """Retorna a configuração única do sistema (ID=1) ou cria uma padrão"""
-        Configuracao._ensure_schema()
+        # _ensure_schema apenas na primeira chamada (flag de classe)
+        if not getattr(Configuracao, '_schema_verified', False):
+            try:
+                Configuracao._ensure_schema()
+            except Exception:
+                pass
+            Configuracao._schema_verified = True
         config = Configuracao.query.filter_by(id=1).first()
         
         if not config:
