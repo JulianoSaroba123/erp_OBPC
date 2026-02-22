@@ -303,12 +303,12 @@
                 <div style="text-align: left; flex: 1;">
                     <p style="color: #555; font-size: 11px; margin: 0; line-height: 1.6; font-weight: 600;">
                         🏛️ <strong style="color: {{ cor_principal }};">Local:</strong><br>
-                        <span style="margin-left: 20px;">{% if config %}{{ config.igreja_nome }}{% else %}{{ certificado.local_evento or 'Igreja OBPC - Tietê' }}{% endif %}</span>
+                        <span style="margin-left: 20px;">{% if config and config.nome_igreja %}{{ config.nome_igreja }}{% else %}{{ certificado.local_evento or 'Igreja OBPC - Tietê' }}{% endif %}</span>
                     </p>
                 </div>
                 
                 <!-- Assinatura do pastor com design premium -->
-                <div style="text-align: center; min-width: 220px;">
+                <div style="text-align: center; min-width: 180px;">
                     <div style="
                         height: 1px;
                         {% if certificado.genero == 'masculino' %}
@@ -322,10 +322,32 @@
                         width: 100%;
                     "></div>
                     <p style="color: #666; font-size: 10px; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                        ✍️ {% if config %}{{ config.pastor_nome }}{% else %}{{ certificado.pastor_responsavel or 'Pastor Responsável' }}{% endif %}
+                        ✍️ {% if config and config.presidente %}{{ config.presidente }}{% else %}{{ certificado.pastor_responsavel or 'Pastor Responsável' }}{% endif %}
                     </p>
                     <p style="color: #999; font-size: 9px; margin: 2px 0 0 0; font-style: italic;">
                         Pastor
+                    </p>
+                </div>
+                
+                <!-- Assinatura do secretário com design premium -->
+                <div style="text-align: center; min-width: 180px;">
+                    <div style="
+                        height: 1px;
+                        {% if certificado.genero == 'masculino' %}
+                            background: {{ cor_principal }};
+                        {% elif certificado.genero == 'feminino' %}
+                            background: {{ cor_principal }};
+                        {% else %}
+                            background: {{ cor_principal }};
+                        {% endif %}
+                        margin-bottom: 6px;
+                        width: 100%;
+                    "></div>
+                    <p style="color: #666; font-size: 10px; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ✍️ {% if config and config.primeiro_secretario %}{{ config.primeiro_secretario }}{% else %}Secretário(a){% endif %}
+                    </p>
+                    <p style="color: #999; font-size: 9px; margin: 2px 0 0 0; font-style: italic;">
+                        Secretaria
                     </p>
                 </div>
             </div>
@@ -333,8 +355,8 @@
             <!-- Endereço com design limpo -->
             <div style="text-align: center; margin-top: 10px;">
                 <p style="color: #999; font-size: 9px; margin: 0; font-weight: 500; letter-spacing: 0.5px;">
-                    {% if config %}
-                        🏠 {{ config.igreja_nome }} • {{ config.igreja_endereco }} 💒
+                    {% if config and config.endereco %}
+                        🏠 {{ config.nome_igreja }} • {{ config.endereco }} • {{ config.cidade }}/SP 💒
                     {% else %}
                         🏠 Igreja O Brasil Para Cristo • Rua Egídio Módulo, 261 • Tietê/SP 💒
                     {% endif %}

@@ -313,13 +313,13 @@
         <div class="assinaturas">
             <div class="assinatura">
                 <div class="linha-assinatura"></div>
-                <div class="nome-assinatura">{{ config.dirigente if config else 'Pastor João Silva' }}</div>
-                <div class="cargo-assinatura">Dirigente</div>
+                <div class="nome-assinatura">{{ config.presidente if config and config.presidente else 'Pastor Responsável' }}</div>
+                <div class="cargo-assinatura">Ministro Oficiante</div>
             </div>
             <div class="assinatura">
                 <div class="linha-assinatura"></div>
-                <div class="nome-assinatura">{{ config.secretario if config else 'Maria Santos' }}</div>
-                <div class="cargo-assinatura">Secretário(a)</div>
+                <div class="nome-assinatura">{{ config.primeiro_secretario if config and config.primeiro_secretario else 'Secretário(a)' }}</div>
+                <div class="cargo-assinatura">Secretaria da Igreja</div>
             </div>
         </div>
 

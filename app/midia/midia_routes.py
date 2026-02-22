@@ -524,6 +524,10 @@ def visualizar_certificado(certificado_id, template_style=None):
     try:
         certificado = Certificado.query.get_or_404(certificado_id)
         
+        # Buscar configurações da igreja (dados de assinaturas)
+        from app.configuracoes.configuracoes_model import Configuracao
+        config = Configuracao.query.first()
+        
         # Escolher template baseado no tipo de certificado e estilo
         if certificado.tipo_certificado == 'Apresentação':
             if template_style == 'alegre':
@@ -536,7 +540,7 @@ def visualizar_certificado(certificado_id, template_style=None):
         else:
             template_name = 'certificados/visualizar_certificado.html'
             
-        return render_template(template_name, certificado=certificado)
+        return render_template(template_name, certificado=certificado, config=config)
     except Exception as e:
         flash(f'Erro ao visualizar certificado: {str(e)}', 'danger')
         return redirect(url_for('midia.listar_certificados'))
