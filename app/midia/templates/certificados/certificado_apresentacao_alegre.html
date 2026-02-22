@@ -78,11 +78,11 @@
         <!-- Borda decorativa colorida baseada no gênero -->
         <div style="
             position: absolute; 
-            top: 15px; 
-            left: 15px; 
-            right: 15px; 
-            bottom: 15px; 
-            border: 3px solid transparent;
+            top: 8px; 
+            left: 8px; 
+            right: 8px; 
+            bottom: 8px; 
+            border: 4px solid transparent;
             border-radius: 15px;
             {% if certificado.genero == 'masculino' %}
                 background: linear-gradient(45deg, #4A90E2, #87CEEB, #00BFFF, #1E90FF, #4169E1);
@@ -96,26 +96,26 @@
         "></div>
 
         <!-- Conteúdo do certificado -->
-        <div style="position: relative; z-index: 1; padding: 35px 45px; height: 100%; display: flex; flex-direction: column;">
+        <div style="position: relative; z-index: 1; padding: 30px 55px; height: 100%; display: flex; flex-direction: column;">
             
             <!-- Logo com efeito visual melhorado -->
-            <div style="text-align: center; margin-bottom: 15px;">
+            <div style="text-align: center; margin-bottom: 18px;">
                 <div style="
                     display: inline-block;
-                    padding: 8px;
+                    padding: 10px;
                     background: white;
                     border-radius: 50%;
                     box-shadow: 0 4px 12px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.25);
                 ">
                     <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
                          alt="Logo da Igreja" 
-                         style="height: 90px; max-width: 140px; object-fit: contain; border-radius: 50%;"
+                         style="height: 115px; max-width: 180px; object-fit: contain; border-radius: 50%;"
                          onerror="this.style.display='none'">
                 </div>
             </div>
 
             <!-- Título moderno com degradê -->
-            <div style="text-align: center; margin-bottom: 18px;">
+            <div style="text-align: center; margin-bottom: 20px;">
                 <h1 style="
                     {% if certificado.genero == 'masculino' %}
                         background: linear-gradient(135deg, #4A90E2 0%, #1E90FF 100%);
@@ -127,10 +127,10 @@
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
                     background-clip: text;
-                    font-size: 40px;
+                    font-size: 46px;
                     font-weight: 900;
-                    margin: 0 0 8px 0;
-                    letter-spacing: 3px;
+                    margin: 0 0 10px 0;
+                    letter-spacing: 4px;
                     text-transform: uppercase;
                     font-family: 'Georgia', 'Times New Roman', serif;
                 ">{{ emoji_tema }} Certificado {{ emoji_tema }}</h1>
@@ -139,11 +139,11 @@
                     display: inline-block;
                     background: {{ cor_gradiente }};
                     color: white;
-                    padding: 8px 30px;
+                    padding: 10px 35px;
                     border-radius: 50px;
-                    font-size: 18px;
+                    font-size: 20px;
                     font-weight: 700;
-                    letter-spacing: 2px;
+                    letter-spacing: 2.5px;
                     box-shadow: 0 4px 15px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.35);
                     text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
                 ">✨ DE APRESENTAÇÃO ✨</div>
@@ -155,9 +155,9 @@
                 <!-- Texto de certificação elegante -->
                 <p style="
                     color: #333;
-                    font-size: 15px;
-                    line-height: 1.8;
-                    margin-bottom: 12px;
+                    font-size: 17px;
+                    line-height: 1.9;
+                    margin-bottom: 14px;
                     font-weight: 600;
                     font-family: 'Georgia', serif;
                     font-style: italic;
@@ -170,16 +170,16 @@
                     position: relative;
                     background: white;
                     color: {{ cor_principal }};
-                    font-size: 32px;
+                    font-size: 36px;
                     font-weight: 900;
-                    margin: 12px auto 15px;
-                    padding: 18px 35px;
+                    margin: 15px auto 18px;
+                    padding: 20px 40px;
                     border-radius: 15px;
                     text-transform: uppercase;
-                    letter-spacing: 2px;
+                    letter-spacing: 2.5px;
                     box-shadow: 0 8px 25px rgba({{ '74, 144, 226' if certificado.genero == 'masculino' else ('255, 105, 180' if certificado.genero == 'feminino' else '155, 89, 182') }}, 0.4),
                                 inset 0 -4px 0 {{ cor_principal }};
-                    max-width: 520px;
+                    max-width: 600px;
                     font-family: 'Georgia', 'Times New Roman', serif;
                     border: 3px solid {{ cor_principal }};
                 ">{{ certificado.nome_pessoa }}</div>

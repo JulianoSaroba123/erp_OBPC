@@ -22,80 +22,80 @@
             <!-- Borda externa azul -->
             <div style="
                 position: absolute; 
-                top: 10px; 
-                left: 10px; 
-                right: 10px; 
-                bottom: 10px; 
-                border: 4px solid #000000;
+                top: 5px; 
+                left: 5px; 
+                right: 5px; 
+                bottom: 5px; 
+                border: 5px solid #000000;
                 border-radius: 15px;
             "></div>
             
             <!-- Borda interna azul -->
             <div style="
                 position: absolute; 
-                top: 20px; 
-                left: 20px; 
-                right: 20px; 
-                bottom: 20px; 
+                top: 15px; 
+                left: 15px; 
+                right: 15px; 
+                bottom: 15px; 
                 border: 2px solid #000000;
                 border-radius: 10px;
             "></div>
         </div>
 
         <!-- Conteúdo do certificado -->
-        <div style="position: relative; z-index: 1; padding: 28px 40px; height: 100%; display: flex; flex-direction: column;">
+        <div style="position: relative; z-index: 1; padding: 25px 50px; height: 100%; display: flex; flex-direction: column;">
             
             <!-- Logo da igreja no centro -->
-            <div style="text-align: center; margin: 0 0 8px 0;">
+            <div style="text-align: center; margin: 0 0 12px 0;">
                 <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
                      alt="Logo da Igreja" 
-                     style="height: 85px; max-width: 160px; object-fit: contain;"
+                     style="height: 110px; max-width: 200px; object-fit: contain;"
                      onerror="this.style.display='none'">
             </div>
 
             <!-- Título CERTIFICADO -->
-            <div style="text-align: center; margin: 6px 0 8px 0;">
+            <div style="text-align: center; margin: 8px 0 12px 0;">
                 <h2 style="
                     color: #000000;
-                    font-size: 34px;
+                    font-size: 42px;
                     font-weight: bold;
                     margin: 0;
-                    letter-spacing: 2px;
+                    letter-spacing: 3px;
                     text-transform: uppercase;
                 ">CERTIFICADO</h2>
                 
                 <!-- Linha decorativa -->
                 <div style="
-                    width: 100px; 
-                    height: 2px; 
+                    width: 140px; 
+                    height: 3px; 
                     background: #000000; 
-                    margin: 5px auto 7px auto;
+                    margin: 8px auto 10px auto;
                 "></div>
                 
                 <h3 style="
                     color: #000000; 
-                    font-size: 14px; 
+                    font-size: 18px; 
                     margin: 0;
                     font-weight: normal;
-                    letter-spacing: 1.3px;
+                    letter-spacing: 2px;
                     text-transform: uppercase;
                 ">DE {{ certificado.tipo_certificado }}</h3>
             </div>
 
             <!-- Texto principal do certificado -->
-            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 5px;">
+            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 10px;">
                 {% if certificado.tipo_certificado == 'Batismo' %}
                 <!-- Texto introdutório mais rico para Batismo -->
                 <p style="
                     color: #000; 
-                    font-size: 14px; 
-                    line-height: 1.5; 
-                    margin-bottom: 10px;
+                    font-size: 17px; 
+                    line-height: 1.6; 
+                    margin-bottom: 15px;
                     text-align: justify;
                     text-justify: inter-word;
                 ">
                     Certificamos perante a Igreja de Cristo e para os devidos fins que 
-                    <strong style="color: #1e40af; font-size: 16px;">{{ certificado.nome_pessoa }}</strong>{% if certificado.filiacao %}, 
+                    <strong style="color: #1e40af; font-size: 19px;">{{ certificado.nome_pessoa }}</strong>{% if certificado.filiacao %}, 
                     filho(a) de <strong style="color: #1e40af;">{{ certificado.filiacao }}</strong>,{% endif %}
                     foi batizado(a) nas águas por imersão, em obediência ao mandamento de Nosso Senhor Jesus Cristo, 
                     em nome do Pai, do Filho e do Espírito Santo, no dia 
@@ -106,9 +106,9 @@
                 <!-- Informação adicional sobre o batismo -->
                 <p style="
                     color: #333; 
-                    font-size: 12px; 
-                    line-height: 1.4; 
-                    margin-bottom: 12px;
+                    font-size: 15px; 
+                    line-height: 1.5; 
+                    margin-bottom: 15px;
                     text-align: justify;
                     text-justify: inter-word;
                     font-style: italic;
@@ -122,13 +122,13 @@
                 <!-- Texto para Apresentação -->
                 <p style="
                     color: #000; 
-                    font-size: 15px; 
-                    line-height: 1.6; 
+                    font-size: 18px; 
+                    line-height: 1.7; 
                     margin-bottom: 20px;
                     text-align: justify;
                     text-justify: inter-word;
                 ">
-                    Certificamos que <strong style="color: #1e40af; font-size: 15px;">{{ certificado.nome_pessoa }}</strong>
+                    Certificamos que <strong style="color: #1e40af; font-size: 19px;">{{ certificado.nome_pessoa }}</strong>
                     foi apresentado(a) ao Senhor Jesus Cristo, em {{ certificado.data_evento|data_por_extenso if certificado.data_evento else '06 de outubro de 2025' }}, 
                     na {{ certificado.local_evento if certificado.local_evento else 'Igreja OBPC - Tietê' }}{% if certificado.padrinhos %}, 
                     sendo acompanhado(a) pelos padrinhos: <strong style="color: #1e40af;">{{ certificado.padrinhos }}</strong>{% endif %}.
@@ -136,31 +136,31 @@
                 {% endif %}
 
                 <!-- Linha para assinatura do Pastor -->
-                <div style="display: flex; justify-content: space-around; margin: 12px 0 10px 0; gap: 25px;">
+                <div style="display: flex; justify-content: space-around; margin: 18px 0 12px 0; gap: 30px;">
                     <div style="text-align: center; flex: 1;">
                         <div style="
-                            border-bottom: 1px solid #333;
+                            border-bottom: 2px solid #333;
                             width: 100%;
-                            margin: 0 auto 5px auto;
-                            height: 15px;
+                            margin: 0 auto 8px auto;
+                            height: 20px;
                         "></div>
-                        <p style="color: #333; font-size: 11px; margin: 0; font-weight: bold;">
+                        <p style="color: #333; font-size: 14px; margin: 0; font-weight: bold;">
                             {% if config and config.presidente %}{{ config.presidente }}{% else %}{{ certificado.pastor_responsavel if certificado.pastor_responsavel else 'Pastor Responsável' }}{% endif %}
                         </p>
-                        <p style="color: #666; font-size: 10px; margin: 0; font-style: italic;">Ministro Oficiante</p>
+                        <p style="color: #666; font-size: 12px; margin: 0; font-style: italic;">Ministro Oficiante</p>
                     </div>
 
                     <div style="text-align: center; flex: 1;">
                         <div style="
-                            border-bottom: 1px solid #333;
+                            border-bottom: 2px solid #333;
                             width: 100%;
-                            margin: 0 auto 5px auto;
-                            height: 15px;
+                            margin: 0 auto 8px auto;
+                            height: 20px;
                         "></div>
-                        <p style="color: #333; font-size: 11px; margin: 0; font-weight: bold;">
+                        <p style="color: #333; font-size: 14px; margin: 0; font-weight: bold;">
                             {% if config and config.primeiro_secretario %}{{ config.primeiro_secretario }}{% else %}Secretário(a){% endif %}
                         </p>
-                        <p style="color: #666; font-size: 10px; margin: 0; font-style: italic;">Secretaria da Igreja</p>
+                        <p style="color: #666; font-size: 12px; margin: 0; font-style: italic;">Secretaria da Igreja</p>
                     </div>
                 </div>
 
