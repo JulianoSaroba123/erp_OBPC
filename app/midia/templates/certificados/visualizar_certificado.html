@@ -67,10 +67,10 @@
                 </div>
 
                 <!-- Conteúdo do certificado -->
-                <div style="position: relative; z-index: 1; padding: 35px 55px; height: 100%; display: flex; flex-direction: column;">
+                <div style="position: relative; z-index: 1; padding: 40px 60px; height: 100%; display: flex; flex-direction: column; justify-content: center;">
                     
                     <!-- Logo da igreja MAIOR no centro -->
-                    <div style="text-align: center; margin: 10px 0 20px 0;">
+                    <div style="text-align: center; margin: 0 auto 18px auto; max-width: 100%;">
                         <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
                              alt="Logo da Igreja" 
                              style="height: 120px; max-width: 220px; object-fit: contain;"
@@ -78,7 +78,7 @@
                     </div>
 
                     <!-- Título CERTIFICADO -->
-                    <div style="text-align: center; margin: 10px 0 15px 0;">
+                    <div style="text-align: center; margin: 0 auto 18px auto; max-width: 100%;">
                         <h2 style="
                             color: #000000;
                             font-size: 44px;
@@ -107,7 +107,7 @@
                     </div>
 
                     <!-- Texto principal do certificado -->
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 15px;">
+                    <div style="display: flex; flex-direction: column; justify-content: center; padding: 0 10px; margin: 0 auto; max-width: 100%;">
                         {% if certificado.tipo_certificado == 'Batismo' %}
                         <!-- Texto introdutório mais rico para Batismo -->
                         <p style="
@@ -117,6 +117,8 @@
                             margin-bottom: 18px;
                             text-align: justify;
                             text-justify: inter-word;
+                            margin-left: auto;
+                            margin-right: auto;
                         ">
                             Certificamos perante a Igreja de Cristo e para os devidos fins que 
                             <strong style="color: #1e40af; font-size: 19px;">{{ certificado.nome_pessoa }}</strong>{% if certificado.filiacao %}, 
