@@ -43,10 +43,10 @@
         </div>
 
         <!-- Conteúdo do certificado -->
-        <div style="position: relative; z-index: 1; padding: 30px 60px; height: 100%; display: flex; flex-direction: column; justify-content: center;">
+        <div style="position: relative; z-index: 1; padding: 25px 60px; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;">
             
             <!-- Logo da igreja no centro -->
-            <div style="text-align: center; margin: 0 auto 15px auto; max-width: 100%;">
+            <div style="text-align: center; width: 100%;">
                 <img src="{{ url_for('static', filename='logo_obpc_novo.jpg') }}" 
                      alt="Logo da Igreja" 
                      style="height: 110px; max-width: 200px; object-fit: contain;"
@@ -54,7 +54,7 @@
             </div>
 
             <!-- Título CERTIFICADO -->
-            <div style="text-align: center; margin: 0 auto 15px auto; max-width: 100%;">
+            <div style="text-align: center; width: 100%;">
                 <h2 style="
                     color: #000000;
                     font-size: 42px;
@@ -83,18 +83,16 @@
             </div>
 
             <!-- Texto principal do certificado -->
-            <div style="display: flex; flex-direction: column; justify-content: center; padding: 0 5px; margin: 0 auto; max-width: 100%;">
+            <div style="display: flex; flex-direction: column; justify-content: center; width: 100%; gap: 10px;">
                 {% if certificado.tipo_certificado == 'Batismo' %}
                 <!-- Texto introdutório mais rico para Batismo -->
                 <p style="
                     color: #000; 
                     font-size: 17px; 
                     line-height: 1.6; 
-                    margin-bottom: 15px;
+                    margin: 0;
                     text-align: justify;
                     text-justify: inter-word;
-                    margin-left: auto;
-                    margin-right: auto;
                 ">
                     Certificamos perante a Igreja de Cristo e para os devidos fins que 
                     <strong style="color: #1e40af; font-size: 19px;">{{ certificado.nome_pessoa }}</strong>{% if certificado.filiacao %}, 
@@ -110,12 +108,10 @@
                     color: #333; 
                     font-size: 15px; 
                     line-height: 1.5; 
-                    margin-bottom: 15px;
+                    margin: 0;
                     text-align: justify;
                     text-justify: inter-word;
                     font-style: italic;
-                    margin-left: auto;
-                    margin-right: auto;
                 ">
                     Este ato simboliza a morte para o pecado e ressurreição para uma nova vida em Cristo Jesus, 
                     declarando publicamente sua fé e compromisso com o Evangelho. Que o Senhor confirme em seu 
