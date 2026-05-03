@@ -19,6 +19,13 @@
                         <input type="hidden" name="id" value="{{ lancamento.id }}">
                         {% endif %}
                         
+                        <!-- Campos hidden para manter os filtros ativos -->
+                        {% if filtros_ativos %}
+                            {% for campo, valor in filtros_ativos.items() %}
+                            <input type="hidden" name="filtro_{{ campo }}" value="{{ valor }}">
+                            {% endfor %}
+                        {% endif %}
+                        
                         <div class="row">
                             <!-- Data do Lançamento -->
                             <div class="col-md-6 mb-3">
@@ -273,7 +280,7 @@
 
                         <!-- Botões -->
                         <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('financeiro.lista_lancamentos', **filtros_ativos) if filtros_ativos else url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Voltar
                             </a>
                             <button id="btn-submit-lancamento" type="submit" class="btn btn-success">

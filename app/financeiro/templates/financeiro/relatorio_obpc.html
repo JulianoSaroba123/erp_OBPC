@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório OBPC - {{ "%02d"|format(mes_ref) }}/{{ ano_ref }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho para impressão -->
+    <div class="d-print-block text-center mb-4">
+        <h3>{{ dados_igreja.cidade }} - SP</h3>
+        <h4 class="mt-3">RELATÓRIO FINANCEIRO OBPC</h4>
+        <p class="text-muted">
+            Período: {{ data_inicial.strftime('%d/%m/%Y') }} até {{ data_final.strftime('%d/%m/%Y') }}<br>
+            Referência: {{ "%02d"|format(mes_ref) }}/{{ ano_ref }} | 
+            Gerado em: {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}
+        </p>
+    </div>
+
+    <!-- Controles (não imprime) -->
+    <div class="d-print-none mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2>
+                    <i class="fas fa-chart-line text-primary me-2"></i>
+                    Relatório OBPC - {{ "%02d"|format(mes_ref) }}/{{ ano_ref }}
+                </h2>
+                <p class="text-muted">
+                    <i class="fas fa-calendar-alt me-1"></i>
+                    Fechamento: {{ data_inicial.strftime('%d/%m/%Y') }} → {{ data_final.strftime('%d/%m/%Y') }}
+                </p>
+            </div>
+            <div class="col-md-4">
+                <div class="d-flex justify-content-end gap-2">
+                    <!-- Dropdown Mês -->
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-calendar me-1"></i> Mês: {{ "%02d"|format(mes_ref) }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for m in range(1, 13) %}
+                            <li><a class="dropdown-item {% if m == mes_ref %}active{% endif %}" href="{{ url_for('financeiro.relatorio_obpc', mes=m, ano=ano_ref) }}">
+                                {{ "%02d"|format(m) }} - {{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][m] }}
+                            </a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <!-- Dropdown Ano -->
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-calendar-alt me-1"></i> Ano: {{ ano_ref }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for a in range(2020, 2030) %}
+                            <li><a class="dropdown-item {% if a == ano_ref %}active{% endif %}" href="{{ url_for('financeiro.relatorio_obpc', mes=mes_ref, ano=a) }}">
+                                {{ a }}
+                            </a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <!-- Botão Voltar -->
+                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar
+                    </a>
+                    
+                    <!-- Botão Imprimir -->
+                    <button onclick="window.print()" class="btn btn-primary btn-sm">
+                        <i class="fas fa-print me-1"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas informativos -->
+    <div class="d-print-none mb-3">
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Fechamento OBPC:</strong> Este relatório considera o período de 
+            <strong>{{ data_inicial.strftime('%d/%m/%Y') }}</strong> até 
+            <strong>{{ data_final.strftime('%d/%m/%Y') }}</strong>.
+            A OBPC trabalha com fechamento do dia 26 de um mês até o dia 25 do mês seguinte.
+        </div>
+        
+        {% if totais.prebenda_percentual > 30 %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Atenção:</strong> A prebenda está em {{ "%.1f"|format(totais.prebenda_percentual) }}% das entradas, 
+            ultrapassando o limite recomendado de 30%.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Resumo Executivo -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h6 class="mb-0">Total Entradas</h6>
+                    <h4 class="mb-0">{{ "R$ %.2f"|format(totais.total_entradas)|replace(".", ",") }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center">
+                    <h6 class="mb-0">Total Saídas</h6>
+                    <h4 class="mb-0">{{ "R$ %.2f"|format(totais.total_saidas)|replace(".", ",") }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h6 class="mb-0">30% para Sede</h6>
+                    <h4 class="mb-0">{{ "R$ %.2f"|format(totais.valor_30_sede)|replace(".", ",") }}</h4>
+                    <small>Base: {{ "R$ %.2f"|format(totais.base_30_sede)|replace(".", ",") }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-{% if totais.saldo_operacional >= 0 %}info{% else %}warning text-dark{% endif %} text-white">
+                <div class="card-body text-center">
+                    <h6 class="mb-0">Saldo Operacional</h6>
+                    <h4 class="mb-0">{{ "R$ %.2f"|format(totais.saldo_operacional)|replace(".", ",") }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Relatório Detalhado -->
+    <div class="row">
+        <!-- Coluna 1: ENTRADAS -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-arrow-up me-2"></i>
+                        ENTRADAS NO PERÍODO
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-hover">
+                        <tbody>
+                            <tr>
+                                <td><i class="fas fa-hand-holding-heart text-success me-2"></i>Dízimos</td>
+                                <td class="text-end fw-bold">{{ "R$ %.2f"|format(totais.dizimos)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-gift text-primary me-2"></i>Ofertas Alçadas <small class="text-muted">(comuns)</small></td>
+                                <td class="text-end fw-bold">{{ "R$ %.2f"|format(totais.ofertas_alcadas)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr class="table-light">
+                                <td class="ps-4"><strong>Base 30% Sede</strong></td>
+                                <td class="text-end fw-bold text-primary">{{ "R$ %.2f"|format(totais.base_30_sede)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-hands-helping text-warning me-2"></i>Outras Ofertas <small class="text-muted">(especiais)</small></td>
+                                <td class="text-end fw-bold">{{ "R$ %.2f"|format(totais.outras_ofertas)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-globe text-info me-2"></i>Oferta OMN <small class="text-muted">(missionária)</small></td>
+                                <td class="text-end fw-bold">{{ "R$ %.2f"|format(totais.oferta_omn)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-chart-line text-secondary me-2"></i>Rendimentos</td>
+                                <td class="text-end">{{ "R$ %.2f"|format(totais.rendimentos)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-plus-circle text-secondary me-2"></i>Outras Entradas</td>
+                                <td class="text-end">{{ "R$ %.2f"|format(totais.outras_entradas)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr class="table-primary">
+                                <td><strong>TOTAL ENTRADAS</strong></td>
+                                <td class="text-end fw-bold fs-5">{{ "R$ %.2f"|format(totais.total_entradas)|replace(".", ",") }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna 2: SAÍDAS -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-arrow-down me-2"></i>
+                        SAÍDAS NO PERÍODO
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-hover">
+                        <tbody>
+                            <tr>
+                                <td><i class="fas fa-user-tie text-primary me-2"></i>Prebenda</td>
+                                <td class="text-end fw-bold">{{ "R$ %.2f"|format(totais.prebenda)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td colspan="2" class="text-muted small ps-4">
+                                    <i class="fas fa-percentage me-1"></i>
+                                    {{ "%.1f"|format(totais.prebenda_percentual) }}% das entradas
+                                    {% if totais.prebenda_percentual > 30 %}
+                                    <span class="badge bg-warning text-dark">Acima de 30%</span>
+                                    {% else %}
+                                    <span class="badge bg-success">Dentro do limite</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-file-invoice text-secondary me-2"></i>Despesas Fixas</td>
+                                <td class="text-end">{{ "R$ %.2f"|format(totais.despesas_fixas)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-shopping-cart text-secondary me-2"></i>Despesas Variáveis</td>
+                                <td class="text-end">{{ "R$ %.2f"|format(totais.despesas_variaveis)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr>
+                                <td><i class="fas fa-minus-circle text-secondary me-2"></i>Outras Saídas</td>
+                                <td class="text-end">{{ "R$ %.2f"|format(totais.outras_saidas)|replace(".", ",") }}</td>
+                            </tr>
+                            <tr class="table-danger">
+                                <td><strong>TOTAL SAÍDAS</strong></td>
+                                <td class="text-end fw-bold fs-5">{{ "R$ %.2f"|format(totais.total_saidas)|replace(".", ",") }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cálculos OBPC -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calculator me-2"></i>
+                        CÁLCULOS E SALDOS OBPC
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Coluna 1: Cálculo da Sede -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary fw-bold mb-3">
+                                <i class="fas fa-building me-2"></i>30% PARA A SEDE
+                            </h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Base de Cálculo (Dízimos + Ofertas Comuns):</td>
+                                    <td class="text-end fw-bold">{{ "R$ %.2f"|format(totais.base_30_sede)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>30% da Base:</strong></td>
+                                    <td class="text-end fw-bold text-primary fs-5">{{ "R$ %.2f"|format(totais.valor_30_sede)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Despesas Fixas do Conselho:</td>
+                                    <td class="text-end">{{ "R$ %.2f"|format(totais.despesas_fixas_conselho)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr class="table-primary">
+                                    <td><strong>TOTAL ENVIO SEDE:</strong></td>
+                                    <td class="text-end fw-bold fs-5">{{ "R$ %.2f"|format(totais.total_envio_sede)|replace(".", ",") }}</td>
+                                </tr>
+                            </table>
+                            
+                            <div class="alert alert-info mt-3">
+                                <small>
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <strong>Regra OBPC:</strong> Os 30% são calculados APENAS sobre dízimos e ofertas comuns do ofertório. 
+                                    Ofertas especiais, OMN e outras receitas <strong>não entram</strong> neste cálculo.
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Coluna 2: Saldos -->
+                        <div class="col-md-6">
+                            <h6 class="text-success fw-bold mb-3">
+                                <i class="fas fa-wallet me-2"></i>SALDOS
+                            </h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td>Saldo Anterior:</td>
+                                    <td class="text-end">{{ "R$ %.2f"|format(totais.saldo_anterior)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Entradas do Período:</td>
+                                    <td class="text-end text-success">(+) {{ "R$ %.2f"|format(totais.total_entradas)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Saídas do Período:</td>
+                                    <td class="text-end text-danger">(-) {{ "R$ %.2f"|format(totais.total_saidas)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>Saldo do Período:</strong></td>
+                                    <td class="text-end fw-bold">{{ "R$ %.2f"|format(totais.saldo_periodo)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr class="table-info">
+                                    <td><strong>Saldo Final (Caixa):</strong></td>
+                                    <td class="text-end fw-bold fs-5">{{ "R$ %.2f"|format(totais.saldo_final)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr>
+                                    <td>30% a Enviar para Sede:</td>
+                                    <td class="text-end text-danger">(-) {{ "R$ %.2f"|format(totais.valor_30_sede)|replace(".", ",") }}</td>
+                                </tr>
+                                <tr class="table-success">
+                                    <td><strong>SALDO OPERACIONAL DISPONÍVEL:</strong></td>
+                                    <td class="text-end fw-bold fs-4 text-success">{{ "R$ %.2f"|format(totais.saldo_operacional)|replace(".", ",") }}</td>
+                                </tr>
+                            </table>
+                            
+                            <div class="alert alert-success mt-3">
+                                <small>
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    <strong>Saldo Operacional:</strong> É o valor que a igreja local tem disponível para 
+                                    operação, já descontando o compromisso de 30% com a Sede.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assinaturas -->
+    <div class="row mt-4 d-none d-print-block">
+        <div class="col-12">
+            <div class="text-center mt-5">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="border-top pt-2 mx-5">
+                            <strong>{{ dados_igreja.dirigente }}</strong><br>
+                            <small>Dirigente</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="border-top pt-2 mx-5">
+                            <strong>{{ dados_igreja.tesoureiro }}</strong><br>
+                            <small>Tesoureiro(a)</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .d-print-none {
+        display: none !important;
+    }
+    .d-print-block {
+        display: block !important;
+    }
+    .card {
+        border: 1px solid #000 !important;
+        page-break-inside: avoid;
+    }
+    body {
+        font-size: 11pt;
+    }
+    h5 {
+        font-size: 13pt !important;
+    }
+    .fs-4 {
+        font-size: 14pt !important;
+    }
+}
+</style>
+{% endblock %}

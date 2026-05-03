@@ -113,6 +113,10 @@
                                 <li><a class="dropdown-item" href="{{ url_for('financeiro.relatorio_caixa') }}">
                                     <i class="fas fa-cash-register me-1"></i> Relatório de Caixa
                                 </a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('financeiro.relatorio_obpc') }}">
+                                    <i class="fas fa-chart-line me-1"></i> <strong>Relatório OBPC (26→25)</strong>
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{{ url_for('financeiro.relatorio_sede') }}">
                                     <i class="fas fa-file-alt me-1"></i> Relatório para Sede
                                 </a></li>
@@ -122,7 +126,7 @@
                       
                         
                         <!-- Botões Ações -->
-                        <a href="{{ url_for('financeiro.novo_lancamento') }}" class="btn btn-primary">
+                        <a href="{{ url_for('financeiro.novo_lancamento', **filtros) }}" class="btn btn-primary">
                             <i class="fas fa-plus me-1"></i> Novo
                         </a>
                         <a href="{{ url_for('financeiro.importar_extrato') }}" class="btn btn-outline-secondary ms-2">
@@ -504,11 +508,11 @@
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <a href="{{ url_for('financeiro.editar_lancamento', id=lancamento.id) }}" 
+                                            <a href="{{ url_for('financeiro.editar_lancamento', id=lancamento.id, **filtros) }}" 
                                                class="btn btn-sm btn-outline-primary" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="{{ url_for('financeiro.excluir_lancamento', id=lancamento.id) }}" 
+                                            <a href="{{ url_for('financeiro.excluir_lancamento', id=lancamento.id, **filtros) }}" 
                                                class="btn btn-sm btn-outline-danger" 
                                                title="Excluir"
                                                onclick="return confirm('Tem certeza que deseja excluir este lançamento?')">

@@ -20,6 +20,30 @@ from difflib import SequenceMatcher
 
 financeiro_bp = Blueprint('financeiro', __name__, template_folder='templates')
 
+def obter_filtros_ativos():
+    """Função auxiliar para capturar os filtros ativos da query string ou form"""
+    filtros = {}
+    
+    # Lista de filtros possíveis
+    campos_filtro = ['categoria', 'tipo', 'conta', 'data_inicial', 'data_final', 
+                     'valor_min', 'valor_max', 'busca_texto']
+    
+    # Tentar pegar dos argumentos da URL primeiro
+    for campo in campos_filtro:
+        valor = request.args.get(campo, '').strip()
+        if valor:
+            filtros[campo] = valor
+    
+    # Se não veio da URL, tentar pegar do formulário (POST)
+    # Isso é útil quando salvamos um lançamento e queremos manter os filtros
+    if not filtros:
+        for campo in campos_filtro:
+            valor = request.form.get(f'filtro_{campo}', '').strip()
+            if valor:
+                filtros[campo] = valor
+    
+    return filtros
+
 @financeiro_bp.route('/financeiro/dashboard')
 @login_required
 def dashboard_moderno():
@@ -745,9 +769,14 @@ def novo_lancamento():
     """Exibe formulário para cadastro de novo lançamento"""
     # Buscar projetos ativos para o dropdown
     projetos = Projeto.query.filter_by(status='Ativo').order_by(Projeto.nome).all()
+    
+    # Capturar filtros ativos para preservá-los após salvar
+    filtros_ativos = obter_filtros_ativos()
+    
     return render_template('financeiro/cadastro_lancamento.html', 
                          today=date.today(), 
-                         projetos=projetos)
+                         projetos=projetos,
+                         filtros_ativos=filtros_ativos)
 
 
 @financeiro_bp.route('/financeiro/importar', methods=['GET', 'POST'])
@@ -1880,8 +1909,10 @@ def salvar_lancamento():
             flash('Lançamento atualizado com sucesso!', 'success')
             
             # Após editar, salvar e redirecionar para a lista de lançamentos
+            # PRESERVANDO OS FILTROS ATIVOS
             db.session.commit()
-            return redirect(url_for('financeiro.lista_lancamentos'))
+            filtros_ativos = obter_filtros_ativos()
+            return redirect(url_for('financeiro.lista_lancamentos', **filtros_ativos))
         else:
             # Validação de duplicidade
             duplicado = Lancamento.query.filter_by(
@@ -1894,7 +1925,8 @@ def salvar_lancamento():
             ).first()
             if duplicado:
                 flash('Já existe um lançamento igual cadastrado! Verifique os dados.', 'danger')
-                return redirect(url_for('financeiro.novo_lancamento'))
+                filtros_ativos = obter_filtros_ativos()
+                return redirect(url_for('financeiro.novo_lancamento', **filtros_ativos))
             # Criar novo lançamento
             novo_lancamento = Lancamento(
                 data=data_obj,
@@ -1912,13 +1944,16 @@ def salvar_lancamento():
             flash('Lançamento cadastrado com sucesso! Você pode continuar lançando ou clicar em "Voltar" para ver a lista.', 'success')
             
             # Para novos lançamentos, salvar e continuar no formulário
+            # PRESERVANDO OS FILTROS ATIVOS NA URL
             db.session.commit()
-            return redirect(url_for('financeiro.novo_lancamento'))
+            filtros_ativos = obter_filtros_ativos()
+            return redirect(url_for('financeiro.novo_lancamento', **filtros_ativos))
         
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao salvar lançamento: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.novo_lancamento'))
+        filtros_ativos = obter_filtros_ativos()
+        return redirect(url_for('financeiro.novo_lancamento', **filtros_ativos))
 
 @financeiro_bp.route('/financeiro/editar/<int:id>')
 @login_required
@@ -1928,12 +1963,18 @@ def editar_lancamento(id):
         lancamento = Lancamento.query.get_or_404(id)
         # Buscar projetos ativos para o dropdown
         projetos = Projeto.query.filter_by(status='Ativo').order_by(Projeto.nome).all()
+        
+        # Capturar filtros ativos para preservá-los após salvar
+        filtros_ativos = obter_filtros_ativos()
+        
         return render_template('financeiro/cadastro_lancamento.html', 
                              lancamento=lancamento, 
-                             projetos=projetos)
+                             projetos=projetos,
+                             filtros_ativos=filtros_ativos)
     except Exception as e:
         flash(f'Erro ao carregar dados do lançamento: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.lista_lancamentos'))
+        filtros_ativos = obter_filtros_ativos()
+        return redirect(url_for('financeiro.lista_lancamentos', **filtros_ativos))
 
 @financeiro_bp.route('/financeiro/excluir/<int:id>')
 @login_required
@@ -1952,7 +1993,9 @@ def excluir_lancamento(id):
         db.session.rollback()
         flash(f'Erro ao excluir lançamento: {str(e)}', 'danger')
     
-    return redirect(url_for('financeiro.lista_lancamentos'))
+    # PRESERVAR FILTROS APÓS EXCLUIR
+    filtros_ativos = obter_filtros_ativos()
+    return redirect(url_for('financeiro.lista_lancamentos', **filtros_ativos))
 
 @financeiro_bp.route('/financeiro/excluir-comprovante/<int:id>', methods=['POST'])
 @login_required
@@ -2805,6 +2848,172 @@ def relatorio_sede():
                              mes=mes_atual,
                              ano=ano_atual,
                              data_geracao=date.today())
+
+@financeiro_bp.route('/financeiro/relatorio-obpc')
+@login_required
+def relatorio_obpc():
+    """Relatório OBPC com fechamento do dia 26 ao dia 25"""
+    from datetime import date, timedelta
+    from dateutil.relativedelta import relativedelta
+    from app.configuracoes.configuracoes_model import Configuracao
+    from app.financeiro.financeiro_model import Lancamento
+    from sqlalchemy import and_
+    
+    try:
+        # Obter mês e ano de referência (padrão: mês atual)
+        mes_ref = int(request.args.get('mes', date.today().month))
+        ano_ref = int(request.args.get('ano', date.today().year))
+        
+        # Calcular o período OBPC: dia 26 do mês anterior até dia 25 do mês de referência
+        # Exemplo: Para Maio/2026, período é 26/Abr/2026 até 25/Mai/2026
+        data_inicial = date(ano_ref, mes_ref, 1) - relativedelta(months=1)
+        data_inicial = date(data_inicial.year, data_inicial.month, 26)
+        data_final = date(ano_ref, mes_ref, 25)
+        
+        # Buscar lançamentos do período OBPC
+        lancamentos = Lancamento.query.filter(
+            and_(
+                Lancamento.data >= data_inicial,
+                Lancamento.data <= data_final
+            )
+        ).order_by(Lancamento.data).all()
+        
+        # Inicializar totais
+        totais_obpc = {
+            # Entradas por categoria
+            'dizimos': 0,
+            'ofertas_alcadas': 0,  # Ofertas comuns do ofertório
+            'outras_ofertas': 0,   # Ofertas especiais/voluntárias
+            'oferta_omn': 0,       # Ofertas missionárias
+            'rendimentos': 0,
+            'outras_entradas': 0,
+            'total_entradas': 0,
+            
+            # Saídas por categoria
+            'despesas_fixas': 0,
+            'despesas_variaveis': 0,
+            'prebenda': 0,
+            'outras_saidas': 0,
+            'total_saidas': 0,
+            
+            # Cálculos OBPC
+            'base_30_sede': 0,          # Dízimos + Ofertas Alçadas
+            'valor_30_sede': 0,         # 30% para a Sede
+            'prebenda_percentual': 0,   # % da prebenda sobre entradas
+            'saldo_operacional': 0,     # Saldo final da igreja local
+            'saldo_anterior': 0,
+            'saldo_periodo': 0,
+            'saldo_final': 0,
+        }
+        
+        # Processar lançamentos
+        for lanc in lancamentos:
+            conta = lanc.conta.lower() if lanc.conta else 'dinheiro'
+            categoria = lanc.categoria.lower() if lanc.categoria else ''
+            valor = lanc.valor or 0
+            
+            if lanc.tipo == 'Entrada':
+                # Classificar entradas
+                if 'dízimo' in categoria or 'dizimo' in categoria:
+                    totais_obpc['dizimos'] += valor
+                    
+                elif 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                    totais_obpc['oferta_omn'] += valor
+                    
+                elif 'oferta' in categoria and any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                    totais_obpc['outras_ofertas'] += valor
+                    
+                elif 'oferta' in categoria:
+                    totais_obpc['ofertas_alcadas'] += valor
+                    
+                elif 'rendimento' in categoria or 'juros' in categoria:
+                    totais_obpc['rendimentos'] += valor
+                    
+                else:
+                    totais_obpc['outras_entradas'] += valor
+                
+                totais_obpc['total_entradas'] += valor
+            
+            elif lanc.tipo == 'Saída':
+                # Classificar saídas
+                if 'prebenda' in categoria:
+                    totais_obpc['prebenda'] += valor
+                    
+                elif 'desp' in categoria and 'fixa' in categoria:
+                    totais_obpc['despesas_fixas'] += valor
+                    
+                elif 'desp' in categoria and 'variav' in categoria:
+                    totais_obpc['despesas_variaveis'] += valor
+                    
+                else:
+                    totais_obpc['outras_saidas'] += valor
+                
+                totais_obpc['total_saidas'] += valor
+        
+        # Calcular saldo anterior (até o dia 25 do mês anterior ao período)
+        data_limite_saldo_anterior = data_inicial - timedelta(days=1)
+        lancamentos_anteriores = Lancamento.query.filter(
+            Lancamento.data <= data_limite_saldo_anterior
+        ).all()
+        
+        entradas_anteriores = sum(l.valor for l in lancamentos_anteriores if l.tipo == 'Entrada')
+        saidas_anteriores = sum(l.valor for l in lancamentos_anteriores if l.tipo == 'Saída')
+        totais_obpc['saldo_anterior'] = entradas_anteriores - saidas_anteriores
+        
+        # Cálculos OBPC
+        # 1. Base para cálculo dos 30% da Sede: APENAS dízimos + ofertas alçadas
+        totais_obpc['base_30_sede'] = totais_obpc['dizimos'] + totais_obpc['ofertas_alcadas']
+        totais_obpc['valor_30_sede'] = totais_obpc['base_30_sede'] * 0.30
+        
+        # 2. Verificar se a prebenda está dentro do limite de 30% das entradas
+        if totais_obpc['total_entradas'] > 0:
+            totais_obpc['prebenda_percentual'] = (totais_obpc['prebenda'] / totais_obpc['total_entradas']) * 100
+        else:
+            totais_obpc['prebenda_percentual'] = 0
+        
+        # 3. Saldo do período
+        totais_obpc['saldo_periodo'] = totais_obpc['total_entradas'] - totais_obpc['total_saidas']
+        totais_obpc['saldo_final'] = totais_obpc['saldo_anterior'] + totais_obpc['saldo_periodo']
+        
+        # 4. Saldo operacional = Saldo final - 30% da Sede (que ainda não foi enviado)
+        totais_obpc['saldo_operacional'] = totais_obpc['saldo_final'] - totais_obpc['valor_30_sede']
+        
+        # Buscar dados da configuração
+        config = Configuracao.obter_configuracao()
+        dados_igreja = {
+            'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else 'Tietê'),
+            'bairro': (config.bairro if config and hasattr(config, 'bairro') and config.bairro else 'Centro'),
+            'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
+            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)')
+        }
+        
+        # Buscar despesas fixas do conselho
+        try:
+            despesas_fixas_conselho = DespesaFixaConselho.obter_despesas_ativas()
+            total_despesas_fixas_conselho = sum(d.valor_padrao for d in despesas_fixas_conselho) if despesas_fixas_conselho else 0
+        except Exception as e:
+            current_app.logger.error(f"Erro ao buscar despesas fixas: {e}")
+            total_despesas_fixas_conselho = 0
+        
+        totais_obpc['despesas_fixas_conselho'] = total_despesas_fixas_conselho
+        totais_obpc['total_envio_sede'] = totais_obpc['valor_30_sede'] + total_despesas_fixas_conselho
+        
+        return render_template('financeiro/relatorio_obpc.html',
+                             totais=totais_obpc,
+                             dados_igreja=dados_igreja,
+                             mes_ref=mes_ref,
+                             ano_ref=ano_ref,
+                             data_inicial=data_inicial,
+                             data_final=data_final,
+                             data_geracao=date.today(),
+                             lancamentos=lancamentos)
+        
+    except Exception as e:
+        current_app.logger.error(f"Erro ao gerar relatório OBPC: {e}")
+        import traceback
+        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
+        flash(f'Erro ao gerar relatório OBPC: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_lancamentos'))
 
 @financeiro_bp.route('/financeiro/despesas-fixas', methods=['GET', 'POST'])
 @login_required
