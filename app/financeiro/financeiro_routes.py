@@ -3913,3 +3913,74 @@ def relatorio_sede_pdf():
     except Exception as e:
         flash(f'Erro ao gerar PDF do relatório da sede: {str(e)}', 'danger')
         return redirect(url_for('financeiro.relatorio_sede'))
+
+
+# ========== EMISSOR DE RECIBOS ==========
+
+@financeiro_bp.route('/financeiro/emitir-recibo', methods=['GET', 'POST'])
+@login_required
+def emitir_recibo():
+    """Emissor de recibo para doações e ofertas"""
+    try:
+        if request.method == 'POST':
+            # Capturar dados do formulário
+            dados_recibo = {
+                'nome_doador': request.form.get('nome_doador', '').strip(),
+                'cpf_cnpj': request.form.get('cpf_cnpj', '').strip(),
+                'valor': request.form.get('valor', '0').replace(',', '.'),
+                'forma_pagamento': request.form.get('forma_pagamento', 'Dinheiro'),
+                'tipo_doacao': request.form.get('tipo_doacao', 'Oferta'),
+                'data_doacao': request.form.get('data_doacao', ''),
+                'observacoes': request.form.get('observacoes', '').strip(),
+                'numero_recibo': request.form.get('numero_recibo', '').strip()
+            }
+            
+            # Validações básicas
+            if not dados_recibo['nome_doador']:
+                flash('Nome do doador é obrigatório', 'danger')
+                return render_template('financeiro/emitir_recibo.html', dados=dados_recibo)
+            
+            if not dados_recibo['valor'] or float(dados_recibo['valor']) <= 0:
+                flash('Valor deve ser maior que zero', 'danger')
+                return render_template('financeiro/emitir_recibo.html', dados=dados_recibo)
+            
+            # Converter data
+            try:
+                if dados_recibo['data_doacao']:
+                    dados_recibo['data_doacao'] = datetime.strptime(dados_recibo['data_doacao'], '%Y-%m-%d').date()
+                else:
+                    dados_recibo['data_doacao'] = datetime.now().date()
+            except:
+                dados_recibo['data_doacao'] = datetime.now().date()
+            
+            # Gerar número do recibo se não fornecido
+            if not dados_recibo['numero_recibo']:
+                # Gerar número sequencial baseado no ano e total de recibos
+                ano_atual = datetime.now().year
+                # Contar recibos do ano (pode ser implementado com tabela específica no futuro)
+                dados_recibo['numero_recibo'] = f"REC-{ano_atual}-{datetime.now().strftime('%m%d%H%M%S')}"
+            
+            # Gerar PDF do recibo
+            from app.utils.gerar_pdf_reportlab import gerar_recibo_pdf
+            config = Configuracao.obter_configuracao()
+            pdf_buffer = gerar_recibo_pdf(dados_recibo, config)
+            
+            # Retornar PDF
+            nome_arquivo = f"recibo_{dados_recibo['numero_recibo']}.pdf"
+            return send_file(
+                pdf_buffer,
+                as_attachment=True,
+                download_name=nome_arquivo,
+                mimetype='application/pdf'
+            )
+        
+        # GET - Mostrar formulário
+        return render_template('financeiro/emitir_recibo.html', dados={
+            'data_doacao': datetime.now().strftime('%Y-%m-%d'),
+            'forma_pagamento': 'Dinheiro',
+            'tipo_doacao': 'Oferta'
+        })
+        
+    except Exception as e:
+        flash(f'Erro ao emitir recibo: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_lancamentos'))

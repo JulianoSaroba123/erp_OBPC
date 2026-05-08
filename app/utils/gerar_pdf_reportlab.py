@@ -1934,3 +1934,316 @@ def gerar_nome_arquivo_relatorio(tipo_relatorio, mes, ano):
         'sede': f'relatorio_sede_{mes:02d}_{ano}.pdf'
     }
     return nomes.get(tipo_relatorio, f'relatorio_{mes:02d}_{ano}.pdf')
+
+
+def gerar_recibo_pdf(dados_recibo, config=None):
+    """
+    Gera PDF de recibo de doação profissional
+    
+    Args:
+        dados_recibo (dict): Dicionário com os dados do recibo contendo:
+            - nome_doador: Nome completo do doador
+            - cpf_cnpj: CPF ou CNPJ do doador (opcional)
+            - valor: Valor da doação (float)
+            - forma_pagamento: Forma de pagamento utilizada
+            - tipo_doacao: Tipo da doação (Oferta, Dízimo, etc)
+            - data_doacao: Data da doação (date)
+            - observacoes: Observações adicionais (opcional)
+            - numero_recibo: Número do recibo
+        config: Configuração do sistema (opcional)
+    
+    Returns:
+        BytesIO: Buffer com o PDF gerado
+    """
+    if config is None:
+        config = Configuracao.obter_configuracao()
+    
+    # Criar buffer
+    buffer = BytesIO()
+    
+    # Configurar documento
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=2*cm,
+        leftMargin=2*cm,
+        topMargin=2*cm,
+        bottomMargin=2*cm
+    )
+    
+    # Criar estilos
+    styles = getSampleStyleSheet()
+    
+    cor_primaria = colors.HexColor(config.cor_principal)
+    cor_secundaria = colors.HexColor(config.cor_secundaria)
+    fonte_configurada = config.fonte_relatorio or 'Helvetica'
+    
+    style_titulo = ParagraphStyle(
+        'TituloRecibo',
+        parent=styles['Heading1'],
+        fontSize=22,
+        textColor=cor_primaria,
+        alignment=TA_CENTER,
+        fontName=f'{fonte_configurada}-Bold',
+        spaceAfter=10,
+        spaceBefore=10
+    )
+    
+    style_subtitulo = ParagraphStyle(
+        'SubtituloRecibo',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=cor_secundaria,
+        alignment=TA_CENTER,
+        fontName=fonte_configurada,
+        spaceAfter=5
+    )
+    
+    style_numero = ParagraphStyle(
+        'NumeroRecibo',
+        parent=styles['Normal'],
+        fontSize=12,
+        textColor=colors.black,
+        alignment=TA_RIGHT,
+        fontName=f'{fonte_configurada}-Bold'
+    )
+    
+    style_corpo = ParagraphStyle(
+        'CorpoRecibo',
+        parent=styles['Normal'],
+        fontSize=11,
+        textColor=colors.black,
+        alignment=TA_JUSTIFY,
+        fontName=fonte_configurada,
+        leading=18
+    )
+    
+    style_destaque = ParagraphStyle(
+        'DestaqueRecibo',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=cor_primaria,
+        alignment=TA_CENTER,
+        fontName=f'{fonte_configurada}-Bold',
+        spaceBefore=10,
+        spaceAfter=10
+    )
+    
+    style_info = ParagraphStyle(
+        'InfoRecibo',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.black,
+        alignment=TA_LEFT,
+        fontName=fonte_configurada,
+        leading=14
+    )
+    
+    style_rodape = ParagraphStyle(
+        'RodapeRecibo',
+        parent=styles['Normal'],
+        fontSize=8,
+        textColor=colors.grey,
+        alignment=TA_CENTER,
+        fontName=fonte_configurada
+    )
+    
+    # Elementos do documento
+    elementos = []
+    
+    # Logo (se existir)
+    try:
+        if config.logo and os.path.exists(config.logo):
+            logo_path = config.logo
+        else:
+            logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
+        
+        if os.path.exists(logo_path):
+            logo = Image(logo_path, width=80, height=80)
+            logo.hAlign = 'CENTER'
+            elementos.append(logo)
+            elementos.append(Spacer(1, 10))
+    except:
+        pass
+    
+    # Nome da Igreja
+    nome_igreja = config.nome_igreja or "OBRA BATISTA DE PLANTAÇÃO DE CONCEIÇÃO"
+    elementos.append(Paragraph(nome_igreja, style_subtitulo))
+    
+    # Endereço
+    if config.endereco:
+        elementos.append(Paragraph(config.endereco, style_rodape))
+    
+    cidade = config.cidade or "Tietê"
+    elementos.append(Paragraph(f"{cidade} - SP", style_rodape))
+    
+    if config.cnpj:
+        elementos.append(Paragraph(f"CNPJ: {config.cnpj}", style_rodape))
+    
+    elementos.append(Spacer(1, 15))
+    
+    # Linha separadora
+    elementos.append(HRFlowable(width="100%", thickness=2, color=cor_primaria))
+    elementos.append(Spacer(1, 15))
+    
+    # Título
+    elementos.append(Paragraph("RECIBO DE DOAÇÃO", style_titulo))
+    
+    # Número do recibo
+    numero_recibo = dados_recibo.get('numero_recibo', 'S/N')
+    elementos.append(Paragraph(f"Nº {numero_recibo}", style_numero))
+    elementos.append(Spacer(1, 20))
+    
+    # Valor em destaque
+    valor = float(dados_recibo['valor'])
+    valor_formatado = f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    elementos.append(Paragraph(valor_formatado, style_destaque))
+    elementos.append(Spacer(1, 15))
+    
+    # Texto do recibo
+    # Converter valor para extenso
+    valor_extenso = converter_valor_extenso(valor)
+    
+    # Data da doação
+    data_doacao = dados_recibo.get('data_doacao')
+    if isinstance(data_doacao, str):
+        data_formatada = datetime.strptime(data_doacao, '%Y-%m-%d').strftime('%d/%m/%Y')
+    else:
+        data_formatada = data_doacao.strftime('%d/%m/%Y')
+    
+    texto_recibo = f"""
+    Recebi de <b>{dados_recibo['nome_doador']}</b>{f", CPF/CNPJ: {dados_recibo['cpf_cnpj']}" if dados_recibo.get('cpf_cnpj') else ""},
+    a quantia de <b>{valor_formatado}</b> ({valor_extenso}), 
+    referente a <b>{dados_recibo['tipo_doacao']}</b>, 
+    recebido através de <b>{dados_recibo['forma_pagamento']}</b> 
+    em {data_formatada}.
+    """
+    
+    elementos.append(Paragraph(texto_recibo, style_corpo))
+    elementos.append(Spacer(1, 20))
+    
+    # Observações (se houver)
+    if dados_recibo.get('observacoes'):
+        elementos.append(Paragraph("<b>Observações:</b>", style_info))
+        elementos.append(Paragraph(dados_recibo['observacoes'], style_info))
+        elementos.append(Spacer(1, 20))
+    
+    # Informações adicionais em tabela
+    dados_info = [
+        ['<b>Tipo de Doação:</b>', dados_recibo['tipo_doacao']],
+        ['<b>Forma de Pagamento:</b>', dados_recibo['forma_pagamento']],
+        ['<b>Data:</b>', data_formatada],
+        ['<b>Valor:</b>', valor_formatado]
+    ]
+    
+    tabela_info = Table(dados_info, colWidths=[7*cm, 10*cm])
+    tabela_info.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), fonte_configurada),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('TEXTCOLOR', (0, 0), (0, -1), cor_secundaria),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('BACKGROUND', (0, 0), (0, -1), colors.Color(0.95, 0.95, 0.95))
+    ]))
+    
+    elementos.append(tabela_info)
+    elementos.append(Spacer(1, 40))
+    
+    # Local e data
+    hoje = datetime.now()
+    meses = [
+        '', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
+        'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
+    ]
+    
+    data_extenso = f"{cidade}, {hoje.day} de {meses[hoje.month]} de {hoje.year}."
+    elementos.append(Paragraph(data_extenso, style_corpo))
+    elementos.append(Spacer(1, 40))
+    
+    # Assinatura
+    elementos.append(HRFlowable(width="60%", thickness=1, color=colors.black, hAlign='CENTER'))
+    elementos.append(Spacer(1, 5))
+    elementos.append(Paragraph(nome_igreja, style_subtitulo))
+    elementos.append(Spacer(1, 30))
+    
+    # Rodapé
+    elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
+    elementos.append(Spacer(1, 5))
+    
+    texto_rodape = f"""
+    Este recibo é válido como comprovante de doação para fins de declaração de imposto de renda.<br/>
+    Emitido em {hoje.strftime('%d/%m/%Y às %H:%M')} - Sistema Administrativo OBPC
+    """
+    elementos.append(Paragraph(texto_rodape, style_rodape))
+    
+    # Construir PDF
+    doc.build(elementos)
+    
+    # Retornar buffer
+    buffer.seek(0)
+    return buffer
+
+
+def converter_valor_extenso(valor):
+    """
+    Converte valor numérico para extenso em português
+    Simplificado para valores até 999.999,99
+    """
+    unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove']
+    dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa']
+    especiais = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove']
+    centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos']
+    
+    def converter_grupo(num):
+        if num == 0:
+            return ''
+        elif num < 10:
+            return unidades[num]
+        elif num < 20:
+            return especiais[num - 10]
+        elif num < 100:
+            d = num // 10
+            u = num % 10
+            if u == 0:
+                return dezenas[d]
+            return dezenas[d] + ' e ' + unidades[u]
+        else:
+            c = num // 100
+            resto = num % 100
+            if resto == 0:
+                return 'cem' if num == 100 else centenas[c]
+            return centenas[c] + ' e ' + converter_grupo(resto)
+    
+    # Separar reais e centavos
+    reais = int(valor)
+    centavos = int(round((valor - reais) * 100))
+    
+    # Converter reais
+    if reais == 0:
+        texto_reais = 'zero reais'
+    elif reais == 1:
+        texto_reais = 'um real'
+    elif reais < 1000:
+        texto_reais = converter_grupo(reais) + ' reais'
+    else:
+        milhar = reais // 1000
+        resto = reais % 1000
+        texto_milhar = converter_grupo(milhar) + (' mil' if milhar > 0 else '')
+        if resto > 0:
+            texto_reais = texto_milhar + ' e ' + converter_grupo(resto) + ' reais'
+        else:
+            texto_reais = texto_milhar + ' reais'
+    
+    # Converter centavos
+    if centavos == 0:
+        return texto_reais
+    elif centavos == 1:
+        texto_centavos = 'um centavo'
+    else:
+        texto_centavos = converter_grupo(centavos) + ' centavos'
+    
+    return texto_reais + ' e ' + texto_centavos
