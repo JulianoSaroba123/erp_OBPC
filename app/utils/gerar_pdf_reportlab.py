@@ -2067,7 +2067,7 @@ def gerar_recibo_pdf(dados_recibo, config=None):
         pass
     
     # Nome da Igreja
-    nome_igreja = config.nome_igreja or "OBRA BATISTA DE PLANTAÇÃO DE CONCEIÇÃO"
+    nome_igreja = config.nome_igreja or "IGREJA EVANG PENTECOSTAL O BRASIL PARA CRISTO DE TIETÊ"
     elementos.append(Paragraph(nome_igreja, style_subtitulo))
     
     # Endereço
