@@ -2087,40 +2087,93 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     elementos.append(Spacer(1, 15))
     
     # Título
-    elementos.append(Paragraph("RECIBO", style_titulo))
-    
-    # Número do recibo
-    numero_recibo = dados_recibo.get('numero_recibo', 'S/N')
-    elementos.append(Paragraph(f"Nº {numero_recibo}", style_numero))
+    elementos.append(Paragraph("RECIBO DE PAGAMENTO", style_titulo))
     elementos.append(Spacer(1, 20))
     
-    # Valor em destaque
-    valor = float(dados_recibo['valor'])
-    valor_formatado = f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-    elementos.append(Paragraph(valor_formatado, style_destaque))
-    elementos.append(Spacer(1, 15))
-    
-    # Texto do recibo
-    # Converter valor para extenso
-    valor_extenso = converter_valor_extenso(valor)
-    
-    # Data da doação
+    # Número e Data do recibo
+    numero_recibo = dados_recibo.get('numero_recibo', 'S/N')
     data_doacao = dados_recibo.get('data_doacao')
     if isinstance(data_doacao, str):
         data_formatada = datetime.strptime(data_doacao, '%Y-%m-%d').strftime('%d/%m/%Y')
     else:
         data_formatada = data_doacao.strftime('%d/%m/%Y')
     
-    texto_recibo = f"""
-    Recebi de <b>{dados_recibo['nome_doador']}</b>{f", CPF/CNPJ: {dados_recibo['cpf_cnpj']}" if dados_recibo.get('cpf_cnpj') else ""},
-    a quantia de <b>{valor_formatado}</b> ({valor_extenso}), 
-    referente a <b>{dados_recibo['tipo_doacao']}</b>, 
-    recebido através de <b>{dados_recibo['forma_pagamento']}</b> 
-    em {data_formatada}.
+    info_recibo = f"""
+    <b>RECIBO Nº:</b> {numero_recibo}<br/>
+    <b>DATA:</b> {data_formatada}
     """
-    
-    elementos.append(Paragraph(texto_recibo, style_corpo))
+    elementos.append(Paragraph(info_recibo, style_corpo))
     elementos.append(Spacer(1, 20))
+    
+    # Recebi de (Igreja)
+    cnpj_igreja = config.cnpj if config.cnpj else "50.780.642/0031-44"
+    texto_recebi = f"""
+    <b>Recebi de:</b> {nome_igreja}<br/>
+    <b>CPF/CNPJ:</b> {cnpj_igreja}
+    """
+    elementos.append(Paragraph(texto_recebi, style_corpo))
+    elementos.append(Spacer(1, 20))
+    
+    # Valor
+    valor = float(dados_recibo['valor'])
+    valor_formatado = f"R$ {valor:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+    valor_extenso = converter_valor_extenso(valor)
+    
+    texto_valor = f"""
+    <b>A importância de:</b><br/>
+    <font size="14"><b>{valor_formatado}</b></font><br/>
+    <b>Valor por extenso:</b> {valor_extenso.capitalize()}
+    """
+    elementos.append(Paragraph(texto_valor, style_corpo))
+    elementos.append(Spacer(1, 20))
+    
+    # Referente a
+    tipo_doacao = dados_recibo.get('tipo_doacao', 'Pagamento')
+    texto_referente = f"""
+    <b>Referente a:</b> {tipo_doacao}
+    """
+    elementos.append(Paragraph(texto_referente, style_corpo))
+    elementos.append(Spacer(1, 20))
+    
+    # Forma de pagamento (com checkboxes)
+    forma_pag = dados_recibo.get('forma_pagamento', 'Dinheiro')
+    checkboxes_formas = {
+        'PIX': '☑' if forma_pag == 'PIX' else '☐',
+        'Dinheiro': '☑' if forma_pag == 'Dinheiro' else '☐',
+        'Transferência Bancária': '☑' if forma_pag == 'Transferência Bancária' else '☐',
+        'Cartão': '☑' if 'Cartão' in forma_pag else '☐',
+        'Outro': '☑' if forma_pag not in ['PIX', 'Dinheiro', 'Transferência Bancária'] and 'Cartão' not in forma_pag else '☐'
+    }
+    
+    texto_forma_pagamento = f"""
+    <b>Forma de pagamento:</b><br/>
+    {checkboxes_formas['PIX']} PIX &nbsp;&nbsp;&nbsp;
+    {checkboxes_formas['Dinheiro']} Dinheiro &nbsp;&nbsp;&nbsp;
+    {checkboxes_formas['Transferência Bancária']} Transferência Bancária<br/>
+    {checkboxes_formas['Cartão']} Cartão &nbsp;&nbsp;&nbsp;
+    {checkboxes_formas['Outro']} Outro: {forma_pag if checkboxes_formas['Outro'] == '☑' else ''}
+    """
+    elementos.append(Paragraph(texto_forma_pagamento, style_corpo))
+    elementos.append(Spacer(1, 25))
+    
+    # Dados do Recebedor
+    elementos.append(Paragraph("<b>DADOS DO RECEBEDOR</b>", style_destaque))
+    elementos.append(Spacer(1, 10))
+    
+    nome_recebedor = dados_recibo.get('nome_doador', '')
+    cpf_recebedor = dados_recibo.get('cpf_cnpj', '')
+    
+    texto_recebedor = f"""
+    <b>Nome/Razão Social:</b> {nome_recebedor}<br/>
+    <b>CPF/CNPJ:</b> {cpf_recebedor}
+    """
+    elementos.append(Paragraph(texto_recebedor, style_corpo))
+    elementos.append(Spacer(1, 15))
+    
+    # Declaração
+    declaracao = "Declaro para os devidos fins que recebi o valor acima descrito."
+    elementos.append(Paragraph(declaracao, style_corpo))
+    elementos.append(Spacer(1, 50))
     
     # Observações (se houver)
     if dados_recibo.get('observacoes'):
@@ -2128,37 +2181,20 @@ def gerar_recibo_pdf(dados_recibo, config=None):
         elementos.append(Paragraph(dados_recibo['observacoes'], style_info))
         elementos.append(Spacer(1, 20))
     
-    # Estilo para labels da tabela
-    style_label = ParagraphStyle(
-        'LabelTabela',
-        parent=style_info,
-        fontName=f'{fonte_configurada}-Bold',
-        textColor=cor_secundaria
-    )
+    # Linha de assinatura
+    elementos.append(Spacer(1, 30))
+    elementos.append(HRFlowable(width="60%", thickness=1, color=colors.black, hAlign='CENTER'))
+    elementos.append(Spacer(1, 5))
+    assinatura_texto = f"<b>Assinatura do Recebedor</b><br/>{nome_recebedor}"
+    elementos.append(Paragraph(assinatura_texto, ParagraphStyle(
+        'AssinaturaRecebedor',
+        parent=style_corpo,
+        alignment=TA_CENTER,
+        fontSize=10
+    )))
+    elementos.append(Spacer(1, 30))
     
-    # Informações adicionais em tabela (usando Paragraph para renderizar HTML)
-    dados_info = [
-        [Paragraph('<b>Tipo de Doação:</b>', style_label), Paragraph(dados_recibo['tipo_doacao'], style_info)],
-        [Paragraph('<b>Forma de Pagamento:</b>', style_label), Paragraph(dados_recibo['forma_pagamento'], style_info)],
-        [Paragraph('<b>Data:</b>', style_label), Paragraph(data_formatada, style_info)],
-        [Paragraph('<b>Valor:</b>', style_label), Paragraph(valor_formatado, style_info)]
-    ]
-    
-    tabela_info = Table(dados_info, colWidths=[7*cm, 10*cm])
-    tabela_info.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('BACKGROUND', (0, 0), (0, -1), colors.Color(0.95, 0.95, 0.95))
-    ]))
-    
-    elementos.append(tabela_info)
-    elementos.append(Spacer(1, 40))
-    
-    # Local e data (usar a data da doação, não a data de emissão)
+    # Local e data
     data_recibo = dados_recibo.get('data_doacao')
     if isinstance(data_recibo, str):
         data_recibo = datetime.strptime(data_recibo, '%Y-%m-%d').date()
@@ -2168,14 +2204,9 @@ def gerar_recibo_pdf(dados_recibo, config=None):
         'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
     ]
     
+    cidade = config.cidade or "Tietê"
     data_extenso = f"{cidade}, {data_recibo.day} de {meses[data_recibo.month]} de {data_recibo.year}."
     elementos.append(Paragraph(data_extenso, style_corpo))
-    elementos.append(Spacer(1, 40))
-    
-    # Assinatura
-    elementos.append(HRFlowable(width="60%", thickness=1, color=colors.black, hAlign='CENTER'))
-    elementos.append(Spacer(1, 5))
-    elementos.append(Paragraph(nome_igreja, style_subtitulo))
     elementos.append(Spacer(1, 30))
     
     # Rodapé
@@ -2195,7 +2226,7 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     hora_emissao = agora.strftime('%H:%M')
     
     texto_rodape = f"""
-    Este recibo é válido como comprovante de doação para fins de declaração de imposto de renda.<br/>
+    Este recibo é válido como comprovante de pagamento.<br/>
     Emitido em {data_emissao} às {hora_emissao} - Sistema Administrativo OBPC
     """
     elementos.append(Paragraph(texto_rodape, style_rodape))
