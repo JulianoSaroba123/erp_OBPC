@@ -100,28 +100,46 @@
                                 <label for="tipo_doacao" class="form-label">
                                     Tipo de Doação <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-select" id="tipo_doacao" name="tipo_doacao" required>
-                                    <option value="Oferta" {% if dados.tipo_doacao == 'Oferta' %}selected{% endif %}>Oferta</option>
-                                    <option value="Dízimo" {% if dados.tipo_doacao == 'Dízimo' %}selected{% endif %}>Dízimo</option>
-                                    <option value="Oferta Missionária" {% if dados.tipo_doacao == 'Oferta Missionária' %}selected{% endif %}>Oferta Missionária</option>
-                                    <option value="Doação para Projeto" {% if dados.tipo_doacao == 'Doação para Projeto' %}selected{% endif %}>Doação para Projeto</option>
-                                    <option value="Contribuição" {% if dados.tipo_doacao == 'Contribuição' %}selected{% endif %}>Contribuição</option>
-                                    <option value="Outros" {% if dados.tipo_doacao == 'Outros' %}selected{% endif %}>Outros</option>
-                                </select>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="tipo_doacao" 
+                                       name="tipo_doacao" 
+                                       value="{{ dados.tipo_doacao or 'Oferta' }}"
+                                       list="lista_tipos_doacao"
+                                       placeholder="Digite ou selecione"
+                                       required>
+                                <datalist id="lista_tipos_doacao">
+                                    <option value="Oferta">
+                                    <option value="Dízimo">
+                                    <option value="Oferta Missionária">
+                                    <option value="Doação para Projeto">
+                                    <option value="Contribuição">
+                                    <option value="Outros">
+                                </datalist>
+                                <small class="text-muted">Digite livremente ou selecione da lista</small>
                             </div>
                             
                             <div class="col-md-6 mb-3">
                                 <label for="forma_pagamento" class="form-label">
                                     Forma de Pagamento <span class="text-danger">*</span>
                                 </label>
-                                <select class="form-select" id="forma_pagamento" name="forma_pagamento" required>
-                                    <option value="Dinheiro" {% if dados.forma_pagamento == 'Dinheiro' %}selected{% endif %}>Dinheiro</option>
-                                    <option value="PIX" {% if dados.forma_pagamento == 'PIX' %}selected{% endif %}>PIX</option>
-                                    <option value="Transferência Bancária" {% if dados.forma_pagamento == 'Transferência Bancária' %}selected{% endif %}>Transferência Bancária</option>
-                                    <option value="Cartão de Débito" {% if dados.forma_pagamento == 'Cartão de Débito' %}selected{% endif %}>Cartão de Débito</option>
-                                    <option value="Cartão de Crédito" {% if dados.forma_pagamento == 'Cartão de Crédito' %}selected{% endif %}>Cartão de Crédito</option>
-                                    <option value="Cheque" {% if dados.forma_pagamento == 'Cheque' %}selected{% endif %}>Cheque</option>
-                                </select>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="forma_pagamento" 
+                                       name="forma_pagamento" 
+                                       value="{{ dados.forma_pagamento or 'Dinheiro' }}"
+                                       list="lista_formas_pagamento"
+                                       placeholder="Digite ou selecione"
+                                       required>
+                                <datalist id="lista_formas_pagamento">
+                                    <option value="Dinheiro">
+                                    <option value="PIX">
+                                    <option value="Transferência Bancária">
+                                    <option value="Cartão de Débito">
+                                    <option value="Cartão de Crédito">
+                                    <option value="Cheque">
+                                </datalist>
+                                <small class="text-muted">Digite livremente ou selecione da lista</small>
                             </div>
                             
                             <div class="col-md-12 mb-3">
