@@ -2128,24 +2128,29 @@ def gerar_recibo_pdf(dados_recibo, config=None):
         elementos.append(Paragraph(dados_recibo['observacoes'], style_info))
         elementos.append(Spacer(1, 20))
     
-    # Informações adicionais em tabela
+    # Estilo para labels da tabela
+    style_label = ParagraphStyle(
+        'LabelTabela',
+        parent=style_info,
+        fontName=f'{fonte_configurada}-Bold',
+        textColor=cor_secundaria
+    )
+    
+    # Informações adicionais em tabela (usando Paragraph para renderizar HTML)
     dados_info = [
-        ['<b>Tipo de Doação:</b>', dados_recibo['tipo_doacao']],
-        ['<b>Forma de Pagamento:</b>', dados_recibo['forma_pagamento']],
-        ['<b>Data:</b>', data_formatada],
-        ['<b>Valor:</b>', valor_formatado]
+        [Paragraph('<b>Tipo de Doação:</b>', style_label), Paragraph(dados_recibo['tipo_doacao'], style_info)],
+        [Paragraph('<b>Forma de Pagamento:</b>', style_label), Paragraph(dados_recibo['forma_pagamento'], style_info)],
+        [Paragraph('<b>Data:</b>', style_label), Paragraph(data_formatada, style_info)],
+        [Paragraph('<b>Valor:</b>', style_label), Paragraph(valor_formatado, style_info)]
     ]
     
     tabela_info = Table(dados_info, colWidths=[7*cm, 10*cm])
     tabela_info.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), fonte_configurada),
-        ('FONTSIZE', (0, 0), (-1, -1), 10),
-        ('TEXTCOLOR', (0, 0), (0, -1), cor_secundaria),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('LEFTPADDING', (0, 0), (-1, -1), 5),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
-        ('TOPPADDING', (0, 0), (-1, -1), 3),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('BACKGROUND', (0, 0), (0, -1), colors.Color(0.95, 0.95, 0.95))
     ]))
