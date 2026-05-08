@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import current_app
 from app.configuracoes.configuracoes_model import Configuracao
 from reportlab.lib.pagesizes import A4, letter
@@ -2087,7 +2087,7 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     elementos.append(Spacer(1, 15))
     
     # Título
-    elementos.append(Paragraph("RECIBO DE DOAÇÃO", style_titulo))
+    elementos.append(Paragraph("RECIBO", style_titulo))
     
     # Número do recibo
     numero_recibo = dados_recibo.get('numero_recibo', 'S/N')
@@ -2182,9 +2182,15 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     elementos.append(Spacer(1, 5))
     
-    # Data/hora de emissão (agora em horário local do Brasil)
-    from datetime import datetime
-    agora = datetime.now()
+    # Data/hora de emissão em horário de Brasília (UTC-3)
+    try:
+        import pytz
+        fuso_brasilia = pytz.timezone('America/Sao_Paulo')
+        agora = datetime.now(fuso_brasilia)
+    except:
+        # Fallback: ajustar manualmente UTC-3
+        agora = datetime.utcnow() - timedelta(hours=3)
+    
     data_emissao = agora.strftime('%d/%m/%Y')
     hora_emissao = agora.strftime('%H:%M')
     
