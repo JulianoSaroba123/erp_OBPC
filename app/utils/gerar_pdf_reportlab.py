@@ -2158,14 +2158,17 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     elementos.append(tabela_info)
     elementos.append(Spacer(1, 40))
     
-    # Local e data
-    hoje = datetime.now()
+    # Local e data (usar a data da doação, não a data de emissão)
+    data_recibo = dados_recibo.get('data_doacao')
+    if isinstance(data_recibo, str):
+        data_recibo = datetime.strptime(data_recibo, '%Y-%m-%d').date()
+    
     meses = [
         '', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
         'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
     ]
     
-    data_extenso = f"{cidade}, {hoje.day} de {meses[hoje.month]} de {hoje.year}."
+    data_extenso = f"{cidade}, {data_recibo.day} de {meses[data_recibo.month]} de {data_recibo.year}."
     elementos.append(Paragraph(data_extenso, style_corpo))
     elementos.append(Spacer(1, 40))
     
@@ -2179,9 +2182,15 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
     elementos.append(Spacer(1, 5))
     
+    # Data/hora de emissão (agora em horário local do Brasil)
+    from datetime import datetime
+    agora = datetime.now()
+    data_emissao = agora.strftime('%d/%m/%Y')
+    hora_emissao = agora.strftime('%H:%M')
+    
     texto_rodape = f"""
     Este recibo é válido como comprovante de doação para fins de declaração de imposto de renda.<br/>
-    Emitido em {hoje.strftime('%d/%m/%Y às %H:%M')} - Sistema Administrativo OBPC
+    Emitido em {data_emissao} às {hora_emissao} - Sistema Administrativo OBPC
     """
     elementos.append(Paragraph(texto_rodape, style_rodape))
     
