@@ -158,12 +158,16 @@
                         <div class="row mt-4">
                             <div class="col-md-12">
                                 <hr>
-                                <div class="d-flex justify-content-between">
+                                <div class="d-flex justify-content-between align-items-center">
                                     <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
                                         <i class="fas fa-arrow-left me-2"></i>
                                         Voltar
                                     </a>
-                                    <button type="submit" class="btn btn-primary">
+                                    <a href="{{ url_for('financeiro.lista_recibos') }}" class="btn btn-info">
+                                        <i class="fas fa-list me-2"></i>
+                                        Ver Recibos Emitidos
+                                    </a>
+                                    <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-file-pdf me-2"></i>
                                         Gerar Recibo (PDF)
                                     </button>
