@@ -15,6 +15,7 @@ Pillow==10.1.0
 twilio==9.0.0
 APScheduler==3.10.4
 python-dateutil==2.8.2
+pytz==2023.3
 
 # Para geração de executável
 pyinstaller==6.3.0

@@ -5,6 +5,7 @@ from app.financeiro.financeiro_model import Lancamento
 from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.despesas_fixas_model import DespesaFixaConselho
+from app.financeiro.recibo_model import Recibo
 from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
 from datetime import datetime, date
@@ -3984,3 +3985,227 @@ def emitir_recibo():
     except Exception as e:
         flash(f'Erro ao emitir recibo: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
+
+
+# ========== CRUD DE RECIBOS ==========
+
+@financeiro_bp.route('/financeiro/recibos')
+@login_required
+def lista_recibos():
+    """Lista todos os recibos emitidos"""
+    try:
+        # Filtros
+        search = request.args.get('search', '')
+        data_inicio = request.args.get('data_inicio', '')
+        data_fim = request.args.get('data_fim', '')
+        page = request.args.get('page', 1, type=int)
+        
+        # Query base
+        query = Recibo.query
+        
+        # Aplicar filtros
+        if search:
+            query = query.filter(
+                or_(
+                    Recibo.numero_recibo.contains(search),
+                    Recibo.nome_recebedor.contains(search),
+                    Recibo.referente_a.contains(search)
+                )
+            )
+        
+        if data_inicio:
+            query = query.filter(Recibo.data_pagamento >= datetime.strptime(data_inicio, '%Y-%m-%d').date())
+        
+        if data_fim:
+            query = query.filter(Recibo.data_pagamento <= datetime.strptime(data_fim, '%Y-%m-%d').date())
+        
+        # Paginação
+        recibos = query.order_by(Recibo.criado_em.desc()).paginate(
+            page=page, per_page=20, error_out=False
+        )
+        
+        # Métricas
+        total_recibos = query.count()
+        total_valor = sum(r.valor for r in query.all())
+        
+        return render_template('financeiro/lista_recibos.html',
+                             recibos=recibos,
+                             total_recibos=total_recibos,
+                             total_valor=total_valor,
+                             search=search,
+                             data_inicio=data_inicio,
+                             data_fim=data_fim)
+                             
+    except Exception as e:
+        flash(f'Erro ao carregar recibos: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_lancamentos'))
+
+
+@financeiro_bp.route('/financeiro/recibos/novo', methods=['GET', 'POST'])
+@login_required
+def novo_recibo():
+    """Cria um novo recibo e salva no banco"""
+    try:
+        if request.method == 'POST':
+            # Capturar dados
+            nome_recebedor = request.form.get('nome_doador', '').strip()
+            cpf_cnpj = request.form.get('cpf_cnpj', '').strip()
+            valor_str = request.form.get('valor', '0').replace(',', '.')
+            forma_pagamento = request.form.get('forma_pagamento', 'Dinheiro')
+            referente_a = request.form.get('tipo_doacao', 'Pagamento')
+            data_pagamento_str = request.form.get('data_doacao', '')
+            observacoes = request.form.get('observacoes', '').strip()
+            numero_recibo = request.form.get('numero_recibo', '').strip()
+            
+            # Validações
+            if not nome_recebedor:
+                flash('Nome do recebedor é obrigatório', 'danger')
+                return redirect(url_for('financeiro.novo_recibo'))
+            
+            try:
+                valor = float(valor_str)
+                if valor <= 0:
+                    raise ValueError()
+            except:
+                flash('Valor inválido', 'danger')
+                return redirect(url_for('financeiro.novo_recibo'))
+            
+            # Data
+            try:
+                if data_pagamento_str:
+                    data_pagamento = datetime.strptime(data_pagamento_str, '%Y-%m-%d').date()
+                else:
+                    data_pagamento = datetime.now().date()
+            except:
+                data_pagamento = datetime.now().date()
+            
+            # Gerar número do recibo
+            if not numero_recibo:
+                numero_recibo = Recibo.gerar_numero_recibo()
+            
+            # Criar recibo
+            recibo = Recibo(
+                numero_recibo=numero_recibo,
+                nome_recebedor=nome_recebedor,
+                cpf_cnpj_recebedor=cpf_cnpj,
+                valor=valor,
+                data_pagamento=data_pagamento,
+                referente_a=referente_a,
+                forma_pagamento=forma_pagamento,
+                observacoes=observacoes,
+                criado_por=current_user.nome if hasattr(current_user, 'nome') else 'Sistema'
+            )
+            
+            db.session.add(recibo)
+            db.session.commit()
+            
+            flash('Recibo criado com sucesso!', 'success')
+            
+            # Gerar PDF automaticamente
+            dados_recibo = {
+                'numero_recibo': numero_recibo,
+                'nome_doador': nome_recebedor,
+                'cpf_cnpj': cpf_cnpj,
+                'valor': valor_str,
+                'forma_pagamento': forma_pagamento,
+                'tipo_doacao': referente_a,
+                'data_doacao': data_pagamento,
+                'observacoes': observacoes
+            }
+            
+            from app.utils.gerar_pdf_reportlab import gerar_recibo_pdf
+            config = Configuracao.obter_configuracao()
+            pdf_buffer = gerar_recibo_pdf(dados_recibo, config)
+            
+            # Marcar como PDF gerado
+            recibo.pdf_gerado = True
+            db.session.commit()
+            
+            # Retornar PDF
+            nome_arquivo = f"recibo_{numero_recibo}.pdf"
+            return send_file(
+                pdf_buffer,
+                as_attachment=True,
+                download_name=nome_arquivo,
+                mimetype='application/pdf'
+            )
+        
+        # GET
+        return render_template('financeiro/emitir_recibo.html', dados={
+            'data_doacao': datetime.now().strftime('%Y-%m-%d'),
+            'forma_pagamento': 'Dinheiro',
+            'tipo_doacao': 'Pagamento'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao criar recibo: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_recibos'))
+
+
+@financeiro_bp.route('/financeiro/recibos/<int:id>')
+@login_required
+def visualizar_recibo(id):
+    """Visualiza detalhes de um recibo"""
+    try:
+        recibo = Recibo.query.get_or_404(id)
+        return render_template('financeiro/visualizar_recibo.html', recibo=recibo)
+    except Exception as e:
+        flash(f'Erro ao visualizar recibo: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_recibos'))
+
+
+@financeiro_bp.route('/financeiro/recibos/<int:id>/pdf')
+@login_required
+def gerar_pdf_recibo(id):
+    """Gera PDF de um recibo existente"""
+    try:
+        recibo = Recibo.query.get_or_404(id)
+        
+        # Preparar dados para geração do PDF
+        dados_recibo = {
+            'numero_recibo': recibo.numero_recibo,
+            'nome_doador': recibo.nome_recebedor,
+            'cpf_cnpj': recibo.cpf_cnpj_recebedor or '',
+            'valor': str(recibo.valor),
+            'forma_pagamento': recibo.forma_pagamento,
+            'tipo_doacao': recibo.referente_a,
+            'data_doacao': recibo.data_pagamento,
+            'observacoes': recibo.observacoes or ''
+        }
+        
+        from app.utils.gerar_pdf_reportlab import gerar_recibo_pdf
+        config = Configuracao.obter_configuracao()
+        pdf_buffer = gerar_recibo_pdf(dados_recibo, config)
+        
+        nome_arquivo = f"recibo_{recibo.numero_recibo}.pdf"
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=nome_arquivo,
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        flash(f'Erro ao gerar PDF: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_recibos'))
+
+
+@financeiro_bp.route('/financeiro/recibos/<int:id>/excluir', methods=['POST'])
+@login_required
+def excluir_recibo(id):
+    """Exclui um recibo"""
+    try:
+        recibo = Recibo.query.get_or_404(id)
+        numero = recibo.numero_recibo
+        
+        db.session.delete(recibo)
+        db.session.commit()
+        
+        flash(f'Recibo {numero} excluído com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir recibo: {str(e)}', 'danger')
+    
+    return redirect(url_for('financeiro.lista_recibos'))

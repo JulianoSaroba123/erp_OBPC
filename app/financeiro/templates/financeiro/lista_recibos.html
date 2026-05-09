@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Recibos - Sistema Financeiro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Cabeçalho -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-file-invoice me-2"></i>
+                            Recibos Emitidos
+                        </h4>
+                        <a href="{{ url_for('financeiro.novo_recibo') }}" class="btn btn-light btn-sm">
+                            <i class="fas fa-plus me-2"></i>
+                            Novo Recibo
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Métricas -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="text-muted">Total de Recibos</h6>
+                            <h3 class="text-primary">{{ total_recibos }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="text-muted">Valor Total</h6>
+                            <h3 class="text-success">R$ {{ "%.2f"|format(total_valor)|replace('.', ',') }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar</label>
+                            <input type="text" name="search" class="form-control" 
+                                   value="{{ search }}" 
+                                   placeholder="Número, recebedor ou descrição">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Data Início</label>
+                            <input type="date" name="data_inicio" class="form-control" value="{{ data_inicio }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Data Fim</label>
+                            <input type="date" name="data_fim" class="form-control" value="{{ data_fim }}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Filtrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabela de Recibos -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if recibos.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nº Recibo</th>
+                                    <th>Recebedor</th>
+                                    <th>CPF/CNPJ</th>
+                                    <th>Valor</th>
+                                    <th>Data Pagto</th>
+                                    <th>Referente a</th>
+                                    <th>Forma Pgto</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for recibo in recibos.items %}
+                                <tr>
+                                    <td><strong>{{ recibo.numero_recibo }}</strong></td>
+                                    <td>{{ recibo.nome_recebedor }}</td>
+                                    <td>{{ recibo.cpf_cnpj_recebedor or '-' }}</td>
+                                    <td class="text-success">
+                                        <strong>R$ {{ "%.2f"|format(recibo.valor)|replace('.', ',') }}</strong>
+                                    </td>
+                                    <td>{{ recibo.data_pagamento.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ recibo.referente_a[:30] }}...</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ recibo.forma_pagamento }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('financeiro.visualizar_recibo', id=recibo.id) }}" 
+                                               class="btn btn-outline-primary" 
+                                               title="Visualizar">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('financeiro.gerar_pdf_recibo', id=recibo.id) }}" 
+                                               class="btn btn-outline-success" 
+                                               title="Gerar PDF">
+                                                <i class="fas fa-file-pdf"></i>
+                                            </a>
+                                            <form method="POST" 
+                                                  action="{{ url_for('financeiro.excluir_recibo', id=recibo.id) }}" 
+                                                  style="display: inline;"
+                                                  onsubmit="return confirm('Deseja realmente excluir este recibo?');">
+                                                <button type="submit" class="btn btn-outline-danger" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    {% if recibos.pages > 1 %}
+                    <nav>
+                        <ul class="pagination justify-content-center">
+                            {% if recibos.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('financeiro.lista_recibos', page=recibos.prev_num, search=search, data_inicio=data_inicio, data_fim=data_fim) }}">
+                                    Anterior
+                                </a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for num in recibos.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                                {% if num %}
+                                    <li class="page-item {% if num == recibos.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('financeiro.lista_recibos', page=num, search=search, data_inicio=data_inicio, data_fim=data_fim) }}">
+                                            {{ num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if recibos.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('financeiro.lista_recibos', page=recibos.next_num, search=search, data_inicio=data_inicio, data_fim=data_fim) }}">
+                                    Próximo
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Nenhum recibo encontrado</p>
+                        <a href="{{ url_for('financeiro.novo_recibo') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Emitir Primeiro Recibo
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 10px;
+    border: none;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+</style>
+{% endblock %}

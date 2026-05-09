@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Recibo #{{ recibo.numero_recibo }} - Sistema Financeiro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Cabeçalho -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-file-invoice me-2"></i>
+                            Recibo {{ recibo.numero_recibo }}
+                        </h4>
+                        <div>
+                            <a href="{{ url_for('financeiro.gerar_pdf_recibo', id=recibo.id) }}" 
+                               class="btn btn-success btn-sm me-2">
+                                <i class="fas fa-file-pdf me-2"></i>Gerar PDF
+                            </a>
+                            <a href="{{ url_for('financeiro.lista_recibos') }}" 
+                               class="btn btn-light btn-sm">
+                                <i class="fas fa-arrow-left me-2"></i>Voltar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalhes do Recibo -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    
+                    <!-- Informações de Controle -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Número do Recibo</label>
+                                <h5 class="text-primary">{{ recibo.numero_recibo }}</h5>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Data de Emissão</label>
+                                <h5>{{ recibo.criado_em.strftime('%d/%m/%Y às %H:%M') }}</h5>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Dados do Recebedor -->
+                    <h5 class="mb-3 text-primary">
+                        <i class="fas fa-user me-2"></i>Dados do Recebedor
+                    </h5>
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Nome Completo</label>
+                                <h6>{{ recibo.nome_recebedor }}</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">CPF/CNPJ</label>
+                                <h6>{{ recibo.cpf_cnpj_recebedor or 'Não informado' }}</h6>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Dados do Pagamento -->
+                    <h5 class="mb-3 text-primary">
+                        <i class="fas fa-money-bill-wave me-2"></i>Dados do Pagamento
+                    </h5>
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Valor Pago</label>
+                                <h4 class="text-success">R$ {{ "%.2f"|format(recibo.valor)|replace('.', ',') }}</h4>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Data do Pagamento</label>
+                                <h6>{{ recibo.data_pagamento.strftime('%d/%m/%Y') }}</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Forma de Pagamento</label>
+                                <h6><span class="badge bg-info">{{ recibo.forma_pagamento }}</span></h6>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Referente a</label>
+                                <div class="border rounded p-3 bg-light">
+                                    {{ recibo.referente_a }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if recibo.observacoes %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Observações</label>
+                                <div class="border rounded p-3 bg-light">
+                                    {{ recibo.observacoes }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <hr>
+
+                    <!-- Informações Adicionais -->
+                    <h5 class="mb-3 text-primary">
+                        <i class="fas fa-info-circle me-2"></i>Informações Adicionais
+                    </h5>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Emitido por</label>
+                                <h6>{{ recibo.criado_por }}</h6>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-box">
+                                <label class="text-muted mb-1">Status do PDF</label>
+                                <h6>
+                                    {% if recibo.pdf_gerado %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle me-1"></i>PDF Gerado
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>PDF ainda não gerado
+                                    </span>
+                                    {% endif %}
+                                </h6>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ações -->
+                    <div class="d-flex justify-content-between mt-4 pt-3 border-top">
+                        <form method="POST" 
+                              action="{{ url_for('financeiro.excluir_recibo', id=recibo.id) }}"
+                              onsubmit="return confirm('Tem certeza que deseja excluir este recibo? Esta ação não pode ser desfeita.');">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash me-2"></i>Excluir Recibo
+                            </button>
+                        </form>
+                        
+                        <div>
+                            <a href="{{ url_for('financeiro.gerar_pdf_recibo', id=recibo.id) }}" 
+                               class="btn btn-success">
+                                <i class="fas fa-download me-2"></i>Baixar PDF
+                            </a>
+                            <a href="{{ url_for('financeiro.lista_recibos') }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Voltar à Lista
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border-radius: 10px;
+    border: none;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.info-box {
+    margin-bottom: 1rem;
+}
+
+.info-box label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-box h6, .info-box h5 {
+    margin: 0;
+    color: #333;
+}
+
+.badge {
+    font-size: 0.9rem;
+    padding: 0.4rem 0.8rem;
+}
+</style>
+{% endblock %}
