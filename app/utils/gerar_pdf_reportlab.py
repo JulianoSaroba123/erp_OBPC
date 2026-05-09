@@ -2135,23 +2135,10 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     elementos.append(Paragraph(texto_referente, style_corpo))
     elementos.append(Spacer(1, 20))
     
-    # Forma de pagamento (com checkboxes)
+    # Forma de pagamento
     forma_pag = dados_recibo.get('forma_pagamento', 'Dinheiro')
-    checkboxes_formas = {
-        'PIX': '☑' if forma_pag == 'PIX' else '☐',
-        'Dinheiro': '☑' if forma_pag == 'Dinheiro' else '☐',
-        'Transferência Bancária': '☑' if forma_pag == 'Transferência Bancária' else '☐',
-        'Cartão': '☑' if 'Cartão' in forma_pag else '☐',
-        'Outro': '☑' if forma_pag not in ['PIX', 'Dinheiro', 'Transferência Bancária'] and 'Cartão' not in forma_pag else '☐'
-    }
-    
     texto_forma_pagamento = f"""
-    <b>Forma de pagamento:</b><br/>
-    {checkboxes_formas['PIX']} PIX &nbsp;&nbsp;&nbsp;
-    {checkboxes_formas['Dinheiro']} Dinheiro &nbsp;&nbsp;&nbsp;
-    {checkboxes_formas['Transferência Bancária']} Transferência Bancária<br/>
-    {checkboxes_formas['Cartão']} Cartão &nbsp;&nbsp;&nbsp;
-    {checkboxes_formas['Outro']} Outro: {forma_pag if checkboxes_formas['Outro'] == '☑' else ''}
+    <b>Forma de pagamento:</b> {forma_pag}
     """
     elementos.append(Paragraph(texto_forma_pagamento, style_corpo))
     elementos.append(Spacer(1, 25))
