@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app, session
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app.extensoes import db
 from app.financeiro.financeiro_model import Lancamento
 from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
@@ -3921,53 +3921,94 @@ def relatorio_sede_pdf():
 @financeiro_bp.route('/financeiro/emitir-recibo', methods=['GET', 'POST'])
 @login_required
 def emitir_recibo():
-    """Emissor de recibo para doações e ofertas"""
+    """Emissor de recibo para doações e ofertas - COM SALVAMENTO NO BANCO"""
     try:
         if request.method == 'POST':
             # Capturar dados do formulário
-            dados_recibo = {
-                'nome_doador': request.form.get('nome_doador', '').strip(),
-                'cpf_cnpj': request.form.get('cpf_cnpj', '').strip(),
-                'valor': request.form.get('valor', '0').replace(',', '.'),
-                'forma_pagamento': request.form.get('forma_pagamento', 'Dinheiro'),
-                'tipo_doacao': request.form.get('tipo_doacao', 'Oferta'),
-                'data_doacao': request.form.get('data_doacao', ''),
-                'observacoes': request.form.get('observacoes', '').strip(),
-                'numero_recibo': request.form.get('numero_recibo', '').strip()
-            }
+            nome_recebedor = request.form.get('nome_doador', '').strip()
+            cpf_cnpj = request.form.get('cpf_cnpj', '').strip()
+            valor_str = request.form.get('valor', '0').replace(',', '.')
+            forma_pagamento = request.form.get('forma_pagamento', 'Dinheiro')
+            referente_a = request.form.get('tipo_doacao', 'Pagamento')
+            data_pagamento_str = request.form.get('data_doacao', '')
+            observacoes = request.form.get('observacoes', '').strip()
+            numero_recibo = request.form.get('numero_recibo', '').strip()
             
             # Validações básicas
-            if not dados_recibo['nome_doador']:
-                flash('Nome do doador é obrigatório', 'danger')
-                return render_template('financeiro/emitir_recibo.html', dados=dados_recibo)
+            if not nome_recebedor:
+                flash('Nome do recebedor é obrigatório', 'danger')
+                return render_template('financeiro/emitir_recibo.html', dados={
+                    'nome_doador': nome_recebedor,
+                    'cpf_cnpj': cpf_cnpj,
+                    'valor': valor_str,
+                    'forma_pagamento': forma_pagamento,
+                    'tipo_doacao': referente_a,
+                    'data_doacao': data_pagamento_str,
+                    'observacoes': observacoes
+                })
             
-            if not dados_recibo['valor'] or float(dados_recibo['valor']) <= 0:
+            try:
+                valor = float(valor_str)
+                if valor <= 0:
+                    raise ValueError()
+            except:
                 flash('Valor deve ser maior que zero', 'danger')
-                return render_template('financeiro/emitir_recibo.html', dados=dados_recibo)
+                return render_template('financeiro/emitir_recibo.html', dados={})
             
             # Converter data
             try:
-                if dados_recibo['data_doacao']:
-                    dados_recibo['data_doacao'] = datetime.strptime(dados_recibo['data_doacao'], '%Y-%m-%d').date()
+                if data_pagamento_str:
+                    data_pagamento = datetime.strptime(data_pagamento_str, '%Y-%m-%d').date()
                 else:
-                    dados_recibo['data_doacao'] = datetime.now().date()
+                    data_pagamento = datetime.now().date()
             except:
-                dados_recibo['data_doacao'] = datetime.now().date()
+                data_pagamento = datetime.now().date()
             
             # Gerar número do recibo se não fornecido
-            if not dados_recibo['numero_recibo']:
-                # Gerar número sequencial baseado no ano e total de recibos
-                ano_atual = datetime.now().year
-                # Contar recibos do ano (pode ser implementado com tabela específica no futuro)
-                dados_recibo['numero_recibo'] = f"REC-{ano_atual}-{datetime.now().strftime('%m%d%H%M%S')}"
+            if not numero_recibo:
+                numero_recibo = Recibo.gerar_numero_recibo()
+            
+            # SALVAR NO BANCO
+            recibo = Recibo(
+                numero_recibo=numero_recibo,
+                nome_recebedor=nome_recebedor,
+                cpf_cnpj_recebedor=cpf_cnpj,
+                valor=valor,
+                data_pagamento=data_pagamento,
+                referente_a=referente_a,
+                forma_pagamento=forma_pagamento,
+                observacoes=observacoes,
+                criado_por=current_user.nome if hasattr(current_user, 'nome') else 'Sistema'
+            )
+            
+            db.session.add(recibo)
+            db.session.commit()
+            
+            # Preparar dados para PDF
+            dados_recibo = {
+                'numero_recibo': numero_recibo,
+                'nome_doador': nome_recebedor,
+                'cpf_cnpj': cpf_cnpj,
+                'valor': valor_str,
+                'forma_pagamento': forma_pagamento,
+                'tipo_doacao': referente_a,
+                'data_doacao': data_pagamento,
+                'observacoes': observacoes
+            }
             
             # Gerar PDF do recibo
             from app.utils.gerar_pdf_reportlab import gerar_recibo_pdf
             config = Configuracao.obter_configuracao()
             pdf_buffer = gerar_recibo_pdf(dados_recibo, config)
             
+            # Marcar como PDF gerado
+            recibo.pdf_gerado = True
+            db.session.commit()
+            
+            flash(f'Recibo {numero_recibo} criado com sucesso!', 'success')
+            
             # Retornar PDF
-            nome_arquivo = f"recibo_{dados_recibo['numero_recibo']}.pdf"
+            nome_arquivo = f"recibo_{numero_recibo}.pdf"
             return send_file(
                 pdf_buffer,
                 as_attachment=True,
@@ -3983,6 +4024,7 @@ def emitir_recibo():
         })
         
     except Exception as e:
+        db.session.rollback()
         flash(f'Erro ao emitir recibo: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
