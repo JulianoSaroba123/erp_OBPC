@@ -162,6 +162,10 @@
                         </form>
                         
                         <div>
+                            <a href="{{ url_for('financeiro.editar_recibo', id=recibo.id) }}" 
+                               class="btn btn-warning">
+                                <i class="fas fa-edit me-2"></i>Editar Recibo
+                            </a>
                             <a href="{{ url_for('financeiro.gerar_pdf_recibo', id=recibo.id) }}" 
                                class="btn btn-success">
                                 <i class="fas fa-download me-2"></i>Baixar PDF

@@ -4197,6 +4197,68 @@ def visualizar_recibo(id):
         return redirect(url_for('financeiro.lista_recibos'))
 
 
+@financeiro_bp.route('/financeiro/recibos/<int:id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_recibo(id):
+    """Edita um recibo existente"""
+    try:
+        recibo = Recibo.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            # Capturar dados atualizados
+            nome_recebedor = request.form.get('nome_doador', '').strip()
+            cpf_cnpj = request.form.get('cpf_cnpj', '').strip()
+            valor_str = request.form.get('valor', '0').replace(',', '.')
+            forma_pagamento = request.form.get('forma_pagamento', 'Dinheiro')
+            referente_a = request.form.get('tipo_doacao', 'Pagamento')
+            data_pagamento_str = request.form.get('data_doacao', '')
+            observacoes = request.form.get('observacoes', '').strip()
+            
+            # Validações
+            if not nome_recebedor:
+                flash('Nome do recebedor é obrigatório', 'danger')
+                return render_template('financeiro/editar_recibo.html', recibo=recibo)
+            
+            try:
+                valor = float(valor_str)
+                if valor <= 0:
+                    raise ValueError()
+            except:
+                flash('Valor inválido', 'danger')
+                return render_template('financeiro/editar_recibo.html', recibo=recibo)
+            
+            # Data
+            try:
+                if data_pagamento_str:
+                    data_pagamento = datetime.strptime(data_pagamento_str, '%Y-%m-%d').date()
+                else:
+                    data_pagamento = recibo.data_pagamento
+            except:
+                data_pagamento = recibo.data_pagamento
+            
+            # Atualizar recibo
+            recibo.nome_recebedor = nome_recebedor
+            recibo.cpf_cnpj_recebedor = cpf_cnpj
+            recibo.valor = valor
+            recibo.data_pagamento = data_pagamento
+            recibo.referente_a = referente_a
+            recibo.forma_pagamento = forma_pagamento
+            recibo.observacoes = observacoes
+            
+            db.session.commit()
+            
+            flash(f'Recibo {recibo.numero_recibo} atualizado com sucesso!', 'success')
+            return redirect(url_for('financeiro.visualizar_recibo', id=recibo.id))
+        
+        # GET - Mostrar formulário de edição
+        return render_template('financeiro/editar_recibo.html', recibo=recibo)
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao editar recibo: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.lista_recibos'))
+
+
 @financeiro_bp.route('/financeiro/recibos/<int:id>/pdf')
 @login_required
 def gerar_pdf_recibo(id):

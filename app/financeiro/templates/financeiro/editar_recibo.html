@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Recibo #{{ recibo.numero_recibo }} - Sistema Financeiro{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Cabeçalho -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-warning text-dark">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-edit me-2"></i>
+                            Editar Recibo {{ recibo.numero_recibo }}
+                        </h4>
+                        <a href="{{ url_for('financeiro.visualizar_recibo', id=recibo.id) }}" 
+                           class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário de Edição -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST">
+                        
+                        <!-- Dados do Recebedor -->
+                        <h5 class="mb-3 text-warning">
+                            <i class="fas fa-user me-2"></i>Dados do Recebedor
+                        </h5>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Nome Completo *</label>
+                                <input type="text" class="form-control" name="nome_doador" 
+                                       value="{{ recibo.nome_recebedor }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">CPF/CNPJ</label>
+                                <input type="text" class="form-control" name="cpf_cnpj" id="cpf_cnpj"
+                                       value="{{ recibo.cpf_cnpj_recebedor or '' }}">
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Dados do Pagamento -->
+                        <h5 class="mb-3 text-warning">
+                            <i class="fas fa-money-bill-wave me-2"></i>Dados do Pagamento
+                        </h5>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Valor (R$) *</label>
+                                <input type="text" class="form-control" name="valor" id="valor"
+                                       value="{{ '%.2f'|format(recibo.valor)|replace('.', ',') }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Data do Pagamento *</label>
+                                <input type="date" class="form-control" name="data_doacao"
+                                       value="{{ recibo.data_pagamento.strftime('%Y-%m-%d') }}" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Forma de Pagamento *</label>
+                                <input type="text" class="form-control" name="forma_pagamento"
+                                       value="{{ recibo.forma_pagamento }}" 
+                                       list="formas_pagamento" required>
+                                <datalist id="formas_pagamento">
+                                    <option value="Dinheiro">
+                                    <option value="PIX">
+                                    <option value="Transferência Bancária">
+                                    <option value="Cartão de Débito">
+                                    <option value="Cartão de Crédito">
+                                    <option value="Cheque">
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label">Referente a *</label>
+                                <input type="text" class="form-control" name="tipo_doacao"
+                                       value="{{ recibo.referente_a }}" 
+                                       list="tipos_referencia" required>
+                                <datalist id="tipos_referencia">
+                                    <option value="Pagamento de serviço prestado">
+                                    <option value="Honorários profissionais">
+                                    <option value="Prestação de serviços">
+                                    <option value="Oferta">
+                                    <option value="Compra de material">
+                                    <option value="Reembolso">
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <textarea class="form-control" name="observacoes" rows="3"
+                                          placeholder="Informações adicionais sobre o pagamento">{{ recibo.observacoes or '' }}</textarea>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Alertas -->
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Atenção:</strong> Ao salvar, o recibo será atualizado. O número do recibo 
+                            (<strong>{{ recibo.numero_recibo }}</strong>) não pode ser alterado.
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('financeiro.visualizar_recibo', id=recibo.id) }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-warning btn-lg">
+                                <i class="fas fa-save me-2"></i>Salvar Alterações
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Script para formatação de valores -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Formatação de valor monetário
+    const valorInput = document.getElementById('valor');
+    
+    valorInput.addEventListener('input', function(e) {
+        let value = e.target.value;
+        value = value.replace(/\D/g, '');
+        value = (value / 100).toFixed(2);
+        value = value.replace('.', ',');
+        e.target.value = value;
+    });
+    
+    // Máscara para CPF/CNPJ
+    const cpfCnpjInput = document.getElementById('cpf_cnpj');
+    
+    cpfCnpjInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        
+        if (value.length <= 11) {
+            // CPF: 000.000.000-00
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d)/, '$1.$2');
+            value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        } else {
+            // CNPJ: 00.000.000/0000-00
+            value = value.replace(/^(\d{2})(\d)/, '$1.$2');
+            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+            value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
+            value = value.replace(/(\d{4})(\d)/, '$1-$2');
+        }
+        
+        e.target.value = value;
+    });
+});
+</script>
+
+<style>
+.card {
+    border-radius: 10px;
+    border: none;
+}
+
+.card-header {
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.form-control:focus {
+    border-color: #ffc107;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+}
+</style>
+{% endblock %}
