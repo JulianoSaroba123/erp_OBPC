@@ -1961,14 +1961,14 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     # Criar buffer
     buffer = BytesIO()
     
-    # Configurar documento
+    # Configurar documento COM MARGENS REDUZIDAS para caber em 1 página
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
-        rightMargin=2*cm,
-        leftMargin=2*cm,
-        topMargin=2*cm,
-        bottomMargin=2*cm
+        rightMargin=1.5*cm,
+        leftMargin=1.5*cm,
+        topMargin=1.5*cm,
+        bottomMargin=1.5*cm
     )
     
     # Criar estilos
@@ -1981,12 +1981,12 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     style_titulo = ParagraphStyle(
         'TituloRecibo',
         parent=styles['Heading1'],
-        fontSize=22,
+        fontSize=20,
         textColor=cor_primaria,
         alignment=TA_CENTER,
         fontName=f'{fonte_configurada}-Bold',
-        spaceAfter=10,
-        spaceBefore=10
+        spaceAfter=6,
+        spaceBefore=6
     )
     
     style_subtitulo = ParagraphStyle(
@@ -2021,12 +2021,12 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     style_destaque = ParagraphStyle(
         'DestaqueRecibo',
         parent=styles['Normal'],
-        fontSize=14,
+        fontSize=12,
         textColor=cor_primaria,
         alignment=TA_CENTER,
         fontName=f'{fonte_configurada}-Bold',
-        spaceBefore=10,
-        spaceAfter=10
+        spaceBefore=6,
+        spaceAfter=6
     )
     
     style_info = ParagraphStyle(
@@ -2059,10 +2059,10 @@ def gerar_recibo_pdf(dados_recibo, config=None):
             logo_path = os.path.join(current_app.static_folder, 'Logo_OBPC.jpg')
         
         if os.path.exists(logo_path):
-            logo = Image(logo_path, width=80, height=80)
+            logo = Image(logo_path, width=60, height=60)
             logo.hAlign = 'CENTER'
             elementos.append(logo)
-            elementos.append(Spacer(1, 10))
+            elementos.append(Spacer(1, 6))
     except:
         pass
     
@@ -2080,15 +2080,15 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     if config.cnpj:
         elementos.append(Paragraph(f"CNPJ: {config.cnpj}", style_rodape))
     
-    elementos.append(Spacer(1, 15))
+    elementos.append(Spacer(1, 8))
     
     # Linha separadora
     elementos.append(HRFlowable(width="100%", thickness=2, color=cor_primaria))
-    elementos.append(Spacer(1, 15))
+    elementos.append(Spacer(1, 8))
     
     # Título
     elementos.append(Paragraph("RECIBO DE PAGAMENTO", style_titulo))
-    elementos.append(Spacer(1, 20))
+    elementos.append(Spacer(1, 10))
     
     # Número e Data do recibo
     numero_recibo = dados_recibo.get('numero_recibo', 'S/N')
@@ -2103,7 +2103,7 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     <b>DATA:</b> {data_formatada}
     """
     elementos.append(Paragraph(info_recibo, style_corpo))
-    elementos.append(Spacer(1, 20))
+    elementos.append(Spacer(1, 10))
     
     # Recebi de (Igreja)
     cnpj_igreja = config.cnpj if config.cnpj else "50.780.642/0031-44"
@@ -2112,7 +2112,7 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     <b>CPF/CNPJ:</b> {cnpj_igreja}
     """
     elementos.append(Paragraph(texto_recebi, style_corpo))
-    elementos.append(Spacer(1, 20))
+    elementos.append(Spacer(1, 10))
     
     # Valor
     valor = float(dados_recibo['valor'])
@@ -2121,11 +2121,11 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     
     texto_valor = f"""
     <b>A importância de:</b><br/>
-    <font size="14"><b>{valor_formatado}</b></font><br/>
+    <font size="13"><b>{valor_formatado}</b></font><br/>
     <b>Valor por extenso:</b> {valor_extenso.capitalize()}
     """
     elementos.append(Paragraph(texto_valor, style_corpo))
-    elementos.append(Spacer(1, 20))
+    elementos.append(Spacer(1, 10))
     
     # Referente a
     tipo_doacao = dados_recibo.get('tipo_doacao', 'Pagamento')
@@ -2133,7 +2133,7 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     <b>Referente a:</b> {tipo_doacao}
     """
     elementos.append(Paragraph(texto_referente, style_corpo))
-    elementos.append(Spacer(1, 20))
+    elementos.append(Spacer(1, 10))
     
     # Forma de pagamento
     forma_pag = dados_recibo.get('forma_pagamento', 'Dinheiro')
@@ -2141,11 +2141,11 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     <b>Forma de pagamento:</b> {forma_pag}
     """
     elementos.append(Paragraph(texto_forma_pagamento, style_corpo))
-    elementos.append(Spacer(1, 25))
+    elementos.append(Spacer(1, 12))
     
     # Dados do Recebedor
     elementos.append(Paragraph("<b>DADOS DO RECEBEDOR</b>", style_destaque))
-    elementos.append(Spacer(1, 10))
+    elementos.append(Spacer(1, 6))
     
     nome_recebedor = dados_recibo.get('nome_doador', '')
     cpf_recebedor = dados_recibo.get('cpf_cnpj', '')
@@ -2155,31 +2155,31 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     <b>CPF/CNPJ:</b> {cpf_recebedor}
     """
     elementos.append(Paragraph(texto_recebedor, style_corpo))
-    elementos.append(Spacer(1, 15))
+    elementos.append(Spacer(1, 8))
     
     # Declaração
     declaracao = "Declaro para os devidos fins que recebi o valor acima descrito."
     elementos.append(Paragraph(declaracao, style_corpo))
-    elementos.append(Spacer(1, 50))
+    elementos.append(Spacer(1, 25))
     
     # Observações (se houver)
     if dados_recibo.get('observacoes'):
         elementos.append(Paragraph("<b>Observações:</b>", style_info))
         elementos.append(Paragraph(dados_recibo['observacoes'], style_info))
-        elementos.append(Spacer(1, 20))
+        elementos.append(Spacer(1, 10))
     
     # Linha de assinatura
-    elementos.append(Spacer(1, 30))
+    elementos.append(Spacer(1, 15))
     elementos.append(HRFlowable(width="60%", thickness=1, color=colors.black, hAlign='CENTER'))
-    elementos.append(Spacer(1, 5))
+    elementos.append(Spacer(1, 3))
     assinatura_texto = f"<b>Assinatura do Recebedor</b><br/>{nome_recebedor}"
     elementos.append(Paragraph(assinatura_texto, ParagraphStyle(
         'AssinaturaRecebedor',
         parent=style_corpo,
         alignment=TA_CENTER,
-        fontSize=10
+        fontSize=9
     )))
-    elementos.append(Spacer(1, 30))
+    elementos.append(Spacer(1, 15))
     
     # Local e data
     data_recibo = dados_recibo.get('data_doacao')
@@ -2194,7 +2194,7 @@ def gerar_recibo_pdf(dados_recibo, config=None):
     cidade = config.cidade or "Tietê"
     data_extenso = f"{cidade}, {data_recibo.day} de {meses[data_recibo.month]} de {data_recibo.year}."
     elementos.append(Paragraph(data_extenso, style_corpo))
-    elementos.append(Spacer(1, 30))
+    elementos.append(Spacer(1, 12))
     
     # Rodapé
     elementos.append(HRFlowable(width="100%", thickness=0.5, color=colors.grey))
