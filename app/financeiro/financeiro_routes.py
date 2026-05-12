@@ -89,7 +89,15 @@ def dashboard_moderno():
         config = Configuracao.obter_configuracao()
         indicadores_distribuicao = None
         
-        if config and config.exibir_indicador_distribuicao:
+        # Verificar se deve exibir indicadores (default True se campo não existir)
+        exibir_indicadores = True
+        if config:
+            try:
+                exibir_indicadores = getattr(config, 'exibir_indicador_distribuicao', True)
+            except:
+                exibir_indicadores = True
+        
+        if config and exibir_indicadores:
             # Calcular total de Ofertas e Dízimos (entradas)
             total_ofertas_dizimos = sum(
                 l.valor for l in lancamentos_mes 
@@ -206,6 +214,12 @@ def dashboard_moderno():
                 'alertas': alertas,
                 'status_geral': 'ok' if len(alertas) == 0 else 'atencao' if len(alertas) <= 1 else 'critico'
             }
+            
+            # Log de debug
+            current_app.logger.info(f'>>> INDICADORES: Total ofertas/dízimos = R$ {total_ofertas_dizimos:.2f}')
+            current_app.logger.info(f'>>> INDICADORES: Exibir = {exibir_indicadores}, Status = {indicadores_distribuicao["status_geral"]}')
+        else:
+            current_app.logger.warning(f'>>> INDICADORES NÃO EXIBIDOS: config={config is not None}, exibir={exibir_indicadores}')
         
         return render_template('financeiro/dashboard_moderno.html',
                              total_entradas=total_entradas,
