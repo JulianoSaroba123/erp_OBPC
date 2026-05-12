@@ -83,12 +83,137 @@ def dashboard_moderno():
             func.sum(Lancamento.valor).desc()
         ).limit(5).all()
         
+        # ========================================
+        # INDICADORES DE DISTRIBUIÇÃO FINANCEIRA
+        # ========================================
+        config = Configuracao.obter_configuracao()
+        indicadores_distribuicao = None
+        
+        if config and config.exibir_indicador_distribuicao:
+            # Calcular total de Ofertas e Dízimos (entradas)
+            total_ofertas_dizimos = sum(
+                l.valor for l in lancamentos_mes 
+                if l.tipo.lower() == 'entrada' and 
+                l.categoria and 
+                any(keyword in l.categoria.lower() for keyword in ['oferta', 'dízimo', 'dizimo'])
+            )
+            
+            # Calcular valores ideais baseados nos percentuais configurados
+            valor_ideal_administrativo = total_ofertas_dizimos * (config.percentual_administrativo / 100)
+            valor_ideal_prebenda = total_ofertas_dizimos * (config.percentual_prebenda / 100)
+            valor_ideal_cuidados = total_ofertas_dizimos * (config.percentual_cuidados_igreja / 100)
+            
+            # Calcular valores reais das despesas por categoria
+            # Administrativo: despesas administrativas, sede, escritório, etc
+            valor_real_administrativo = sum(
+                l.valor for l in lancamentos_mes 
+                if l.tipo.lower() in ['saída', 'saida'] and 
+                l.categoria and 
+                any(keyword in l.categoria.lower() for keyword in ['administrativo', 'sede', 'escritório', 'escritorio', 'material escritório', 'material escritorio'])
+            )
+            
+            # Prebenda: salários pastorais, prebenda, honorários
+            valor_real_prebenda = sum(
+                l.valor for l in lancamentos_mes 
+                if l.tipo.lower() in ['saída', 'saida'] and 
+                l.categoria and 
+                any(keyword in l.categoria.lower() for keyword in ['prebenda', 'salário', 'salario', 'honorário', 'honorario', 'pastoral'])
+            )
+            
+            # Cuidados da Igreja: manutenção, contas, reformas, etc
+            valor_real_cuidados = sum(
+                l.valor for l in lancamentos_mes 
+                if l.tipo.lower() in ['saída', 'saida'] and 
+                l.categoria and 
+                any(keyword in l.categoria.lower() for keyword in ['manutenção', 'manutencao', 'energia', 'água', 'agua', 'internet', 'telefone', 'limpeza', 'reforma', 'conservação', 'conservacao', 'aluguel'])
+            )
+            
+            # Calcular percentuais reais
+            percentual_real_administrativo = (valor_real_administrativo / total_ofertas_dizimos * 100) if total_ofertas_dizimos > 0 else 0
+            percentual_real_prebenda = (valor_real_prebenda / total_ofertas_dizimos * 100) if total_ofertas_dizimos > 0 else 0
+            percentual_real_cuidados = (valor_real_cuidados / total_ofertas_dizimos * 100) if total_ofertas_dizimos > 0 else 0
+            
+            # Calcular desvios
+            desvio_administrativo = percentual_real_administrativo - config.percentual_administrativo
+            desvio_prebenda = percentual_real_prebenda - config.percentual_prebenda
+            desvio_cuidados = percentual_real_cuidados - config.percentual_cuidados_igreja
+            
+            # Determinar status de cada categoria
+            def obter_status(desvio):
+                if abs(desvio) <= 5:  # Tolerância de 5%
+                    return 'ok'
+                elif desvio > 5:
+                    return 'acima'
+                else:
+                    return 'abaixo'
+            
+            # Gerar alertas
+            alertas = []
+            if abs(desvio_administrativo) > 5:
+                alertas.append({
+                    'tipo': 'warning' if desvio_administrativo > 0 else 'info',
+                    'mensagem': f'Despesas administrativas {"acima" if desvio_administrativo > 0 else "abaixo"} do ideal ({abs(desvio_administrativo):.1f}%)'
+                })
+            
+            if abs(desvio_prebenda) > 5:
+                alertas.append({
+                    'tipo': 'warning' if desvio_prebenda > 0 else 'info',
+                    'mensagem': f'Prebenda pastoral {"acima" if desvio_prebenda > 0 else "abaixo"} do ideal ({abs(desvio_prebenda):.1f}%)'
+                })
+            
+            if abs(desvio_cuidados) > 5:
+                alertas.append({
+                    'tipo': 'warning' if desvio_cuidados > 0 else 'info',
+                    'mensagem': f'Cuidados da igreja {"acima" if desvio_cuidados > 0 else "abaixo"} do ideal ({abs(desvio_cuidados):.1f}%)'
+                })
+            
+            indicadores_distribuicao = {
+                'total_ofertas_dizimos': total_ofertas_dizimos,
+                'categorias': [
+                    {
+                        'nome': 'Administrativo Sede',
+                        'percentual_ideal': config.percentual_administrativo,
+                        'percentual_real': percentual_real_administrativo,
+                        'valor_ideal': valor_ideal_administrativo,
+                        'valor_real': valor_real_administrativo,
+                        'desvio': desvio_administrativo,
+                        'status': obter_status(desvio_administrativo),
+                        'fixo': True
+                    },
+                    {
+                        'nome': 'Prebenda Pastoral',
+                        'percentual_ideal': config.percentual_prebenda,
+                        'percentual_real': percentual_real_prebenda,
+                        'valor_ideal': valor_ideal_prebenda,
+                        'valor_real': valor_real_prebenda,
+                        'desvio': desvio_prebenda,
+                        'status': obter_status(desvio_prebenda),
+                        'fixo': False,
+                        'min': 0,
+                        'max': 30
+                    },
+                    {
+                        'nome': 'Cuidados da Igreja',
+                        'percentual_ideal': config.percentual_cuidados_igreja,
+                        'percentual_real': percentual_real_cuidados,
+                        'valor_ideal': valor_ideal_cuidados,
+                        'valor_real': valor_real_cuidados,
+                        'desvio': desvio_cuidados,
+                        'status': obter_status(desvio_cuidados),
+                        'fixo': True
+                    }
+                ],
+                'alertas': alertas,
+                'status_geral': 'ok' if len(alertas) == 0 else 'atencao' if len(alertas) <= 1 else 'critico'
+            }
+        
         return render_template('financeiro/dashboard_moderno.html',
                              total_entradas=total_entradas,
                              total_saidas=total_saidas,
                              total_nao_conciliados=total_nao_conciliados,
                              ultimos_lancamentos=ultimos_lancamentos,
-                             categorias_entradas=categorias_entradas)
+                             categorias_entradas=categorias_entradas,
+                             indicadores_distribuicao=indicadores_distribuicao)
                              
     except Exception as e:
         flash(f'Erro ao carregar dashboard: {str(e)}', 'danger')

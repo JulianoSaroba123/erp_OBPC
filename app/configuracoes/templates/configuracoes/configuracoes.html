@@ -372,6 +372,102 @@
                                     </div>
                                 </div>
 
+                                <!-- Indicadores de Distribuição Financeira -->
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h5 class="text-primary border-bottom pb-2 mb-3">
+                                            <i class="fas fa-chart-pie me-2"></i>Indicadores de Distribuição Financeira
+                                        </h5>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <!-- Exibir Indicadores no Dashboard -->
+                                    <div class="col-12 mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="exibir_indicador_distribuicao" 
+                                                   name="exibir_indicador_distribuicao" 
+                                                   {% if config.exibir_indicador_distribuicao %}checked{% endif %}>
+                                            <label class="form-check-label" for="exibir_indicador_distribuicao">
+                                                <i class="fas fa-eye me-1"></i> Exibir indicadores de distribuição no dashboard
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Percentual Administrativo Sede -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="percentual_administrativo" class="form-label">
+                                            <i class="fas fa-building me-1"></i> Administrativo Sede
+                                            <span class="badge bg-secondary ms-2"><i class="fas fa-lock"></i> Fixo</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="percentual_administrativo" 
+                                                   name="percentual_administrativo" 
+                                                   value="{{ config.percentual_administrativo }}" 
+                                                   min="0" max="100" step="1" readonly>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <small class="text-muted">
+                                            Percentual fixo para despesas administrativas da sede
+                                        </small>
+                                    </div>
+
+                                    <!-- Percentual Prebenda Pastoral -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="percentual_prebenda" class="form-label">
+                                            <i class="fas fa-user-tie me-1"></i> Prebenda Pastoral
+                                            <span class="badge bg-primary ms-2"><i class="fas fa-sliders-h"></i> Ajustável</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="percentual_prebenda" 
+                                                   name="percentual_prebenda" 
+                                                   value="{{ config.percentual_prebenda }}" 
+                                                   min="0" max="30" step="1" required>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <small class="text-muted">
+                                            Ajustável entre 0% e 30% conforme necessidade
+                                        </small>
+                                    </div>
+
+                                    <!-- Percentual Cuidados da Igreja -->
+                                    <div class="col-md-4 mb-3">
+                                        <label for="percentual_cuidados_igreja" class="form-label">
+                                            <i class="fas fa-church me-1"></i> Cuidados da Igreja
+                                            <span class="badge bg-secondary ms-2"><i class="fas fa-lock"></i> Fixo</span>
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control" id="percentual_cuidados_igreja" 
+                                                   name="percentual_cuidados_igreja" 
+                                                   value="{{ config.percentual_cuidados_igreja }}" 
+                                                   min="0" max="100" step="1" readonly>
+                                            <span class="input-group-text">%</span>
+                                        </div>
+                                        <small class="text-muted">
+                                            Percentual fixo para manutenção, contas e reformas
+                                        </small>
+                                    </div>
+
+                                    <!-- Explicação e Total -->
+                                    <div class="col-12 mb-3">
+                                        <div class="alert alert-success">
+                                            <h6><i class="fas fa-chart-line me-2"></i>Como funciona:</h6>
+                                            <ul class="mb-2">
+                                                <li><strong>Administrativo Sede (30%):</strong> Despesas administrativas, escritório, materiais</li>
+                                                <li><strong>Prebenda Pastoral (0-30%):</strong> Salários pastorais, honorários - ajustável conforme necessidade</li>
+                                                <li><strong>Cuidados da Igreja (40%):</strong> Manutenção, energia, água, internet, reformas</li>
+                                            </ul>
+                                            <div class="mt-2 p-2 bg-white rounded">
+                                                <strong>Total configurado:</strong>
+                                                <span id="total_percentuais" class="ms-2 fs-5 text-primary">
+                                                    {{ (config.percentual_administrativo + config.percentual_prebenda + config.percentual_cuidados_igreja)|round(0) }}%
+                                                </span>
+                                                <span class="ms-2" id="status_total"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <hr class="my-4">
 
                                 <!-- Botões de Ação -->
@@ -1122,6 +1218,68 @@ function showAlert(type, message) {
         }
     }, 5000);
 }
+
+// ========================================
+// Indicadores de Distribuição Financeira
+// ========================================
+function atualizarTotalPercentuais() {
+    const percentualAdmin = parseFloat(document.getElementById('percentual_administrativo')?.value || 30);
+    const percentualPrebenda = parseFloat(document.getElementById('percentual_prebenda')?.value || 0);
+    const percentualCuidados = parseFloat(document.getElementById('percentual_cuidados_igreja')?.value || 40);
+    
+    const total = percentualAdmin + percentualPrebenda + percentualCuidados;
+    
+    const totalElement = document.getElementById('total_percentuais');
+    const statusElement = document.getElementById('status_total');
+    
+    if (totalElement) {
+        totalElement.textContent = total.toFixed(0) + '%';
+        
+        // Mudar cor baseado no total
+        totalElement.className = total === 100 ? 'ms-2 fs-5 text-success fw-bold' : 
+                                 total < 100 ? 'ms-2 fs-5 text-warning fw-bold' : 
+                                 'ms-2 fs-5 text-danger fw-bold';
+    }
+    
+    if (statusElement) {
+        if (total === 100) {
+            statusElement.innerHTML = '<i class="fas fa-check-circle text-success"></i> Perfeito!';
+        } else if (total < 100) {
+            statusElement.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Abaixo de 100%';
+        } else {
+            statusElement.innerHTML = '<i class="fas fa-times-circle text-danger"></i> Acima de 100%';
+        }
+    }
+}
+
+// Atualizar quando o campo de prebenda mudar
+document.addEventListener('DOMContentLoaded', function() {
+    const percentualPrebenda = document.getElementById('percentual_prebenda');
+    
+    if (percentualPrebenda) {
+        // Atualizar inicialmente
+        atualizarTotalPercentuais();
+        
+        // Atualizar quando o valor mudar
+        percentualPrebenda.addEventListener('input', atualizarTotalPercentuais);
+        percentualPrebenda.addEventListener('change', atualizarTotalPercentuais);
+        
+        // Validar limites
+        percentualPrebenda.addEventListener('blur', function() {
+            let valor = parseFloat(this.value);
+            
+            if (isNaN(valor) || valor < 0) {
+                this.value = 0;
+            } else if (valor > 30) {
+                this.value = 30;
+                alert('O percentual de Prebenda deve estar entre 0% e 30%');
+            }
+            
+            atualizarTotalPercentuais();
+        });
+    }
+});
+
 </script>
 
 <style>

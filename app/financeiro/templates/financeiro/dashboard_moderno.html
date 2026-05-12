@@ -100,6 +100,170 @@
         </div>
     </div>
 
+    <!-- Indicadores de Distribuição Financeira -->
+    {% if indicadores_distribuicao %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="financial-card fade-in-up">
+                <div class="financial-card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Indicadores de Distribuição Financeira
+                        </h5>
+                        <span class="badge {{ 'bg-success' if indicadores_distribuicao.status_geral == 'ok' else 'bg-warning' if indicadores_distribuicao.status_geral == 'atencao' else 'bg-danger' }}">
+                            {{ 'Dentro do Planejado' if indicadores_distribuicao.status_geral == 'ok' else 'Atenção Necessária' if indicadores_distribuicao.status_geral == 'atencao' else 'Requer Ajustes' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="financial-card-body">
+                    <!-- Total de Ofertas e Dízimos -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info mb-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-hand-holding-usd me-2"></i>
+                                        <strong>Total de Ofertas e Dízimos do Mês:</strong>
+                                    </div>
+                                    <div class="h4 mb-0">
+                                        R$ {{ '%.2f'|format(indicadores_distribuicao.total_ofertas_dizimos) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alertas -->
+                    {% if indicadores_distribuicao.alertas %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            {% for alerta in indicadores_distribuicao.alertas %}
+                            <div class="alert alert-{{ alerta.tipo }} alert-dismissible fade show mb-2" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                {{ alerta.mensagem }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Categorias de Distribuição -->
+                    <div class="row">
+                        {% for categoria in indicadores_distribuicao.categorias %}
+                        <div class="col-lg-4 mb-4">
+                            <div class="card h-100 border-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }}">
+                                <div class="card-header bg-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }} bg-opacity-10">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-{{ 'building' if 'Administrativo' in categoria.nome else 'user-tie' if 'Prebenda' in categoria.nome else 'church' }} me-2"></i>
+                                            {{ categoria.nome }}
+                                        </h6>
+                                        {% if categoria.fixo %}
+                                        <span class="badge bg-secondary" title="Percentual fixo">
+                                            <i class="fas fa-lock"></i>
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-primary" title="Percentual ajustável entre {{ categoria.min }}% e {{ categoria.max }}%">
+                                            <i class="fas fa-sliders-h"></i> Ajustável
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Percentual Ideal vs Real -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-muted">Percentual Ideal:</small>
+                                            <strong class="text-primary">{{ '%.1f'|format(categoria.percentual_ideal) }}%</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-muted">Percentual Real:</small>
+                                            <strong class="text-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }}">
+                                                {{ '%.1f'|format(categoria.percentual_real) }}%
+                                            </strong>
+                                        </div>
+                                    </div>
+
+                                    <!-- Valores -->
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-muted">Valor Ideal:</small>
+                                            <strong>R$ {{ '%.2f'|format(categoria.valor_ideal) }}</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-muted">Valor Real Gasto:</small>
+                                            <strong class="text-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }}">
+                                                R$ {{ '%.2f'|format(categoria.valor_real) }}
+                                            </strong>
+                                        </div>
+                                    </div>
+
+                                    <!-- Barra de Progresso -->
+                                    <div class="mb-2">
+                                        <div class="d-flex justify-content-between mb-1">
+                                            <small class="text-muted">Utilização:</small>
+                                            <small class="text-muted">
+                                                {{ '%.1f'|format((categoria.valor_real / categoria.valor_ideal * 100) if categoria.valor_ideal > 0 else 0) }}%
+                                            </small>
+                                        </div>
+                                        <div class="progress" style="height: 8px;">
+                                            {% set utilizacao = (categoria.valor_real / categoria.valor_ideal * 100) if categoria.valor_ideal > 0 else 0 %}
+                                            <div class="progress-bar bg-{{ 'success' if utilizacao <= 105 else 'warning' if utilizacao <= 120 else 'danger' }}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ min(utilizacao, 100) }}%"
+                                                 aria-valuenow="{{ utilizacao }}" 
+                                                 aria-valuemin="0" 
+                                                 aria-valuemax="100">
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Status -->
+                                    <div class="mt-3 pt-3 border-top">
+                                        {% if categoria.status == 'ok' %}
+                                        <div class="text-success text-center">
+                                            <i class="fas fa-check-circle fa-lg me-2"></i>
+                                            <small>Dentro do esperado</small>
+                                        </div>
+                                        {% elif categoria.status == 'acima' %}
+                                        <div class="text-warning text-center">
+                                            <i class="fas fa-exclamation-triangle fa-lg me-2"></i>
+                                            <small>{{ '%.1f'|format(abs(categoria.desvio)) }}% acima do ideal</small>
+                                        </div>
+                                        {% else %}
+                                        <div class="text-info text-center">
+                                            <i class="fas fa-info-circle fa-lg me-2"></i>
+                                            <small>{{ '%.1f'|format(abs(categoria.desvio)) }}% abaixo do ideal</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Nota Explicativa -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-light mb-0">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Nota:</strong> Estes indicadores mostram como as ofertas e dízimos devem ser distribuídos. 
+                                    Os percentuais podem ser ajustados nas <a href="{{ url_for('configuracoes.editar') }}">configurações do sistema</a>.
+                                    Tolerância de ±5% é considerada aceitável.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Ações Rápidas -->
     <div class="row mb-4">
         <div class="col-12">

@@ -48,6 +48,12 @@ class Configuracao(db.Model):
     percentual_conselho = db.Column(db.Float, nullable=False, default=10.0)
     saldo_inicial = db.Column(db.Float, nullable=False, default=0.0)
     
+    # Distribuição de Ofertas e Dízimos
+    percentual_administrativo = db.Column(db.Float, nullable=False, default=30.0)  # Administrativo Sede
+    percentual_prebenda = db.Column(db.Float, nullable=False, default=30.0)  # Prebenda Pastoral (ajustável 0-30%)
+    percentual_cuidados_igreja = db.Column(db.Float, nullable=False, default=40.0)  # Cuidados da Igreja
+    exibir_indicador_distribuicao = db.Column(db.Boolean, nullable=False, default=True)  # Exibir indicador no dashboard
+    
     # Configurações de Relatórios
     rodape_relatorio = db.Column(db.String(255), nullable=False, default='Sistema Administrativo OBPC')
     exibir_logo_relatorio = db.Column(db.Boolean, nullable=False, default=True)
@@ -112,6 +118,10 @@ class Configuracao(db.Model):
                 'banco_padrao': 'VARCHAR(100)',
                 'percentual_conselho': 'FLOAT' if not is_postgres else 'DOUBLE PRECISION',
                 'saldo_inicial': 'FLOAT' if not is_postgres else 'DOUBLE PRECISION',
+                'percentual_administrativo': 'FLOAT' if not is_postgres else 'DOUBLE PRECISION',
+                'percentual_prebenda': 'FLOAT' if not is_postgres else 'DOUBLE PRECISION',
+                'percentual_cuidados_igreja': 'FLOAT' if not is_postgres else 'DOUBLE PRECISION',
+                'exibir_indicador_distribuicao': 'BOOLEAN',
                 'rodape_relatorio': 'VARCHAR(255)',
                 'exibir_logo_relatorio': 'BOOLEAN',
                 'campo_assinatura_1': 'VARCHAR(100)',
@@ -181,6 +191,10 @@ class Configuracao(db.Model):
                 banco_padrao='Caixa Econômica Federal',
                 percentual_conselho=10.0,
                 saldo_inicial=0.0,
+                percentual_administrativo=30.0,
+                percentual_prebenda=30.0,
+                percentual_cuidados_igreja=40.0,
+                exibir_indicador_distribuicao=True,
                 rodape_relatorio='Igreja O Brasil para Cristo - Tietê/SP',
                 exibir_logo_relatorio=True,
                 campo_assinatura_1='Pastor Responsável',

@@ -130,6 +130,12 @@ def salvar_configuracoes():
             try:
                 config.percentual_conselho = float(request.form.get('percentual_conselho', 10.0))
                 config.saldo_inicial = float(request.form.get('saldo_inicial', 0.0))
+                
+                # Indicadores de Distribuição Financeira
+                config.percentual_administrativo = float(request.form.get('percentual_administrativo', 30.0))
+                config.percentual_prebenda = float(request.form.get('percentual_prebenda', 30.0))
+                config.percentual_cuidados_igreja = float(request.form.get('percentual_cuidados_igreja', 40.0))
+                config.exibir_indicador_distribuicao = request.form.get('exibir_indicador_distribuicao') == 'on'
             except ValueError:
                 flash('Valores financeiros devem ser números válidos', 'danger')
                 return redirect(url_for('configuracoes.configuracoes', aba='financeiro'))
@@ -138,6 +144,15 @@ def salvar_configuracoes():
             if config.percentual_conselho < 0 or config.percentual_conselho > 100:
                 flash('Percentual do conselho deve estar entre 0% e 100%', 'danger')
                 return redirect(url_for('configuracoes.configuracoes', aba='financeiro'))
+            
+            # Validar percentuais de distribuição
+            if config.percentual_prebenda < 0 or config.percentual_prebenda > 30:
+                flash('Percentual de Prebenda deve estar entre 0% e 30%', 'warning')
+                config.percentual_prebenda = min(30.0, max(0.0, config.percentual_prebenda))
+            
+            total_percentuais = config.percentual_administrativo + config.percentual_prebenda + config.percentual_cuidados_igreja
+            if total_percentuais != 100:
+                flash(f'Atenção: A soma dos percentuais de distribuição é {total_percentuais:.0f}% (o ideal é 100%)', 'warning')
         
         elif aba_ativa == 'relatorios':
             # Configurações de Relatórios
