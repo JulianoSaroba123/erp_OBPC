@@ -232,12 +232,12 @@
                                         {% elif categoria.status == 'acima' %}
                                         <div class="text-warning text-center">
                                             <i class="fas fa-exclamation-triangle fa-lg me-2"></i>
-                                            <small>{{ '%.1f'|format(abs(categoria.desvio)) }}% acima do ideal</small>
+                                            <small>{{ '%.1f'|format(categoria.desvio if categoria.desvio >= 0 else -categoria.desvio) }}% acima do ideal</small>
                                         </div>
                                         {% else %}
                                         <div class="text-info text-center">
                                             <i class="fas fa-info-circle fa-lg me-2"></i>
-                                            <small>{{ '%.1f'|format(abs(categoria.desvio)) }}% abaixo do ideal</small>
+                                            <small>{{ '%.1f'|format(categoria.desvio if categoria.desvio >= 0 else -categoria.desvio) }}% abaixo do ideal</small>
                                         </div>
                                         {% endif %}
                                     </div>
