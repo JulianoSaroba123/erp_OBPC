@@ -214,7 +214,7 @@
                                             {% set utilizacao = (categoria.valor_real / categoria.valor_ideal * 100) if categoria.valor_ideal > 0 else 0 %}
                                             <div class="progress-bar bg-{{ 'success' if utilizacao <= 105 else 'warning' if utilizacao <= 120 else 'danger' }}" 
                                                  role="progressbar" 
-                                                 style="width: {{ min(utilizacao, 100) }}%"
+                                                 style="width: {{ utilizacao if utilizacao < 100 else 100 }}%"
                                                  aria-valuenow="{{ utilizacao }}" 
                                                  aria-valuemin="0" 
                                                  aria-valuemax="100">
