@@ -50,15 +50,15 @@ def obter_filtros_ativos():
 def dashboard_moderno():
     """Dashboard financeiro com visual moderno e métricas"""
     try:
-        # Obter mês e ano atual
+        # Obter mês e ano da URL ou usar atual
         hoje = datetime.now()
-        mes_atual = hoje.month
-        ano_atual = hoje.year
+        mes_selecionado = request.args.get('mes', hoje.month, type=int)
+        ano_selecionado = request.args.get('ano', hoje.year, type=int)
         
-        # Calcular totais do mês atual
+        # Calcular totais do mês selecionado
         lancamentos_mes = Lancamento.query.filter(
-            extract('month', Lancamento.data) == mes_atual,
-            extract('year', Lancamento.data) == ano_atual
+            extract('month', Lancamento.data) == mes_selecionado,
+            extract('year', Lancamento.data) == ano_selecionado
         ).all()
         
         total_entradas = sum(l.valor for l in lancamentos_mes if l.tipo.lower() == 'entrada')
@@ -77,8 +77,8 @@ def dashboard_moderno():
             func.count(Lancamento.id).label('count')
         ).filter(
             Lancamento.tipo.ilike('entrada'),
-            extract('month', Lancamento.data) == mes_atual,
-            extract('year', Lancamento.data) == ano_atual
+            extract('month', Lancamento.data) == mes_selecionado,
+            extract('year', Lancamento.data) == ano_selecionado
         ).group_by(Lancamento.categoria).order_by(
             func.sum(Lancamento.valor).desc()
         ).limit(5).all()
@@ -227,7 +227,9 @@ def dashboard_moderno():
                              total_nao_conciliados=total_nao_conciliados,
                              ultimos_lancamentos=ultimos_lancamentos,
                              categorias_entradas=categorias_entradas,
-                             indicadores_distribuicao=indicadores_distribuicao)
+                             indicadores_distribuicao=indicadores_distribuicao,
+                             mes_selecionado=mes_selecionado,
+                             ano_selecionado=ano_selecionado)
                              
     except Exception as e:
         # Log detalhado do erro

@@ -7,6 +7,11 @@
 {% endblock %}
 
 {% block content %}
+{% set meses = {
+    1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+    5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+    9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+} %}
 <div class="container-fluid">
     <!-- Header Dashboard -->
     <div class="financial-dashboard fade-in-up">
@@ -33,6 +38,53 @@
         </div>
     </div>
 
+    <!-- Seletor de Período -->
+    <div class="card mb-4 shadow-sm fade-in-up">
+        <div class="card-body py-3">
+            <form method="GET" action="{{ url_for('financeiro.dashboard_moderno') }}" class="row align-items-center g-2">
+                <div class="col-auto">
+                    <label class="form-label mb-0 me-2">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        <strong>Período:</strong>
+                    </label>
+                </div>
+                <div class="col-auto">
+                    <select name="mes" class="form-select form-select-sm" style="min-width: 150px;">
+                        <option value="1" {% if mes_selecionado == 1 %}selected{% endif %}>Janeiro</option>
+                        <option value="2" {% if mes_selecionado == 2 %}selected{% endif %}>Fevereiro</option>
+                        <option value="3" {% if mes_selecionado == 3 %}selected{% endif %}>Março</option>
+                        <option value="4" {% if mes_selecionado == 4 %}selected{% endif %}>Abril</option>
+                        <option value="5" {% if mes_selecionado == 5 %}selected{% endif %}>Maio</option>
+                        <option value="6" {% if mes_selecionado == 6 %}selected{% endif %}>Junho</option>
+                        <option value="7" {% if mes_selecionado == 7 %}selected{% endif %}>Julho</option>
+                        <option value="8" {% if mes_selecionado == 8 %}selected{% endif %}>Agosto</option>
+                        <option value="9" {% if mes_selecionado == 9 %}selected{% endif %}>Setembro</option>
+                        <option value="10" {% if mes_selecionado == 10 %}selected{% endif %}>Outubro</option>
+                        <option value="11" {% if mes_selecionado == 11 %}selected{% endif %}>Novembro</option>
+                        <option value="12" {% if mes_selecionado == 12 %}selected{% endif %}>Dezembro</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <select name="ano" class="form-select form-select-sm" style="min-width: 100px;">
+                        {% for ano in range(2020, 2031) %}
+                        <option value="{{ ano }}" {% if ano_selecionado == ano %}selected{% endif %}>{{ ano }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-search me-1"></i>Filtrar
+                    </button>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-redo me-1"></i>Mês Atual
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Métricas Principais -->
     <div class="row mb-4">
         <div class="col-lg-3 col-md-6 mb-3">
@@ -44,7 +96,7 @@
                 <div class="metric-label">Total de Entradas</div>
                 <div class="mt-2">
                     <small class="text-muted">
-                        <i class="fas fa-calendar me-1"></i>Este mês
+                        <i class="fas fa-calendar me-1"></i>{{ meses[mes_selecionado] }}/{{ ano_selecionado }}
                     </small>
                 </div>
             </div>
@@ -59,7 +111,7 @@
                 <div class="metric-label">Total de Saídas</div>
                 <div class="mt-2">
                     <small class="text-muted">
-                        <i class="fas fa-calendar me-1"></i>Este mês
+                        <i class="fas fa-calendar me-1"></i>{{ meses[mes_selecionado] }}/{{ ano_selecionado }}
                     </small>
                 </div>
             </div>
