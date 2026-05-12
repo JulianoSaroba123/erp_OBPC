@@ -230,6 +230,10 @@ def dashboard_moderno():
                              indicadores_distribuicao=indicadores_distribuicao)
                              
     except Exception as e:
+        # Log detalhado do erro
+        import traceback
+        current_app.logger.error(f'ERRO NO DASHBOARD: {str(e)}')
+        current_app.logger.error(f'TRACEBACK: {traceback.format_exc()}')
         flash(f'Erro ao carregar dashboard: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
