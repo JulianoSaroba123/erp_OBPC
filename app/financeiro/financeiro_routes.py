@@ -49,32 +49,26 @@ def obter_filtros_ativos():
 @login_required
 def dashboard_moderno():
     """Dashboard financeiro com visual moderno e métricas"""
-    current_app.logger.info('>>> DASHBOARD: Função chamada')
     try:
-        current_app.logger.info('>>> DASHBOARD: Iniciando cálculos')
         # Obter mês e ano atual
         hoje = datetime.now()
         mes_atual = hoje.month
         ano_atual = hoje.year
-        current_app.logger.info(f'>>> DASHBOARD: Mês={mes_atual}, Ano={ano_atual}')
         
         # Calcular totais do mês atual
         lancamentos_mes = Lancamento.query.filter(
             extract('month', Lancamento.data) == mes_atual,
             extract('year', Lancamento.data) == ano_atual
         ).all()
-        current_app.logger.info(f'>>> DASHBOARD: {len(lancamentos_mes)} lançamentos encontrados')
         
         total_entradas = sum(l.valor for l in lancamentos_mes if l.tipo.lower() == 'entrada')
         total_saidas = sum(l.valor for l in lancamentos_mes if l.tipo.lower() in ['saída', 'saida'])
         total_nao_conciliados = len([l for l in lancamentos_mes if not l.conciliado])
-        current_app.logger.info(f'>>> DASHBOARD: Totais calculados - E:{total_entradas} S:{total_saidas}')
         
         # Últimos 10 lançamentos
         ultimos_lancamentos = Lancamento.query.order_by(
             Lancamento.criado_em.desc()
         ).limit(10).all()
-        current_app.logger.info(f'>>> DASHBOARD: {len(ultimos_lancamentos)} últimos lançamentos')
         
         # Entradas por categoria (top 5)
         categorias_entradas = db.session.query(
@@ -88,15 +82,12 @@ def dashboard_moderno():
         ).group_by(Lancamento.categoria).order_by(
             func.sum(Lancamento.valor).desc()
         ).limit(5).all()
-        current_app.logger.info(f'>>> DASHBOARD: {len(categorias_entradas)} categorias de entrada')
         
         # ========================================
         # INDICADORES DE DISTRIBUIÇÃO FINANCEIRA
         # ========================================
-        current_app.logger.info('>>> DASHBOARD: Carregando configuração para indicadores')
         config = Configuracao.obter_configuracao()
         indicadores_distribuicao = None
-        current_app.logger.info(f'>>> DASHBOARD: Configuração carregada = {config is not None}')
         
         # Verificar se deve exibir indicadores (default True se campo não existir)
         exibir_indicadores = True
@@ -230,7 +221,6 @@ def dashboard_moderno():
         else:
             current_app.logger.warning(f'>>> INDICADORES NÃO EXIBIDOS: config={config is not None}, exibir={exibir_indicadores}')
         
-        current_app.logger.info(f'>>> DASHBOARD: Renderizando template (indicadores={indicadores_distribuicao is not None})')
         return render_template('financeiro/dashboard_moderno.html',
                              total_entradas=total_entradas,
                              total_saidas=total_saidas,
