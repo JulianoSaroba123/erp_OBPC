@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 
 """
-Script para corrigir o caminho da logo no Render
-Execute: python corrigir_logo_render.py
+Script para corrigir logo com logo_version concatenado incorretamente
+Problema: logo_igreja_20260207_180639.jpg21 (21 é o logo_version)
+Execute no Render: python corrigir_logo_render.py
 """
 
 import os
 import sys
+import re
 
 # Adicionar o diretório raiz ao path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -17,7 +19,7 @@ from app.extensoes import db
 from app.configuracoes.configuracoes_model import Configuracao
 
 def corrigir_logo():
-    """Corrige o caminho da logo removendo 'static/' do início"""
+    """Corrige logo com logo_version concatenado incorretamente no final"""
     app = create_app()
     
     with app.app_context():
@@ -28,35 +30,55 @@ def corrigir_logo():
                 print("❌ Nenhuma configuração encontrada")
                 return
             
-            print(f"📋 Logo atual no banco: {config.logo}")
+            print(f"📋 Logo atual no banco: '{config.logo}'")
+            print(f"📋 Logo version: {config.logo_version}")
             
-            # Se a logo começa com 'static/', remover
-            if config.logo and config.logo.startswith('static/'):
-                novo_caminho = config.logo.replace('static/', '', 1)
-                print(f"🔧 Corrigindo de '{config.logo}' para '{novo_caminho}'")
-                
-                config.logo = novo_caminho
-                db.session.commit()
-                
-                print(f"✅ Logo corrigida com sucesso!")
-                print(f"   Novo caminho: {novo_caminho}")
-            else:
-                print(f"✅ Logo já está correto: {config.logo}")
-            
-            # Verificar se o arquivo existe
-            static_folder = os.path.join(os.path.dirname(__file__), 'app', 'static')
+            # Detectar se logo tem números extras no final (logo_version concatenado)
+            # Padrão: logo_igreja_YYYYMMDD_HHMMSS.jpg + números
             if config.logo:
-                logo_path = os.path.join(static_folder, config.logo)
-                if os.path.exists(logo_path):
-                    print(f"✅ Arquivo existe: {logo_path}")
+                match = re.match(r'(logo_igreja_\d{8}_\d{6}\.(jpg|jpeg|png|gif))(\d+)$', config.logo)
+                
+                if match:
+                    logo_correto = match.group(1)
+                    numero_extra = match.group(3)
+                    
+                    print(f"\n❌ PROBLEMA DETECTADO!")
+                    print(f"   Logo tem logo_version concatenado: '{numero_extra}'")
+                    print(f"   Logo CORRETO: '{logo_correto}'")
+                    
+                    # Corrigir
+                    config.logo = logo_correto
+                    db.session.commit()
+                    
+                    print(f"\n✅ CORRIGIDO!")
+                    print(f"   Novo valor: '{config.logo}'")
+                    return True
+                
+                # Também corrigir se começa com 'static/'
+                elif config.logo.startswith('static/'):
+                    novo_caminho = config.logo.replace('static/', '', 1)
+                    print(f"\n🔧 Removendo 'static/' do início")
+                    print(f"   De: '{config.logo}'")
+                    print(f"   Para: '{novo_caminho}'")
+                    
+                    config.logo = novo_caminho
+                    db.session.commit()
+                    
+                    print(f"\n✅ CORRIGIDO!")
+                    return True
+                
                 else:
-                    print(f"⚠️  Arquivo NÃO encontrado: {logo_path}")
-                    print(f"   Faça upload de uma nova logo nas configurações")
+                    print(f"\n✅ Logo está correto (sem problemas detectados)")
+                    return False
+            else:
+                print(f"\n⚠️ Nenhum logo configurado")
+                return False
                 
         except Exception as e:
             print(f"❌ Erro: {str(e)}")
             import traceback
             traceback.print_exc()
+            return False
 
 if __name__ == '__main__':
     corrigir_logo()
