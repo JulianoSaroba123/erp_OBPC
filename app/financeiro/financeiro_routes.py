@@ -2657,6 +2657,23 @@ def relatorio_caixa():
         ).all()
         
         current_app.logger.info(f'>>> Lançamentos encontrados: {len(lancamentos)}')
+        
+        # Se não há lançamentos no mês atual (sem parâmetros explícitos), redirecionar
+        # para o último mês com dados, evitando relatório em branco
+        if not lancamentos and not request.args.get('mes') and not request.args.get('ano'):
+            from sqlalchemy import func, desc as sqldesc
+            ultimo_com_dados = db.session.query(
+                extract('year', Lancamento.data).label('ano'),
+                extract('month', Lancamento.data).label('mes')
+            ).filter(Lancamento.data.isnot(None)).group_by('ano', 'mes').order_by(
+                sqldesc('ano'), sqldesc('mes')
+            ).first()
+            if ultimo_com_dados:
+                mes = int(ultimo_com_dados.mes)
+                ano = int(ultimo_com_dados.ano)
+                current_app.logger.info(f'>>> Redirecionando para último mês com dados: {mes}/{ano}')
+                return redirect(url_for('financeiro.relatorio_caixa', mes=mes, ano=ano))
+        
         if lancamentos:
             current_app.logger.info(f'>>> Primeiro lançamento: {lancamentos[0].descricao} - {lancamentos[0].data}')
         
@@ -3844,6 +3861,23 @@ def relatorio_caixa_pdf():
             extract('month', Lancamento.data) == mes,
             extract('year', Lancamento.data) == ano
         ).all()
+        
+        # Se não há lançamentos no mês atual (sem parâmetros explícitos), usar o último mês com dados
+        if not lancamentos and not request.args.get('mes') and not request.args.get('ano'):
+            from sqlalchemy import desc as sqldesc
+            ultimo_com_dados = db.session.query(
+                extract('year', Lancamento.data).label('ano'),
+                extract('month', Lancamento.data).label('mes')
+            ).filter(Lancamento.data.isnot(None)).group_by('ano', 'mes').order_by(
+                sqldesc('ano'), sqldesc('mes')
+            ).first()
+            if ultimo_com_dados:
+                mes = int(ultimo_com_dados.mes)
+                ano = int(ultimo_com_dados.ano)
+                lancamentos = Lancamento.query.filter(
+                    extract('month', Lancamento.data) == mes,
+                    extract('year', Lancamento.data) == ano
+                ).all()
         
         # Inicializar totais (mesmo código da rota HTML)
         totais = {
