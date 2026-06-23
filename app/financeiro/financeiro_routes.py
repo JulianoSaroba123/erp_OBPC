@@ -3846,10 +3846,13 @@ def relatorio_caixa_pdf():
     ano = None
 
     try:
+        current_app.logger.info("=== INICIO GERACAO PDF CAIXA ===")
         hoje = datetime.now()
         mes = request.args.get('mes', hoje.month, type=int)
         ano = request.args.get('ano', hoje.year, type=int)
+        current_app.logger.info(f"Mes: {mes}, Ano: {ano}")
 
+        current_app.logger.info("Buscando lancamentos...")
         lancamentos = Lancamento.query.filter(
             extract('month', Lancamento.data) == mes,
             extract('year', Lancamento.data) == ano
@@ -3857,25 +3860,37 @@ def relatorio_caixa_pdf():
             Lancamento.data.asc(),
             Lancamento.id.asc()
         ).all()
+        current_app.logger.info(f"Lancamentos encontrados: {len(lancamentos)}")
 
         # Calcular saldo anterior
+        current_app.logger.info("Calculando saldo anterior...")
         saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
+        current_app.logger.info(f"Saldo anterior: {saldo_anterior}")
 
         # Obter configuração
+        current_app.logger.info("Obtendo configuracao...")
         config = Configuracao.obter_configuracao()
+        current_app.logger.info(f"Configuracao OK - Logo: {config.logo if config else 'None'}")
 
         # Criar instância do gerador com configuração
+        current_app.logger.info("Criando instancia RelatorioFinanceiro...")
         relatorio = RelatorioFinanceiro(config)
+        current_app.logger.info("RelatorioFinanceiro criado OK")
         
         # Gerar PDF com todos os parâmetros necessários
+        current_app.logger.info("Gerando PDF...")
         pdf_buffer = relatorio.gerar_relatorio_caixa(lancamentos, mes, ano, saldo_anterior)
+        current_app.logger.info("PDF gerado OK")
 
         if not pdf_buffer:
             raise Exception("O gerador retornou um PDF vazio.")
 
         pdf_buffer.seek(0)
+        tamanho = len(pdf_buffer.getvalue())
+        current_app.logger.info(f"Tamanho do PDF: {tamanho} bytes")
 
         nome_arquivo = gerar_nome_arquivo_relatorio('caixa', mes, ano)
+        current_app.logger.info(f"Enviando PDF: {nome_arquivo}")
 
         return send_file(
             pdf_buffer,
@@ -3887,8 +3902,11 @@ def relatorio_caixa_pdf():
     except Exception as e:
         import traceback
 
-        current_app.logger.error("ERRO AO GERAR PDF DO RELATÓRIO DE CAIXA")
-        current_app.logger.error(str(e))
+        current_app.logger.error("=== ERRO AO GERAR PDF DO RELATÓRIO DE CAIXA ===")
+        current_app.logger.error(f"Mes: {mes}, Ano: {ano}")
+        current_app.logger.error(f"Tipo do erro: {type(e).__name__}")
+        current_app.logger.error(f"Mensagem: {str(e)}")
+        current_app.logger.error("Traceback completo:")
         current_app.logger.error(traceback.format_exc())
 
         flash(f"Erro ao gerar PDF do relatório de caixa: {str(e)}", "danger")
