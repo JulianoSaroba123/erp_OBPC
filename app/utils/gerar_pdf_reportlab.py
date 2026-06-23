@@ -703,36 +703,47 @@ class RelatorioFinanceiro:
         elementos.append(Spacer(1, 40))
         
         # Criar tabela de assinaturas se configuradas
-        if self.config.campo_assinatura_1 or self.config.campo_assinatura_2:
-            dados_assinatura = []
-            
-            # Linha com os campos
-            if self.config.campo_assinatura_1 and self.config.campo_assinatura_2:
-                dados_assinatura.append([
-                    f"______________________________\n{self.config.campo_assinatura_1}",
-                    f"______________________________\n{self.config.campo_assinatura_2}"
-                ])
-            elif self.config.campo_assinatura_1:
-                dados_assinatura.append([
-                    f"______________________________\n{self.config.campo_assinatura_1}",
-                    ""
-                ])
-            elif self.config.campo_assinatura_2:
-                dados_assinatura.append([
-                    "",
-                    f"______________________________\n{self.config.campo_assinatura_2}"
-                ])
-            
-            if dados_assinatura:
-                tabela_assinatura = Table(dados_assinatura, colWidths=[8*cm, 8*cm])
-                tabela_assinatura.setStyle(TableStyle([
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                    ('FONTNAME', (0, 0), (-1, -1), self.config.fonte_relatorio or 'Helvetica'),
-                    ('FONTSIZE', (0, 0), (-1, -1), 10),
-                    ('TOPPADDING', (0, 0), (-1, -1), 20),
-                ]))
-                elementos.append(tabela_assinatura)
+        try:
+            if self.config.campo_assinatura_1 or self.config.campo_assinatura_2:
+                dados_assinatura = []
+                
+                # Linha com os campos
+                if self.config.campo_assinatura_1 and self.config.campo_assinatura_2:
+                    dados_assinatura.append([
+                        f"______________________________\n{self.config.campo_assinatura_1}",
+                        f"______________________________\n{self.config.campo_assinatura_2}"
+                    ])
+                elif self.config.campo_assinatura_1:
+                    dados_assinatura.append([
+                        f"______________________________\n{self.config.campo_assinatura_1}",
+                        " "  # Espaço em vez de string vazia
+                    ])
+                elif self.config.campo_assinatura_2:
+                    dados_assinatura.append([
+                        " ",  # Espaço em vez de string vazia
+                        f"______________________________\n{self.config.campo_assinatura_2}"
+                    ])
+                
+                # Só cria tabela se houver dados válidos
+                if dados_assinatura and len(dados_assinatura) > 0:
+                    tabela_assinatura = Table(dados_assinatura, colWidths=[8*cm, 8*cm])
+                    # Usar índices específicos ao invés de -1
+                    num_rows = len(dados_assinatura)
+                    num_cols = len(dados_assinatura[0]) if dados_assinatura else 0
+                    
+                    if num_rows > 0 and num_cols > 0:
+                        tabela_assinatura.setStyle(TableStyle([
+                            ('ALIGN', (0, 0), (num_cols-1, num_rows-1), 'CENTER'),
+                            ('VALIGN', (0, 0), (num_cols-1, num_rows-1), 'TOP'),
+                            ('FONTNAME', (0, 0), (num_cols-1, num_rows-1), self.config.fonte_relatorio or 'Helvetica'),
+                            ('FONTSIZE', (0, 0), (num_cols-1, num_rows-1), 10),
+                            ('TOPPADDING', (0, 0), (num_cols-1, num_rows-1), 20),
+                        ]))
+                        elementos.append(tabela_assinatura)
+        except Exception as e:
+            # Se houver erro na tabela de assinatura, apenas loga e continua sem ela
+            import logging
+            logging.error(f"Erro ao criar campos de assinatura: {e}")
         
         return elementos
     
