@@ -1015,24 +1015,29 @@ class RelatorioFinanceiro:
         # Dados da igreja em tabela
         periodo_formatado = f'{mes:02d}/{ano}'
         
+        # Garantir que todos os valores sejam strings não vazias
         dados_igreja = [
-            ['Cidade:', self.config.cidade or 'Tietê', 'Dirigente:', self.config.presidente or 'Pastor não informado'],
-            ['Bairro:', self.config.bairro or 'Centro', 'Tesoureiro:', self.config.primeiro_tesoureiro or 'Tesoureiro não informado'],
+            ['Cidade:', str(self.config.cidade or 'Tietê'), 'Dirigente:', str(self.config.presidente or 'Pastor não informado')],
+            ['Bairro:', str(self.config.bairro or 'Centro'), 'Tesoureiro:', str(self.config.primeiro_tesoureiro or 'Tesoureiro não informado')],
             ['Mês/Ano:', periodo_formatado, 'Data Relatório:', datetime.now().strftime('%d/%m/%Y')],
         ]
         
+        # Calcular índices explícitos
+        num_rows = len(dados_igreja)  # 3
+        num_cols = len(dados_igreja[0])  # 4
+        
         tabela_info = Table(dados_igreja, colWidths=[3*cm, 4*cm, 3*cm, 4*cm])
         tabela_info.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # Labels primeira coluna
-            ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),  # Labels terceira coluna
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (1, 0), (1, -1), 20),  # Espaço entre colunas
+            ('FONTNAME', (0, 0), (num_cols-1, num_rows-1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (num_cols-1, num_rows-1), 10),
+            ('FONTNAME', (0, 0), (0, num_rows-1), 'Helvetica-Bold'),  # Labels primeira coluna
+            ('FONTNAME', (2, 0), (2, num_rows-1), 'Helvetica-Bold'),  # Labels terceira coluna
+            ('ALIGN', (0, 0), (num_cols-1, num_rows-1), 'LEFT'),
+            ('VALIGN', (0, 0), (num_cols-1, num_rows-1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (num_cols-1, num_rows-1), 8),
+            ('BOTTOMPADDING', (0, 0), (num_cols-1, num_rows-1), 8),
+            ('LEFTPADDING', (0, 0), (num_cols-1, num_rows-1), 0),
+            ('RIGHTPADDING', (1, 0), (1, num_rows-1), 20),  # Espaço entre colunas
         ]))
         
         elementos.append(tabela_info)
@@ -1115,24 +1120,29 @@ class RelatorioFinanceiro:
         # Dados da igreja em tabela
         periodo_formatado = f'{mes:02d}/{ano}'
         
+        # Garantir que todos os valores sejam strings não vazias
         dados_igreja = [
-            ['Cidade:', self.config.cidade or 'Tietê', 'Dirigente:', self.config.presidente or 'Pastor não informado'],
-            ['Bairro:', self.config.bairro or 'Centro', 'Tesoureiro:', self.config.primeiro_tesoureiro or 'Tesoureiro não informado'],
+            ['Cidade:', str(self.config.cidade or 'Tietê'), 'Dirigente:', str(self.config.presidente or 'Pastor não informado')],
+            ['Bairro:', str(self.config.bairro or 'Centro'), 'Tesoureiro:', str(self.config.primeiro_tesoureiro or 'Tesoureiro não informado')],
             ['Mês/Ano:', periodo_formatado, 'Data Relatório:', datetime.now().strftime('%d/%m/%Y')],
         ]
         
+        # Calcular índices explícitos
+        num_rows = len(dados_igreja)  # 3
+        num_cols = len(dados_igreja[0])  # 4
+        
         tabela_info = Table(dados_igreja, colWidths=[3*cm, 4*cm, 3*cm, 4*cm])
         tabela_info.setStyle(TableStyle([
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
-            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),  # Labels primeira coluna
-            ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),  # Labels terceira coluna
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (1, 0), (1, -1), 20),
+            ('FONTNAME', (0, 0), (num_cols-1, num_rows-1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (num_cols-1, num_rows-1), 10),
+            ('FONTNAME', (0, 0), (0, num_rows-1), 'Helvetica-Bold'),  # Labels primeira coluna
+            ('FONTNAME', (2, 0), (2, num_rows-1), 'Helvetica-Bold'),  # Labels terceira coluna
+            ('ALIGN', (0, 0), (num_cols-1, num_rows-1), 'LEFT'),
+            ('VALIGN', (0, 0), (num_cols-1, num_rows-1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (num_cols-1, num_rows-1), 8),
+            ('BOTTOMPADDING', (0, 0), (num_cols-1, num_rows-1), 8),
+            ('LEFTPADDING', (0, 0), (num_cols-1, num_rows-1), 0),
+            ('RIGHTPADDING', (1, 0), (1, num_rows-1), 20),
         ]))
         
         elementos.append(tabela_info)
