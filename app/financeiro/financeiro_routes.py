@@ -3838,148 +3838,56 @@ def relatorio_sede_preview():
 @financeiro_bp.route('/financeiro/relatorio-caixa/pdf')
 @login_required
 def relatorio_caixa_pdf():
-    """Gera PDF do relatório de caixa interno"""
+    """
+    Gera o PDF do Relatório de Caixa usando ReportLab.
+    Corrige o problema do botão PDF que piscava e retornava para a mesma tela.
+    """
+    mes = None
+    ano = None
+
     try:
-        # Pegar mês e ano da query string com validação
-        mes = request.args.get('mes', type=int)
-        ano = request.args.get('ano', type=int)
-        
-        # Se não foram fornecidos na URL, usar o mês/ano atual
-        if mes is None:
-            mes = datetime.now().month
-        if ano is None:
-            ano = datetime.now().year
-        
-        # Validar valores
-        if mes < 1 or mes > 12:
-            mes = datetime.now().month
-        if ano < 2020 or ano > 2030:
-            ano = datetime.now().year
-        
-        # Filtrar lançamentos do mês
+        hoje = datetime.now()
+        mes = request.args.get('mes', hoje.month, type=int)
+        ano = request.args.get('ano', hoje.year, type=int)
+
         lancamentos = Lancamento.query.filter(
             extract('month', Lancamento.data) == mes,
             extract('year', Lancamento.data) == ano
+        ).order_by(
+            Lancamento.data.asc(),
+            Lancamento.id.asc()
         ).all()
-        
-        # Se não há lançamentos no mês atual (sem parâmetros explícitos), usar o último mês com dados
-        if not lancamentos and not request.args.get('mes') and not request.args.get('ano'):
-            from sqlalchemy import desc as sqldesc
-            ultimo_com_dados = db.session.query(
-                extract('year', Lancamento.data).label('ano'),
-                extract('month', Lancamento.data).label('mes')
-            ).filter(Lancamento.data.isnot(None)).group_by('ano', 'mes').order_by(
-                sqldesc('ano'), sqldesc('mes')
-            ).first()
-            if ultimo_com_dados:
-                mes = int(ultimo_com_dados.mes)
-                ano = int(ultimo_com_dados.ano)
-                lancamentos = Lancamento.query.filter(
-                    extract('month', Lancamento.data) == mes,
-                    extract('year', Lancamento.data) == ano
-                ).all()
-        
-        # Inicializar totais (mesmo código da rota HTML)
-        totais = {
-            'entradas_banco': 0,
-            'entradas_dinheiro': 0,
-            'entradas_pix': 0,
-            'dizimos_banco': 0,
-            'dizimos_dinheiro': 0,
-            'dizimos_pix': 0,
-            'ofertas_banco': 0,
-            'ofertas_dinheiro': 0,
-            'ofertas_pix': 0,
-            'saidas_banco': 0,
-            'saidas_dinheiro': 0,
-            'descontos': 0,
-            'total_entradas': 0,
-            'total_saidas': 0,
-            'saldo_anterior': Lancamento.calcular_saldo_ate_mes_anterior(mes, ano),
-            'saldo_mes': 0,
-            'saldo_acumulado': 0
-        }
-        
-        # Processar lançamentos (mesmo código da rota HTML)
-        for lancamento in lancamentos:
-            conta = lancamento.conta.lower() if lancamento.conta else 'dinheiro'
-            categoria = lancamento.categoria.lower() if lancamento.categoria else ''
-            valor = lancamento.valor or 0
-            
-            if lancamento.tipo == 'Entrada':
-                # Entradas por conta
-                if 'banco' in conta:
-                    totais['entradas_banco'] += valor
-                elif 'pix' in conta:
-                    totais['entradas_pix'] += valor
-                else:
-                    totais['entradas_dinheiro'] += valor
-                
-                # Dízimos por conta
-                if 'dízimo' in categoria or 'dizimo' in categoria:
-                    if 'banco' in conta:
-                        totais['dizimos_banco'] += valor
-                    elif 'pix' in conta:
-                        totais['dizimos_pix'] += valor
-                    else:
-                        totais['dizimos_dinheiro'] += valor
-                
-                # Ofertas por conta
-                elif 'oferta' in categoria:
-                    if 'banco' in conta:
-                        totais['ofertas_banco'] += valor
-                    elif 'pix' in conta:
-                        totais['ofertas_pix'] += valor
-                    else:
-                        totais['ofertas_dinheiro'] += valor
-                
-                totais['total_entradas'] += valor
-            
-            elif lancamento.tipo == 'Saída':
-                # Verificar se é uma "Destinação" (não afeta saldo do caixa)
-                eh_destinacao = any(x in categoria for x in [
-                    'destinação', 'destinacao', 
-                    'transferência interna', 'transferencia interna'
-                ])
-                
-                # Apenas contabilizar como saída se NÃO for destinação
-                if not eh_destinacao:
-                    # Saídas por conta
-                    if 'banco' in conta:
-                        totais['saidas_banco'] += valor
-                    else:
-                        totais['saidas_dinheiro'] += valor
-                    
-                    totais['total_saidas'] += valor
-                    
-                    # Descontos (categorias específicas)
-                    if 'desconto' in categoria or 'taxa' in categoria:
-                        totais['descontos'] += valor
-        
-        # Calcular saldos
-        totais['saldo_mes'] = totais['total_entradas'] - totais['total_saidas']
-        totais['saldo_acumulado'] = totais['saldo_anterior'] + totais['saldo_mes']
-        
-        # Obter configurações do sistema
-        config = Configuracao.obter_configuracao()
-        
-        # Gerar PDF com ReportLab profissional
-        relatorio = RelatorioFinanceiro(config)
-        pdf_buffer = relatorio.gerar_relatorio_caixa(lancamentos, mes, ano, totais['saldo_anterior'])
-        
-        # Gerar nome do arquivo
+
+        relatorio = RelatorioFinanceiro()
+        pdf_buffer = relatorio.gerar_relatorio_caixa(lancamentos, mes, ano)
+
+        if not pdf_buffer:
+            raise Exception("O gerador retornou um PDF vazio.")
+
+        pdf_buffer.seek(0)
+
         nome_arquivo = gerar_nome_arquivo_relatorio('caixa', mes, ano)
-        
+
         return send_file(
             pdf_buffer,
+            mimetype='application/pdf',
             as_attachment=False,
-            download_name=nome_arquivo,
-            mimetype='application/pdf'
+            download_name=nome_arquivo
         )
 
     except Exception as e:
-        flash(f'Erro ao gerar PDF do relatório de caixa: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.relatorio_caixa'))
+        import traceback
+
+        current_app.logger.error("ERRO AO GERAR PDF DO RELATÓRIO DE CAIXA")
+        current_app.logger.error(str(e))
+        current_app.logger.error(traceback.format_exc())
+
+        flash(f"Erro ao gerar PDF do relatório de caixa: {str(e)}", "danger")
+
+        if mes and ano:
+            return redirect(url_for("financeiro.relatorio_caixa", mes=mes, ano=ano))
+
+        return redirect(url_for("financeiro.lista_lancamentos"))
 
 @financeiro_bp.route('/financeiro/relatorio-sede/pdf')
 @login_required
