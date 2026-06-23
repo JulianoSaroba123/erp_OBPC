@@ -774,48 +774,73 @@ class RelatorioFinanceiro:
     
     def gerar_relatorio_caixa(self, lancamentos, mes, ano, saldo_anterior=0):
         """Gera relatório de caixa profissional com padrão oficial"""
-        doc = SimpleDocTemplate(
-            self.buffer, 
-            pagesize=self.pagesize,
-            rightMargin=2*cm, 
-            leftMargin=2*cm,
-            topMargin=1.5*cm, 
-            bottomMargin=2*cm,
-            title=f"Relatório de Caixa {mes:02d}/{ano}"
-        )
-        
-        elementos = []
-        
-        # Cabeçalho oficial (mesmo padrão do relatório sede)
-        elementos.extend(self._criar_cabecalho_caixa_oficial())
-        
-        # Informações do período e igreja
-        elementos.extend(self._criar_info_periodo_caixa(mes, ano))
-        
-        if lancamentos:
-            # Tabela de lançamentos
-            elementos.extend(self._criar_tabela_lancamentos(lancamentos, mostrar_saldo=True))
+        try:
+            doc = SimpleDocTemplate(
+                self.buffer, 
+                pagesize=self.pagesize,
+                rightMargin=2*cm, 
+                leftMargin=2*cm,
+                topMargin=1.5*cm, 
+                bottomMargin=2*cm,
+                title=f"Relatório de Caixa {mes:02d}/{ano}"
+            )
             
-            # Calcular totais corrigindo o problema das saídas
-            entradas_total = sum(float(l.valor) for l in lancamentos if l.tipo.lower() == 'entrada')
-            saidas_total = sum(float(l.valor) for l in lancamentos if l.tipo.lower() in ['saída', 'saida'])
+            elementos = []
             
-            # Resumo financeiro
-            elementos.extend(self._criar_resumo_financeiro(entradas_total, saidas_total, saldo_anterior, lancamentos))
-        else:
-            elementos.append(Paragraph("Nenhum lançamento encontrado para este período.", 
-                                     self.styles['texto_normal']))
-        
-        # Campos de assinatura
-        elementos.extend(self._criar_campos_assinatura())
-        
-        # Rodapé
-        elementos.extend(self._criar_rodape())
-        
-        # Gerar PDF
-        doc.build(elementos)
-        self.buffer.seek(0)
-        return self.buffer
+            # Cabeçalho oficial (mesmo padrão do relatório sede)
+            try:
+                elementos.extend(self._criar_cabecalho_caixa_oficial())
+            except Exception as e:
+                current_app.logger.error(f"Erro ao criar cabeçalho: {e}")
+            
+            # Informações do período e igreja
+            try:
+                elementos.extend(self._criar_info_periodo_caixa(mes, ano))
+            except Exception as e:
+                current_app.logger.error(f"Erro ao criar info período: {e}")
+            
+            if lancamentos:
+                # Tabela de lançamentos
+                try:
+                    elementos.extend(self._criar_tabela_lancamentos(lancamentos, mostrar_saldo=True))
+                except Exception as e:
+                    current_app.logger.error(f"Erro ao criar tabela lançamentos: {e}")
+                
+                # Calcular totais corrigindo o problema das saídas
+                entradas_total = sum(float(l.valor) for l in lancamentos if l.tipo.lower() == 'entrada')
+                saidas_total = sum(float(l.valor) for l in lancamentos if l.tipo.lower() in ['saída', 'saida'])
+                
+                # Resumo financeiro
+                try:
+                    elementos.extend(self._criar_resumo_financeiro(entradas_total, saidas_total, saldo_anterior, lancamentos))
+                except Exception as e:
+                    current_app.logger.error(f"Erro ao criar resumo financeiro: {e}")
+            else:
+                elementos.append(Paragraph("Nenhum lançamento encontrado para este período.", 
+                                         self.styles['texto_normal']))
+            
+            # Campos de assinatura
+            try:
+                elementos.extend(self._criar_campos_assinatura())
+            except Exception as e:
+                current_app.logger.error(f"Erro ao criar campos assinatura: {e}")
+            
+            # Rodapé
+            try:
+                elementos.extend(self._criar_rodape())
+            except Exception as e:
+                current_app.logger.error(f"Erro ao criar rodapé: {e}")
+            
+            # Gerar PDF
+            doc.build(elementos)
+            self.buffer.seek(0)
+            return self.buffer
+            
+        except Exception as e:
+            current_app.logger.error(f"Erro geral ao gerar relatório caixa: {e}")
+            import traceback
+            current_app.logger.error(traceback.format_exc())
+            raise
     
     def gerar_relatorio_sede(self, lancamentos, mes, ano, saldo_anterior=0):
         """Gera relatório para sede seguindo o padrão oficial da igreja"""
