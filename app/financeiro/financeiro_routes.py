@@ -3858,8 +3858,17 @@ def relatorio_caixa_pdf():
             Lancamento.id.asc()
         ).all()
 
-        relatorio = RelatorioFinanceiro()
-        pdf_buffer = relatorio.gerar_relatorio_caixa(lancamentos, mes, ano)
+        # Calcular saldo anterior
+        saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
+
+        # Obter configuração
+        config = Configuracao.obter_configuracao()
+
+        # Criar instância do gerador com configuração
+        relatorio = RelatorioFinanceiro(config)
+        
+        # Gerar PDF com todos os parâmetros necessários
+        pdf_buffer = relatorio.gerar_relatorio_caixa(lancamentos, mes, ano, saldo_anterior)
 
         if not pdf_buffer:
             raise Exception("O gerador retornou um PDF vazio.")
