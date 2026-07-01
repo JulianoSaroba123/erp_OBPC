@@ -240,37 +240,51 @@ class RelatorioFinanceiro:
                 altura_minima.append(32)  # Altura aumentada para não sobrepor as linhas
             tabela = Table(dados, colWidths=larguras, repeatRows=1, rowHeights=altura_minima)
         
+        # Calcular índices da tabela
+        total_linhas_tabela = len(dados)
+        total_colunas_tabela = len(dados[0]) if total_linhas_tabela > 0 else 0
+        ultima_linha_idx = total_linhas_tabela - 1
+        ultima_coluna_idx = total_colunas_tabela - 1
+        
         # Estilo da tabela com espaçamento adequado
         estilo_tabela = [
             # Cabeçalho
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#001f3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 9),  # Fonte menor para evitar sobreposição
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 14),
-            ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 0), (ultima_coluna_idx, 0), colors.HexColor('#001f3f')),
+            ('TEXTCOLOR', (0, 0), (ultima_coluna_idx, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (ultima_coluna_idx, ultima_linha_idx), 'CENTER'),
+            ('FONTNAME', (0, 0), (ultima_coluna_idx, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (ultima_coluna_idx, 0), 9),
+            ('BOTTOMPADDING', (0, 0), (ultima_coluna_idx, 0), 14),
+            ('TOPPADDING', (0, 0), (ultima_coluna_idx, 0), 8),
             
             # Dados
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 8),  # Fonte menor para evitar sobreposição
-            ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Data
-            ('ALIGN', (1, 1), (1, -1), 'LEFT'),    # Descrição
-            ('ALIGN', (2, 1), (2, -1), 'CENTER'),  # Categoria
-            ('ALIGN', (3, 1), (3, -1), 'CENTER'),  # Tipo
-            ('ALIGN', (4, 1), (4, -1), 'RIGHT'),   # Valor
-            ('ALIGN', (5, 1), (5, -1), 'CENTER'),  # Comprovante
-            ('ALIGN', (6, 1), (-1, -1), 'RIGHT'),  # Saldo (se mostrar_saldo=True)
+            ('FONTNAME', (0, 1), (ultima_coluna_idx, ultima_linha_idx), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (ultima_coluna_idx, ultima_linha_idx), 8),
+            ('ALIGN', (0, 1), (0, ultima_linha_idx), 'CENTER'),  # Data
+            ('ALIGN', (1, 1), (1, ultima_linha_idx), 'LEFT'),    # Descrição
+            ('ALIGN', (2, 1), (2, ultima_linha_idx), 'CENTER'),  # Categoria
+            ('ALIGN', (3, 1), (3, ultima_linha_idx), 'CENTER'),  # Tipo
+            ('ALIGN', (4, 1), (4, ultima_linha_idx), 'RIGHT'),   # Valor
+            ('ALIGN', (5, 1), (5, ultima_linha_idx), 'CENTER'),  # Comprovante
             
             # Bordas e cores alternadas
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 1), (-1, -1), 12),    # Mais espaçamento vertical
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 12), # Mais espaçamento vertical
-            ('LEFTPADDING', (0, 0), (-1, -1), 8),    # Mais espaçamento lateral
-            ('RIGHTPADDING', (0, 0), (-1, -1), 8),   # Mais espaçamento lateral
+            ('GRID', (0, 0), (ultima_coluna_idx, ultima_linha_idx), 0.5, colors.black),
+            ('VALIGN', (0, 0), (ultima_coluna_idx, ultima_linha_idx), 'MIDDLE'),
+            ('TOPPADDING', (0, 1), (ultima_coluna_idx, ultima_linha_idx), 12),
+            ('BOTTOMPADDING', (0, 1), (ultima_coluna_idx, ultima_linha_idx), 12),
+            ('LEFTPADDING', (0, 0), (ultima_coluna_idx, ultima_linha_idx), 8),
+            ('RIGHTPADDING', (0, 0), (ultima_coluna_idx, ultima_linha_idx), 8),
         ]
+        
+        # Aplicar cores alternadas apenas se houver linhas de dados
+        if total_linhas_tabela > 1:
+            estilo_tabela.append(
+                ('ROWBACKGROUNDS', (0, 1), (ultima_coluna_idx, ultima_linha_idx), [colors.white, colors.HexColor('#f8f9fa')])
+            )
+        
+        # Adicionar alinhamento da coluna saldo se houver
+        if mostrar_saldo and total_colunas_tabela >= 7:
+            estilo_tabela.append(('ALIGN', (6, 1), (6, ultima_linha_idx), 'RIGHT'))
         
         # Aplicar cores específicas para valores
         for i, lancamento in enumerate(lancamentos_ordenados, 1):
@@ -428,32 +442,35 @@ class RelatorioFinanceiro:
                 # Ajustar larguras para evitar sobreposição
                 tabela_distribuicao = Table(dados_distribuicao, colWidths=[5*cm, 3*cm, 5*cm, 3*cm])
                 
+                total_linhas_dist = len(dados_distribuicao)
+                ultima_linha_dist = total_linhas_dist - 1
+                
                 estilo_distribuicao = [
                     # Cabeçalho
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#001f3f')),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 10),
-                    ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                    ('BACKGROUND', (0, 0), (3, 0), colors.HexColor('#001f3f')),
+                    ('TEXTCOLOR', (0, 0), (3, 0), colors.whitesmoke),
+                    ('FONTNAME', (0, 0), (3, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (3, 0), 10),
+                    ('ALIGN', (0, 0), (3, 0), 'CENTER'),
                     
                     # Dados
-                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                    ('FONTSIZE', (0, 1), (-1, -1), 9),
-                    ('ALIGN', (0, 1), (0, -1), 'LEFT'),   # Categorias entradas
-                    ('ALIGN', (1, 1), (1, -1), 'RIGHT'),  # Valores entradas
-                    ('ALIGN', (2, 1), (2, -1), 'LEFT'),   # Categorias saídas
-                    ('ALIGN', (3, 1), (3, -1), 'RIGHT'),  # Valores saídas
+                    ('FONTNAME', (0, 1), (3, ultima_linha_dist), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (3, ultima_linha_dist), 9),
+                    ('ALIGN', (0, 1), (0, ultima_linha_dist), 'LEFT'),   # Categorias entradas
+                    ('ALIGN', (1, 1), (1, ultima_linha_dist), 'RIGHT'),  # Valores entradas
+                    ('ALIGN', (2, 1), (2, ultima_linha_dist), 'LEFT'),   # Categorias saídas
+                    ('ALIGN', (3, 1), (3, ultima_linha_dist), 'RIGHT'),  # Valores saídas
                     
                     # Bordas e cores
-                    ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                    ('TOPPADDING', (0, 0), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+                    ('GRID', (0, 0), (3, ultima_linha_dist), 0.5, colors.black),
+                    ('VALIGN', (0, 0), (3, ultima_linha_dist), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (3, ultima_linha_dist), 8),
+                    ('BOTTOMPADDING', (0, 0), (3, ultima_linha_dist), 8),
+                    ('ROWBACKGROUNDS', (0, 1), (3, ultima_linha_dist), [colors.white, colors.HexColor('#f8f9fa')]),
                     
                     # Cores das colunas
-                    ('TEXTCOLOR', (1, 1), (1, -1), colors.green),  # Valores entradas
-                    ('TEXTCOLOR', (3, 1), (3, -1), colors.red),    # Valores saídas
+                    ('TEXTCOLOR', (1, 1), (1, ultima_linha_dist), colors.green),  # Valores entradas
+                    ('TEXTCOLOR', (3, 1), (3, ultima_linha_dist), colors.red),    # Valores saídas
                 ]
                 
                 tabela_distribuicao.setStyle(TableStyle(estilo_distribuicao))
@@ -531,41 +548,47 @@ class RelatorioFinanceiro:
         # Ajustar larguras para evitar sobreposição
         tabela_resumo = Table(dados_resumo, colWidths=[10*cm, 5*cm])
         
+        # Calcular índices (tabela tem sempre 9 linhas: 0=cabeçalho, 1-8=dados)
+        total_linhas_resumo = len(dados_resumo)  # 9
+        ultima_linha_resumo = total_linhas_resumo - 1  # 8 (SALDO DISPONÍVEL)
+        linha_envio_sede = 5  # (INFORME) Total a Enviar Sede
+        linha_admin = 6  # • Administrativo
+        linha_despesas = 7  # • Despesas Fixas
+        
         estilo_resumo = [
             # Cabeçalho
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#001f3f')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#001f3f')),
+            ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (1, 0), 12),
+            ('ALIGN', (0, 0), (1, 0), 'CENTER'),
             
             # Dados normais
-            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -4), 11),
-            ('ALIGN', (0, 1), (0, -1), 'LEFT'),
-            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 1), (1, ultima_linha_resumo), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (1, linha_envio_sede - 1), 11),
+            ('ALIGN', (0, 1), (0, ultima_linha_resumo), 'LEFT'),
+            ('ALIGN', (1, 1), (1, ultima_linha_resumo), 'RIGHT'),
             
             # Linha "Total a Enviar Sede" em destaque
-            ('BACKGROUND', (0, -4), (-1, -4), colors.HexColor('#FFE4E1')),
-            ('FONTNAME', (0, -4), (-1, -4), 'Helvetica-Bold'),
-            ('TEXTCOLOR', (0, -4), (1, -4), colors.HexColor('#DC143C')),
+            ('BACKGROUND', (0, linha_envio_sede), (1, linha_envio_sede), colors.HexColor('#FFE4E1')),
+            ('FONTNAME', (0, linha_envio_sede), (1, linha_envio_sede), 'Helvetica-Bold'),
+            ('TEXTCOLOR', (0, linha_envio_sede), (1, linha_envio_sede), colors.HexColor('#DC143C')),
             
             # Sublinhas de detalhamento (administrativo e despesas fixas) - menor e indentadas
-            ('FONTSIZE', (0, -3), (0, -2), 9),
-            ('TEXTCOLOR', (0, -3), (1, -2), colors.grey),
-            ('LEFTPADDING', (0, -3), (0, -2), 20),
+            ('FONTSIZE', (0, linha_admin), (0, linha_despesas), 9),
+            ('TEXTCOLOR', (0, linha_admin), (1, linha_despesas), colors.grey),
+            ('LEFTPADDING', (0, linha_admin), (0, linha_despesas), 20),
             
             # Linha do saldo disponível (final)
-            # Cor será definida dinamicamente abaixo (verde se positivo, vermelho se negativo)
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, -1), (-1, -1), 14),
-            ('TEXTCOLOR', (0, -1), (-1, -1), colors.white),
+            ('FONTNAME', (0, ultima_linha_resumo), (1, ultima_linha_resumo), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, ultima_linha_resumo), (1, ultima_linha_resumo), 14),
+            ('TEXTCOLOR', (0, ultima_linha_resumo), (1, ultima_linha_resumo), colors.white),
             
             # Bordas
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('GRID', (0, 0), (1, ultima_linha_resumo), 1, colors.black),
+            ('VALIGN', (0, 0), (1, ultima_linha_resumo), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (1, ultima_linha_resumo), 8),
+            ('BOTTOMPADDING', (0, 0), (1, ultima_linha_resumo), 8),
         ]
         
         # Cores para entradas e saídas
@@ -580,9 +603,9 @@ class RelatorioFinanceiro:
         
         # Cor para Saldo Disponível (verde se positivo, vermelho se negativo)
         if saldo_bruto >= 0:
-            estilo_resumo.append(('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#4A7C59')))  # Verde
+            estilo_resumo.append(('BACKGROUND', (0, ultima_linha_resumo), (1, ultima_linha_resumo), colors.HexColor('#4A7C59')))
         else:
-            estilo_resumo.append(('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#DC143C')))  # Vermelho
+            estilo_resumo.append(('BACKGROUND', (0, ultima_linha_resumo), (1, ultima_linha_resumo), colors.HexColor('#DC143C')))
         
         tabela_resumo.setStyle(TableStyle(estilo_resumo))
         elementos.append(tabela_resumo)
