@@ -423,39 +423,41 @@ class RelatorioFinanceiro:
                 
                 dados_distribuicao.append(linha)
             
-            # Ajustar larguras para evitar sobreposição
-            tabela_distribuicao = Table(dados_distribuicao, colWidths=[5*cm, 3*cm, 5*cm, 3*cm])
-            
-            estilo_distribuicao = [
-                # Cabeçalho
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#001f3f')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
-                ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            # Só criar tabela se houver dados além do cabeçalho
+            if len(dados_distribuicao) > 1:
+                # Ajustar larguras para evitar sobreposição
+                tabela_distribuicao = Table(dados_distribuicao, colWidths=[5*cm, 3*cm, 5*cm, 3*cm])
                 
-                # Dados
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (-1, -1), 9),
-                ('ALIGN', (0, 1), (0, -1), 'LEFT'),   # Categorias entradas
-                ('ALIGN', (1, 1), (1, -1), 'RIGHT'),  # Valores entradas
-                ('ALIGN', (2, 1), (2, -1), 'LEFT'),   # Categorias saídas
-                ('ALIGN', (3, 1), (3, -1), 'RIGHT'),  # Valores saídas
+                estilo_distribuicao = [
+                    # Cabeçalho
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#001f3f')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+                    
+                    # Dados
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 9),
+                    ('ALIGN', (0, 1), (0, -1), 'LEFT'),   # Categorias entradas
+                    ('ALIGN', (1, 1), (1, -1), 'RIGHT'),  # Valores entradas
+                    ('ALIGN', (2, 1), (2, -1), 'LEFT'),   # Categorias saídas
+                    ('ALIGN', (3, 1), (3, -1), 'RIGHT'),  # Valores saídas
+                    
+                    # Bordas e cores
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('TOPPADDING', (0, 0), (-1, -1), 8),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
+                    
+                    # Cores das colunas
+                    ('TEXTCOLOR', (1, 1), (1, -1), colors.green),  # Valores entradas
+                    ('TEXTCOLOR', (3, 1), (3, -1), colors.red),    # Valores saídas
+                ]
                 
-                # Bordas e cores
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('TOPPADDING', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8f9fa')]),
-                
-                # Cores das colunas
-                ('TEXTCOLOR', (1, 1), (1, -1), colors.green),  # Valores entradas
-                ('TEXTCOLOR', (3, 1), (3, -1), colors.red),    # Valores saídas
-            ]
-            
-            tabela_distribuicao.setStyle(TableStyle(estilo_distribuicao))
-            elementos.append(tabela_distribuicao)
+                tabela_distribuicao.setStyle(TableStyle(estilo_distribuicao))
+                elementos.append(tabela_distribuicao)
             elementos.append(Spacer(1, 20))
         
         # Seção Final: Resumo Final (com totais corretos)
