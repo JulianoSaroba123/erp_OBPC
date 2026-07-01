@@ -641,55 +641,69 @@ class RelatorioFinanceiro:
     
     def _aplicar_estilo_tabela_resumo(self, tabela, cor_destaque):
         """Aplica estilo padrão para tabelas de resumo com proteção contra tabelas pequenas"""
-        total_linhas = len(tabela._cellvalues)
-        total_colunas = len(tabela._cellvalues[0]) if total_linhas > 0 else 0
-        
-        if total_linhas == 0 or total_colunas == 0:
-            return
-        
-        ultima_linha = total_linhas - 1
-        ultima_coluna = total_colunas - 1
-        
-        estilo = [
-            # Cabeçalho
-            ('BACKGROUND', (0, 0), (ultima_coluna, 0), colors.HexColor('#001f3f')),
-            ('TEXTCOLOR', (0, 0), (ultima_coluna, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (ultima_coluna, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (ultima_coluna, 0), 10),
-            ('ALIGN', (0, 0), (ultima_coluna, 0), 'CENTER'),
+        try:
+            total_linhas = len(tabela._cellvalues)
+            total_colunas = len(tabela._cellvalues[0]) if total_linhas > 0 else 0
             
-            # Alinhamentos gerais
-            ('ALIGN', (0, 0), (ultima_coluna, ultima_linha), 'LEFT'),
-            ('ALIGN', (1, 0), (ultima_coluna, ultima_linha), 'RIGHT'),
+            current_app.logger.info(f"Aplicando estilo tabela: {total_linhas} linhas, {total_colunas} colunas")
             
-            # Bordas
-            ('GRID', (0, 0), (ultima_coluna, ultima_linha), 0.5, colors.black),
-            ('VALIGN', (0, 0), (ultima_coluna, ultima_linha), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (ultima_coluna, ultima_linha), 8),
-            ('BOTTOMPADDING', (0, 0), (ultima_coluna, ultima_linha), 8),
-        ]
-        
-        # Linhas de dados, somente se existirem entre cabeçalho e total
-        if total_linhas > 2:
-            estilo.extend([
-                ('FONTNAME', (0, 1), (ultima_coluna, ultima_linha - 1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (ultima_coluna, ultima_linha - 1), 9),
-                ('ROWBACKGROUNDS', (0, 1), (ultima_coluna, ultima_linha - 1), [
-                    colors.white,
-                    colors.HexColor('#f8f9fa')
-                ]),
-            ])
-        
-        # Linha total
-        if total_linhas >= 2:
-            estilo.extend([
-                ('BACKGROUND', (0, ultima_linha), (ultima_coluna, ultima_linha), colors.HexColor('#f0f8ff')),
-                ('FONTNAME', (0, ultima_linha), (ultima_coluna, ultima_linha), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, ultima_linha), (ultima_coluna, ultima_linha), 10),
-                ('TEXTCOLOR', (0, ultima_linha), (ultima_coluna, ultima_linha), cor_destaque),
-            ])
-        
-        tabela.setStyle(TableStyle(estilo))
+            if total_linhas == 0 or total_colunas == 0:
+                current_app.logger.warning("Tabela vazia, pulando aplicação de estilo")
+                return
+            
+            ultima_linha = total_linhas - 1
+            ultima_coluna = total_colunas - 1
+            
+            estilo = [
+                # Cabeçalho
+                ('BACKGROUND', (0, 0), (ultima_coluna, 0), colors.HexColor('#001f3f')),
+                ('TEXTCOLOR', (0, 0), (ultima_coluna, 0), colors.whitesmoke),
+                ('FONTNAME', (0, 0), (ultima_coluna, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (ultima_coluna, 0), 10),
+                ('ALIGN', (0, 0), (ultima_coluna, 0), 'CENTER'),
+                
+                # Alinhamentos gerais
+                ('ALIGN', (0, 0), (ultima_coluna, ultima_linha), 'LEFT'),
+                ('ALIGN', (1, 0), (ultima_coluna, ultima_linha), 'RIGHT'),
+                
+                # Bordas
+                ('GRID', (0, 0), (ultima_coluna, ultima_linha), 0.5, colors.black),
+                ('VALIGN', (0, 0), (ultima_coluna, ultima_linha), 'MIDDLE'),
+                ('TOPPADDING', (0, 0), (ultima_coluna, ultima_linha), 8),
+                ('BOTTOMPADDING', (0, 0), (ultima_coluna, ultima_linha), 8),
+            ]
+            
+            # Linhas de dados, somente se existirem entre cabeçalho e total
+            if total_linhas > 2:
+                current_app.logger.info(f"Aplicando ROWBACKGROUNDS para linhas 1 até {ultima_linha - 1}")
+                estilo.extend([
+                    ('FONTNAME', (0, 1), (ultima_coluna, ultima_linha - 1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (ultima_coluna, ultima_linha - 1), 9),
+                    ('ROWBACKGROUNDS', (0, 1), (ultima_coluna, ultima_linha - 1), [
+                        colors.white,
+                        colors.HexColor('#f8f9fa')
+                    ]),
+                ])
+            else:
+                current_app.logger.info(f"Tabela com {total_linhas} linhas - pulando ROWBACKGROUNDS")
+            
+            # Linha total
+            if total_linhas >= 2:
+                current_app.logger.info(f"Aplicando estilo linha total: {ultima_linha}")
+                estilo.extend([
+                    ('BACKGROUND', (0, ultima_linha), (ultima_coluna, ultima_linha), colors.HexColor('#f0f8ff')),
+                    ('FONTNAME', (0, ultima_linha), (ultima_coluna, ultima_linha), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, ultima_linha), (ultima_coluna, ultima_linha), 10),
+                    ('TEXTCOLOR', (0, ultima_linha), (ultima_coluna, ultima_linha), cor_destaque),
+                ])
+            
+            tabela.setStyle(TableStyle(estilo))
+            current_app.logger.info("Estilo aplicado com sucesso")
+            
+        except Exception as e:
+            current_app.logger.error(f"Erro ao aplicar estilo em tabela: {e}")
+            current_app.logger.error(f"Detalhes da tabela: linhas={len(tabela._cellvalues)}")
+            raise
     
     def _criar_rodape(self):
         """Cria rodapé profissional usando configurações"""
@@ -854,7 +868,10 @@ class RelatorioFinanceiro:
                 current_app.logger.error(f"Erro ao criar rodapé: {e}")
             
             # Gerar PDF
+            current_app.logger.info(f"Total de elementos a renderizar: {len(elementos)}")
+            current_app.logger.info("Iniciando doc.build()...")
             doc.build(elementos)
+            current_app.logger.info("doc.build() concluído com sucesso")
             self.buffer.seek(0)
             return self.buffer
             
