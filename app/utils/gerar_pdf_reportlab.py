@@ -538,7 +538,7 @@ class RelatorioFinanceiro:
             ['Saldo Anterior', self._formatar_moeda(saldo_anterior)],
             ['Total de Entradas', f"+{self._formatar_moeda(total_entradas_final)}"],
             ['Total de Saídas', f"-{self._formatar_moeda(total_saidas_final)}"],
-            ['Saldo Bruto do Período', self._formatar_moeda(saldo_bruto)],
+            ['Saldo do Mês', self._formatar_moeda(saldo_bruto)],
             ['(INFORME) Total a Enviar Sede', f"{self._formatar_moeda(total_envio_sede)}"],
             ['    • Administrativo (30%)', f"{self._formatar_moeda(valor_administrativo)}"],
             ['    • Despesas Fixas', f"{self._formatar_moeda(total_despesas_fixas)}"],
