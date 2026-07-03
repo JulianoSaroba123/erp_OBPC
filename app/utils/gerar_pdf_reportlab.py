@@ -489,7 +489,8 @@ class RelatorioFinanceiro:
             total_entradas_final = entradas_total
             total_saidas_final = saidas_total
         
-        saldo_bruto = saldo_anterior + total_entradas_final - total_saidas_final
+        saldo_mes_periodo = total_entradas_final - total_saidas_final
+        saldo_bruto = saldo_anterior + saldo_mes_periodo
         
         # Calcular total a ser enviado para a sede (30% + despesas fixas)
         # 1. Calcular 30% administrativo
@@ -538,7 +539,7 @@ class RelatorioFinanceiro:
             ['Saldo Anterior', self._formatar_moeda(saldo_anterior)],
             ['Total de Entradas', f"+{self._formatar_moeda(total_entradas_final)}"],
             ['Total de Saídas', f"-{self._formatar_moeda(total_saidas_final)}"],
-            ['Saldo do Mês', self._formatar_moeda(saldo_bruto)],
+            ['Saldo do Mês', self._formatar_moeda(saldo_mes_periodo)],
             ['(INFORME) Total a Enviar Sede', f"{self._formatar_moeda(total_envio_sede)}"],
             ['    • Administrativo (30%)', f"{self._formatar_moeda(valor_administrativo)}"],
             ['    • Despesas Fixas', f"{self._formatar_moeda(total_despesas_fixas)}"],
@@ -595,8 +596,8 @@ class RelatorioFinanceiro:
         estilo_resumo.append(('TEXTCOLOR', (1, 2), (1, 2), colors.green))  # Entradas
         estilo_resumo.append(('TEXTCOLOR', (1, 3), (1, 3), colors.red))    # Saídas
         
-        # Cor para movimento do período (Saldo Bruto)
-        if saldo_bruto >= 0:
+        # Cor para movimento do período (Saldo do Mês)
+        if saldo_mes_periodo >= 0:
             estilo_resumo.append(('TEXTCOLOR', (1, 4), (1, 4), colors.green))
         else:
             estilo_resumo.append(('TEXTCOLOR', (1, 4), (1, 4), colors.red))
