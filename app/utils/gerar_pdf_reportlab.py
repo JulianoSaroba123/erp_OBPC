@@ -542,7 +542,7 @@ class RelatorioFinanceiro:
             ['(INFORME) Total a Enviar Sede', f"{self._formatar_moeda(total_envio_sede)}"],
             ['    • Administrativo (30%)', f"{self._formatar_moeda(valor_administrativo)}"],
             ['    • Despesas Fixas', f"{self._formatar_moeda(total_despesas_fixas)}"],
-            ['SALDO DISPONÍVEL', self._formatar_moeda(saldo_bruto)]
+            ['SALDO ACUMULADO', self._formatar_moeda(saldo_bruto)]
         ]
         
         # Ajustar larguras para evitar sobreposição
