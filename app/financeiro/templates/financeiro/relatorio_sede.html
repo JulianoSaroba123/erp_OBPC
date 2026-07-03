@@ -248,6 +248,14 @@
                                         {{ "R$ %.2f"|format(totais.outras_ofertas)|replace(".", ",") }}
                                     </td>
                                 </tr>
+                                {% if totais.outras_entradas and totais.outras_entradas > 0 %}
+                                <tr style="background-color: #f8f9fa;">
+                                    <td style="padding: 8px; font-weight: bold; font-size: 11px; border: 1px solid #000;">Outras Entradas</td>
+                                    <td style="padding: 8px; font-weight: bold; font-size: 11px; text-align: right; border: 1px solid #000; color: #198754;">
+                                        {{ "R$ %.2f"|format(totais.outras_entradas)|replace(".", ",") }}
+                                    </td>
+                                </tr>
+                                {% endif %}
                             </tbody>
                         </table>
 
@@ -275,7 +283,7 @@
                         <div class="text-center mt-4 p-3 bg-success text-white rounded">
                             <h5 class="fw-bold mb-0">
                                 <i class="fas fa-chart-line me-2"></i> TOTAL GERAL ARRECADADO: 
-                                {{ "R$ %.2f"|format(totais.dizimos + totais.ofertas_alcadas + totais.outras_ofertas)|replace(".", ",") }}
+                                {{ "R$ %.2f"|format(totais.total_geral)|replace(".", ",") }}
                             </h5>
                         </div>
                     </div>

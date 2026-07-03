@@ -2834,6 +2834,59 @@ def relatorio_caixa():
         flash(f'Erro ao gerar relatório de caixa: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
+
+def _calcular_totais_relatorio_sede(lancamentos, percentual_conselho=30.0):
+    """Calcula totais do relatório da sede com regras consistentes com o relatório de caixa."""
+    totais = {
+        'dizimos': 0.0,
+        'ofertas_alcadas': 0.0,
+        'outras_ofertas': 0.0,
+        'oferta_omn': 0.0,
+        'outras_entradas': 0.0,
+        'total_geral': 0.0,
+        'despesas_financeiras': 0.0,
+        'saldo_mes': 0.0,
+        'valor_conselho': 0.0,
+        'total_dizimos_ofertas': 0.0,
+        'percentual_30': 0.0
+    }
+
+    percentual = (percentual_conselho if percentual_conselho is not None else 30.0) / 100
+
+    for lancamento in lancamentos:
+        categoria = (lancamento.categoria or '').lower()
+        valor = float(lancamento.valor or 0)
+
+        if lancamento.tipo == 'Entrada':
+            totais['total_geral'] += valor
+
+            if 'dízimo' in categoria or 'dizimo' in categoria:
+                totais['dizimos'] += valor
+            elif 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                totais['oferta_omn'] += valor
+            elif 'oferta' in categoria and any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                totais['outras_ofertas'] += valor
+            elif 'oferta' in categoria:
+                totais['ofertas_alcadas'] += valor
+            else:
+                totais['outras_entradas'] += valor
+
+        elif lancamento.tipo == 'Saída':
+            eh_destinacao = any(x in categoria for x in [
+                'destinação', 'destinacao',
+                'transferência interna', 'transferencia interna'
+            ])
+
+            if not eh_destinacao:
+                totais['despesas_financeiras'] += valor
+
+    totais['total_dizimos_ofertas'] = totais['dizimos'] + totais['ofertas_alcadas']
+    totais['valor_conselho'] = totais['total_dizimos_ofertas'] * percentual
+    totais['percentual_30'] = totais['valor_conselho']
+    totais['saldo_mes'] = totais['total_geral'] - totais['despesas_financeiras']
+
+    return totais
+
 @financeiro_bp.route('/financeiro/relatorio-sede')
 @login_required
 def relatorio_sede():
@@ -2871,57 +2924,8 @@ def relatorio_sede():
             )
         ).all()
         
-        # Calcular totais com lógica corrigida
-        total_dizimos = sum(l.valor for l in lancamentos if l.tipo == 'Entrada' and l.categoria and 'dízimo' in l.categoria.lower())
-        
-        # Ofertas Alçadas: Primeiro verificar se NÃO é OMN ou Outras Ofertas
-        total_ofertas_alcadas = sum(
-            l.valor for l in lancamentos 
-            if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower()
-            and not ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower())
-            and not any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
-        )
-        
-        # Outras Ofertas: Apenas ofertas com palavras-chave específicas
-        total_outras_ofertas = sum(
-            l.valor for l in lancamentos 
-            if l.tipo == 'Entrada' and l.categoria and 'oferta' in l.categoria.lower() 
-            and any(x in l.categoria.lower() for x in ['outras', 'especial', 'voluntaria', 'voluntária'])
-        )
-        
-        # Oferta OMN: Apenas com OMN ou missionária
-        total_ofertas_omn = sum(
-            l.valor for l in lancamentos 
-            if l.tipo == 'Entrada' and l.categoria 
-            and ('omn' in l.categoria.lower() or 'missionaria' in l.categoria.lower() or 'missionária' in l.categoria.lower())
-        )
-        total_despesas = sum(l.valor for l in lancamentos if l.tipo == 'Saída')
-        
-        # Total para cálculo dos 30% do Conselho Administrativo
-        # IMPORTANTE: Apenas Dízimos + Ofertas Alçadas computam para o conselho
-        # Outras Ofertas e Oferta OMN NÃO computam
-        total_dizimos_ofertas = total_dizimos + total_ofertas_alcadas
-        
-        # Calcular 30% sobre dízimos e ofertas alçadas (base do conselho)
-        valor_conselho_30 = total_dizimos_ofertas * 0.30
-        
-        # Total geral de entradas
-        total_entradas = total_dizimos + total_ofertas_alcadas + total_outras_ofertas + total_ofertas_omn
-        saldo_mes = total_entradas - total_despesas
-        
-        # Totais básicos
-        totais = {
-            'dizimos': total_dizimos,
-            'ofertas_alcadas': total_ofertas_alcadas,
-            'outras_ofertas': total_outras_ofertas,
-            'oferta_omn': total_ofertas_omn,
-            'total_geral': total_entradas,
-            'despesas_financeiras': total_despesas,
-            'saldo_mes': saldo_mes,
-            'valor_conselho': valor_conselho_30,
-            'total_dizimos_ofertas': total_dizimos_ofertas,
-            'percentual_30': valor_conselho_30
-        }
+        percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
+        totais = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
         
         # Buscar envios para sede baseados nas saídas
         try:
@@ -3004,7 +3008,7 @@ def relatorio_sede():
         
         return render_template('financeiro/relatorio_sede.html',
                              dados_igreja={'cidade': 'Tietê', 'bairro': 'Centro', 'dirigente': 'Pastor', 'tesoureiro': 'Tesoureiro', 'saldo_anterior': 0},
-                             totais={'dizimos': 0, 'ofertas_alcadas': 0, 'outras_ofertas': 0, 'oferta_omn': 0, 'total_geral': 0, 'despesas_financeiras': 0, 'saldo_mes': 0, 'valor_conselho': 0, 'total_dizimos_ofertas': 0, 'percentual_30': 0},
+                             totais={'dizimos': 0, 'ofertas_alcadas': 0, 'outras_ofertas': 0, 'oferta_omn': 0, 'outras_entradas': 0, 'total_geral': 0, 'despesas_financeiras': 0, 'saldo_mes': 0, 'valor_conselho': 0, 'total_dizimos_ofertas': 0, 'percentual_30': 0},
                              envios={},
                              envios_detalhados={},
                              total_envio_sede=0,
@@ -3659,63 +3663,43 @@ def relatorio_sede_preview():
             extract('year', Lancamento.data) == ano
         ).all()
         
-        # Calcular totais específicos para sede usando a mesma lógica da rota principal
+        percentual_conselho = 30
+        config = Configuracao.obter_configuracao()
+        if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho:
+            percentual_conselho = config.percentual_conselho
+
+        totais_base = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
         totais = {
-            'dizimos': 0,
-            'ofertas_alcadas': 0,
-            'outras_ofertas': 0,
-            'total_entradas': 0,
-            'total_saidas': 0,
+            'dizimos': totais_base['dizimos'],
+            'ofertas_alcadas': totais_base['ofertas_alcadas'],
+            'outras_ofertas': totais_base['outras_ofertas'],
+            'oferta_omn': totais_base['oferta_omn'],
+            'outras_entradas': totais_base['outras_entradas'],
+            'total_entradas': totais_base['total_geral'],
+            'total_saidas': totais_base['despesas_financeiras'],
             'saidas_por_categoria': {},
-            'saldo_final': 0,
-            'valor_conselho': 0,
-            'trinta_porcento_conselho': 0,
+            'saldo_final': totais_base['saldo_mes'],
+            'valor_conselho': totais_base['total_dizimos_ofertas'],
+            'trinta_porcento_conselho': totais_base['valor_conselho'],
             'despesas_fixas_conselho': 0,
             'total_envio_sede': 0
         }
-        
-        # Processar lançamentos
+
         for lancamento in lancamentos:
-            categoria = lancamento.categoria.lower() if lancamento.categoria else ''
-            valor = lancamento.valor or 0
-            
-            if lancamento.tipo == 'Entrada':
-                if 'dízimo' in categoria or 'dizimo' in categoria:
-                    totais['dizimos'] += valor
-                elif 'oferta' in categoria:
-                    # Lógica corrigida e padronizada das ofertas:
-                    # 1º: Verificar se é OMN (não computa no conselho, mas registrado)
-                    if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
-                        totais['ofertas_alcadas'] += valor  # Mantido por compatibilidade do preview
-                    # 2º: Verificar se é "Outras Ofertas" (não computa no conselho)
-                    elif any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
-                        totais['outras_ofertas'] += valor
-                    # 3º: O resto são Ofertas Alçadas (computa 30% conselho)
-                    else:
-                        # Ofertas Alçadas = ofertas normais do ofertório
-                        totais['ofertas_alcadas'] += valor
-                else:
-                    totais['outras_ofertas'] += valor
-                
-                totais['total_entradas'] += valor
-            
-            elif lancamento.tipo == 'Saída':
-                totais['total_saidas'] += valor
-                # Agrupar saídas por categoria
-                if categoria not in totais['saidas_por_categoria']:
-                    totais['saidas_por_categoria'][categoria] = 0
-                totais['saidas_por_categoria'][categoria] += valor
-        
-        # Calcular valores finais
-        totais['saldo_final'] = totais['total_entradas'] - totais['total_saidas']
-        
-        # Buscar percentual do conselho das configurações
-        config = Configuracao.obter_configuracao()
-        percentual = config.percentual_conselho / 100 if config else 0.30  # Default 30%
-        totais['valor_conselho'] = totais['total_entradas']
-        # Calcular 30% excluindo "OUTRAS OFERTAS"
-        valor_para_conselho = totais['total_entradas'] - totais.get('outras_ofertas', 0)
-        totais['trinta_porcento_conselho'] = valor_para_conselho * percentual
+            if lancamento.tipo != 'Saída':
+                continue
+
+            categoria = (lancamento.categoria or '').lower()
+            eh_destinacao = any(x in categoria for x in [
+                'destinação', 'destinacao',
+                'transferência interna', 'transferencia interna'
+            ])
+            if eh_destinacao:
+                continue
+
+            if categoria not in totais['saidas_por_categoria']:
+                totais['saidas_por_categoria'][categoria] = 0
+            totais['saidas_por_categoria'][categoria] += float(lancamento.valor or 0)
         
         # Buscar despesas fixas do conselho
         despesas_fixas = DespesaFixaConselho.query.filter_by(ativo=True).all()
@@ -3809,7 +3793,6 @@ def relatorio_sede_preview():
             total_envio_sede = 0
         
         # Buscar configuração da igreja
-        config = Configuracao.obter_configuracao()
         dados_igreja = {
             'nome': config.nome_igreja if config else 'Igreja OBPC',
             'endereco': config.endereco if config else '',
@@ -3953,57 +3936,11 @@ def relatorio_sede_pdf():
             'saldo_anterior': Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
         }
         
-        # Inicializar totais (mesmo código da rota HTML)
-        totais = {
-            'dizimos': 0,
-            'ofertas_alcadas': 0,
-            'outras_ofertas': 0,
-            'total_geral': 0,
-            'despesas_financeiras': 0,
-            'saldo_mes': 0,
-            'valor_conselho': 0
-        }
+        percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
+        totais = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
         
         # Envios fixos obtidos da base de dados
         envios = DespesaFixaConselho.obter_despesas_para_relatorio()
-        
-        # Processar lançamentos (mesmo código da rota HTML)
-        for lancamento in lancamentos:
-            categoria = lancamento.categoria.lower() if lancamento.categoria else ''
-            valor = lancamento.valor or 0
-            
-            if lancamento.tipo == 'Entrada':
-                if 'dízimo' in categoria or 'dizimo' in categoria:
-                    totais['dizimos'] += valor
-                elif 'oferta' in categoria:
-                    # Lógica corrigida e padronizada das ofertas:
-                    # 1º: Verificar se é OMN (não computa no conselho, mas registrado)
-                    if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
-                        totais['ofertas_alcadas'] += valor  # Mantido por compatibilidade
-                    # 2º: Verificar se é "Outras Ofertas" (não computa no conselho)
-                    elif any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
-                        totais['outras_ofertas'] += valor
-                    # 3º: O resto são Ofertas Alçadas (computa 30% conselho)
-                    else:
-                        # Ofertas Alçadas = ofertas normais do ofertório
-                        totais['ofertas_alcadas'] += valor
-                else:
-                    totais['outras_ofertas'] += valor
-                
-                totais['total_geral'] += valor
-            
-            elif lancamento.tipo == 'Saída':
-                totais['despesas_financeiras'] += valor
-        
-        # Calcular valores finais
-        totais['saldo_mes'] = totais['total_geral'] - totais['despesas_financeiras']
-        
-        # Buscar percentual do conselho das configurações
-        config = Configuracao.obter_configuracao()
-        percentual = config.percentual_conselho / 100  # Converter para decimal
-        # Calcular valor do conselho excluindo "OUTRAS OFERTAS"
-        valor_para_conselho = totais['total_geral'] - totais.get('outras_ofertas', 0)
-        totais['valor_conselho'] = valor_para_conselho * percentual
         
         # Calcular total de envios (envios fixos + valor do conselho)
         total_envio_sede = sum(envios.values()) + totais['valor_conselho']
