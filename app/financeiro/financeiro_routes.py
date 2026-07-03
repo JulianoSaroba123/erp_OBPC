@@ -2926,6 +2926,29 @@ def relatorio_sede():
         
         percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         totais = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
+
+        # Detalhar entradas que nao se encaixam em dizimos/ofertas para facilitar auditoria.
+        outras_entradas_detalhes = []
+        for l in lancamentos:
+            if l.tipo != 'Entrada':
+                continue
+
+            categoria = (l.categoria or '').lower()
+            if 'dízimo' in categoria or 'dizimo' in categoria:
+                continue
+            if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                continue
+            if 'oferta' in categoria:
+                continue
+
+            outras_entradas_detalhes.append({
+                'data': l.data,
+                'categoria': l.categoria or 'Sem categoria',
+                'descricao': l.descricao or '-',
+                'valor': float(l.valor or 0)
+            })
+
+        outras_entradas_detalhes = sorted(outras_entradas_detalhes, key=lambda x: x['data'])
         
         # Buscar envios para sede baseados nas saídas
         try:
@@ -2989,6 +3012,7 @@ def relatorio_sede():
         return render_template('financeiro/relatorio_sede.html',
                              dados_igreja=dados_igreja,
                              totais=totais,
+                             outras_entradas_detalhes=outras_entradas_detalhes,
                              envios=envios,
                              envios_detalhados=envios_detalhados,
                              total_envio_sede=total_envio_sede,
@@ -3009,6 +3033,7 @@ def relatorio_sede():
         return render_template('financeiro/relatorio_sede.html',
                              dados_igreja={'cidade': 'Tietê', 'bairro': 'Centro', 'dirigente': 'Pastor', 'tesoureiro': 'Tesoureiro', 'saldo_anterior': 0},
                              totais={'dizimos': 0, 'ofertas_alcadas': 0, 'outras_ofertas': 0, 'oferta_omn': 0, 'outras_entradas': 0, 'total_geral': 0, 'despesas_financeiras': 0, 'saldo_mes': 0, 'valor_conselho': 0, 'total_dizimos_ofertas': 0, 'percentual_30': 0},
+                             outras_entradas_detalhes=[],
                              envios={},
                              envios_detalhados={},
                              total_envio_sede=0,
