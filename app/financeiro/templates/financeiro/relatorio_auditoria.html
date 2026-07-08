@@ -41,14 +41,44 @@
         .stat span { font-size: 24px; font-weight: 700; }
         .section { margin-bottom: 22px; }
         .section h3 { margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; font-size: 13px; color: var(--accent); }
-        table { width: 100%; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { border: 1px solid var(--line); padding: 10px 11px; font-size: 13px; vertical-align: top; }
         th { background: #f3f6fb; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+        .audit-table th, .audit-table td {
+            font-size: 9px;
+            word-wrap: break-word;
+            overflow-wrap: anywhere;
+            white-space: normal;
+            padding: 4px;
+        }
+        .audit-table .col-id { width: 4%; }
+        .audit-table .col-data { width: 7%; }
+        .audit-table .col-tipo { width: 6%; }
+        .audit-table .col-categoria { width: 9%; }
+        .audit-table .col-conta { width: 7%; }
+        .audit-table .col-descricao { width: 18%; }
+        .audit-table .col-doc { width: 8%; }
+        .audit-table .col-valor { width: 8%; }
+        .audit-table .col-saldo { width: 9%; }
+        .audit-table .col-origem { width: 7%; }
+        .audit-table .col-comp { width: 9%; }
+        .audit-table .col-obs { width: 8%; }
+        .audit-table td { vertical-align: top; padding: 4px; }
+        .audit-table thead { display: table-header-group; }
+        .audit-table tr { page-break-inside: avoid; }
+        .audit-table td:nth-child(7), .audit-table td:nth-child(10), .audit-table td:nth-child(12) {
+            color: #334155;
+            font-size: 8px;
+        }
         td.numeric, th.numeric { text-align: right; }
         td.center, th.center { text-align: center; }
         tbody tr:nth-child(even) { background: #fbfdff; }
-        .comprovantes-list { display: flex; flex-direction: column; gap: 4px; }
-        .comprovantes-list a { color: var(--brand); text-decoration: none; }
+        .linha-entrada { background-color: #eefaf1; }
+        .linha-saida { background-color: #fff1f1; }
+        .valor-entrada { color: #15803d; font-weight: bold; }
+        .valor-saida { color: #b91c1c; font-weight: bold; }
+        .tipo-entrada { color: #166534; font-weight: bold; }
+        .tipo-saida { color: #991b1b; font-weight: bold; }
         .signature-card { padding: 24px; }
         .signature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
         .signature-line { border-top: 1px solid var(--ink); padding-top: 34px; text-align: center; }
@@ -113,7 +143,21 @@
 
             <section class="section">
                 <h3>Movimentação Completa</h3>
-                <table>
+                <table class="audit-table">
+                    <colgroup>
+                        <col class="col-id">
+                        <col class="col-data">
+                        <col class="col-tipo">
+                        <col class="col-categoria">
+                        <col class="col-conta">
+                        <col class="col-descricao">
+                        <col class="col-doc">
+                        <col class="col-valor">
+                        <col class="col-saldo">
+                        <col class="col-origem">
+                        <col class="col-comp">
+                        <col class="col-obs">
+                    </colgroup>
                     <thead>
                         <tr>
                             <th class="center">ID</th>
@@ -132,28 +176,18 @@
                     </thead>
                     <tbody>
                         {% for item in todas_movimentacoes %}
-                        <tr>
+                        <tr class="{% if item.tipo == 'Entrada' %}linha-entrada{% else %}linha-saida{% endif %}">
                             <td class="center">{{ item.id }}</td>
                             <td class="center">{{ item.data.strftime('%d/%m/%Y') }}</td>
-                            <td>{{ item.tipo }}</td>
+                            <td><span class="{% if item.tipo == 'Entrada' %}tipo-entrada{% else %}tipo-saida{% endif %}">{{ item.tipo }}</span></td>
                             <td>{{ item.categoria }}</td>
                             <td>{{ item.conta }}</td>
                             <td>{{ item.descricao }}</td>
                             <td>{{ item.documento_ref }}</td>
-                            <td class="numeric">{{ item.valor|valor_com_cor|safe }}</td>
+                            <td class="numeric"><span class="{% if item.tipo == 'Entrada' %}valor-entrada{% else %}valor-saida{% endif %}">{{ "R$ %.2f"|format(item.valor)|replace(".", ",") }}</span></td>
                             <td class="numeric">{{ item.saldo_acumulado|valor_com_cor|safe }}</td>
                             <td>{{ item.origem }}</td>
-                            <td>
-                                <div class="comprovantes-list">
-                                    {% if item.comprovantes %}
-                                        {% for comprovante in item.comprovantes %}
-                                        <a href="{{ comprovante.url }}">{{ comprovante.nome }}</a>
-                                        {% endfor %}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </div>
-                            </td>
+                            <td class="center">{% if item.comprovantes %}Sim{% else %}-{% endif %}</td>
                             <td>{{ item.observacoes }}</td>
                         </tr>
                         {% endfor %}
