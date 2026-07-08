@@ -21,6 +21,7 @@ from app.notificacoes.notificacoes_routes import notificacoes_bp
 
 # Importar modelos para garantir registro no SQLAlchemy
 from app.financeiro.comprovante_model import Comprovante  # Necessário para relacionamento em Lancamento
+from app.financeiro.envios_sede_model import EnvioSede  # Controle de pagamentos de envio a sede
 from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes, HistoricoNotificacoes  # Modelos de notificações
 
 def create_app():
@@ -169,6 +170,21 @@ def create_app():
                         db.session.rollback()
         except Exception as e:
             pass  # Silenciosamente ignora erros de schema
+
+        try:
+            from sqlalchemy import inspect, text
+            inspector = inspect(db.engine)
+
+            if 'envios_sede' in inspector.get_table_names():
+                colunas = {col['name'] for col in inspector.get_columns('envios_sede')}
+                if 'lancamento_financeiro_id' not in colunas:
+                    try:
+                        db.session.execute(text('ALTER TABLE envios_sede ADD COLUMN lancamento_financeiro_id INTEGER'))
+                        db.session.commit()
+                    except:
+                        db.session.rollback()
+        except Exception as e:
+            pass
         
         # Iniciar scheduler de tarefas agendadas
         try:

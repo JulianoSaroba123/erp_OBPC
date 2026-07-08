@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Gerenciar Despesas Fixas - OBPC{% endblock %}
+{% block title %}Envio à Sede e Despesas Fixas - OBPC{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -8,7 +8,7 @@
         <div class="col-md-12">
             <!-- Cabeçalho -->
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2><i class="fas fa-cogs text-primary me-2"></i>Despesas Fixas do Conselho</h2>
+                <h2><i class="fas fa-cogs text-primary me-2"></i>Envio à Sede e Despesas Fixas</h2>
                 <div>
                     <button type="button" class="btn btn-info me-2" data-bs-toggle="modal" data-bs-target="#gerarLancamentosModal">
                         <i class="fas fa-magic me-1"></i> Gerar Lançamentos
@@ -67,6 +67,155 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controle de Repasse à Sede -->
+            <div class="row mb-4">
+                <div class="col-md-5">
+                    <div class="card border-primary h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fas fa-building me-2"></i>Controle de Repasse à Sede</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted mb-3">Competência {{ "%02d"|format(mes_ref) }}/{{ ano_ref }}</p>
+                            <table class="table table-sm mb-0">
+                                <tbody>
+                                    <tr><td>Saldo pendente anterior</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.saldo_pendente_anterior)|replace(".", ",") }}</strong></td></tr>
+                                    <tr><td>30% gerado no mês</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.trinta_gerado_mes)|replace(".", ",") }}</strong></td></tr>
+                                    <tr><td>Total devido</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.total_devido_mes)|replace(".", ",") }}</strong></td></tr>
+                                    <tr><td>Valor enviado no mês</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.valor_enviado_mes)|replace(".", ",") }}</strong></td></tr>
+                                    <tr class="table-light"><td><strong>Saldo pendente atual</strong></td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.saldo_pendente_atual)|replace(".", ",") }}</strong></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="card border-success h-100">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Registrar Pagamento de Repasse</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" enctype="multipart/form-data">
+                                <input type="hidden" name="acao" value="registrar_pagamento_sede">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Data pagamento</label>
+                                        <input type="date" class="form-control" name="data_pagamento" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Valor</label>
+                                        <input type="number" class="form-control" name="valor" step="0.01" min="0.01" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Forma pagamento</label>
+                                        <select class="form-select" name="forma_pagamento" required>
+                                            <option value="PIX">PIX</option>
+                                            <option value="Banco">Banco</option>
+                                            <option value="Dinheiro">Dinheiro</option>
+                                            <option value="TED">TED</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <label class="form-label">Competência (texto livre)</label>
+                                        <input type="text" class="form-control" name="competencia" placeholder="Ex: Janeiro a Junho/2026" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Mês ref.</label>
+                                        <select class="form-select" name="competencia_mes_ref">
+                                            <option value="">-</option>
+                                            {% for m in range(1, 13) %}
+                                            <option value="{{ m }}">{{ "%02d"|format(m) }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Ano ref.</label>
+                                        <input type="number" class="form-control" name="competencia_ano_ref" value="{{ ano_ref }}" min="2020" max="2035">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Comprovante</label>
+                                        <input type="file" class="form-control" name="comprovante_sede" accept=".pdf,.jpg,.jpeg,.png">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Observação</label>
+                                        <input type="text" class="form-control" name="observacao" placeholder="Ex: Quitação de saldo acumulado">
+                                    </div>
+                                </div>
+                                <div class="mt-3 d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i>Registrar Pagamento</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Histórico de Pagamentos à Sede</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Valor</th>
+                                    <th>Forma</th>
+                                    <th>Competência</th>
+                                    <th>Comprovante</th>
+                                    <th>Observação</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pagamento in historico_pagamentos %}
+                                <tr>
+                                    <td>{{ pagamento.data_pagamento.strftime('%d/%m/%Y') }}</td>
+                                    <td><strong>{{ "R$ %.2f"|format(pagamento.valor)|replace(".", ",") }}</strong></td>
+                                    <td>{{ pagamento.forma_pagamento }}</td>
+                                    <td>{{ pagamento.competencia }}</td>
+                                    <td>
+                                        {% if pagamento.comprovante %}
+                                        <a href="{{ pagamento.comprovante }}" target="_blank" rel="noopener">Abrir</a>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ pagamento.observacao or '-' }}</td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button"
+                                                    class="btn btn-outline-primary"
+                                                    data-pagamento-id="{{ pagamento.id }}"
+                                                    data-data-pagamento="{{ pagamento.data_pagamento.strftime('%Y-%m-%d') }}"
+                                                    data-valor="{{ pagamento.valor }}"
+                                                    data-forma-pagamento="{{ pagamento.forma_pagamento }}"
+                                                    data-competencia="{{ pagamento.competencia }}"
+                                                    data-competencia-mes-ref="{{ pagamento.competencia_mes_ref if pagamento.competencia_mes_ref is not none else '' }}"
+                                                    data-competencia-ano-ref="{{ pagamento.competencia_ano_ref if pagamento.competencia_ano_ref is not none else '' }}"
+                                                    data-observacao="{{ pagamento.observacao or '' }}"
+                                                    onclick="editarPagamentoSede(this)">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" class="d-inline" onsubmit="return confirm('Excluir este pagamento de repasse e seu lançamento financeiro?')">
+                                                <input type="hidden" name="acao" value="excluir_pagamento_sede">
+                                                <input type="hidden" name="pagamento_id" value="{{ pagamento.id }}">
+                                                <button type="submit" class="btn btn-outline-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr><td colspan="7" class="text-center text-muted">Nenhum pagamento de repasse registrado.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -148,6 +297,76 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Pagamento Sede -->
+<div class="modal fade" id="editarPagamentoSedeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Editar Pagamento de Repasse
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" enctype="multipart/form-data">
+                <input type="hidden" name="acao" value="editar_pagamento_sede">
+                <input type="hidden" id="edit_pagamento_id" name="pagamento_id">
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label">Data pagamento</label>
+                            <input type="date" class="form-control" id="edit_data_pagamento" name="data_pagamento" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Valor</label>
+                            <input type="number" class="form-control" id="edit_valor" name="valor" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Forma pagamento</label>
+                            <select class="form-select" id="edit_forma_pagamento" name="forma_pagamento" required>
+                                <option value="PIX">PIX</option>
+                                <option value="Banco">Banco</option>
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="TED">TED</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Competência (texto livre)</label>
+                            <input type="text" class="form-control" id="edit_competencia" name="competencia" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Mês ref.</label>
+                            <select class="form-select" id="edit_competencia_mes_ref" name="competencia_mes_ref">
+                                <option value="">-</option>
+                                {% for m in range(1, 13) %}
+                                <option value="{{ m }}">{{ "%02d"|format(m) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Ano ref.</label>
+                            <input type="number" class="form-control" id="edit_competencia_ano_ref" name="competencia_ano_ref" min="2020" max="2035">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Novo comprovante</label>
+                            <input type="file" class="form-control" name="comprovante_sede" accept=".pdf,.jpg,.jpeg,.png">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Observação</label>
+                            <input type="text" class="form-control" id="edit_observacao" name="observacao">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Atualizar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -419,6 +638,19 @@ function confirmarExclusao(id, nome) {
         document.body.appendChild(form);
         form.submit();
     }
+}
+
+function editarPagamentoSede(botao) {
+    document.getElementById('edit_pagamento_id').value = botao.dataset.pagamentoId || '';
+    document.getElementById('edit_data_pagamento').value = botao.dataset.dataPagamento || '';
+    document.getElementById('edit_valor').value = botao.dataset.valor || '';
+    document.getElementById('edit_forma_pagamento').value = botao.dataset.formaPagamento || 'PIX';
+    document.getElementById('edit_competencia').value = botao.dataset.competencia || '';
+    document.getElementById('edit_competencia_mes_ref').value = botao.dataset.competenciaMesRef || '';
+    document.getElementById('edit_competencia_ano_ref').value = botao.dataset.competenciaAnoRef || '';
+    document.getElementById('edit_observacao').value = botao.dataset.observacao || '';
+
+    new bootstrap.Modal(document.getElementById('editarPagamentoSedeModal')).show();
 }
 </script>
 {% endblock %}

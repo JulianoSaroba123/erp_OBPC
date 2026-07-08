@@ -188,6 +188,22 @@
             </article>
         </section>
 
+        <section class="table-card" style="margin-bottom: 22px;">
+            <div class="section-header"><h3>Controle de Repasse à Sede</h3><p>Competência x pagamento</p></div>
+            <table>
+                <tbody>
+                    <tr><td>Saldo pendente anterior</td><td class="numeric">{{ controle_repasse_sede.saldo_pendente_anterior|valor_com_cor|safe }}</td></tr>
+                    <tr><td>30% gerado no mês</td><td class="numeric">{{ controle_repasse_sede.trinta_gerado_mes|valor_com_cor|safe }}</td></tr>
+                    <tr><td>Total devido</td><td class="numeric">{{ controle_repasse_sede.total_devido_mes|valor_com_cor|safe }}</td></tr>
+                    <tr><td>Valor enviado no mês</td><td class="numeric">{{ controle_repasse_sede.valor_enviado_mes|valor_com_cor|safe }}</td></tr>
+                    <tr><td><strong>Saldo pendente atual</strong></td><td class="numeric"><strong>{{ controle_repasse_sede.saldo_pendente_atual|valor_com_cor|safe }}</strong></td></tr>
+                </tbody>
+            </table>
+            {% if observacao_repasse_automatica %}
+            <p class="toolbar-subtitle" style="margin-top: 12px;">{{ observacao_repasse_automatica }}</p>
+            {% endif %}
+        </section>
+
         <section class="grid-2">
             <article class="table-card">
                 <div class="section-header"><h3>Distribuição por Categoria</h3><p>Receitas</p></div>

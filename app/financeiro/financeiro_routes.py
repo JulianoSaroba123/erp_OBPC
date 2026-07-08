@@ -5,6 +5,7 @@ from app.financeiro.financeiro_model import Lancamento
 from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.despesas_fixas_model import DespesaFixaConselho
+from app.financeiro.envios_sede_model import EnvioSede
 from app.financeiro.recibo_model import Recibo
 from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
@@ -96,6 +97,74 @@ def obter_filtros_ativos():
             'logo': (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg'),
             'saldo_anterior': saldo_anterior
         }
+
+def _gerar_descricao_lancamento_repasse_sede(pagamento):
+    competencia = (pagamento.competencia or '').strip()
+    if competencia:
+        return f'Repasse à Sede - {competencia}'
+    if pagamento.competencia_mes_ref and pagamento.competencia_ano_ref:
+        return f'Repasse à Sede - {pagamento.competencia_mes_ref:02d}/{pagamento.competencia_ano_ref}'
+    return 'Repasse à Sede'
+
+
+def _rotulo_competencia_repasse(pagamento):
+    competencia = (pagamento.competencia or '').strip()
+    if competencia:
+        return competencia if competencia.lower().startswith(('competência', 'competencia')) else f'Competência {competencia}'
+    if pagamento.competencia_mes_ref and pagamento.competencia_ano_ref:
+        return f'Competência {pagamento.competencia_mes_ref:02d}/{pagamento.competencia_ano_ref}'
+    return ''
+
+
+def _gerar_observacao_lancamento_repasse_sede(pagamento):
+    partes = []
+    competencia = _rotulo_competencia_repasse(pagamento)
+    if competencia:
+        partes.append(competencia)
+
+    observacao = (pagamento.observacao or '').strip()
+    if observacao:
+        partes.append(observacao)
+
+    if partes:
+        return ' | '.join(partes)
+    return 'Pagamento de repasse à sede'
+
+
+def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
+    descricao = _gerar_descricao_lancamento_repasse_sede(pagamento)
+    valor = float(pagamento.valor or 0)
+    data_lancamento = pagamento.data_pagamento
+
+    lancamento = None
+    if pagamento.lancamento_financeiro_id:
+        lancamento = Lancamento.query.get(pagamento.lancamento_financeiro_id)
+
+    if lancamento is None:
+        lancamento = Lancamento(
+            data=data_lancamento,
+            tipo='Saída',
+            descricao=descricao,
+            valor=valor,
+            categoria='REPASSE À SEDE',
+            observacoes=_gerar_observacao_lancamento_repasse_sede(pagamento),
+            comprovante=pagamento.comprovante,
+        )
+        db.session.add(lancamento)
+        db.session.flush()
+        pagamento.lancamento_financeiro_id = lancamento.id
+    else:
+        lancamento.data = data_lancamento
+        lancamento.tipo = 'Saída'
+        lancamento.descricao = descricao
+        lancamento.valor = valor
+        lancamento.categoria = 'REPASSE À SEDE'
+        lancamento.observacoes = _gerar_observacao_lancamento_repasse_sede(pagamento)
+        lancamento.comprovante = pagamento.comprovante
+
+    if commit:
+        db.session.flush()
+    return lancamento
 
 
     def _agrupar_por_categoria_relatorio(lancamentos):
@@ -799,6 +868,8 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
         'total_envio_sede': totais_sede_base['valor_conselho'] + totais_gerencial['despesas_fixas_conselho']
     }
 
+    controle_repasse_sede = _montar_controle_repasse_sede(mes, ano, percentual_conselho)
+
     def percentual(categorias, total_base):
         total_base = float(total_base or 0)
         itens = []
@@ -856,6 +927,12 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
         'envios': envios,
         'envios_detalhados': envios_detalhados,
         'total_envio_sede': sum(envios.values()),
+        'controle_repasse_sede': controle_repasse_sede,
+        'observacao_repasse_automatica': (
+            'Os repasses registrados neste mês referem-se à quitação de competências anteriores, '
+            'mantendo inalterado o cálculo financeiro dos respectivos meses.'
+            if controle_repasse_sede['observacao_quitacao_competencia_anterior'] else None
+        ),
         'despesas_fixas_lista': despesas_fixas_lista,
         'resumo_executivo': resumo_executivo,
         'indicadores': indicadores,
@@ -3533,6 +3610,63 @@ def _calcular_totais_relatorio_sede(lancamentos, percentual_conselho=30.0):
 
     return totais
 
+
+def _iterar_meses_ate(mes, ano):
+    """Itera de 01/2020 até o mês/ano informado (inclusive)."""
+    ano_atual = 2020
+    mes_atual = 1
+    while (ano_atual < ano) or (ano_atual == ano and mes_atual <= mes):
+        yield mes_atual, ano_atual
+        mes_atual += 1
+        if mes_atual > 12:
+            mes_atual = 1
+            ano_atual += 1
+
+
+def _calcular_obrigacao_30_mes(mes, ano, percentual_conselho):
+    """Calcula a obrigacao mensal de 30% sem alterar qualquer regra existente."""
+    lancamentos_mes = Lancamento.query.filter(
+        extract('month', Lancamento.data) == mes,
+        extract('year', Lancamento.data) == ano
+    ).all()
+    totais = _calcular_totais_relatorio_sede(lancamentos_mes, percentual_conselho)
+    return float(totais.get('valor_conselho', 0.0) or 0.0)
+
+
+def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
+    """Monta quadro de controle de repasse por competencia (geracao) e pagamento (liquidacao)."""
+    obrigacao_mes = _calcular_obrigacao_30_mes(mes, ano, percentual_conselho)
+
+    obrigacoes_ate_anterior = 0.0
+    for mes_item, ano_item in _iterar_meses_ate(mes, ano):
+        if ano_item == ano and mes_item == mes:
+            break
+        obrigacoes_ate_anterior += _calcular_obrigacao_30_mes(mes_item, ano_item, percentual_conselho)
+
+    pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
+    pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
+
+    saldo_pendente_anterior = obrigacoes_ate_anterior - pagos_ate_anterior
+    total_devido = saldo_pendente_anterior + obrigacao_mes
+    saldo_pendente_atual = total_devido - pago_mes
+
+    pagamentos_mes = EnvioSede.listar_pagamentos_mes(mes, ano)
+    observacao_quitacao_competencia_anterior = any(
+        p.competencia_ano_ref is not None and p.competencia_mes_ref is not None and
+        ((p.competencia_ano_ref < ano) or (p.competencia_ano_ref == ano and p.competencia_mes_ref < mes))
+        for p in pagamentos_mes
+    )
+
+    return {
+        'saldo_pendente_anterior': saldo_pendente_anterior,
+        'trinta_gerado_mes': obrigacao_mes,
+        'total_devido_mes': total_devido,
+        'valor_enviado_mes': pago_mes,
+        'saldo_pendente_atual': saldo_pendente_atual,
+        'pagamentos_mes': pagamentos_mes,
+        'observacao_quitacao_competencia_anterior': observacao_quitacao_competencia_anterior,
+    }
+
 @financeiro_bp.route('/financeiro/relatorio-sede')
 @login_required
 def relatorio_sede():
@@ -3715,7 +3849,7 @@ def relatorio_obpc():
 @financeiro_bp.route('/financeiro/despesas-fixas', methods=['GET', 'POST'])
 @login_required
 def gerenciar_despesas_fixas():
-    """Interface para gerenciar despesas fixas do conselho"""
+    """Interface para gerenciar despesas fixas e controle de envio a sede."""
     try:
         # Processar ações de POST
         if request.method == 'POST':
@@ -3760,6 +3894,106 @@ def gerenciar_despesas_fixas():
                 
                 db.session.commit()
                 flash(f'Despesa fixa "{despesa.nome}" atualizada com sucesso!', 'success')
+
+            elif acao == 'registrar_pagamento_sede':
+                data_pagamento_raw = request.form.get('data_pagamento', '').strip()
+                valor = float(request.form.get('valor', 0) or 0)
+                forma_pagamento = request.form.get('forma_pagamento', 'PIX').strip() or 'PIX'
+                competencia = request.form.get('competencia', '').strip() or f'Competência {datetime.now().month:02d}/{datetime.now().year}'
+                observacao = request.form.get('observacao', '').strip() or None
+
+                if not data_pagamento_raw:
+                    flash('Informe a data do pagamento do repasse à sede.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                if valor <= 0:
+                    flash('O valor do pagamento deve ser maior que zero.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                try:
+                    data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date()
+                except ValueError:
+                    flash('Data de pagamento inválida.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                competencia_mes_ref = request.form.get('competencia_mes_ref', type=int)
+                competencia_ano_ref = request.form.get('competencia_ano_ref', type=int)
+
+                comprovante = None
+                file = request.files.get('comprovante_sede')
+                if file and file.filename:
+                    comprovante = processar_upload_comprovante(file)
+
+                pagamento = EnvioSede(
+                    data_pagamento=data_pagamento,
+                    valor=valor,
+                    forma_pagamento=forma_pagamento,
+                    competencia=competencia,
+                    competencia_mes_ref=competencia_mes_ref,
+                    competencia_ano_ref=competencia_ano_ref,
+                    comprovante=comprovante,
+                    observacao=observacao,
+                )
+                db.session.add(pagamento)
+                db.session.flush()
+                _sincronizar_lancamento_repasse_sede(pagamento)
+                db.session.commit()
+                flash('Pagamento de repasse à sede registrado com sucesso!', 'success')
+
+            elif acao == 'editar_pagamento_sede':
+                pagamento_id = request.form.get('pagamento_id', type=int)
+                pagamento = EnvioSede.query.get_or_404(pagamento_id)
+
+                data_pagamento_raw = request.form.get('data_pagamento', '').strip()
+                valor = float(request.form.get('valor', 0) or 0)
+                forma_pagamento = request.form.get('forma_pagamento', 'PIX').strip() or 'PIX'
+                competencia = request.form.get('competencia', '').strip() or f'Competência {datetime.now().month:02d}/{datetime.now().year}'
+                observacao = request.form.get('observacao', '').strip() or None
+
+                if not data_pagamento_raw:
+                    flash('Informe a data do pagamento do repasse à sede.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                if valor <= 0:
+                    flash('O valor do pagamento deve ser maior que zero.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                try:
+                    data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date()
+                except ValueError:
+                    flash('Data de pagamento inválida.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                competencia_mes_ref = request.form.get('competencia_mes_ref', type=int)
+                competencia_ano_ref = request.form.get('competencia_ano_ref', type=int)
+
+                if pagamento.comprovante:
+                    pagamento.comprovante = pagamento.comprovante
+                file = request.files.get('comprovante_sede')
+                if file and file.filename:
+                    pagamento.comprovante = processar_upload_comprovante(file)
+
+                pagamento.data_pagamento = data_pagamento
+                pagamento.valor = valor
+                pagamento.forma_pagamento = forma_pagamento
+                pagamento.competencia = competencia
+                pagamento.competencia_mes_ref = competencia_mes_ref
+                pagamento.competencia_ano_ref = competencia_ano_ref
+                pagamento.observacao = observacao
+                _sincronizar_lancamento_repasse_sede(pagamento)
+                db.session.commit()
+                flash('Pagamento de repasse à sede atualizado com sucesso!', 'success')
+
+            elif acao == 'excluir_pagamento_sede':
+                pagamento_id = request.form.get('pagamento_id', type=int)
+                pagamento = EnvioSede.query.get_or_404(pagamento_id)
+                if pagamento.lancamento_financeiro_id:
+                    lancamento = Lancamento.query.get(pagamento.lancamento_financeiro_id)
+                    if lancamento:
+                        db.session.delete(lancamento)
+                db.session.delete(pagamento)
+                db.session.commit()
+                flash('Pagamento de repasse à sede excluído com sucesso!', 'success')
             
             return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
         
@@ -3767,6 +4001,16 @@ def gerenciar_despesas_fixas():
         despesas_todas = DespesaFixaConselho.query.order_by(DespesaFixaConselho.nome).all()
         despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
         total_despesas = DespesaFixaConselho.obter_total_despesas_fixas()
+
+        # Dados do controle de repasse
+        hoje = datetime.now()
+        mes_ref = request.args.get('mes', hoje.month, type=int)
+        ano_ref = request.args.get('ano', hoje.year, type=int)
+
+        config = Configuracao.obter_configuracao()
+        percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
+        controle_repasse_sede = _montar_controle_repasse_sede(mes_ref, ano_ref, percentual_conselho)
+        historico_pagamentos = EnvioSede.query.order_by(EnvioSede.data_pagamento.desc(), EnvioSede.id.desc()).limit(100).all()
         
         # Buscar categorias de saída dos lançamentos (para usar nas despesas fixas)
         categorias_saida = db.session.query(Lancamento.categoria).distinct().filter(
@@ -3779,12 +4023,24 @@ def gerenciar_despesas_fixas():
                              despesas_todas=despesas_todas,
                              despesas_ativas=despesas_ativas,
                              total_despesas=total_despesas,
-                             categorias_saida=categorias_saida)
+                             categorias_saida=categorias_saida,
+                             controle_repasse_sede=controle_repasse_sede,
+                             historico_pagamentos=historico_pagamentos,
+                             mes_ref=mes_ref,
+                             ano_ref=ano_ref,
+                             now=hoje)
     
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao gerenciar despesas fixas: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
+
+
+@financeiro_bp.route('/financeiro/envio-sede', methods=['GET', 'POST'])
+@login_required
+def envio_sede():
+    """Atalho de navegação para a tela unificada de envio à sede."""
+    return gerenciar_despesas_fixas()
 
 @financeiro_bp.route('/financeiro/despesas-fixas/toggle/<int:id>')
 @login_required

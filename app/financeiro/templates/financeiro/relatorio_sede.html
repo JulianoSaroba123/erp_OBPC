@@ -198,6 +198,24 @@
             <div class="separator"></div>
 
             <section>
+                <h3 class="section-title">Controle de Repasse a Sede</h3>
+                <table class="official-table">
+                    <tbody>
+                        <tr><td class="label">Saldo pendente anterior</td><td class="value">{{ controle_repasse_sede.saldo_pendente_anterior|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">30% gerado no mes</td><td class="value">{{ controle_repasse_sede.trinta_gerado_mes|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Total devido</td><td class="value">{{ controle_repasse_sede.total_devido_mes|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Valor enviado no mes</td><td class="value">{{ controle_repasse_sede.valor_enviado_mes|valor_com_cor|safe }}</td></tr>
+                        <tr class="total"><td class="label">Saldo pendente atual</td><td class="value">{{ controle_repasse_sede.saldo_pendente_atual|valor_com_cor|safe }}</td></tr>
+                    </tbody>
+                </table>
+                {% if observacao_repasse_automatica %}
+                <p class="muted-note" style="margin-top: 10px;">{{ observacao_repasse_automatica }}</p>
+                {% endif %}
+            </section>
+
+            <div class="separator"></div>
+
+            <section>
                 <h3 class="section-title">Valores Destinados a Sede</h3>
                 <table class="official-table">
                     <tbody>
