@@ -389,6 +389,11 @@
                                         <strong>excluindo</strong> outras ofertas e ofertas OMN.
                                     </small>
                                 </div>
+
+                                <div class="alert alert-light border mt-3">
+                                    <h6 class="fw-bold mb-2">JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE</h6>
+                                    <div style="white-space: pre-line;">{{ observacao_repasse_sede or '-' }}</div>
+                                </div>
                                 
                                 <div class="progress mb-2" style="height: 25px;">
                                     {% set percentual_entradas = (totais.total_entradas / (totais.total_entradas + totais.total_saidas) * 100) if (totais.total_entradas + totais.total_saidas) > 0 else 0 %}
