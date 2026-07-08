@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Auditoria {{ "%02d"|format(mes) }}/{{ ano }}</title>
+    <style>
+        :root {
+            --ink: #111827;
+            --muted: #6b7280;
+            --line: #d7dde8;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --brand: #16324f;
+            --accent: #0f766e;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; color: var(--ink); background: #eff4f8; }
+        .page { max-width: 1280px; margin: 0 auto; padding: 28px; }
+        .report-toolbar, .document, .signature-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 40px rgba(15, 23, 42, .05); }
+        .report-toolbar { padding: 24px; margin-bottom: 20px; }
+        .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-size: 11px; }
+        .toolbar-subtitle { margin: 6px 0 0; color: var(--muted); }
+        .toolbar-form { display: grid; gap: 16px; margin-top: 18px; }
+        .toolbar-panel, .toolbar-grid, .toolbar-actions, .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .toolbar-panel { flex-direction: column; }
+        .toolbar-label { font-size: 12px; text-transform: uppercase; color: var(--muted); }
+        .radio-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-soft); }
+        select, .btn-primary-soft, .btn-outline-soft, .btn-dark-soft { min-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); font: inherit; }
+        .btn-primary-soft, .btn-outline-soft, .btn-dark-soft { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
+        .btn-primary-soft { background: var(--brand); color: #fff; border-color: var(--brand); }
+        .btn-outline-soft { background: transparent; color: var(--brand); }
+        .btn-dark-soft { background: #111827; color: #fff; border-color: #111827; }
+        .document { padding: 28px; }
+        .header { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+        .header h1, .header p { margin: 0; }
+        .header p { color: var(--muted); margin-top: 8px; }
+        .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .stat { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+        .stat strong { display: block; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; margin-bottom: 8px; }
+        .stat span { font-size: 24px; font-weight: 700; }
+        .section { margin-bottom: 22px; }
+        .section h3 { margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; font-size: 13px; color: var(--accent); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid var(--line); padding: 9px 10px; font-size: 12px; vertical-align: top; }
+        th { background: #f3f6fb; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+        td.numeric, th.numeric { text-align: right; }
+        td.center, th.center { text-align: center; }
+        tbody tr:nth-child(even) { background: #fbfdff; }
+        .comprovantes-list { display: flex; flex-direction: column; gap: 4px; }
+        .comprovantes-list a { color: var(--brand); text-decoration: none; }
+        .signature-card { padding: 24px; }
+        .signature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
+        .signature-line { border-top: 1px solid var(--ink); padding-top: 34px; text-align: center; }
+
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+            @bottom-right { content: "Página " counter(page) " de " counter(pages); font-size: 10px; color: #475569; }
+        }
+
+        @media print {
+            body { background: #fff; }
+            .page { max-width: none; padding: 0; }
+            .report-toolbar { display: none; }
+            .document, .signature-card, .stat { box-shadow: none; break-inside: avoid; }
+        }
+
+        @media (max-width: 980px) {
+            .header, .stats, .signature-grid { grid-template-columns: 1fr; display: grid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        {% set titulo_toolbar = 'Relatório de Auditoria' %}
+        {% include 'financeiro/_relatorio_toolbar.html' %}
+
+        <section class="document">
+            <header class="header">
+                <div>
+                    <p class="eyebrow">Fiscalização e Arquivo</p>
+                    <h1>Relatório de Auditoria Financeira</h1>
+                    <p>{{ dados_igreja.nome }} | {{ "%02d"|format(mes) }}/{{ ano }} | Emissão {{ data_geracao.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+                <div>
+                    <p><strong>Pastor:</strong> {{ dados_igreja.pastor }}</p>
+                    <p><strong>Tesoureiro:</strong> {{ dados_igreja.tesoureiro }}</p>
+                    <p><strong>Total de Comprovantes:</strong> {{ total_comprovantes }}</p>
+                </div>
+            </header>
+
+            <div class="stats">
+                <div class="stat"><strong>Saldo Inicial</strong><span>{{ totais_gerencial.saldo_anterior|valor_com_cor|safe }}</span></div>
+                <div class="stat"><strong>Entradas</strong><span>{{ totais_gerencial.total_entradas|valor_com_cor|safe }}</span></div>
+                <div class="stat"><strong>Saídas</strong><span>{{ totais_gerencial.total_saidas|valor_com_cor|safe }}</span></div>
+                <div class="stat"><strong>Saldo Acumulado</strong><span>{{ totais_gerencial.saldo_acumulado|valor_com_cor|safe }}</span></div>
+            </div>
+
+            <section class="section">
+                <h3>Resumo Financeiro</h3>
+                <table>
+                    <tbody>
+                        <tr><td>Total de dízimos</td><td class="numeric">{{ totais_gerencial.total_dizimos|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Total de ofertas</td><td class="numeric">{{ totais_gerencial.total_ofertas|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Outras ofertas</td><td class="numeric">{{ totais_gerencial.total_outras_ofertas|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Oferta OMN</td><td class="numeric">{{ totais_gerencial.total_oferta_omn|valor_com_cor|safe }}</td></tr>
+                        <tr><td>30% Conselho</td><td class="numeric">{{ totais_gerencial.trinta_porcento_conselho|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Despesas fixas</td><td class="numeric">{{ totais_gerencial.despesas_fixas_conselho|valor_com_cor|safe }}</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="section">
+                <h3>Movimentação Completa</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="center">ID</th>
+                            <th class="center">Data</th>
+                            <th>Tipo</th>
+                            <th>Categoria</th>
+                            <th>Conta</th>
+                            <th>Descrição</th>
+                            <th>Documento / Ref.</th>
+                            <th class="numeric">Valor</th>
+                            <th class="numeric">Saldo Acumulado</th>
+                            <th>Origem</th>
+                            <th>Comprovantes</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in todas_movimentacoes %}
+                        <tr>
+                            <td class="center">{{ item.id }}</td>
+                            <td class="center">{{ item.data.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ item.tipo }}</td>
+                            <td>{{ item.categoria }}</td>
+                            <td>{{ item.conta }}</td>
+                            <td>{{ item.descricao }}</td>
+                            <td>{{ item.documento_ref }}</td>
+                            <td class="numeric">{{ item.valor|valor_com_cor|safe }}</td>
+                            <td class="numeric">{{ item.saldo_acumulado|valor_com_cor|safe }}</td>
+                            <td>{{ item.origem }}</td>
+                            <td>
+                                <div class="comprovantes-list">
+                                    {% if item.comprovantes %}
+                                        {% for comprovante in item.comprovantes %}
+                                        <a href="{{ comprovante.url }}">{{ comprovante.nome }}</a>
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>{{ item.observacoes }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        </section>
+
+        <section class="signature-card" style="margin-top: 18px;">
+            <div class="section"><h3>Assinaturas</h3></div>
+            <div class="signature-grid">
+                <div class="signature-line">{{ dados_igreja.pastor }}<br>Pastor</div>
+                <div class="signature-line">{{ dados_igreja.tesoureiro }}<br>Tesoureiro</div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

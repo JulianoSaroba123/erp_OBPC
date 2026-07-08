@@ -45,6 +45,814 @@ def obter_filtros_ativos():
     
     return filtros
 
+
+    def _resolver_mes_ano_relatorio(mes=None, ano=None):
+        """Normaliza mês/ano para os relatórios mensais."""
+        hoje = datetime.now()
+        mes = mes if mes is not None else request.args.get('mes', type=int)
+        ano = ano if ano is not None else request.args.get('ano', type=int)
+
+        if mes is None:
+            mes = hoje.month
+        if ano is None:
+            ano = hoje.year
+
+        if mes < 1 or mes > 12:
+            mes = hoje.month
+        if ano < 2020 or ano > 2035:
+            ano = hoje.year
+
+        return mes, ano
+
+
+    def _eh_destinacao_relatorio(categoria):
+        categoria = (categoria or '').lower()
+        return any(x in categoria for x in [
+            'destinação', 'destinacao',
+            'transferência interna', 'transferencia interna'
+        ])
+
+
+    def _obter_lancamentos_relatorio_mensal(mes, ano):
+        return Lancamento.query.filter(
+            extract('month', Lancamento.data) == mes,
+            extract('year', Lancamento.data) == ano
+        ).order_by(
+            Lancamento.data.asc(),
+            Lancamento.id.asc()
+        ).all()
+
+
+    def _obter_dados_igreja_relatorio(config, saldo_anterior=0):
+        return {
+            'nome': (config.nome_igreja if config and hasattr(config, 'nome_igreja') and config.nome_igreja else 'OBPC - O Brasil para Cristo'),
+            'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else 'Tietê'),
+            'bairro': (config.bairro if config and hasattr(config, 'bairro') and config.bairro else 'Centro'),
+            'endereco': (config.endereco if config and hasattr(config, 'endereco') and config.endereco else ''),
+            'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
+            'pastor': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
+            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)'),
+            'logo': (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg'),
+            'saldo_anterior': saldo_anterior
+        }
+
+
+    def _agrupar_por_categoria_relatorio(lancamentos):
+        entradas = {}
+        saidas = {}
+
+        for lancamento in lancamentos:
+            categoria = lancamento.categoria or 'Sem categoria'
+            valor = float(lancamento.valor or 0)
+
+            if lancamento.tipo == 'Entrada':
+                entradas[categoria] = entradas.get(categoria, 0) + valor
+            elif lancamento.tipo == 'Saída' and not _eh_destinacao_relatorio(lancamento.categoria):
+                saidas[categoria] = saidas.get(categoria, 0) + valor
+
+        entradas_ordenadas = dict(sorted(entradas.items(), key=lambda item: item[0].lower()))
+        saidas_ordenadas = dict(sorted(saidas.items(), key=lambda item: item[0].lower()))
+        return entradas_ordenadas, saidas_ordenadas
+
+
+    def _obter_comprovantes_lancamento_relatorio(lancamento):
+        comprovantes = []
+
+        if lancamento.comprovante and lancamento.comprovante.strip():
+            comprovantes.append({
+                'nome': lancamento.nome_arquivo_comprovante() or 'Comprovante',
+                'url': lancamento.comprovante,
+                'origem': 'legado'
+            })
+
+        try:
+            for comprovante in lancamento.comprovantes.all():
+                comprovantes.append({
+                    'nome': comprovante.nome_original or comprovante.nome_arquivo() or 'Comprovante',
+                    'url': comprovante.arquivo,
+                    'origem': 'relacionado'
+                })
+        except Exception:
+            pass
+
+        return comprovantes
+
+
+    def _montar_movimentacao_relatorio(lancamentos, saldo_anterior):
+        movimentacao = []
+        saldo_acumulado = float(saldo_anterior or 0)
+
+        for lancamento in lancamentos:
+            valor = float(lancamento.valor or 0)
+            eh_destinacao = lancamento.tipo == 'Saída' and _eh_destinacao_relatorio(lancamento.categoria)
+
+            entrada = valor if lancamento.tipo == 'Entrada' else 0.0
+            saida = valor if lancamento.tipo == 'Saída' and not eh_destinacao else 0.0
+
+            saldo_acumulado += entrada
+            saldo_acumulado -= saida
+
+            movimentacao.append({
+                'id': lancamento.id,
+                'data': lancamento.data,
+                'tipo': lancamento.tipo,
+                'categoria': lancamento.categoria or 'Sem categoria',
+                'descricao': lancamento.descricao or '-',
+                'conta': lancamento.conta or '-',
+                'observacoes': lancamento.observacoes or '-',
+                'valor': valor,
+                'entrada': entrada,
+                'saida': saida,
+                'saldo_acumulado': saldo_acumulado,
+                'origem': lancamento.origem or '-',
+                'documento_ref': lancamento.documento_ref or '-',
+                'eh_destinacao': eh_destinacao,
+                'comprovantes': _obter_comprovantes_lancamento_relatorio(lancamento),
+                'total_comprovantes': lancamento.total_comprovantes() if hasattr(lancamento, 'total_comprovantes') else 0
+            })
+
+        return movimentacao
+
+
+    def _calcular_totais_relatorio_gerencial(lancamentos, mes, ano, config):
+        totais = {
+            'entradas_banco': 0,
+            'entradas_dinheiro': 0,
+            'dizimos_banco': 0,
+            'dizimos_dinheiro': 0,
+            'ofertas_banco': 0,
+            'ofertas_dinheiro': 0,
+            'outras_ofertas_banco': 0,
+            'outras_ofertas_dinheiro': 0,
+            'oferta_omn_banco': 0,
+            'oferta_omn_dinheiro': 0,
+            'saidas_banco': 0,
+            'saidas_dinheiro': 0,
+            'descontos': 0,
+            'total_entradas': 0,
+            'total_saidas': 0,
+            'total_dizimos': 0,
+            'total_ofertas': 0,
+            'total_outras_ofertas': 0,
+            'total_oferta_omn': 0,
+            'total_dizimos_ofertas': 0,
+            'percentual_30': 0,
+            'saldo_anterior': Lancamento.calcular_saldo_ate_mes_anterior(mes, ano),
+            'saldo_mes': 0,
+            'saldo_acumulado': 0,
+            'saldo_real_disponivel': 0,
+            'trinta_porcento_conselho': 0,
+            'despesas_fixas_conselho': 0,
+            'total_envio_sede': 0
+        }
+
+        for lancamento in lancamentos:
+            conta = lancamento.conta.lower() if lancamento.conta else 'dinheiro'
+            categoria = lancamento.categoria.lower() if lancamento.categoria else ''
+            valor = float(lancamento.valor or 0)
+
+            if lancamento.tipo == 'Entrada':
+                if 'banco' in conta or 'pix' in conta:
+                    totais['entradas_banco'] += valor
+                else:
+                    totais['entradas_dinheiro'] += valor
+
+                if 'dízimo' in categoria or 'dizimo' in categoria:
+                    if 'banco' in conta or 'pix' in conta:
+                        totais['dizimos_banco'] += valor
+                    else:
+                        totais['dizimos_dinheiro'] += valor
+                elif 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                    if 'banco' in conta or 'pix' in conta:
+                        totais['oferta_omn_banco'] += valor
+                    else:
+                        totais['oferta_omn_dinheiro'] += valor
+                elif 'oferta' in categoria and any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                    if 'banco' in conta or 'pix' in conta:
+                        totais['outras_ofertas_banco'] += valor
+                    else:
+                        totais['outras_ofertas_dinheiro'] += valor
+                elif 'oferta' in categoria:
+                    if 'banco' in conta or 'pix' in conta:
+                        totais['ofertas_banco'] += valor
+                    else:
+                        totais['ofertas_dinheiro'] += valor
+
+                totais['total_entradas'] += valor
+
+            elif lancamento.tipo == 'Saída' and not _eh_destinacao_relatorio(categoria):
+                if 'banco' in conta or 'pix' in conta:
+                    totais['saidas_banco'] += valor
+                else:
+                    totais['saidas_dinheiro'] += valor
+
+                totais['total_saidas'] += valor
+
+                if 'desconto' in categoria or 'taxa' in categoria:
+                    totais['descontos'] += valor
+
+        totais['total_dizimos'] = totais['dizimos_banco'] + totais['dizimos_dinheiro']
+        totais['total_ofertas'] = totais['ofertas_banco'] + totais['ofertas_dinheiro']
+        totais['total_outras_ofertas'] = totais['outras_ofertas_banco'] + totais['outras_ofertas_dinheiro']
+        totais['total_oferta_omn'] = totais['oferta_omn_banco'] + totais['oferta_omn_dinheiro']
+        totais['total_dizimos_ofertas'] = totais['total_dizimos'] + totais['total_ofertas']
+        totais['percentual_30'] = totais['total_dizimos_ofertas'] * 0.30
+        totais['saldo_mes'] = totais['total_entradas'] - totais['total_saidas']
+        totais['saldo_acumulado'] = totais['saldo_anterior'] + totais['saldo_mes']
+
+        percentual = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
+        valor_administrativo = totais['total_dizimos_ofertas'] * (percentual / 100)
+
+        try:
+            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+            total_despesas_fixas = sum(d.valor_padrao for d in despesas_fixas) if despesas_fixas else 0
+        except Exception:
+            total_despesas_fixas = 0
+
+        totais['trinta_porcento_conselho'] = valor_administrativo
+        totais['despesas_fixas_conselho'] = total_despesas_fixas
+        totais['total_envio_sede'] = valor_administrativo + total_despesas_fixas
+        totais['saldo_real_disponivel'] = totais['saldo_acumulado']
+
+        return totais
+
+
+    def _montar_outras_entradas_relatorio(lancamentos):
+        outras_entradas_detalhes = []
+
+        for lancamento in lancamentos:
+            if lancamento.tipo != 'Entrada':
+                continue
+
+            categoria = (lancamento.categoria or '').lower()
+            if 'dízimo' in categoria or 'dizimo' in categoria:
+                continue
+            if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                continue
+            if 'oferta' in categoria:
+                continue
+
+            outras_entradas_detalhes.append({
+                'data': lancamento.data,
+                'categoria': lancamento.categoria or 'Sem categoria',
+                'descricao': lancamento.descricao or '-',
+                'valor': float(lancamento.valor or 0)
+            })
+
+        return sorted(outras_entradas_detalhes, key=lambda item: item['data'])
+
+
+    def _calcular_envios_relatorio_sede(lancamentos):
+        envios = {
+            'oferta_voluntaria_conchas': 0.0,
+            'site': 0.0,
+            'projeto_filipe': 0.0,
+            'forca_para_viver': 0.0,
+            'contador_sede': 0.0
+        }
+
+        envios_detalhados = {
+            'oferta_voluntaria_conchas': [],
+            'site': [],
+            'projeto_filipe': [],
+            'forca_para_viver': [],
+            'contador_sede': [],
+            'omn': []
+        }
+
+        mapeamento_envios = {
+            'oferta_voluntaria_conchas': ['conchas', 'voluntaria conchas', 'oferta voluntaria conchas'],
+            'site': ['site'],
+            'projeto_filipe': ['projeto filipe', 'filipe'],
+            'forca_para_viver': ['força para viver', 'forca para viver'],
+            'contador_sede': ['contador sede', 'contador']
+        }
+
+        for lancamento in [item for item in lancamentos if item.tipo == 'Saída']:
+            if not lancamento.descricao:
+                continue
+
+            descricao_lower = lancamento.descricao.lower()
+            for chave, termos_busca in mapeamento_envios.items():
+                encontrado = False
+                for termo in termos_busca:
+                    if termo in descricao_lower:
+                        envios[chave] += float(lancamento.valor or 0)
+                        envios_detalhados[chave].append({
+                            'data': lancamento.data,
+                            'descricao': lancamento.descricao,
+                            'valor': float(lancamento.valor or 0),
+                            'conta': lancamento.conta
+                        })
+                        encontrado = True
+                        break
+                if encontrado:
+                    break
+
+        for lancamento in lancamentos:
+            if lancamento.tipo == 'Entrada' and lancamento.categoria:
+                categoria_lower = lancamento.categoria.lower()
+                if 'omn' in categoria_lower or 'missionaria' in categoria_lower:
+                    envios_detalhados['omn'].append({
+                        'data': lancamento.data,
+                        'descricao': lancamento.categoria,
+                        'conta': getattr(lancamento, 'conta', None),
+                        'valor': float(lancamento.valor or 0)
+                    })
+
+        return envios, envios_detalhados, sum(envios.values())
+
+
+    def _montar_despesas_fixas_relatorio():
+        try:
+            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+        except Exception:
+            despesas_fixas = []
+
+        lista = [
+            {
+                'nome': despesa.nome,
+                'valor': float(despesa.valor_padrao or 0)
+            }
+            for despesa in despesas_fixas
+        ]
+        total = sum(item['valor'] for item in lista)
+        return lista, total
+
+
+    def _montar_indicadores_financeiros_relatorio(totais):
+        total_entradas = float(totais.get('total_entradas', 0) or 0)
+        total_saidas = float(totais.get('total_saidas', 0) or 0)
+        saldo_acumulado = float(totais.get('saldo_acumulado', 0) or 0)
+
+        if total_entradas > 0:
+            percentual_despesas = (total_saidas / total_entradas) * 100
+            percentual_saldo = (saldo_acumulado / total_entradas) * 100
+        else:
+            percentual_despesas = 0
+            percentual_saldo = 0
+
+        return {
+            'percentual_despesas': percentual_despesas,
+            'percentual_saldo': percentual_saldo,
+            'margem_operacional': total_entradas - total_saidas,
+            'nivel_caixa': 'Saudável' if saldo_acumulado >= 0 else 'Atenção'
+        }
+
+
+    def _montar_distribuicao_percentual_relatorio(categorias, total_base):
+        distribuicao = []
+        total_base = float(total_base or 0)
+
+        for nome, valor in categorias.items():
+            percentual = (float(valor or 0) / total_base * 100) if total_base else 0
+            distribuicao.append({
+                'categoria': nome,
+                'valor': float(valor or 0),
+                'percentual': percentual
+            })
+
+        return sorted(distribuicao, key=lambda item: item['valor'], reverse=True)
+
+
+    def _montar_evolucao_financeira_relatorio(lancamentos_todos, ano_referencia, mes_referencia, meses=6):
+        inicio = max(1, mes_referencia - (meses - 1))
+        evolucao = []
+
+        for mes in range(inicio, mes_referencia + 1):
+            entradas = 0
+            saidas = 0
+
+            for lancamento in lancamentos_todos:
+                if not lancamento.data or lancamento.data.year != ano_referencia or lancamento.data.month != mes:
+                    continue
+
+                valor = float(lancamento.valor or 0)
+                if lancamento.tipo == 'Entrada':
+                    entradas += valor
+                elif lancamento.tipo == 'Saída' and not _eh_destinacao_relatorio(lancamento.categoria):
+                    saidas += valor
+
+            evolucao.append({
+                'mes': mes,
+                'ano': ano_referencia,
+                'entradas': entradas,
+                'saidas': saidas,
+                'saldo': entradas - saidas
+            })
+
+        return evolucao
+
+
+    def _montar_resumo_executivo_relatorio(totais):
+        saldo = float(totais.get('saldo_acumulado', 0) or 0)
+        entradas = float(totais.get('total_entradas', 0) or 0)
+        saidas = float(totais.get('total_saidas', 0) or 0)
+
+        if entradas == 0 and saidas == 0:
+            return 'Período sem movimentação financeira registrada.'
+        if saldo >= 0 and entradas >= saidas:
+            return 'O período fechou com superávit operacional e manutenção do caixa em nível estável.'
+        if saldo >= 0:
+            return 'O período fechou com saldo positivo, porém com pressão maior das despesas sobre o caixa.'
+        return 'O período fechou com déficit operacional e requer atenção imediata sobre despesas e recomposição de caixa.'
+
+
+    def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
+        """Centraliza a montagem de dados dos relatórios financeiros sem alterar as regras existentes."""
+        tipo_relatorio = (tipo_relatorio or 'gerencial').lower()
+        if tipo_relatorio not in {'gerencial', 'sede', 'auditoria'}:
+            tipo_relatorio = 'gerencial'
+
+        mes, ano = _resolver_mes_ano_relatorio(mes, ano)
+        config = Configuracao.obter_configuracao()
+        lancamentos = _obter_lancamentos_relatorio_mensal(mes, ano)
+        todos_lancamentos = Lancamento.query.order_by(Lancamento.data.asc(), Lancamento.id.asc()).all()
+
+        percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
+        totais_gerencial = _calcular_totais_relatorio_gerencial(lancamentos, mes, ano, config)
+        totais_sede = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
+        entradas_por_categoria, saidas_por_categoria = _agrupar_por_categoria_relatorio(lancamentos)
+        movimentacao = _montar_movimentacao_relatorio(lancamentos, totais_gerencial['saldo_anterior'])
+        outras_entradas_detalhes = _montar_outras_entradas_relatorio(lancamentos)
+        envios, envios_detalhados, total_envio_sede = _calcular_envios_relatorio_sede(lancamentos)
+        despesas_fixas_lista, total_despesas_fixas = _montar_despesas_fixas_relatorio()
+        dados_igreja = _obter_dados_igreja_relatorio(config, totais_gerencial['saldo_anterior'])
+
+        totais_sede_apresentacao = {
+            'saldo_inicial': totais_gerencial['saldo_anterior'],
+            'entradas': totais_gerencial['total_entradas'],
+            'saidas': totais_gerencial['total_saidas'],
+            'saldo_final': totais_gerencial['saldo_mes'],
+            'saldo_acumulado': totais_gerencial['saldo_acumulado'],
+            'dizimos': totais_sede['dizimos'],
+            'ofertas_alcadas': totais_sede['ofertas_alcadas'],
+            'outras_ofertas': totais_sede['outras_ofertas'],
+            'oferta_omn': totais_sede['oferta_omn'],
+            'outras_entradas': totais_sede['outras_entradas'],
+            'despesas_financeiras': totais_sede['despesas_financeiras'],
+            'valor_conselho': totais_sede['valor_conselho'],
+            'percentual_30': percentual_conselho,
+            'despesas_fixas': total_despesas_fixas,
+            'total_envio_sede': totais_sede['valor_conselho'] + total_despesas_fixas
+        }
+
+        return {
+            'tipo_relatorio': tipo_relatorio,
+            'mes': mes,
+            'ano': ano,
+            'config': config,
+            'data_geracao': datetime.now(),
+            'dados_igreja': dados_igreja,
+            'lancamentos': lancamentos,
+            'movimentacao': movimentacao,
+            'todas_movimentacoes': movimentacao,
+            'entradas_por_categoria': entradas_por_categoria,
+            'saidas_por_categoria': saidas_por_categoria,
+            'totais_gerencial': totais_gerencial,
+            'totais_sede': totais_sede_apresentacao,
+            'totais': totais_gerencial,
+            'outras_entradas_detalhes': outras_entradas_detalhes,
+            'envios': envios,
+            'envios_detalhados': envios_detalhados,
+            'total_envio_sede': total_envio_sede,
+            'despesas_fixas_lista': despesas_fixas_lista,
+            'resumo_executivo': _montar_resumo_executivo_relatorio(totais_gerencial),
+            'indicadores': _montar_indicadores_financeiros_relatorio(totais_gerencial),
+            'distribuicao_receitas': _montar_distribuicao_percentual_relatorio(entradas_por_categoria, totais_gerencial['total_entradas']),
+            'distribuicao_despesas': _montar_distribuicao_percentual_relatorio(saidas_por_categoria, totais_gerencial['total_saidas']),
+            'evolucao_financeira': _montar_evolucao_financeira_relatorio(todos_lancamentos, ano, mes),
+            'total_comprovantes': sum(item['total_comprovantes'] for item in movimentacao),
+            'template_relatorio': f'financeiro/relatorio_{tipo_relatorio}.html'
+        }
+
+def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
+    """Centraliza a montagem de dados dos relatórios financeiros sem alterar as regras existentes."""
+    tipo_relatorio = (tipo_relatorio or 'gerencial').lower()
+    if tipo_relatorio not in {'gerencial', 'sede', 'auditoria'}:
+        tipo_relatorio = 'gerencial'
+
+    hoje = datetime.now()
+    mes = mes if mes is not None else request.args.get('mes', type=int)
+    ano = ano if ano is not None else request.args.get('ano', type=int)
+    mes = mes if mes and 1 <= mes <= 12 else hoje.month
+    ano = ano if ano and 2020 <= ano <= 2035 else hoje.year
+
+    def eh_destinacao(categoria):
+        categoria = (categoria or '').lower()
+        return any(x in categoria for x in [
+            'destinação', 'destinacao',
+            'transferência interna', 'transferencia interna'
+        ])
+
+    def obter_comprovantes(lancamento):
+        comprovantes = []
+
+        if lancamento.comprovante and lancamento.comprovante.strip():
+            comprovantes.append({
+                'nome': lancamento.nome_arquivo_comprovante() or 'Comprovante',
+                'url': lancamento.comprovante,
+                'origem': 'legado'
+            })
+
+        try:
+            for comprovante in lancamento.comprovantes.all():
+                comprovantes.append({
+                    'nome': comprovante.nome_original or comprovante.nome_arquivo() or 'Comprovante',
+                    'url': comprovante.arquivo,
+                    'origem': 'relacionado'
+                })
+        except Exception:
+            pass
+
+        return comprovantes
+
+    config = Configuracao.obter_configuracao()
+    lancamentos = Lancamento.query.filter(
+        extract('month', Lancamento.data) == mes,
+        extract('year', Lancamento.data) == ano
+    ).order_by(Lancamento.data.asc(), Lancamento.id.asc()).all()
+    todos_lancamentos = Lancamento.query.order_by(Lancamento.data.asc(), Lancamento.id.asc()).all()
+
+    saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
+    dados_igreja = {
+        'nome': (config.nome_igreja if config and hasattr(config, 'nome_igreja') and config.nome_igreja else 'OBPC - O Brasil para Cristo'),
+        'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else 'Tietê'),
+        'bairro': (config.bairro if config and hasattr(config, 'bairro') and config.bairro else 'Centro'),
+        'endereco': (config.endereco if config and hasattr(config, 'endereco') and config.endereco else ''),
+        'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
+        'pastor': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
+        'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)'),
+        'logo': (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg'),
+        'saldo_anterior': saldo_anterior
+    }
+
+    totais_gerencial = {
+        'entradas_banco': 0,
+        'entradas_dinheiro': 0,
+        'dizimos_banco': 0,
+        'dizimos_dinheiro': 0,
+        'ofertas_banco': 0,
+        'ofertas_dinheiro': 0,
+        'outras_ofertas_banco': 0,
+        'outras_ofertas_dinheiro': 0,
+        'oferta_omn_banco': 0,
+        'oferta_omn_dinheiro': 0,
+        'saidas_banco': 0,
+        'saidas_dinheiro': 0,
+        'descontos': 0,
+        'total_entradas': 0,
+        'total_saidas': 0,
+        'total_dizimos': 0,
+        'total_ofertas': 0,
+        'total_outras_ofertas': 0,
+        'total_oferta_omn': 0,
+        'total_dizimos_ofertas': 0,
+        'percentual_30': 0,
+        'saldo_anterior': saldo_anterior,
+        'saldo_mes': 0,
+        'saldo_acumulado': 0,
+        'saldo_real_disponivel': 0,
+        'trinta_porcento_conselho': 0,
+        'despesas_fixas_conselho': 0,
+        'total_envio_sede': 0
+    }
+
+    entradas_por_categoria = {}
+    saidas_por_categoria = {}
+    outras_entradas_detalhes = []
+    movimentacao = []
+    saldo_acumulado = float(saldo_anterior or 0)
+
+    for lancamento in lancamentos:
+        conta = lancamento.conta.lower() if lancamento.conta else 'dinheiro'
+        categoria = lancamento.categoria.lower() if lancamento.categoria else ''
+        categoria_original = lancamento.categoria or 'Sem categoria'
+        valor = float(lancamento.valor or 0)
+        destino = eh_destinacao(categoria)
+
+        if lancamento.tipo == 'Entrada':
+            entradas_por_categoria[categoria_original] = entradas_por_categoria.get(categoria_original, 0) + valor
+
+            if 'banco' in conta or 'pix' in conta:
+                totais_gerencial['entradas_banco'] += valor
+            else:
+                totais_gerencial['entradas_dinheiro'] += valor
+
+            if 'dízimo' in categoria or 'dizimo' in categoria:
+                if 'banco' in conta or 'pix' in conta:
+                    totais_gerencial['dizimos_banco'] += valor
+                else:
+                    totais_gerencial['dizimos_dinheiro'] += valor
+            elif 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
+                if 'banco' in conta or 'pix' in conta:
+                    totais_gerencial['oferta_omn_banco'] += valor
+                else:
+                    totais_gerencial['oferta_omn_dinheiro'] += valor
+            elif 'oferta' in categoria and any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                if 'banco' in conta or 'pix' in conta:
+                    totais_gerencial['outras_ofertas_banco'] += valor
+                else:
+                    totais_gerencial['outras_ofertas_dinheiro'] += valor
+            elif 'oferta' in categoria:
+                if 'banco' in conta or 'pix' in conta:
+                    totais_gerencial['ofertas_banco'] += valor
+                else:
+                    totais_gerencial['ofertas_dinheiro'] += valor
+            else:
+                outras_entradas_detalhes.append({
+                    'data': lancamento.data,
+                    'categoria': categoria_original,
+                    'descricao': lancamento.descricao or '-',
+                    'valor': valor
+                })
+
+            totais_gerencial['total_entradas'] += valor
+            saldo_acumulado += valor
+        elif lancamento.tipo == 'Saída':
+            if not destino:
+                saidas_por_categoria[categoria_original] = saidas_por_categoria.get(categoria_original, 0) + valor
+                if 'banco' in conta or 'pix' in conta:
+                    totais_gerencial['saidas_banco'] += valor
+                else:
+                    totais_gerencial['saidas_dinheiro'] += valor
+
+                totais_gerencial['total_saidas'] += valor
+                saldo_acumulado -= valor
+
+                if 'desconto' in categoria or 'taxa' in categoria:
+                    totais_gerencial['descontos'] += valor
+
+        movimentacao.append({
+            'id': lancamento.id,
+            'data': lancamento.data,
+            'tipo': lancamento.tipo,
+            'categoria': categoria_original,
+            'descricao': lancamento.descricao or '-',
+            'conta': lancamento.conta or '-',
+            'observacoes': lancamento.observacoes or '-',
+            'valor': valor,
+            'entrada': valor if lancamento.tipo == 'Entrada' else 0.0,
+            'saida': valor if lancamento.tipo == 'Saída' and not destino else 0.0,
+            'saldo_acumulado': saldo_acumulado,
+            'origem': lancamento.origem or '-',
+            'documento_ref': lancamento.documento_ref or '-',
+            'eh_destinacao': destino,
+            'comprovantes': obter_comprovantes(lancamento),
+            'total_comprovantes': lancamento.total_comprovantes() if hasattr(lancamento, 'total_comprovantes') else 0
+        })
+
+    totais_gerencial['total_dizimos'] = totais_gerencial['dizimos_banco'] + totais_gerencial['dizimos_dinheiro']
+    totais_gerencial['total_ofertas'] = totais_gerencial['ofertas_banco'] + totais_gerencial['ofertas_dinheiro']
+    totais_gerencial['total_outras_ofertas'] = totais_gerencial['outras_ofertas_banco'] + totais_gerencial['outras_ofertas_dinheiro']
+    totais_gerencial['total_oferta_omn'] = totais_gerencial['oferta_omn_banco'] + totais_gerencial['oferta_omn_dinheiro']
+    totais_gerencial['total_dizimos_ofertas'] = totais_gerencial['total_dizimos'] + totais_gerencial['total_ofertas']
+    totais_gerencial['percentual_30'] = totais_gerencial['total_dizimos_ofertas'] * 0.30
+    totais_gerencial['saldo_mes'] = totais_gerencial['total_entradas'] - totais_gerencial['total_saidas']
+    totais_gerencial['saldo_acumulado'] = totais_gerencial['saldo_anterior'] + totais_gerencial['saldo_mes']
+    totais_gerencial['saldo_real_disponivel'] = totais_gerencial['saldo_acumulado']
+
+    percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
+    totais_gerencial['trinta_porcento_conselho'] = totais_gerencial['total_dizimos_ofertas'] * (percentual_conselho / 100)
+
+    despesas_fixas_lista = []
+    try:
+        despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+        for despesa in despesas_fixas:
+            despesas_fixas_lista.append({'nome': despesa.nome, 'valor': float(despesa.valor_padrao or 0)})
+    except Exception:
+        despesas_fixas_lista = []
+
+    totais_gerencial['despesas_fixas_conselho'] = sum(item['valor'] for item in despesas_fixas_lista)
+    totais_gerencial['total_envio_sede'] = totais_gerencial['trinta_porcento_conselho'] + totais_gerencial['despesas_fixas_conselho']
+
+    envios = {
+        'oferta_voluntaria_conchas': 0.0,
+        'site': 0.0,
+        'projeto_filipe': 0.0,
+        'forca_para_viver': 0.0,
+        'contador_sede': 0.0
+    }
+    envios_detalhados = {
+        'oferta_voluntaria_conchas': [],
+        'site': [],
+        'projeto_filipe': [],
+        'forca_para_viver': [],
+        'contador_sede': [],
+        'omn': []
+    }
+    mapeamento_envios = {
+        'oferta_voluntaria_conchas': ['conchas', 'voluntaria conchas', 'oferta voluntaria conchas'],
+        'site': ['site'],
+        'projeto_filipe': ['projeto filipe', 'filipe'],
+        'forca_para_viver': ['força para viver', 'forca para viver'],
+        'contador_sede': ['contador sede', 'contador']
+    }
+    for lancamento in [item for item in lancamentos if item.tipo == 'Saída' and item.descricao]:
+        descricao_lower = lancamento.descricao.lower()
+        for chave, termos in mapeamento_envios.items():
+            matched = False
+            for termo in termos:
+                if termo in descricao_lower:
+                    envios[chave] += float(lancamento.valor or 0)
+                    envios_detalhados[chave].append({'data': lancamento.data, 'descricao': lancamento.descricao, 'valor': float(lancamento.valor or 0), 'conta': lancamento.conta})
+                    matched = True
+                    break
+            if matched:
+                break
+    for lancamento in lancamentos:
+        if lancamento.tipo == 'Entrada' and lancamento.categoria:
+            categoria_lower = lancamento.categoria.lower()
+            if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
+                envios_detalhados['omn'].append({'data': lancamento.data, 'descricao': lancamento.categoria, 'conta': getattr(lancamento, 'conta', None), 'valor': float(lancamento.valor or 0)})
+
+    totais_sede_base = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
+    totais_sede = {
+        'saldo_inicial': saldo_anterior,
+        'entradas': totais_gerencial['total_entradas'],
+        'saidas': totais_gerencial['total_saidas'],
+        'saldo_final': totais_gerencial['saldo_mes'],
+        'saldo_acumulado': totais_gerencial['saldo_acumulado'],
+        'dizimos': totais_sede_base['dizimos'],
+        'ofertas_alcadas': totais_sede_base['ofertas_alcadas'],
+        'outras_ofertas': totais_sede_base['outras_ofertas'],
+        'oferta_omn': totais_sede_base['oferta_omn'],
+        'outras_entradas': totais_sede_base['outras_entradas'],
+        'despesas_financeiras': totais_sede_base['despesas_financeiras'],
+        'valor_conselho': totais_sede_base['valor_conselho'],
+        'percentual_30': percentual_conselho,
+        'despesas_fixas': totais_gerencial['despesas_fixas_conselho'],
+        'total_envio_sede': totais_sede_base['valor_conselho'] + totais_gerencial['despesas_fixas_conselho']
+    }
+
+    def percentual(categorias, total_base):
+        total_base = float(total_base or 0)
+        itens = []
+        for nome, valor in categorias.items():
+            itens.append({'categoria': nome, 'valor': float(valor or 0), 'percentual': ((float(valor or 0) / total_base) * 100) if total_base else 0})
+        return sorted(itens, key=lambda item: item['valor'], reverse=True)
+
+    evolucao_financeira = []
+    inicio_mes = max(1, mes - 5)
+    for mes_item in range(inicio_mes, mes + 1):
+        entradas = 0
+        saidas = 0
+        for lancamento in todos_lancamentos:
+            if not lancamento.data or lancamento.data.year != ano or lancamento.data.month != mes_item:
+                continue
+            valor = float(lancamento.valor or 0)
+            if lancamento.tipo == 'Entrada':
+                entradas += valor
+            elif lancamento.tipo == 'Saída' and not eh_destinacao(lancamento.categoria):
+                saidas += valor
+        evolucao_financeira.append({'mes': mes_item, 'ano': ano, 'entradas': entradas, 'saidas': saidas, 'saldo': entradas - saidas})
+
+    indicadores = {
+        'percentual_despesas': ((totais_gerencial['total_saidas'] / totais_gerencial['total_entradas']) * 100) if totais_gerencial['total_entradas'] else 0,
+        'percentual_saldo': ((totais_gerencial['saldo_acumulado'] / totais_gerencial['total_entradas']) * 100) if totais_gerencial['total_entradas'] else 0,
+        'margem_operacional': totais_gerencial['total_entradas'] - totais_gerencial['total_saidas'],
+        'nivel_caixa': 'Saudável' if totais_gerencial['saldo_acumulado'] >= 0 else 'Atenção'
+    }
+
+    if totais_gerencial['total_entradas'] == 0 and totais_gerencial['total_saidas'] == 0:
+        resumo_executivo = 'Período sem movimentação financeira registrada.'
+    elif totais_gerencial['saldo_acumulado'] >= 0 and totais_gerencial['total_entradas'] >= totais_gerencial['total_saidas']:
+        resumo_executivo = 'O período fechou com superávit operacional e manutenção do caixa em nível estável.'
+    elif totais_gerencial['saldo_acumulado'] >= 0:
+        resumo_executivo = 'O período fechou com saldo positivo, porém com pressão maior das despesas sobre o caixa.'
+    else:
+        resumo_executivo = 'O período fechou com déficit operacional e requer atenção imediata sobre despesas e recomposição de caixa.'
+
+    return {
+        'tipo_relatorio': tipo_relatorio,
+        'mes': mes,
+        'ano': ano,
+        'config': config,
+        'data_geracao': datetime.now(),
+        'dados_igreja': dados_igreja,
+        'lancamentos': lancamentos,
+        'movimentacao': movimentacao,
+        'todas_movimentacoes': movimentacao,
+        'entradas_por_categoria': dict(sorted(entradas_por_categoria.items(), key=lambda item: item[0].lower())),
+        'saidas_por_categoria': dict(sorted(saidas_por_categoria.items(), key=lambda item: item[0].lower())),
+        'totais_gerencial': totais_gerencial,
+        'totais_sede': totais_sede,
+        'totais': totais_gerencial,
+        'outras_entradas_detalhes': sorted(outras_entradas_detalhes, key=lambda item: item['data']),
+        'envios': envios,
+        'envios_detalhados': envios_detalhados,
+        'total_envio_sede': sum(envios.values()),
+        'despesas_fixas_lista': despesas_fixas_lista,
+        'resumo_executivo': resumo_executivo,
+        'indicadores': indicadores,
+        'distribuicao_receitas': percentual(entradas_por_categoria, totais_gerencial['total_entradas']),
+        'distribuicao_despesas': percentual(saidas_por_categoria, totais_gerencial['total_saidas']),
+        'evolucao_financeira': evolucao_financeira,
+        'total_comprovantes': sum(item['total_comprovantes'] for item in movimentacao),
+        'template_relatorio': f'financeiro/relatorio_{tipo_relatorio}.html'
+    }
+
+
 @financeiro_bp.route('/financeiro/dashboard')
 @login_required
 def dashboard_moderno():
@@ -2314,22 +3122,41 @@ def excluir_comprovante_multiplo(comprovante_id):
 @financeiro_bp.route('/financeiro/relatorio')
 @login_required
 def gerar_relatorio():
-    """Gera relatório dos lançamentos"""
+    """Tela centralizada dos relatórios financeiros com seletor de apresentação."""
     try:
-        # Buscar todos os lançamentos
-        lancamentos = Lancamento.query.order_by(Lancamento.data.desc()).all()
-        totais = Lancamento.calcular_totais()
-        
-        # Por enquanto, vamos gerar um relatório simples em HTML
-        # que pode ser impresso ou salvo como PDF pelo browser
-        return render_template('financeiro/relatorio.html', 
-                             lancamentos=lancamentos, 
-                             totais=totais,
-                             data_geracao=datetime.now())
-        
+        tipo_relatorio = request.args.get('tipo_relatorio', 'gerencial')
+        contexto = gerar_dados_relatorio(tipo_relatorio)
+        return render_template(contexto['template_relatorio'], **contexto)
     except Exception as e:
         flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
+
+
+@financeiro_bp.route('/financeiro/relatorio/pdf')
+@login_required
+def relatorio_pdf():
+    """Gera PDF a partir do template selecionado, preservando as regras financeiras."""
+    try:
+        from weasyprint import HTML
+
+        tipo_relatorio = request.args.get('tipo_relatorio', 'gerencial')
+        contexto = gerar_dados_relatorio(tipo_relatorio)
+        html = render_template(contexto['template_relatorio'], modo_pdf=True, **contexto)
+
+        pdf_buffer = io.BytesIO()
+        HTML(string=html, base_url=request.url_root).write_pdf(pdf_buffer)
+        pdf_buffer.seek(0)
+
+        nome_arquivo = gerar_nome_arquivo_relatorio(tipo_relatorio, contexto['mes'], contexto['ano'])
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name=nome_arquivo
+        )
+    except Exception as e:
+        flash(f'Erro ao gerar PDF do relatório: {str(e)}', 'danger')
+        return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio=request.args.get('tipo_relatorio', 'gerencial'), mes=request.args.get('mes'), ano=request.args.get('ano')))
 
 @financeiro_bp.route('/financeiro/debug-outras-ofertas')
 @login_required
@@ -2625,214 +3452,8 @@ def debug_saldo_banco():
 @financeiro_bp.route('/financeiro/relatorio-caixa')
 @login_required
 def relatorio_caixa():
-    """Gera relatório de caixa interno mensal"""
-    current_app.logger.info('>>> ENTRANDO EM relatorio_caixa()')
-    try:
-        # Pegar mês e ano da query string com validação
-        mes = request.args.get('mes', type=int)
-        ano = request.args.get('ano', type=int)
-        current_app.logger.info(f'>>> Parâmetros recebidos: mes={mes}, ano={ano}')
-        
-        # Se não foram fornecidos na URL, usar o mês/ano atual
-        hoje = datetime.now()
-        if mes is None:
-            mes = hoje.month
-        if ano is None:
-            ano = hoje.year
-        
-        current_app.logger.info(f'>>> Usando: mes={mes}, ano={ano}')
-        
-        # Validar valores
-        if mes < 1 or mes > 12:
-            mes = hoje.month
-        if ano < 2020 or ano > 2030:
-            ano = hoje.year
-        
-        current_app.logger.info(f'>>> Após validação: mes={mes}, ano={ano}')
-        
-        # Filtrar lançamentos do mês
-        lancamentos = Lancamento.query.filter(
-            extract('month', Lancamento.data) == mes,
-            extract('year', Lancamento.data) == ano
-        ).all()
-        
-        current_app.logger.info(f'>>> Lançamentos encontrados: {len(lancamentos)}')
-        
-        # Se não há lançamentos no mês atual (sem parâmetros explícitos), redirecionar
-        # para o último mês com dados, evitando relatório em branco
-        if not lancamentos and not request.args.get('mes') and not request.args.get('ano'):
-            from sqlalchemy import func, desc as sqldesc
-            ultimo_com_dados = db.session.query(
-                extract('year', Lancamento.data).label('ano'),
-                extract('month', Lancamento.data).label('mes')
-            ).filter(Lancamento.data.isnot(None)).group_by('ano', 'mes').order_by(
-                sqldesc('ano'), sqldesc('mes')
-            ).first()
-            if ultimo_com_dados:
-                mes = int(ultimo_com_dados.mes)
-                ano = int(ultimo_com_dados.ano)
-                current_app.logger.info(f'>>> Redirecionando para último mês com dados: {mes}/{ano}')
-                return redirect(url_for('financeiro.relatorio_caixa', mes=mes, ano=ano))
-        
-        if lancamentos:
-            current_app.logger.info(f'>>> Primeiro lançamento: {lancamentos[0].descricao} - {lancamentos[0].data}')
-        
-        # Inicializar totais (PIX agrupado com BANCO)
-        totais = {
-            'entradas_banco': 0,
-            'entradas_dinheiro': 0,
-            'dizimos_banco': 0,
-            'dizimos_dinheiro': 0,
-            'ofertas_banco': 0,
-            'ofertas_dinheiro': 0,
-            'outras_ofertas_banco': 0,
-            'outras_ofertas_dinheiro': 0,
-            'oferta_omn_banco': 0,
-            'oferta_omn_dinheiro': 0,
-            'saidas_banco': 0,
-            'saidas_dinheiro': 0,
-            'descontos': 0,
-            'total_entradas': 0,
-            'total_saidas': 0,
-            'total_dizimos': 0,
-            'total_ofertas': 0,
-            'total_outras_ofertas': 0,
-            'total_oferta_omn': 0,
-            'total_dizimos_ofertas': 0,
-            'percentual_30': 0,
-            'saldo_anterior': Lancamento.calcular_saldo_ate_mes_anterior(mes, ano),
-            'saldo_mes': 0,
-            'saldo_acumulado': 0
-        }
-        
-        # Processar lançamentos
-        for lancamento in lancamentos:
-            conta = lancamento.conta.lower() if lancamento.conta else 'dinheiro'
-            categoria = lancamento.categoria.lower() if lancamento.categoria else ''
-            valor = lancamento.valor or 0
-            
-            if lancamento.tipo == 'Entrada':
-                # Entradas por conta (PIX agrupado com BANCO)
-                if 'banco' in conta or 'pix' in conta:
-                    totais['entradas_banco'] += valor
-                else:
-                    totais['entradas_dinheiro'] += valor
-                
-                # Dízimos por conta (PIX agrupado com BANCO)
-                if 'dízimo' in categoria or 'dizimo' in categoria:
-                    if 'banco' in conta or 'pix' in conta:
-                        totais['dizimos_banco'] += valor
-                    else:
-                        totais['dizimos_dinheiro'] += valor
-                
-                # Verificar primeiro as categorias específicas (mais restritivas)
-                # Oferta OMN (verificar primeiro para evitar confusão)
-                elif 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
-                    if 'banco' in conta or 'pix' in conta:
-                        totais['oferta_omn_banco'] += valor
-                    else:
-                        totais['oferta_omn_dinheiro'] += valor
-                
-                # Outras ofertas (verificar antes das ofertas normais)
-                elif 'oferta' in categoria and any(x in categoria for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
-                    if 'banco' in conta or 'pix' in conta:
-                        totais['outras_ofertas_banco'] += valor
-                    else:
-                        totais['outras_ofertas_dinheiro'] += valor
-                
-                # Ofertas Alçadas (ofertas normais do ofertório - só o que sobrou)
-                elif 'oferta' in categoria:
-                    if 'banco' in conta or 'pix' in conta:
-                        totais['ofertas_banco'] += valor
-                    else:
-                        totais['ofertas_dinheiro'] += valor
-                
-                totais['total_entradas'] += valor
-            
-            elif lancamento.tipo == 'Saída':
-                # Verificar se é uma "Destinação" (não afeta saldo do caixa)
-                # Destinações são registros de onde o dinheiro foi destinado,
-                # mas já entrou no caixa como entrada, então não deve sair novamente
-                eh_destinacao = any(x in categoria for x in [
-                    'destinação', 'destinacao', 
-                    'transferência interna', 'transferencia interna'
-                ])
-                
-                # Apenas contabilizar como saída se NÃO for destinação
-                if not eh_destinacao:
-                    # Saídas por conta (PIX agrupado com BANCO)
-                    if 'banco' in conta or 'pix' in conta:
-                        totais['saidas_banco'] += valor
-                    else:
-                        totais['saidas_dinheiro'] += valor
-                    
-                    totais['total_saidas'] += valor
-                    
-                    # Descontos (categorias específicas)
-                    if 'desconto' in categoria or 'taxa' in categoria:
-                        totais['descontos'] += valor
-        
-        # Calcular totais consolidados
-        totais['total_dizimos'] = totais['dizimos_banco'] + totais['dizimos_dinheiro']
-        totais['total_ofertas'] = totais['ofertas_banco'] + totais['ofertas_dinheiro']
-        totais['total_outras_ofertas'] = totais['outras_ofertas_banco'] + totais['outras_ofertas_dinheiro']
-        totais['total_oferta_omn'] = totais['oferta_omn_banco'] + totais['oferta_omn_dinheiro']
-        
-        # Total para cálculo dos 30% (apenas dízimos + ofertas normais)
-        totais['total_dizimos_ofertas'] = totais['total_dizimos'] + totais['total_ofertas']
-        
-        # Calcular 30% sobre dízimos e ofertas (excluindo outras ofertas e OMN)
-        totais['percentual_30'] = totais['total_dizimos_ofertas'] * 0.30
-        
-        # Calcular saldos
-        totais['saldo_mes'] = totais['total_entradas'] - totais['total_saidas']
-        totais['saldo_acumulado'] = totais['saldo_anterior'] + totais['saldo_mes']
-        
-        # Calcular 30% administrativo e despesas fixas
-        base_calculo_30 = totais['total_dizimos'] + totais['total_ofertas']
-        current_app.logger.info('>>> Obtendo configuração...')
-        config = Configuracao.obter_configuracao()
-        current_app.logger.info(f'>>> Config obtida: {config}')
-        percentual = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
-        valor_administrativo = base_calculo_30 * (percentual / 100)
-        
-        # Buscar despesas fixas ativas
-        try:
-            total_despesas_fixas = 0
-            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
-            if despesas_fixas:
-                total_despesas_fixas = sum(d.valor_padrao for d in despesas_fixas)
-        except Exception as e:
-            print(f"Erro ao buscar despesas fixas: {e}")
-            total_despesas_fixas = 0
-        
-        # Adicionar ao dict totais
-        totais['trinta_porcento_conselho'] = valor_administrativo
-        totais['despesas_fixas_conselho'] = total_despesas_fixas
-        totais['total_envio_sede'] = valor_administrativo + total_despesas_fixas
-        # Saldo real disponível = saldo acumulado (não subtrair total_envio_sede pois já está nas saídas)
-        totais['saldo_real_disponivel'] = totais['saldo_acumulado']
-        
-        # Buscar dados de configuração da igreja
-        dados_igreja = {
-            'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
-            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)')
-        }
-        
-        current_app.logger.info('>>> Renderizando template relatorio_caixa.html')
-        return render_template('financeiro/relatorio_caixa.html',
-                             totais=totais,
-                             mes=mes,
-                             ano=ano,
-                             dados_igreja=dados_igreja,
-                             data_geracao=datetime.now())
-        
-    except Exception as e:
-        current_app.logger.error(f'>>> ERRO em relatorio_caixa: {str(e)}')
-        import traceback
-        current_app.logger.error(f'>>> TRACEBACK: {traceback.format_exc()}')
-        flash(f'Erro ao gerar relatório de caixa: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.lista_lancamentos'))
+    """Mantém compatibilidade redirecionando para o relatório gerencial centralizado."""
+    return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio='gerencial', mes=request.args.get('mes', type=int), ano=request.args.get('ano', type=int)))
 
 
 def _calcular_totais_relatorio_sede(lancamentos, percentual_conselho=30.0):
@@ -2890,156 +3511,15 @@ def _calcular_totais_relatorio_sede(lancamentos, percentual_conselho=30.0):
 @financeiro_bp.route('/financeiro/relatorio-sede')
 @login_required
 def relatorio_sede():
-    """Gera relatório oficial para igreja sede"""
-    from datetime import date
-    from app.configuracoes.configuracoes_model import Configuracao
-    from app.financeiro.financeiro_model import Lancamento
-    from sqlalchemy import and_, extract
-    
-    try:
-        # Obter parâmetros da URL ou valores padrão
-        mes = int(request.args.get('mes', date.today().month))
-        ano = int(request.args.get('ano', date.today().year))
-        
-        # Buscar dados da configuração
-        config = Configuracao.obter_configuracao()
-        
-        # Calcular saldo anterior (até o final do mês anterior)
-        saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
-        
-        # Buscar dados da igreja de forma defensiva
-        dados_igreja = {
-            'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else 'Tietê'),
-            'bairro': (config.bairro if config and hasattr(config, 'bairro') and config.bairro else 'Centro'), 
-            'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
-            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)'),
-            'saldo_anterior': saldo_anterior
-        }
-        
-        # Buscar lançamentos do mês/ano
-        lancamentos = Lancamento.query.filter(
-            and_(
-                extract('month', Lancamento.data) == mes,
-                extract('year', Lancamento.data) == ano
-            )
-        ).all()
-        
-        percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
-        totais = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
+    """Mantém compatibilidade redirecionando para o relatório oficial centralizado."""
+    return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio='sede', mes=request.args.get('mes', type=int), ano=request.args.get('ano', type=int)))
 
-        # Detalhar entradas que nao se encaixam em dizimos/ofertas para facilitar auditoria.
-        outras_entradas_detalhes = []
-        for l in lancamentos:
-            if l.tipo != 'Entrada':
-                continue
 
-            categoria = (l.categoria or '').lower()
-            if 'dízimo' in categoria or 'dizimo' in categoria:
-                continue
-            if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
-                continue
-            if 'oferta' in categoria:
-                continue
-
-            outras_entradas_detalhes.append({
-                'data': l.data,
-                'categoria': l.categoria or 'Sem categoria',
-                'descricao': l.descricao or '-',
-                'valor': float(l.valor or 0)
-            })
-
-        outras_entradas_detalhes = sorted(outras_entradas_detalhes, key=lambda x: x['data'])
-        
-        # Buscar envios para sede baseados nas saídas
-        try:
-            # Buscar lançamentos de saída que correspondem aos envios
-            lancamentos_saida = [l for l in lancamentos if l.tipo == 'Saída']
-            
-            envios = {
-                'oferta_voluntaria_conchas': 0.0,
-                'site': 0.0,
-                'projeto_filipe': 0.0,
-                'forca_para_viver': 0.0,
-                'contador_sede': 0.0
-            }
-            
-            # Lista detalhada para o PDF
-            envios_detalhados = {
-                'oferta_voluntaria_conchas': [],
-                'site': [],
-                'projeto_filipe': [],
-                'forca_para_viver': [],
-                'contador_sede': [],
-                'omn': []
-            }
-            
-            # Mapear descrições para chaves
-            mapeamento_envios = {
-                'oferta_voluntaria_conchas': ['conchas', 'voluntaria conchas', 'oferta voluntaria conchas'],
-                'site': ['site'],
-                'projeto_filipe': ['projeto filipe', 'filipe'],
-                'forca_para_viver': ['força para viver', 'forca para viver'],
-                'contador_sede': ['contador sede', 'contador']
-            }
-            
-            # Buscar valores nos lançamentos de saída
-            for lancamento in lancamentos_saida:
-                if lancamento.descricao:
-                    descricao_lower = lancamento.descricao.lower()
-                    
-                    # Verificar cada tipo de envio
-                    for chave, termos_busca in mapeamento_envios.items():
-                        for termo in termos_busca:
-                            if termo in descricao_lower:
-                                envios[chave] += lancamento.valor
-                                # Adicionar detalhes para o PDF
-                                envios_detalhados[chave].append({
-                                    'data': lancamento.data,
-                                    'descricao': lancamento.descricao,
-                                    'valor': lancamento.valor,
-                                    'conta': lancamento.conta
-                                })
-                                break  # Para evitar dupla contagem
-            
-            total_envio_sede = sum(envios.values())
-            
-        except Exception as e:
-            current_app.logger.error(f"Erro ao buscar envios: {e}")
-            envios = {}
-            envios_detalhados = {}
-            total_envio_sede = 0
-        
-        return render_template('financeiro/relatorio_sede.html',
-                             dados_igreja=dados_igreja,
-                             totais=totais,
-                             outras_entradas_detalhes=outras_entradas_detalhes,
-                             envios=envios,
-                             envios_detalhados=envios_detalhados,
-                             total_envio_sede=total_envio_sede,
-                             mes=mes,
-                             ano=ano,
-                             data_geracao=date.today())
-        
-    except Exception as e:
-        current_app.logger.error(f"Erro ao gerar relatório da sede: {e}")
-        import traceback
-        current_app.logger.error(f"Traceback: {traceback.format_exc()}")
-        flash(f'Erro ao gerar relatório da sede: {str(e)}', 'danger')
-        # Tentar novamente com valores padrão do mês atual
-        from datetime import date
-        mes_atual = date.today().month
-        ano_atual = date.today().year
-        
-        return render_template('financeiro/relatorio_sede.html',
-                             dados_igreja={'cidade': 'Tietê', 'bairro': 'Centro', 'dirigente': 'Pastor', 'tesoureiro': 'Tesoureiro', 'saldo_anterior': 0},
-                             totais={'dizimos': 0, 'ofertas_alcadas': 0, 'outras_ofertas': 0, 'oferta_omn': 0, 'outras_entradas': 0, 'total_geral': 0, 'despesas_financeiras': 0, 'saldo_mes': 0, 'valor_conselho': 0, 'total_dizimos_ofertas': 0, 'percentual_30': 0},
-                             outras_entradas_detalhes=[],
-                             envios={},
-                             envios_detalhados={},
-                             total_envio_sede=0,
-                             mes=mes_atual,
-                             ano=ano_atual,
-                             data_geracao=date.today())
+@financeiro_bp.route('/financeiro/relatorio-auditoria')
+@login_required
+def relatorio_auditoria():
+    """Relatório completo para auditoria utilizando o mesmo conjunto de dados financeiros."""
+    return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio='auditoria', mes=request.args.get('mes', type=int), ano=request.args.get('ano', type=int)))
 
 @financeiro_bp.route('/financeiro/relatorio-obpc')
 @login_required
@@ -3473,375 +3953,14 @@ def gerar_lancamento_administrativo():
 @financeiro_bp.route('/financeiro/relatorio-caixa/preview')
 @login_required
 def relatorio_caixa_preview():
-    """Preview HTML do relatório de caixa antes de gerar PDF"""
-    current_app.logger.info('>>> ENTRANDO EM relatorio_caixa_preview()')
-    try:
-        # Pegar mês e ano da query string com validação
-        mes = request.args.get('mes', type=int)
-        ano = request.args.get('ano', type=int)
-        current_app.logger.info(f'>>> Parâmetros recebidos: mes={mes}, ano={ano}')
-        
-        # Se não foram fornecidos na URL, usar o mês/ano atual
-        hoje = datetime.now()
-        if mes is None:
-            mes = hoje.month
-        if ano is None:
-            ano = hoje.year
-        
-        current_app.logger.info(f'>>> Usando: mes={mes}, ano={ano}')
-        
-        # Validar valores
-        if mes < 1 or mes > 12:
-            mes = hoje.month
-        if ano < 2020 or ano > 2030:
-            ano = hoje.year
-        
-        current_app.logger.info(f'>>> Após validação: mes={mes}, ano={ano}')
-        
-        # Filtrar lançamentos do mês
-        lancamentos = Lancamento.query.filter(
-            extract('month', Lancamento.data) == mes,
-            extract('year', Lancamento.data) == ano
-        ).all()
-        
-        current_app.logger.info(f'>>> Lançamentos encontrados para preview: {len(lancamentos)}')
-        
-        # Calcular totais (usando mesma lógica da rota principal)
-        totais = {
-            'entradas_banco': 0,
-            'entradas_dinheiro': 0,
-            'entradas_pix': 0,
-            'total_entradas': 0,
-            'saidas_banco': 0,
-            'saidas_dinheiro': 0,
-            'saidas_pix': 0,
-            'total_saidas': 0,
-            'saldo_periodo': 0,
-            'entradas_por_categoria': {},
-            'saidas_por_categoria': {}
-        }
-        
-        # Processar lançamentos para calcular totais
-        for lancamento in lancamentos:
-            valor = lancamento.valor or 0
-            conta = lancamento.conta.lower() if lancamento.conta else ''
-            categoria = lancamento.categoria or 'Outros'
-            
-            if lancamento.tipo == 'Entrada':
-                if 'banco' in conta:
-                    totais['entradas_banco'] += valor
-                elif 'pix' in conta:
-                    totais['entradas_pix'] += valor
-                else:
-                    totais['entradas_dinheiro'] += valor
-                
-                totais['total_entradas'] += valor
-                
-                # Agrupar por categoria
-                if categoria not in totais['entradas_por_categoria']:
-                    totais['entradas_por_categoria'][categoria] = 0
-                totais['entradas_por_categoria'][categoria] += valor
-                
-            elif lancamento.tipo == 'Saída':
-                # Verificar se é uma "Destinação" (não afeta saldo do caixa)
-                eh_destinacao = any(x in categoria for x in [
-                    'destinação', 'destinacao', 
-                    'transferência interna', 'transferencia interna'
-                ])
-                
-                # Apenas contabilizar como saída se NÃO for destinação
-                if not eh_destinacao:
-                    if 'banco' in conta:
-                        totais['saidas_banco'] += valor
-                    elif 'pix' in conta:
-                        totais['saidas_pix'] += valor
-                    else:
-                        totais['saidas_dinheiro'] += valor
-                    
-                    totais['total_saidas'] += valor
-                    
-                    # Agrupar por categoria
-                    if categoria not in totais['saidas_por_categoria']:
-                        totais['saidas_por_categoria'][categoria] = 0
-                    totais['saidas_por_categoria'][categoria] += valor
-        
-        # Calcular saldo do período
-        totais['saldo_periodo'] = totais['total_entradas'] - totais['total_saidas']
-        
-        # ===== CALCULAR TOTAL A SER ENVIADO PARA SEDE =====
-        # 1. Calcular 30% administrativo (Dízimos + Ofertas Alçadas)
-        dizimos_total = 0
-        ofertas_alcadas_total = 0
-        
-        for lancamento in lancamentos:
-            if lancamento.tipo == 'Entrada':
-                categoria_lower = lancamento.categoria.lower() if lancamento.categoria else ''
-                valor = lancamento.valor or 0
-                
-                # Dízimos
-                if 'dizimo' in categoria_lower or 'dízimo' in categoria_lower:
-                    dizimos_total += valor
-                # Ofertas Alçadas (excluindo OMN e Outras Ofertas)
-                elif 'oferta' in categoria_lower:
-                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
-                        continue
-                    elif any(x in categoria_lower for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
-                        continue
-                    else:
-                        ofertas_alcadas_total += valor
-        
-        base_calculo_30 = dizimos_total + ofertas_alcadas_total
-        config = Configuracao.obter_configuracao()
-        percentual_conselho = config.percentual_conselho if config else 30.0
-        valor_administrativo = base_calculo_30 * (percentual_conselho / 100)
-        
-        # 2. Buscar despesas fixas ativas
-        total_despesas_fixas = 0
-        despesas_fixas_lista = []
-        try:
-            from app.financeiro.despesas_fixas_model import DespesaFixaConselho
-            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
-            for despesa in despesas_fixas:
-                total_despesas_fixas += despesa.valor_padrao
-                despesas_fixas_lista.append({
-                    'nome': despesa.nome,
-                    'valor': despesa.valor_padrao
-                })
-        except Exception as e:
-            current_app.logger.warning(f'Erro ao buscar despesas fixas: {str(e)}')
-        
-        # 3. Total a ser enviado e saldo real
-        total_envio_sede = valor_administrativo + total_despesas_fixas
-        
-        # Calcular saldo anterior (acumulado até mês anterior)
-        saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
-        
-        # Saldo bruto = saldo anterior + entradas - saídas
-        saldo_bruto = saldo_anterior + totais['total_entradas'] - totais['total_saidas']
-        
-        # Saldo real disponível = igual ao saldo bruto
-        # (Administrativo e Despesas Fixas JÁ estão incluídas nas saídas, são apenas informativos)
-        saldo_real_disponivel = saldo_bruto
-        
-        # Adicionar aos totais
-        totais['base_calculo_30'] = base_calculo_30
-        totais['valor_administrativo'] = valor_administrativo
-        totais['total_despesas_fixas'] = total_despesas_fixas
-        totais['total_envio_sede'] = total_envio_sede
-        totais['saldo_anterior'] = saldo_anterior
-        totais['saldo_bruto'] = saldo_bruto
-        totais['saldo_real_disponivel'] = saldo_real_disponivel
-        totais['despesas_fixas_lista'] = despesas_fixas_lista
-        totais['percentual_conselho'] = percentual_conselho
-        
-        # Buscar configuração da igreja de forma defensiva
-        dados_igreja = {
-            'nome': (config.nome_igreja if config and hasattr(config, 'nome_igreja') and config.nome_igreja else 'Igreja OBPC'),
-            'endereco': (config.endereco if config and hasattr(config, 'endereco') and config.endereco else ''),
-            'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else ''),
-            'pastor': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else (config.pastor if config and hasattr(config, 'pastor') else '')),
-            'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else (config.tesoureiro if config and hasattr(config, 'tesoureiro') else '')),
-            'logo': (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg')
-        }
-        
-        current_app.logger.info('>>> Renderizando template relatorio_caixa_preview.html')
-        return render_template('financeiro/relatorio_caixa_preview.html',
-                             lancamentos=lancamentos,
-                             mes=mes,
-                             ano=ano,
-                             totais=totais,
-                             dados_igreja=dados_igreja,
-                             config=config,
-                             data_geracao=datetime.now())
-    
-    except Exception as e:
-        current_app.logger.error(f'>>> ERRO em relatorio_caixa_preview: {str(e)}')
-        import traceback
-        current_app.logger.error(f'>>> TRACEBACK: {traceback.format_exc()}')
-        flash(f'Erro ao gerar preview do relatório: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.relatorio_caixa', mes=mes, ano=ano))
+    """Mantém compatibilidade redirecionando para o relatório gerencial centralizado."""
+    return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio='gerencial', mes=request.args.get('mes', type=int), ano=request.args.get('ano', type=int)))
 
 @financeiro_bp.route('/financeiro/relatorio-sede/preview')
 @login_required  
 def relatorio_sede_preview():
-    """Preview HTML do relatório oficial para sede"""
-    try:
-        # Pegar mês e ano da query string com validação
-        mes = request.args.get('mes', type=int)
-        ano = request.args.get('ano', type=int)
-        
-        # Se não foram fornecidos na URL, usar o mês/ano atual
-        if mes is None:
-            mes = datetime.now().month
-        if ano is None:
-            ano = datetime.now().year
-        
-        # Validar valores
-        if mes < 1 or mes > 12:
-            mes = datetime.now().month
-        if ano < 2020 or ano > 2030:
-            ano = datetime.now().year
-        
-        # Filtrar lançamentos do mês
-        lancamentos = Lancamento.query.filter(
-            extract('month', Lancamento.data) == mes,
-            extract('year', Lancamento.data) == ano
-        ).all()
-        
-        percentual_conselho = 30
-        config = Configuracao.obter_configuracao()
-        if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho:
-            percentual_conselho = config.percentual_conselho
-
-        totais_base = _calcular_totais_relatorio_sede(lancamentos, percentual_conselho)
-        totais = {
-            'dizimos': totais_base['dizimos'],
-            'ofertas_alcadas': totais_base['ofertas_alcadas'],
-            'outras_ofertas': totais_base['outras_ofertas'],
-            'oferta_omn': totais_base['oferta_omn'],
-            'outras_entradas': totais_base['outras_entradas'],
-            'total_entradas': totais_base['total_geral'],
-            'total_saidas': totais_base['despesas_financeiras'],
-            'saidas_por_categoria': {},
-            'saldo_final': totais_base['saldo_mes'],
-            'valor_conselho': totais_base['total_dizimos_ofertas'],
-            'trinta_porcento_conselho': totais_base['valor_conselho'],
-            'despesas_fixas_conselho': 0,
-            'total_envio_sede': 0
-        }
-
-        for lancamento in lancamentos:
-            if lancamento.tipo != 'Saída':
-                continue
-
-            categoria = (lancamento.categoria or '').lower()
-            eh_destinacao = any(x in categoria for x in [
-                'destinação', 'destinacao',
-                'transferência interna', 'transferencia interna'
-            ])
-            if eh_destinacao:
-                continue
-
-            if categoria not in totais['saidas_por_categoria']:
-                totais['saidas_por_categoria'][categoria] = 0
-            totais['saidas_por_categoria'][categoria] += float(lancamento.valor or 0)
-        
-        # Buscar despesas fixas do conselho
-        despesas_fixas = DespesaFixaConselho.query.filter_by(ativo=True).all()
-        totais['despesas_fixas_conselho'] = sum(d.valor for d in despesas_fixas)
-        
-        # Calcular total de envio para sede
-        totais['total_envio_sede'] = totais['trinta_porcento_conselho'] + totais['despesas_fixas_conselho']
-        
-        # Buscar envios para sede baseados nas saídas
-        try:
-            # Buscar lançamentos de saída que correspondem aos envios
-            lancamentos_saida = [l for l in lancamentos if l.tipo == 'Saída']
-            
-            envios = {
-                'oferta_voluntaria_conchas': 0.0,
-                'site': 0.0,
-                'projeto_filipe': 0.0,
-                'forca_para_viver': 0.0,
-                'contador_sede': 0.0
-            }
-            
-            # Lista detalhada para o PDF
-            envios_detalhados = {
-                'oferta_voluntaria_conchas': [],
-                'site': [],
-                'projeto_filipe': [],
-                'forca_para_viver': [],
-                'contador_sede': [],
-                'omn': []
-            }
-            
-            # Mapear descrições para chaves
-            mapeamento_envios = {
-                'oferta_voluntaria_conchas': ['conchas', 'voluntaria conchas', 'oferta voluntaria conchas'],
-                'site': ['site'],
-                'projeto_filipe': ['projeto filipe', 'filipe'],
-                'forca_para_viver': ['força para viver', 'forca para viver'],
-                'contador_sede': ['contador sede', 'contador']
-            }
-            
-            # Buscar valores nos lançamentos de saída
-            for lancamento in lancamentos_saida:
-                if lancamento.descricao:
-                    descricao_lower = lancamento.descricao.lower()
-                    
-                    # Verificar cada tipo de envio
-                    for chave, termos_busca in mapeamento_envios.items():
-                        for termo in termos_busca:
-                            if termo in descricao_lower:
-                                envios[chave] += lancamento.valor
-                                # Adicionar detalhes para o PDF
-                                envios_detalhados[chave].append({
-                                    'data': lancamento.data,
-                                    'descricao': lancamento.descricao,
-                                    'valor': lancamento.valor,
-                                    'conta': lancamento.conta
-                                })
-                                break  # Para evitar dupla contagem
-            
-            total_envio_sede = sum(envios.values())
-            
-            # Adicionar ofertas OMN automaticamente aos envios detalhados
-            for lancamento in lancamentos:
-                if lancamento.tipo == 'Entrada' and lancamento.categoria:
-                    categoria_lower = lancamento.categoria.lower()
-                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower:
-                        envios_detalhados['omn'].append({
-                            'data': lancamento.data,
-                            'descricao': lancamento.categoria,
-                            'conta': getattr(lancamento, 'conta', None),
-                            'valor': float(lancamento.valor) if lancamento.valor else 0
-                        })
-            
-        except Exception as e:
-            print(f"DEBUG: Erro ao buscar envios: {e}")
-            envios = {
-                'oferta_voluntaria_conchas': 0.0,
-                'site': 0.0,
-                'projeto_filipe': 0.0,
-                'forca_para_viver': 0.0,
-                'contador_sede': 0.0
-            }
-            envios_detalhados = {
-                'oferta_voluntaria_conchas': [],
-                'site': [],
-                'projeto_filipe': [],
-                'forca_para_viver': [],
-                'contador_sede': [],
-                'omn': []
-            }
-            total_envio_sede = 0
-        
-        # Buscar configuração da igreja
-        dados_igreja = {
-            'nome': config.nome_igreja if config else 'Igreja OBPC',
-            'endereco': config.endereco if config else '',
-            'cidade': config.cidade if config else '',
-            'pastor': config.presidente if config and config.presidente else '',
-            'tesoureiro': config.primeiro_tesoureiro if config and config.primeiro_tesoureiro else '',
-            'logo': config.logo if config and config.logo else 'logo_obpc_novo.jpg'
-        }
-        
-        return render_template('financeiro/relatorio_sede_preview.html',
-                             lancamentos=lancamentos,
-                             mes=mes,
-                             ano=ano,
-                             totais=totais,
-                             envios=envios,
-                             envios_detalhados=envios_detalhados,
-                             total_envio_sede=total_envio_sede,
-                             dados_igreja=dados_igreja,
-                             config=config,
-                             data_geracao=datetime.now())
-    
-    except Exception as e:
-        flash(f'Erro ao gerar preview do relatório: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.relatorio_sede', mes=mes, ano=ano))
+    """Mantém compatibilidade redirecionando para o relatório oficial centralizado."""
+    return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio='sede', mes=request.args.get('mes', type=int), ano=request.args.get('ano', type=int)))
 
 @financeiro_bp.route('/financeiro/relatorio-caixa/pdf')
 @login_required

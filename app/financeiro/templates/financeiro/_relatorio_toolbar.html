@@ -1,0 +1,55 @@
+{% if not modo_pdf %}
+<div class="report-toolbar">
+    <div>
+        <p class="eyebrow">Sistema de Gestão Financeira</p>
+        <h1>{{ titulo_toolbar }}</h1>
+        <p class="toolbar-subtitle">Mesmo conjunto de dados financeiros, com apresentação específica para cada público.</p>
+    </div>
+
+    <form method="get" action="{{ url_for('financeiro.gerar_relatorio') }}" class="toolbar-form">
+        <div class="toolbar-panel">
+            <span class="toolbar-label">Tipo de Relatório</span>
+            <div class="radio-group">
+                <label class="radio-chip">
+                    <input type="radio" name="tipo_relatorio" value="gerencial" {% if tipo_relatorio == 'gerencial' %}checked{% endif %}>
+                    <span>Gerencial</span>
+                </label>
+                <label class="radio-chip">
+                    <input type="radio" name="tipo_relatorio" value="sede" {% if tipo_relatorio == 'sede' %}checked{% endif %}>
+                    <span>Oficial para Igreja Sede</span>
+                </label>
+                <label class="radio-chip">
+                    <input type="radio" name="tipo_relatorio" value="auditoria" {% if tipo_relatorio == 'auditoria' %}checked{% endif %}>
+                    <span>Auditoria</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="toolbar-grid">
+            <label>
+                <span>Mês</span>
+                <select name="mes">
+                    {% for mes_opcao in range(1, 13) %}
+                    <option value="{{ mes_opcao }}" {% if mes_opcao == mes %}selected{% endif %}>{{ "%02d"|format(mes_opcao) }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+
+            <label>
+                <span>Ano</span>
+                <select name="ano">
+                    {% for ano_opcao in range(2020, 2036) %}
+                    <option value="{{ ano_opcao }}" {% if ano_opcao == ano %}selected{% endif %}>{{ ano_opcao }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+        </div>
+
+        <div class="toolbar-actions">
+            <button type="submit" class="btn-primary-soft">Atualizar</button>
+            <a class="btn-outline-soft" href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener">Gerar PDF</a>
+            <button type="button" class="btn-dark-soft" onclick="window.print()">Imprimir</button>
+        </div>
+    </form>
+</div>
+{% endif %}
