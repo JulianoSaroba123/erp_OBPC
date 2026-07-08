@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatorio Oficial para Sede {{ "%02d"|format(mes) }}/{{ ano }}</title>
+    <title>Relatorio Mensal Oficial {{ "%02d"|format(mes) }}/{{ ano }}</title>
     <style>
         :root {
             --ink: #1e293b;
@@ -16,7 +16,7 @@
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: linear-gradient(180deg, #edf4f8 0%, #f8fafc 100%); color: var(--ink); }
-        .page { max-width: 1024px; margin: 0 auto; padding: 28px; }
+        .page { max-width: 920px; margin: 0 auto; padding: 28px; }
         .report-toolbar, .document, .signature-block { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 40px rgba(15, 23, 42, .05); }
         .report-toolbar { padding: 24px; margin-bottom: 20px; }
         .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-size: 12px; }
@@ -38,18 +38,69 @@
         .header h1 { font-size: 24px; letter-spacing: .04em; }
         .header h2 { font-size: 19px; color: var(--brand); }
         .header p { color: var(--muted); font-size: 14px; }
-        .info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; margin-bottom: 26px; }
-        .info-item { padding: 12px 14px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; }
-        .info-item strong { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-        .section { margin-bottom: 24px; }
-        .section h3 { margin: 0 0 12px; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid var(--line); padding: 11px 12px; font-size: 14px; }
-        th { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; background: #f3f6f9; color: var(--muted); }
-        td.numeric, th.numeric { text-align: right; }
-        td.center, th.center { text-align: center; }
-        tbody tr:nth-child(even) { background: #fbfdff; }
-        .highlight-total { background: #e8f2f4; font-weight: 700; }
+        .info-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+        .info-pill {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: var(--surface-soft);
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+        .info-pill strong {
+            display: block;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin-bottom: 4px;
+        }
+        .section-title {
+            margin: 0 0 10px;
+            font-size: 14px;
+            letter-spacing: .08em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+        .separator {
+            border-top: 1px dashed #9fb0c3;
+            margin: 16px 0;
+        }
+        .official-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .official-table td {
+            padding: 6px 0;
+            font-size: 15px;
+            border: 0;
+        }
+        .official-table td.label {
+            width: 72%;
+            color: #0f172a;
+            font-weight: 600;
+        }
+        .official-table td.value {
+            width: 28%;
+            text-align: right;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .official-table tr.total td {
+            font-size: 16px;
+            color: var(--brand);
+            padding-top: 10px;
+        }
+        .muted-note {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
         .signature-block { padding: 24px; margin-top: 18px; }
         .signature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
         .signature-line { border-top: 1px solid var(--ink); padding-top: 34px; text-align: center; }
@@ -63,13 +114,13 @@
         }
 
         @media (max-width: 820px) {
-            .info-grid, .signature-grid { grid-template-columns: 1fr; }
+            .info-strip, .signature-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="page">
-        {% set titulo_toolbar = 'Relatorio Oficial para Igreja Sede' %}
+        {% set titulo_toolbar = 'Relatorio Mensal Oficial' %}
         {% include 'financeiro/_relatorio_toolbar.html' %}
 
         <section class="document">
@@ -82,98 +133,104 @@
                 <p>Periodo {{ "%02d"|format(mes) }}/{{ ano }} | Emissao {{ data_geracao.strftime('%d/%m/%Y') }}</p>
             </header>
 
-            <section class="section">
-                <h3>1 - Cabecalho</h3>
-                <div class="info-grid">
-                    <div class="info-item"><strong>Cidade</strong>{{ dados_igreja.cidade }}</div>
-                    <div class="info-item"><strong>Pastor</strong>{{ dados_igreja.pastor }}</div>
-                    <div class="info-item"><strong>Tesoureiro</strong>{{ dados_igreja.tesoureiro }}</div>
-                    <div class="info-item"><strong>Saldo Inicial</strong>{{ totais_sede.saldo_inicial|valor_com_cor|safe }}</div>
+            {% set valor_admin = totais_sede.valor_conselho|default(0) %}
+            {% set valor_contador = envios.contador_sede|default(0) %}
+            {% set valor_site = envios.site|default(0) %}
+            {% set valor_filipe = envios.projeto_filipe|default(0) %}
+            {% set valor_forca = envios.forca_para_viver|default(0) %}
+            {% set valor_conchas = envios.oferta_voluntaria_conchas|default(0) %}
+            {% set valor_omn = totais_sede.oferta_omn|default(0) %}
+            {% set base_fixas = totais_sede.despesas_fixas|default(0) %}
+            {% set usadas_fixas = valor_contador + valor_site + valor_filipe + valor_forca + valor_conchas %}
+            {% set outras_fixas = (base_fixas - usadas_fixas) if (base_fixas - usadas_fixas) > 0 else 0 %}
+            {% set total_enviar_exibicao = valor_admin + valor_contador + valor_site + valor_filipe + valor_forca + valor_conchas + outras_fixas + (valor_omn if valor_omn > 0 else 0) %}
+
+            <section>
+                <div class="info-strip">
+                    <div class="info-pill"><strong>Pastor</strong>{{ dados_igreja.pastor }}</div>
+                    <div class="info-pill"><strong>Tesoureiro</strong>{{ dados_igreja.tesoureiro }}</div>
+                    <div class="info-pill"><strong>Saldo Inicial</strong>{{ totais_sede.saldo_inicial|valor_com_cor|safe }}</div>
                 </div>
             </section>
 
-            <section class="section">
-                <h3>2 - Resumo Financeiro</h3>
-                <table>
+            <section>
+                <h3 class="section-title">Arrecadacao</h3>
+                <table class="official-table">
                     <tbody>
-                        <tr><td>Saldo Inicial</td><td class="numeric">{{ totais_sede.saldo_inicial|valor_com_cor|safe }}</td></tr>
-                        <tr><td>Entradas</td><td class="numeric">{{ totais_sede.entradas|valor_com_cor|safe }}</td></tr>
-                        <tr><td>Saidas</td><td class="numeric">{{ totais_sede.saidas|valor_com_cor|safe }}</td></tr>
-                        <tr><td>Saldo Final do Mes</td><td class="numeric">{{ totais_sede.saldo_final|valor_com_cor|safe }}</td></tr>
-                        <tr class="highlight-total"><td>Saldo Acumulado</td><td class="numeric">{{ totais_sede.saldo_acumulado|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Dizimos</td><td class="value">{{ totais_sede.dizimos|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Ofertas Alcadas</td><td class="value">{{ totais_sede.ofertas_alcadas|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Oferta OMN</td><td class="value">{{ totais_sede.oferta_omn|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Outras Ofertas</td><td class="value">{{ totais_sede.outras_ofertas|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
             </section>
 
-            <section class="section">
-                <h3>3 - Receitas</h3>
-                <table>
-                    <thead><tr><th>Categoria</th><th class="numeric">Valor</th></tr></thead>
+            <div class="separator"></div>
+
+            <section>
+                <table class="official-table">
                     <tbody>
-                        {% for categoria, valor in entradas_por_categoria.items() %}
-                        <tr><td>{{ categoria }}</td><td class="numeric">{{ valor|valor_com_cor|safe }}</td></tr>
-                        {% endfor %}
+                        <tr class="total"><td class="label">Total Arrecadado</td><td class="value">{{ totais_sede.entradas|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
             </section>
 
-            <section class="section">
-                <h3>4 - Despesas</h3>
-                <table>
-                    <thead><tr><th>Categoria</th><th class="numeric">Valor</th></tr></thead>
+            <div class="separator"></div>
+
+            <section>
+                <table class="official-table">
                     <tbody>
-                        {% for categoria, valor in saidas_por_categoria.items() %}
-                        <tr><td>{{ categoria }}</td><td class="numeric">{{ valor|valor_com_cor|safe }}</td></tr>
-                        {% endfor %}
+                        <tr><td class="label">Despesas do Mes</td><td class="value">{{ totais_sede.despesas_financeiras|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
             </section>
 
-            <section class="section">
-                <h3>5 - Movimentacao Financeira</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th class="center">Data</th>
-                            <th>Categoria</th>
-                            <th>Descricao</th>
-                            <th>Conta</th>
-                            <th class="numeric">Entrada</th>
-                            <th class="numeric">Saida</th>
-                            <th class="numeric">Saldo Acumulado</th>
-                        </tr>
-                    </thead>
+            <div class="separator"></div>
+
+            <section>
+                <table class="official-table">
                     <tbody>
-                        {% for item in movimentacao %}
-                        <tr>
-                            <td class="center">{{ item.data.strftime('%d/%m/%Y') }}</td>
-                            <td>{{ item.categoria }}</td>
-                            <td>{{ item.descricao }}</td>
-                            <td>{{ item.conta }}</td>
-                            <td class="numeric">{% if item.entrada %}{{ item.entrada|valor_com_cor|safe }}{% else %}-{% endif %}</td>
-                            <td class="numeric">{% if item.saida %}{{ item.saida|valor_com_cor|safe }}{% elif item.eh_destinacao %}Destinacao{% else %}-{% endif %}</td>
-                            <td class="numeric"><strong>{{ item.saldo_acumulado|valor_com_cor|safe }}</strong></td>
-                        </tr>
-                        {% endfor %}
+                        <tr><td class="label">Saldo do Mes</td><td class="value">{{ totais_sede.saldo_final|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
             </section>
 
-            <section class="section">
-                <h3>6 - Prestacao de Contas</h3>
-                <table>
+            <div class="separator"></div>
+
+            <section>
+                <h3 class="section-title">Valores Destinados a Sede</h3>
+                <table class="official-table">
                     <tbody>
-                        <tr><td>Valor enviado para Sede</td><td class="numeric">{{ total_envio_sede|valor_com_cor|safe }}</td></tr>
-                        <tr><td>30%</td><td class="numeric">{{ totais_sede.valor_conselho|valor_com_cor|safe }}</td></tr>
-                        <tr><td>Despesas Fixas</td><td class="numeric">{{ totais_sede.despesas_fixas|valor_com_cor|safe }}</td></tr>
-                        <tr class="highlight-total"><td>Total</td><td class="numeric">{{ totais_sede.total_envio_sede|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">30% Administrativo</td><td class="value">{{ valor_admin|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Contador</td><td class="value">{{ valor_contador|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Site</td><td class="value">{{ valor_site|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Projeto Filipe</td><td class="value">{{ valor_filipe|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Forca para Viver</td><td class="value">{{ valor_forca|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Auxilio Conchas</td><td class="value">{{ valor_conchas|valor_com_cor|safe }}</td></tr>
+                        {% if outras_fixas > 0 %}
+                        <tr><td class="label">Outras Despesas Fixas</td><td class="value">{{ outras_fixas|valor_com_cor|safe }}</td></tr>
+                        {% endif %}
+                        {% if valor_omn > 0 %}
+                        <tr><td class="label">Oferta OMN</td><td class="value">{{ valor_omn|valor_com_cor|safe }}</td></tr>
+                        {% endif %}
                     </tbody>
                 </table>
+            </section>
+
+            <div class="separator"></div>
+
+            <section>
+                <table class="official-table">
+                    <tbody>
+                        <tr class="total"><td class="label">Total a Enviar</td><td class="value">{{ total_enviar_exibicao|valor_com_cor|safe }}</td></tr>
+                    </tbody>
+                </table>
+                <p class="muted-note">Relatorio mensal oficial sem movimentacao detalhada de caixa.</p>
             </section>
         </section>
 
         <section class="signature-block">
-            <div class="section"><h3>7 - Assinaturas</h3></div>
+            <h3 class="section-title">Assinaturas</h3>
             <div class="signature-grid">
                 <div class="signature-line">{{ dados_igreja.pastor }}<br>Pastor</div>
                 <div class="signature-line">{{ dados_igreja.tesoureiro }}<br>Tesoureiro</div>
