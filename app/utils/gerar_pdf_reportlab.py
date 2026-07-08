@@ -12,6 +12,7 @@ from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.platypus.flowables import HRFlowable
 from io import BytesIO
 import locale
+from xml.sax.saxutils import escape
 
 # Configurar locale para formatação brasileira
 try:
@@ -612,6 +613,68 @@ class RelatorioFinanceiro:
         elementos.append(tabela_resumo)
         
         return elementos
+
+    def _criar_secao_controle_repasse_sede(self, controle_repasse_sede=None):
+        """Cria o bloco CONTROLE DE REPASSE À SEDE no PDF de caixa."""
+        elementos = []
+        controle = controle_repasse_sede or {}
+
+        elementos.append(Spacer(1, 14))
+        elementos.append(Paragraph("CONTROLE DE REPASSE À SEDE", self.styles['cabecalho_secao']))
+
+        dados_controle = [
+            ['DESCRIÇÃO', 'VALOR'],
+            ['Saldo pendente anterior', self._formatar_moeda(float(controle.get('saldo_pendente_anterior', 0) or 0))],
+            ['30% gerado no mês', self._formatar_moeda(float(controle.get('trinta_gerado_mes', 0) or 0))],
+            ['Total devido', self._formatar_moeda(float(controle.get('total_devido_mes', 0) or 0))],
+            ['Valor enviado no mês', self._formatar_moeda(float(controle.get('valor_enviado_mes', 0) or 0))],
+            ['Saldo pendente atual', self._formatar_moeda(float(controle.get('saldo_pendente_atual', 0) or 0))],
+        ]
+
+        tabela_controle = Table(dados_controle, colWidths=[10*cm, 5*cm])
+        ultima_linha = len(dados_controle) - 1
+        tabela_controle.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#001f3f')),
+            ('TEXTCOLOR', (0, 0), (1, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (1, 0), 11),
+            ('ALIGN', (0, 0), (1, 0), 'CENTER'),
+            ('FONTNAME', (0, 1), (1, ultima_linha), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (1, ultima_linha), 10),
+            ('ALIGN', (0, 1), (0, ultima_linha), 'LEFT'),
+            ('ALIGN', (1, 1), (1, ultima_linha), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0, 1), (1, ultima_linha), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('FONTNAME', (0, ultima_linha), (1, ultima_linha), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, ultima_linha), (1, ultima_linha), colors.HexColor('#fff7ed')),
+            ('GRID', (0, 0), (1, ultima_linha), 1, colors.black),
+            ('VALIGN', (0, 0), (1, ultima_linha), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (1, ultima_linha), 7),
+            ('BOTTOMPADDING', (0, 0), (1, ultima_linha), 7),
+        ]))
+        elementos.append(tabela_controle)
+
+        return elementos
+
+    def _criar_secao_justificativa_repasse_sede(self, observacao_repasse_sede=None):
+        """Cria o bloco JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE preservando quebras de linha."""
+        elementos = []
+        texto = (observacao_repasse_sede or '').strip() or '-'
+        texto_html = escape(texto).replace('\n', '<br/>')
+
+        elementos.append(Spacer(1, 14))
+        elementos.append(Paragraph("JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE", self.styles['cabecalho_secao']))
+
+        estilo_justificativa = ParagraphStyle(
+            'JustificativaRepasseSede',
+            parent=self.styles['texto_normal'],
+            fontSize=10,
+            leading=14,
+            spaceBefore=2,
+            spaceAfter=4
+        )
+        elementos.append(Paragraph(texto_html, estilo_justificativa))
+
+        return elementos
     
     def _calcular_totais_por_categoria(self, lancamentos):
         """Calcula totais agrupados por categoria"""
@@ -832,7 +895,7 @@ class RelatorioFinanceiro:
         else:
             return "-"
     
-    def gerar_relatorio_caixa(self, lancamentos, mes, ano, saldo_anterior=0):
+    def gerar_relatorio_caixa(self, lancamentos, mes, ano, saldo_anterior=0, controle_repasse_sede=None, observacao_repasse_sede=None):
         """Gera relatório de caixa profissional com padrão oficial"""
         try:
             doc = SimpleDocTemplate(
@@ -875,9 +938,17 @@ class RelatorioFinanceiro:
                     elementos.extend(self._criar_resumo_financeiro(entradas_total, saidas_total, saldo_anterior, lancamentos))
                 except Exception as e:
                     current_app.logger.error(f"Erro ao criar resumo financeiro: {e}")
+
             else:
                 elementos.append(Paragraph("Nenhum lançamento encontrado para este período.", 
                                          self.styles['texto_normal']))
+
+            # Blocos complementares solicitados no PDF de caixa.
+            try:
+                elementos.extend(self._criar_secao_controle_repasse_sede(controle_repasse_sede))
+                elementos.extend(self._criar_secao_justificativa_repasse_sede(observacao_repasse_sede))
+            except Exception as e:
+                current_app.logger.error(f"Erro ao criar blocos de repasse à sede: {e}")
             
             # Campos de assinatura
             try:

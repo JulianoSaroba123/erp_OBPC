@@ -4339,6 +4339,11 @@ def relatorio_caixa_pdf():
         config = Configuracao.obter_configuracao()
         current_app.logger.info(f"Configuracao OK - Logo: {config.logo if config else 'None'}")
 
+        # Montar contexto de repasse à sede para renderização no PDF (informativo, sem alterar cálculos existentes)
+        percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
+        controle_repasse_sede = _montar_controle_repasse_sede(mes, ano, percentual_conselho)
+        observacao_repasse_sede, _, _ = _obter_observacao_repasse_sede(mes, ano, controle_repasse_sede)
+
         # Criar instância do gerador com configuração
         current_app.logger.info("Criando instancia RelatorioFinanceiro...")
         relatorio = RelatorioFinanceiro(config)
@@ -4346,7 +4351,14 @@ def relatorio_caixa_pdf():
         
         # Gerar PDF com todos os parâmetros necessários
         current_app.logger.info("Gerando PDF...")
-        pdf_buffer = relatorio.gerar_relatorio_caixa(lancamentos, mes, ano, saldo_anterior)
+        pdf_buffer = relatorio.gerar_relatorio_caixa(
+            lancamentos,
+            mes,
+            ano,
+            saldo_anterior,
+            controle_repasse_sede=controle_repasse_sede,
+            observacao_repasse_sede=observacao_repasse_sede
+        )
         current_app.logger.info("PDF gerado OK")
 
         if not pdf_buffer:
