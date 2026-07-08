@@ -1831,43 +1831,44 @@ class RelatorioFinanceiro:
         # Valor do conselho administrativo (30%)
         valor_conselho = totais['valor_conselho']
         
-        # Buscar despesas fixas ativas do banco de dados
+        # Buscar despesas fixas já padronizadas para manter os nomes consistentes no PDF
         try:
             from app.financeiro.despesas_fixas_model import DespesaFixaConselho
-            despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
+            despesas_fixas = DespesaFixaConselho.obter_despesas_para_relatorio()
         except Exception as e:
             current_app.logger.warning(f'Erro ao buscar despesas fixas: {str(e)}')
-            despesas_fixas = []
-        
-        # Organizar despesas fixas por nome
+            despesas_fixas = {}
+
         despesas_dict = {
-            'contador': 0.0,
-            'site': 0.0,
-            'forca_viver': 0.0,
-            'conchas': 0.0,
+            'contador_sede': float(despesas_fixas.get('contador_sede', 0.0) or 0.0),
+            'site': float(despesas_fixas.get('site', 0.0) or 0.0),
+            'forca_para_viver': float(despesas_fixas.get('forca_para_viver', 0.0) or 0.0),
+            'oferta_voluntaria_conchas': float(despesas_fixas.get('oferta_voluntaria_conchas', 0.0) or 0.0),
+            'projeto_filipe': float(despesas_fixas.get('projeto_filipe', 0.0) or 0.0),
             'outras': 0.0
         }
-        
-        for despesa in despesas_fixas:
-            nome_lower = despesa.nome.lower()
-            if 'contador' in nome_lower:
-                despesas_dict['contador'] = despesa.valor_padrao
-            elif 'site' in nome_lower:
-                despesas_dict['site'] = despesa.valor_padrao
-            elif 'força' in nome_lower or 'forca' in nome_lower or 'viver' in nome_lower:
-                despesas_dict['forca_viver'] = despesa.valor_padrao
-            elif 'conchas' in nome_lower or 'auxilio' in nome_lower or 'auxílio' in nome_lower:
-                despesas_dict['conchas'] = despesa.valor_padrao
-            else:
-                despesas_dict['outras'] += despesa.valor_padrao
+
+        chaves_padrao = {
+            'contador_sede',
+            'site',
+            'forca_para_viver',
+            'oferta_voluntaria_conchas',
+            'projeto_filipe'
+        }
+        despesas_dict['outras'] = sum(
+            float(valor or 0.0)
+            for chave, valor in despesas_fixas.items()
+            if chave not in chaves_padrao
+        )
         
         # Preparar dados da tabela detalhada - SEMPRE MOSTRAR TODAS AS LINHAS
         dados_total_envio = [
             [f'💼 Administrativo ({int(self.config.percentual_conselho)}%)', self._formatar_moeda(valor_conselho)],
-            ['📊 Contador', self._formatar_moeda(despesas_dict['contador'])],
+            ['📊 Contador', self._formatar_moeda(despesas_dict['contador_sede'])],
             ['🌐 Site', self._formatar_moeda(despesas_dict['site'])],
-            ['💪 Força para Viver', self._formatar_moeda(despesas_dict['forca_viver'])],
-            ['🤝 Auxílio Conchas', self._formatar_moeda(despesas_dict['conchas'])],
+            ['💪 Força para Viver', self._formatar_moeda(despesas_dict['forca_para_viver'])],
+            ['🤝 Auxílio Conchas', self._formatar_moeda(despesas_dict['oferta_voluntaria_conchas'])],
+            ['📌 Projeto Filipe', self._formatar_moeda(despesas_dict['projeto_filipe'])],
         ]
         
         # Adicionar outras despesas fixas se houver
