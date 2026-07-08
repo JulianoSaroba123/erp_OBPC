@@ -18,6 +18,7 @@ import csv
 import re
 from flask import Response
 from difflib import SequenceMatcher
+from pathlib import Path
 
 financeiro_bp = Blueprint('financeiro', __name__, template_folder='templates')
 
@@ -575,6 +576,19 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
     todos_lancamentos = Lancamento.query.order_by(Lancamento.data.asc(), Lancamento.id.asc()).all()
 
     saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes, ano)
+    logo_configurada = (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg')
+    logo_normalizada = str(logo_configurada).replace('\\', '/').strip()
+
+    if '/static/' in logo_normalizada:
+        logo_normalizada = logo_normalizada.split('/static/', 1)[1]
+    if logo_normalizada.startswith('app/static/'):
+        logo_normalizada = logo_normalizada[len('app/static/'):]
+    if logo_normalizada.startswith('static/'):
+        logo_normalizada = logo_normalizada[len('static/'):]
+    logo_normalizada = logo_normalizada.lstrip('/')
+    if not logo_normalizada:
+        logo_normalizada = 'logo_obpc_novo.jpg'
+
     dados_igreja = {
         'nome': (config.nome_igreja if config and hasattr(config, 'nome_igreja') and config.nome_igreja else 'OBPC - O Brasil para Cristo'),
         'cidade': (config.cidade if config and hasattr(config, 'cidade') and config.cidade else 'Tietê'),
@@ -583,7 +597,7 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
         'dirigente': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
         'pastor': (config.presidente if config and hasattr(config, 'presidente') and config.presidente else 'Pastor Responsável'),
         'tesoureiro': (config.primeiro_tesoureiro if config and hasattr(config, 'primeiro_tesoureiro') and config.primeiro_tesoureiro else 'Tesoureiro(a)'),
-        'logo': (config.logo if config and hasattr(config, 'logo') and config.logo else 'logo_obpc_novo.jpg'),
+        'logo': logo_normalizada,
         'saldo_anterior': saldo_anterior
     }
 
@@ -3141,7 +3155,18 @@ def relatorio_pdf():
 
         tipo_relatorio = request.args.get('tipo_relatorio', 'gerencial')
         contexto = gerar_dados_relatorio(tipo_relatorio)
-        html = render_template(contexto['template_relatorio'], modo_pdf=True, **contexto)
+        logo_pdf_src = None
+        logo_relativo = str(contexto.get('dados_igreja', {}).get('logo', '') or '').replace('\\', '/').lstrip('/')
+        if logo_relativo:
+            caminho_logo = Path(current_app.static_folder) / logo_relativo
+            if caminho_logo.exists():
+                logo_pdf_src = caminho_logo.resolve().as_uri()
+            else:
+                fallback_logo = Path(current_app.static_folder) / 'logo_obpc_novo.jpg'
+                if fallback_logo.exists():
+                    logo_pdf_src = fallback_logo.resolve().as_uri()
+
+        html = render_template(contexto['template_relatorio'], modo_pdf=True, logo_pdf_src=logo_pdf_src, **contexto)
 
         pdf_buffer = io.BytesIO()
         HTML(string=html, base_url=request.url_root).write_pdf(pdf_buffer)

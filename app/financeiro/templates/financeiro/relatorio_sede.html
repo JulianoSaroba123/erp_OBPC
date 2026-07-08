@@ -6,50 +6,50 @@
     <title>Relatorio Oficial para Sede {{ "%02d"|format(mes) }}/{{ ano }}</title>
     <style>
         :root {
-            --ink: #1f2937;
-            --muted: #6b7280;
-            --line: #d8dee8;
+            --ink: #1e293b;
+            --muted: #64748b;
+            --line: #dbe3ec;
             --surface: #ffffff;
-            --surface-soft: #f8fafc;
-            --brand: #275d7c;
-            --accent: #4a7c59;
+            --surface-soft: #f4f7fb;
+            --brand: #114b5f;
+            --accent: #2a7f62;
         }
         * { box-sizing: border-box; }
-        body { margin: 0; font-family: Georgia, "Times New Roman", serif; background: #eef3f7; color: var(--ink); }
+        body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; background: linear-gradient(180deg, #edf4f8 0%, #f8fafc 100%); color: var(--ink); }
         .page { max-width: 1024px; margin: 0 auto; padding: 28px; }
         .report-toolbar, .document, .signature-block { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 40px rgba(15, 23, 42, .05); }
         .report-toolbar { padding: 24px; margin-bottom: 20px; }
-        .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-size: 11px; font-family: "Segoe UI", Tahoma, sans-serif; }
-        .toolbar-subtitle { margin: 6px 0 0; color: var(--muted); font-family: "Segoe UI", Tahoma, sans-serif; }
+        .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-size: 12px; }
+        .toolbar-subtitle { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
         .toolbar-form { display: grid; gap: 16px; margin-top: 18px; }
         .toolbar-panel, .toolbar-grid, .toolbar-actions, .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
         .toolbar-panel { flex-direction: column; }
-        .toolbar-label { font-size: 12px; text-transform: uppercase; color: var(--muted); font-family: "Segoe UI", Tahoma, sans-serif; }
-        .radio-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-soft); font-family: "Segoe UI", Tahoma, sans-serif; }
+        .toolbar-label { font-size: 12px; text-transform: uppercase; color: var(--muted); }
+        .radio-chip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-soft); }
         select, .btn-primary-soft, .btn-outline-soft, .btn-dark-soft { min-height: 42px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line); font: inherit; }
-        .btn-primary-soft, .btn-outline-soft, .btn-dark-soft { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; font-family: "Segoe UI", Tahoma, sans-serif; }
+        .btn-primary-soft, .btn-outline-soft, .btn-dark-soft { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer; }
         .btn-primary-soft { background: var(--brand); color: #fff; border-color: var(--brand); }
         .btn-outline-soft { background: transparent; color: var(--brand); }
         .btn-dark-soft { background: #111827; color: #fff; border-color: #111827; }
         .document { padding: 34px; }
         .header { text-align: center; margin-bottom: 28px; }
-        .header img { max-height: 86px; margin-bottom: 12px; }
+        .header img { max-height: 92px; max-width: 280px; width: auto; margin-bottom: 12px; }
         .header h1, .header h2, .header p { margin: 6px 0; }
-        .header h1 { font-size: 22px; letter-spacing: .08em; }
+        .header h1 { font-size: 24px; letter-spacing: .04em; }
         .header h2 { font-size: 19px; color: var(--brand); }
-        .header p { color: var(--muted); }
+        .header p { color: var(--muted); font-size: 14px; }
         .info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; margin-bottom: 26px; }
         .info-item { padding: 12px 14px; background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px; }
-        .info-item strong { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-family: "Segoe UI", Tahoma, sans-serif; }
+        .info-item strong { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
         .section { margin-bottom: 24px; }
-        .section h3 { margin: 0 0 12px; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); font-family: "Segoe UI", Tahoma, sans-serif; }
+        .section h3 { margin: 0 0 12px; font-size: 16px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid var(--line); padding: 10px 12px; font-size: 13px; }
-        th { font-family: "Segoe UI", Tahoma, sans-serif; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; background: #f3f6f9; color: var(--muted); }
+        th, td { border: 1px solid var(--line); padding: 11px 12px; font-size: 14px; }
+        th { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; background: #f3f6f9; color: var(--muted); }
         td.numeric, th.numeric { text-align: right; }
         td.center, th.center { text-align: center; }
         tbody tr:nth-child(even) { background: #fbfdff; }
-        .highlight-total { background: #eef6ef; font-weight: 700; }
+        .highlight-total { background: #e8f2f4; font-weight: 700; }
         .signature-block { padding: 24px; margin-top: 18px; }
         .signature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px; }
         .signature-line { border-top: 1px solid var(--ink); padding-top: 34px; text-align: center; }
@@ -74,9 +74,8 @@
 
         <section class="document">
             <header class="header">
-                {% if dados_igreja.logo %}
-                <img src="{{ url_for('static', filename=dados_igreja.logo) }}" alt="Logo Igreja">
-                {% endif %}
+                {% set logo_src = logo_pdf_src if modo_pdf and logo_pdf_src else url_for('static', filename=dados_igreja.logo if dados_igreja.logo else 'logo_obpc_novo.jpg') %}
+                <img src="{{ logo_src }}" alt="Logo Igreja" onerror="this.onerror=null;this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}';">
                 <p class="eyebrow">Prestacao de Contas Oficial</p>
                 <h1>{{ dados_igreja.nome }}</h1>
                 <h2>{{ dados_igreja.cidade }} - SP</h2>

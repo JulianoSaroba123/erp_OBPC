@@ -6,21 +6,21 @@
     <title>Relatório de Auditoria {{ "%02d"|format(mes) }}/{{ ano }}</title>
     <style>
         :root {
-            --ink: #111827;
-            --muted: #6b7280;
-            --line: #d7dde8;
+            --ink: #1e293b;
+            --muted: #64748b;
+            --line: #dbe3ec;
             --surface: #ffffff;
-            --surface-soft: #f8fafc;
-            --brand: #16324f;
-            --accent: #0f766e;
+            --surface-soft: #f4f7fb;
+            --brand: #114b5f;
+            --accent: #2a7f62;
         }
         * { box-sizing: border-box; }
-        body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; color: var(--ink); background: #eff4f8; }
+        body { margin: 0; font-family: "Segoe UI", Tahoma, sans-serif; color: var(--ink); background: linear-gradient(180deg, #edf4f8 0%, #f8fafc 100%); }
         .page { max-width: 1280px; margin: 0 auto; padding: 28px; }
         .report-toolbar, .document, .signature-card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 16px 40px rgba(15, 23, 42, .05); }
         .report-toolbar { padding: 24px; margin-bottom: 20px; }
-        .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-size: 11px; }
-        .toolbar-subtitle { margin: 6px 0 0; color: var(--muted); }
+        .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-size: 12px; }
+        .toolbar-subtitle { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
         .toolbar-form { display: grid; gap: 16px; margin-top: 18px; }
         .toolbar-panel, .toolbar-grid, .toolbar-actions, .radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
         .toolbar-panel { flex-direction: column; }
@@ -42,7 +42,7 @@
         .section { margin-bottom: 22px; }
         .section h3 { margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; font-size: 13px; color: var(--accent); }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid var(--line); padding: 9px 10px; font-size: 12px; vertical-align: top; }
+        th, td { border: 1px solid var(--line); padding: 10px 11px; font-size: 13px; vertical-align: top; }
         th { background: #f3f6fb; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
         td.numeric, th.numeric { text-align: right; }
         td.center, th.center { text-align: center; }
