@@ -6,6 +6,7 @@ from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.despesas_fixas_model import DespesaFixaConselho
 from app.financeiro.envios_sede_model import EnvioSede
+from app.financeiro.observacao_relatorio_model import ObservacaoRelatorio
 from app.financeiro.recibo_model import Recibo
 from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
@@ -869,6 +870,7 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
     }
 
     controle_repasse_sede = _montar_controle_repasse_sede(mes, ano, percentual_conselho)
+    observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(mes, ano, controle_repasse_sede)
 
     def percentual(categorias, total_base):
         total_base = float(total_base or 0)
@@ -928,11 +930,10 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
         'envios_detalhados': envios_detalhados,
         'total_envio_sede': sum(envios.values()),
         'controle_repasse_sede': controle_repasse_sede,
-        'observacao_repasse_automatica': (
-            'Os repasses registrados neste mês referem-se à quitação de competências anteriores, '
-            'mantendo inalterado o cálculo financeiro dos respectivos meses.'
-            if controle_repasse_sede['observacao_quitacao_competencia_anterior'] else None
-        ),
+        'observacao_repasse_sede': observacao_repasse_sede,
+        'observacao_repasse_padrao': observacao_repasse_padrao,
+        'observacao_repasse_salva': observacao_repasse_salva,
+        'observacao_repasse_automatica': observacao_repasse_padrao,
         'despesas_fixas_lista': despesas_fixas_lista,
         'resumo_executivo': resumo_executivo,
         'indicadores': indicadores,
@@ -3667,6 +3668,25 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
         'observacao_quitacao_competencia_anterior': observacao_quitacao_competencia_anterior,
     }
 
+
+def _gerar_observacao_repasse_padrao(controle_repasse_sede):
+    valor_enviado_mes = float((controle_repasse_sede or {}).get('valor_enviado_mes', 0) or 0)
+    if valor_enviado_mes <= 0:
+        return 'Não houve pagamento de repasses à Sede neste período.'
+
+    if (controle_repasse_sede or {}).get('observacao_quitacao_competencia_anterior'):
+        return 'Foram registrados pagamentos neste período referentes à quitação de competências anteriores junto à Sede.'
+
+    return 'Os pagamentos realizados neste período referem-se exclusivamente às competências do próprio mês.'
+
+
+def _obter_observacao_repasse_sede(mes, ano, controle_repasse_sede):
+    observacao_padrao = _gerar_observacao_repasse_padrao(controle_repasse_sede)
+    observacao_salva = ObservacaoRelatorio.obter_texto(mes, ano, tipo_relatorio='repasses_sede')
+    if observacao_salva:
+        return observacao_salva, observacao_padrao, True
+    return observacao_padrao, observacao_padrao, False
+
 @financeiro_bp.route('/financeiro/relatorio-sede')
 @login_required
 def relatorio_sede():
@@ -3994,6 +4014,41 @@ def gerenciar_despesas_fixas():
                 db.session.delete(pagamento)
                 db.session.commit()
                 flash('Pagamento de repasse à sede excluído com sucesso!', 'success')
+
+            elif acao == 'salvar_observacao_repasse_sede':
+                mes_ref_post = request.form.get('mes_ref', type=int)
+                ano_ref_post = request.form.get('ano_ref', type=int)
+                observacao_texto = request.form.get('observacao_repasse_sede', '').strip()
+
+                if not mes_ref_post or not ano_ref_post:
+                    flash('Competência inválida para salvar a observação.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                if not observacao_texto:
+                    flash('Digite uma observação antes de salvar.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=mes_ref_post, ano=ano_ref_post))
+
+                ObservacaoRelatorio.salvar_texto(mes_ref_post, ano_ref_post, observacao_texto, tipo_relatorio='repasses_sede')
+                db.session.commit()
+                flash('Observação dos repasses salva com sucesso!', 'success')
+                return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=mes_ref_post, ano=ano_ref_post))
+
+            elif acao == 'excluir_observacao_repasse_sede':
+                mes_ref_post = request.form.get('mes_ref', type=int)
+                ano_ref_post = request.form.get('ano_ref', type=int)
+
+                if not mes_ref_post or not ano_ref_post:
+                    flash('Competência inválida para excluir a observação.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                removida = ObservacaoRelatorio.excluir_texto(mes_ref_post, ano_ref_post, tipo_relatorio='repasses_sede')
+                db.session.commit()
+
+                if removida:
+                    flash('Observação removida. O sistema voltará a usar o texto automático.', 'success')
+                else:
+                    flash('Não havia observação salva para esta competência.', 'info')
+                return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=mes_ref_post, ano=ano_ref_post))
             
             return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
         
@@ -4011,6 +4066,7 @@ def gerenciar_despesas_fixas():
         percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         controle_repasse_sede = _montar_controle_repasse_sede(mes_ref, ano_ref, percentual_conselho)
         historico_pagamentos = EnvioSede.query.order_by(EnvioSede.data_pagamento.desc(), EnvioSede.id.desc()).limit(100).all()
+        observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(mes_ref, ano_ref, controle_repasse_sede)
         
         # Buscar categorias de saída dos lançamentos (para usar nas despesas fixas)
         categorias_saida = db.session.query(Lancamento.categoria).distinct().filter(
@@ -4026,6 +4082,9 @@ def gerenciar_despesas_fixas():
                              categorias_saida=categorias_saida,
                              controle_repasse_sede=controle_repasse_sede,
                              historico_pagamentos=historico_pagamentos,
+                             observacao_repasse_sede=observacao_repasse_sede,
+                             observacao_repasse_padrao=observacao_repasse_padrao,
+                             observacao_repasse_salva=observacao_repasse_salva,
                              mes_ref=mes_ref,
                              ano_ref=ano_ref,
                              now=hoje)

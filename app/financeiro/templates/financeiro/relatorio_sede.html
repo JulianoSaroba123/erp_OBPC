@@ -208,9 +208,13 @@
                         <tr class="total"><td class="label">Saldo pendente atual</td><td class="value">{{ controle_repasse_sede.saldo_pendente_atual|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
-                {% if observacao_repasse_automatica %}
-                <p class="muted-note" style="margin-top: 10px;">{{ observacao_repasse_automatica }}</p>
-                {% endif %}
+            </section>
+
+            <div class="separator"></div>
+
+            <section>
+                <h3 class="section-title">Observação</h3>
+                <div class="muted-note" style="white-space: pre-line; line-height: 1.7;">{{ observacao_repasse_sede }}</div>
             </section>
 
             <div class="separator"></div>

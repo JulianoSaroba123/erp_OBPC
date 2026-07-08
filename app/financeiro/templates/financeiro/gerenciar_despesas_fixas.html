@@ -153,6 +153,44 @@
                 </div>
             </div>
 
+            <div class="card mb-4 border-secondary">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Observação dos Repasses à Sede</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-2">Competência {{ "%02d"|format(mes_ref) }}/{{ ano_ref }}</p>
+                    <form method="POST" action="{{ url_for('financeiro.gerenciar_despesas_fixas') }}">
+                        <input type="hidden" name="acao" value="salvar_observacao_repasse_sede">
+                        <input type="hidden" name="mes_ref" value="{{ mes_ref }}">
+                        <input type="hidden" name="ano_ref" value="{{ ano_ref }}">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Observação</strong></label>
+                            <textarea class="form-control" name="observacao_repasse_sede" rows="5" placeholder="Informe observações complementares sobre os repasses deste período...">{{ observacao_repasse_sede }}</textarea>
+                            <small class="form-text text-muted">
+                                {% if observacao_repasse_salva %}
+                                Texto personalizado salvo para esta competência.
+                                {% else %}
+                                Texto automático sugerido pelo sistema (você pode editar e salvar).
+                                {% endif %}
+                            </small>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>Salvar observação
+                            </button>
+                        </div>
+                    </form>
+                    <form method="POST" action="{{ url_for('financeiro.gerenciar_despesas_fixas') }}" class="mt-2" onsubmit="return confirm('Excluir a observação salva desta competência?')">
+                        <input type="hidden" name="acao" value="excluir_observacao_repasse_sede">
+                        <input type="hidden" name="mes_ref" value="{{ mes_ref }}">
+                        <input type="hidden" name="ano_ref" value="{{ ano_ref }}">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fas fa-trash me-1"></i>Excluir observação salva
+                        </button>
+                    </form>
+                </div>
+            </div>
+
             <div class="card mb-4">
                 <div class="card-header">
                     <h5 class="mb-0"><i class="fas fa-history me-2"></i>Histórico de Pagamentos à Sede</h5>

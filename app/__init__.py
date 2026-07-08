@@ -22,6 +22,7 @@ from app.notificacoes.notificacoes_routes import notificacoes_bp
 # Importar modelos para garantir registro no SQLAlchemy
 from app.financeiro.comprovante_model import Comprovante  # Necessário para relacionamento em Lancamento
 from app.financeiro.envios_sede_model import EnvioSede  # Controle de pagamentos de envio a sede
+from app.financeiro.observacao_relatorio_model import ObservacaoRelatorio  # Observações informativas dos repasses
 from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes, HistoricoNotificacoes  # Modelos de notificações
 
 def create_app():
@@ -184,6 +185,14 @@ def create_app():
                     except:
                         db.session.rollback()
         except Exception as e:
+            pass
+
+        try:
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            if 'observacoes_relatorio' not in inspector.get_table_names():
+                ObservacaoRelatorio.__table__.create(bind=db.engine, checkfirst=True)
+        except Exception:
             pass
         
         # Iniciar scheduler de tarefas agendadas
