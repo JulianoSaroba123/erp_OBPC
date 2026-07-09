@@ -57,7 +57,8 @@
       box-sizing: border-box;
     }
 
-    .sidebar {
+    .sidebar a,
+    .sidebar .menu-toggle-button {
       position: fixed;
       top: 0;
       left: 0;
@@ -260,22 +261,30 @@
       margin-left: 60px;
       width: calc(100vw - 60px);
       max-width: calc(100vw - 60px);
+      width: 100%;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
     }
 
-    .sidebar-toggle {
+    .sidebar a:hover,
+    .sidebar .menu-toggle-button:hover {
       position: fixed;
       top: 75px;
       left: 250px;
       z-index: 1000;
       background: var(--primary-green);
       color: white;
-      border: none;
+    .sidebar a.active,
+    .sidebar .menu-toggle-button.active {
       padding: 8px 12px;
       border-radius: 0 5px 5px 0;
       cursor: pointer;
       transition: left 0.3s ease;
       box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-    }
+    .sidebar a i,
+    .sidebar .menu-toggle-button i {
 
     .sidebar-toggle.collapsed {
       left: 70px;
@@ -467,7 +476,7 @@
       <!-- Submenu Secretaria - Secretários, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_secretaria() %}
       <div class="menu-group">
-        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-building"></i><span>Secretaria</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)"><i class="fa-solid fa-building"></i><span>Secretaria</span><i class="fas fa-chevron-down submenu-arrow"></i></button>
         <div class="submenu">
           {% if current_user.tem_acesso_membros() %}
           <a href="{{ url_for('membros.lista_membros') }}" class="submenu-item">
@@ -506,7 +515,7 @@
       <!-- Submenu Financeiro - Tesoureiros, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_financeiro() %}
       <div class="menu-group">
-        <a href="javascript:void(0)" onclick="toggleSubmenu(this); return false;"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"></i></button>
         <div class="submenu">
           <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="submenu-item">
             <i class="fas fa-chart-pie"></i><span>Dashboard Financeiro</span>
@@ -548,7 +557,7 @@
       <!-- Menu Mídia - Mídia, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_midia() %}
       <div class="menu-group">
-        <a href="#" onclick="toggleSubmenu(this)"><i class="fa-solid fa-bullhorn"></i><span>Mídia</span><i class="fas fa-chevron-down submenu-arrow"></i></a>
+        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)"><i class="fa-solid fa-bullhorn"></i><span>Mídia</span><i class="fas fa-chevron-down submenu-arrow"></i></button>
         <div class="submenu">
           <a href="{{ url_for('midia.listar_agenda') }}" class="submenu-item">
             <i class="fas fa-calendar-week"></i><span>Agenda Semanal</span>
@@ -626,22 +635,20 @@
       }
     }
     
-    function toggleSubmenu(element) {
-      console.log('toggleSubmenu chamado', element);
+    function toggleSubmenu(element, event) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       
       const menuGroup = element.closest('.menu-group');
       const submenu = menuGroup.querySelector('.submenu');
       const arrow = element.querySelector('.submenu-arrow');
-      
-      console.log('menuGroup:', menuGroup);
-      console.log('submenu:', submenu);
-      console.log('arrow:', arrow);
-      
+
       // Toggle submenu visibility
       if (submenu.classList.contains('show')) {
         submenu.classList.remove('show');
         if (arrow) arrow.style.transform = 'rotate(0deg)';
-        console.log('Submenu fechado');
       } else {
         // Fechar outros submenus primeiro
         document.querySelectorAll('.submenu.show').forEach(s => {
@@ -652,7 +659,6 @@
         
         submenu.classList.add('show');
         if (arrow) arrow.style.transform = 'rotate(180deg)';
-        console.log('Submenu aberto');
       }
     }
     
