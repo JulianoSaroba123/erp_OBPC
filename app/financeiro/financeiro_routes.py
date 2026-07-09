@@ -12,6 +12,7 @@ from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
 from datetime import datetime, date
 from sqlalchemy import extract, or_, and_, func, inspect, text
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from decimal import Decimal
 import os
 from werkzeug.utils import secure_filename
@@ -3746,15 +3747,34 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
             break
         obrigacoes_ate_anterior += _calcular_obrigacao_30_mes(mes_item, ano_item, percentual_conselho)
 
-    pagos_ate_anterior = float(EnvioSede.somar_pagamentos_por_competencia_ate(mes - 1 if mes > 1 else 12, ano if mes > 1 else ano - 1) or 0.0)
+    try:
+        pagos_ate_anterior = float(
+            EnvioSede.somar_pagamentos_por_competencia_ate(
+                mes - 1 if mes > 1 else 12,
+                ano if mes > 1 else ano - 1,
+            ) or 0.0
+        )
+    except (OperationalError, ProgrammingError, AttributeError):
+        db.session.rollback()
+        # Fallback de compatibilidade para bases antigas sem colunas de competencia.
+        pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
+
     pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
-    pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_por_competencia_mes(mes, ano) or 0.0)
+    try:
+        pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_por_competencia_mes(mes, ano) or 0.0)
+    except (OperationalError, ProgrammingError, AttributeError):
+        db.session.rollback()
+        pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
 
     saldo_pendente_anterior = obrigacoes_ate_anterior - pagos_ate_anterior
     total_devido = saldo_pendente_anterior + obrigacao_mes
     saldo_pendente_atual = total_devido - pagamentos_competencia_mes
 
-    pagamentos_mes = EnvioSede.listar_pagamentos_mes(mes, ano)
+    try:
+        pagamentos_mes = EnvioSede.listar_pagamentos_mes(mes, ano)
+    except (OperationalError, ProgrammingError, AttributeError):
+        db.session.rollback()
+        pagamentos_mes = []
     observacao_quitacao_competencia_anterior = any(
         p.competencia_ano_ref is not None and p.competencia_mes_ref is not None and
         ((p.competencia_ano_ref < ano) or (p.competencia_ano_ref == ano and p.competencia_mes_ref < mes))
