@@ -545,11 +545,13 @@
       <a href="{{ url_for('departamentos.lista_departamentos') }}"><i class="fa-solid fa-church"></i><span>Departamentos</span></a>
       {% endif %}
       
+      {% set caminho_atual = request.path if request else '' %}
+
       <!-- Submenu Financeiro - Tesoureiros, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_financeiro() %}
       <div class="menu-group">
-        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"></i></button>
-        <div class="submenu">
+        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if caminho_atual.startswith('/financeiro') else 'false' }}"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"{% if caminho_atual.startswith('/financeiro') %} style="transform: rotate(180deg);"{% endif %}></i></button>
+        <div class="submenu{% if caminho_atual.startswith('/financeiro') %} show{% endif %}">
           <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="submenu-item">
             <i class="fas fa-chart-pie"></i><span>Dashboard Financeiro</span>
           </a>
@@ -701,7 +703,8 @@
       const toggle = document.querySelector('.mobile-toggle');
       
       if (window.innerWidth <= 576) {
-        if (!sidebar.contains(event.target) && !toggle.contains(event.target)) {
+        const clicouNoToggle = toggle && toggle.contains(event.target);
+        if (!sidebar.contains(event.target) && !clicouNoToggle) {
           sidebar.classList.remove('show');
         }
       }
