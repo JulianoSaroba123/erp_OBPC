@@ -1,11 +1,16 @@
 from datetime import datetime
+import logging
 
 from app.extensoes import db
+from sqlalchemy import inspect
+from sqlalchemy.exc import OperationalError, ProgrammingError
 
 
 class ObservacaoRelatorio(db.Model):
     """Armazena observações informativas por competência de relatório."""
     __tablename__ = 'observacoes_relatorio'
+
+    _tabela_verificada = False
 
     id = db.Column(db.Integer, primary_key=True)
     mes = db.Column(db.Integer, nullable=False, index=True)
@@ -20,8 +25,45 @@ class ObservacaoRelatorio(db.Model):
     )
 
     @classmethod
+    def garantir_tabela(cls):
+        """Garante que a tabela exista antes de consultar/salvar observações."""
+        if cls._tabela_verificada:
+            return True
+
+        try:
+            inspector = inspect(db.engine)
+            if cls.__tablename__ not in inspector.get_table_names():
+                cls.__table__.create(bind=db.engine, checkfirst=True)
+                logging.getLogger(__name__).info('Tabela observacoes_relatorio criada automaticamente.')
+            cls._tabela_verificada = True
+            return True
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                'ObservacaoRelatorio indisponivel; usando fallback automatico. Motivo: %s',
+                exc,
+            )
+            return False
+
+    @classmethod
+    def _executar_consulta_segura(cls, operacao):
+        if not cls.garantir_tabela():
+            return None
+
+        try:
+            return operacao()
+        except (OperationalError, ProgrammingError) as exc:
+            cls._tabela_verificada = False
+            logging.getLogger(__name__).warning(
+                'Falha ao acessar observacoes_relatorio; usando fallback automatico. Motivo: %s',
+                exc,
+            )
+            return None
+
+    @classmethod
     def obter(cls, mes, ano, tipo_relatorio='repasses_sede'):
-        return cls.query.filter_by(mes=mes, ano=ano, tipo_relatorio=tipo_relatorio).first()
+        return cls._executar_consulta_segura(
+            lambda: cls.query.filter_by(mes=mes, ano=ano, tipo_relatorio=tipo_relatorio).first()
+        )
 
     @classmethod
     def obter_texto(cls, mes, ano, tipo_relatorio='repasses_sede'):
@@ -30,6 +72,9 @@ class ObservacaoRelatorio(db.Model):
 
     @classmethod
     def salvar_texto(cls, mes, ano, observacao, tipo_relatorio='repasses_sede'):
+        if not cls.garantir_tabela():
+            return None
+
         registro = cls.obter(mes, ano, tipo_relatorio)
         texto = (observacao or '').strip()
 

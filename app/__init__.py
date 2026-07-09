@@ -188,10 +188,7 @@ def create_app():
             pass
 
         try:
-            from sqlalchemy import inspect
-            inspector = inspect(db.engine)
-            if 'observacoes_relatorio' not in inspector.get_table_names():
-                ObservacaoRelatorio.__table__.create(bind=db.engine, checkfirst=True)
+            ObservacaoRelatorio.garantir_tabela()
         except Exception:
             pass
         

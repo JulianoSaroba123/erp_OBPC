@@ -3313,9 +3313,12 @@ def salvar_justificativa_relatorio():
             if not observacao_texto:
                 flash('Informe um texto para salvar a justificativa.', 'warning')
             else:
-                ObservacaoRelatorio.salvar_texto(mes, ano, observacao_texto, tipo_relatorio=tipo_relatorio)
-                db.session.commit()
-                flash('Justificativa contábil salva com sucesso.', 'success')
+                registro = ObservacaoRelatorio.salvar_texto(mes, ano, observacao_texto, tipo_relatorio=tipo_relatorio)
+                if registro is None:
+                    flash('A justificativa não pôde ser salva agora, mas o relatório seguirá com o texto automático.', 'warning')
+                else:
+                    db.session.commit()
+                    flash('Justificativa contábil salva com sucesso.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao atualizar justificativa: {str(e)}', 'danger')
@@ -4176,9 +4179,12 @@ def gerenciar_despesas_fixas():
                     flash('Digite uma observação antes de salvar.', 'danger')
                     return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=mes_ref_post, ano=ano_ref_post))
 
-                ObservacaoRelatorio.salvar_texto(mes_ref_post, ano_ref_post, observacao_texto, tipo_relatorio='repasses_sede')
-                db.session.commit()
-                flash('Observação dos repasses salva com sucesso!', 'success')
+                registro = ObservacaoRelatorio.salvar_texto(mes_ref_post, ano_ref_post, observacao_texto, tipo_relatorio='repasses_sede')
+                if registro is None:
+                    flash('A observação não pôde ser salva agora, mas o sistema continuará usando o texto automático.', 'warning')
+                else:
+                    db.session.commit()
+                    flash('Observação dos repasses salva com sucesso!', 'success')
                 return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=mes_ref_post, ano=ano_ref_post))
 
             elif acao == 'excluir_observacao_repasse_sede':
