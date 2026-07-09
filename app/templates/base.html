@@ -57,8 +57,7 @@
       box-sizing: border-box;
     }
 
-    .sidebar a,
-    .sidebar .menu-toggle-button {
+    .sidebar {
       position: fixed;
       top: 0;
       left: 0;
@@ -125,7 +124,9 @@
       display: none;
     }
 
-    .sidebar.collapsed a span {
+    .sidebar.collapsed a span,
+    .sidebar.collapsed .menu-toggle-button span,
+    .sidebar.collapsed .menu-toggle-button .submenu-arrow {
       display: none;
     }
 
@@ -144,7 +145,6 @@
       padding: 5px 0 !important;
     }
 
-    .sidebar .menu-group:hover .submenu,
     .sidebar .submenu.show {
       display: block !important;
       opacity: 1 !important;
@@ -246,6 +246,47 @@
       text-align: center;
     }
 
+    .sidebar .menu-toggle-button {
+      color: white;
+      text-decoration: none;
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: all 0.3s;
+      font-size: 15px;
+      border-left: 4px solid transparent;
+      width: 100%;
+      border-top: none;
+      border-right: none;
+      border-bottom: none;
+      background: transparent;
+      text-align: left;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .sidebar .menu-toggle-button:hover {
+      background: rgba(255, 107, 53, 0.2);
+      border-left-color: var(--yellow);
+      transform: translateX(5px);
+    }
+
+    .sidebar .menu-toggle-button:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .sidebar .menu-toggle-button i {
+      width: 20px;
+      text-align: center;
+    }
+
+    .sidebar .menu-toggle-button span {
+      display: inline-flex;
+      align-items: center;
+    }
+
     .content {
       margin-left: 240px;
       padding: 20px;
@@ -261,30 +302,22 @@
       margin-left: 60px;
       width: calc(100vw - 60px);
       max-width: calc(100vw - 60px);
-      width: 100%;
-      border: 0;
-      background: transparent;
-      text-align: left;
-      cursor: pointer;
     }
 
-    .sidebar a:hover,
-    .sidebar .menu-toggle-button:hover {
+    .sidebar-toggle {
       position: fixed;
       top: 75px;
       left: 250px;
       z-index: 1000;
       background: var(--primary-green);
       color: white;
-    .sidebar a.active,
-    .sidebar .menu-toggle-button.active {
+      border: none;
       padding: 8px 12px;
       border-radius: 0 5px 5px 0;
       cursor: pointer;
       transition: left 0.3s ease;
       box-shadow: 2px 2px 10px rgba(0,0,0,0.2);
-    .sidebar a i,
-    .sidebar .menu-toggle-button i {
+    }
 
     .sidebar-toggle.collapsed {
       left: 70px;
