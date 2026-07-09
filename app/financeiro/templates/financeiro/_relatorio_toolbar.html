@@ -49,6 +49,7 @@
             <button type="submit" class="btn-primary-soft"><i class="fas fa-sync-alt"></i> Atualizar</button>
             <a class="btn-outline-soft" href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Gerar PDF</a>
             <button type="button" class="btn-dark-soft" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+            <a class="btn-outline-soft" href="{{ url_for('financeiro.lista_lancamentos') }}"><i class="fas fa-arrow-left"></i> Voltar para Lançamentos</a>
         </div>
     </form>
 
