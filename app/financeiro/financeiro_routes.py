@@ -3737,6 +3737,45 @@ def _calcular_obrigacao_30_mes(mes, ano, percentual_conselho):
     return float(totais.get('valor_conselho', 0.0) or 0.0)
 
 
+def _eh_pagamento_repasse_sede_legado(lancamento):
+    """Reconhece pagamentos antigos de sede registrados diretamente em lançamentos."""
+    if not lancamento or (lancamento.tipo or '').strip().lower() != 'saída':
+        return False
+
+    categoria = (lancamento.categoria or '').strip().lower()
+    descricao = (lancamento.descricao or '').strip().lower()
+
+    termos_categoria = (
+        'contrib. sede',
+        'contrib sede',
+        'repasse à sede',
+        'repasse a sede',
+    )
+
+    if any(termo in categoria for termo in termos_categoria):
+        return True
+
+    return 'repasse' in descricao and 'sede' in descricao
+
+
+def _somar_pagamentos_repasse_legado_ate(mes, ano):
+    data_inicio = date(ano, mes, 1)
+    lancamentos = Lancamento.query.filter(
+        Lancamento.data < data_inicio,
+        Lancamento.tipo == 'Saída'
+    ).all()
+    return sum(float(l.valor or 0) for l in lancamentos if _eh_pagamento_repasse_sede_legado(l))
+
+
+def _somar_pagamentos_repasse_legado_mes(mes, ano):
+    lancamentos = Lancamento.query.filter(
+        extract('month', Lancamento.data) == mes,
+        extract('year', Lancamento.data) == ano,
+        Lancamento.tipo == 'Saída'
+    ).all()
+    return sum(float(l.valor or 0) for l in lancamentos if _eh_pagamento_repasse_sede_legado(l))
+
+
 def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
     """Monta quadro de controle de repasse por competencia (geracao) e pagamento (liquidacao)."""
     obrigacao_mes = _calcular_obrigacao_30_mes(mes, ano, percentual_conselho)
@@ -3775,6 +3814,22 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
     except (OperationalError, ProgrammingError, AttributeError):
         db.session.rollback()
         pagamentos_mes = []
+
+    # Compatibilidade para histórico antigo de repasse salvo apenas em lançamentos.
+    pagamentos_legado_ate = _somar_pagamentos_repasse_legado_ate(mes, ano)
+    pagamentos_legado_mes = _somar_pagamentos_repasse_legado_mes(mes, ano)
+
+    if pagamentos_legado_ate > pagos_ate_anterior:
+        pagos_ate_anterior = pagamentos_legado_ate
+    if pagamentos_legado_mes > pagamentos_competencia_mes:
+        pagamentos_competencia_mes = pagamentos_legado_mes
+    if pagamentos_legado_mes > pago_mes:
+        pago_mes = pagamentos_legado_mes
+
+    saldo_pendente_anterior = obrigacoes_ate_anterior - pagos_ate_anterior
+    total_devido = saldo_pendente_anterior + obrigacao_mes
+    saldo_pendente_atual = total_devido - pagamentos_competencia_mes
+
     observacao_quitacao_competencia_anterior = any(
         p.competencia_ano_ref is not None and p.competencia_mes_ref is not None and
         ((p.competencia_ano_ref < ano) or (p.competencia_ano_ref == ano and p.competencia_mes_ref < mes))
