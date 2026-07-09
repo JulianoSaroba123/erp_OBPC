@@ -3,7 +3,7 @@
 {% block title %}Preview - Relatório de Caixa {{ mes }}/{{ ano }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid finance-surface">
     <!-- Cabeçalho com ações -->
     <div class="row mb-3 d-print-none">
         <div class="col-12">
@@ -32,7 +32,7 @@
     <!-- Documento de Preview com aparência de PDF -->
     <div class="row justify-content-center">
         <div class="col-lg-8">
-            <div class="card shadow" style="background: white; min-height: 800px;">
+            <div class="card shadow panel-card" style="background: white; min-height: 800px;">
                 <div class="card-body p-4">
                     
                     <!-- Cabeçalho do Relatório -->
@@ -121,7 +121,7 @@
                                 <i class="fas fa-hand-holding-usd me-2"></i>💰 TOTAL A ENVIAR PARA SEDE
                             </h6>
                             
-                            <div class="alert alert-warning p-3">
+                            <div class="alert alert-warning p-3 highlight-control">
                                 <table class="table table-sm mb-0" style="background: transparent; table-layout: fixed;">
                                     <colgroup>
                                         <col style="width: 65%;">
@@ -175,7 +175,7 @@
 
                     <div class="row mb-4">
                         <div class="col-12">
-                            <div class="alert alert-light border mb-0">
+                            <div class="alert alert-light border mb-0 highlight-note">
                                 <h6 class="fw-bold mb-2">JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE</h6>
                                 <div style="white-space: pre-line;">{{ observacao_repasse_sede or '-' }}</div>
                             </div>
@@ -268,6 +268,28 @@
 </div>
 
 <style>
+.finance-surface {
+    background: linear-gradient(180deg, #eef5f9 0%, #f7fafc 100%);
+    border-radius: 16px;
+    padding: 14px;
+}
+
+.panel-card {
+    border: 1px solid #dbe3ec;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, .07);
+}
+
+.highlight-control {
+    border: 1px solid #fde68a;
+    background: linear-gradient(180deg, #fffef4 0%, #fff 100%);
+}
+
+.highlight-note {
+    border-color: #bfdbfe !important;
+    background: linear-gradient(180deg, #f7fbff 0%, #fff 100%);
+}
+
 @media print {
     .d-print-none {
         display: none !important;

@@ -80,6 +80,17 @@
             font-size: 15px;
             border: 0;
         }
+        .official-table tr:first-child td {
+            border-top: 1px solid #dbe3ec;
+            padding-top: 10px;
+        }
+        .control-card, .note-card {
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            padding: 14px;
+        }
+        .control-card { background: linear-gradient(180deg, #fffef4 0%, #ffffff 100%); border-color: #fde68a; }
+        .note-card { background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%); border-color: #bfdbfe; }
         .official-table td.label {
             width: 72%;
             color: #0f172a;
@@ -199,6 +210,7 @@
 
             <section>
                 <h3 class="section-title">Controle de Repasse a Sede</h3>
+                <div class="control-card">
                 <table class="official-table">
                     <tbody>
                         <tr><td class="label">Saldo pendente anterior</td><td class="value">{{ controle_repasse_sede.saldo_pendente_anterior|valor_com_cor|safe }}</td></tr>
@@ -208,13 +220,16 @@
                         <tr class="total"><td class="label">Saldo pendente atual</td><td class="value">{{ controle_repasse_sede.saldo_pendente_atual|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
+                </div>
             </section>
 
             <div class="separator"></div>
 
             <section>
-                <h3 class="section-title">Observação</h3>
-                <div class="muted-note" style="white-space: pre-line; line-height: 1.7;">{{ observacao_repasse_sede }}</div>
+                <h3 class="section-title">Justificativa Contábil dos Repasses à Sede</h3>
+                <div class="note-card">
+                    <div class="muted-note" style="white-space: pre-line; line-height: 1.7;">{{ observacao_repasse_sede }}</div>
+                </div>
             </section>
 
             <div class="separator"></div>

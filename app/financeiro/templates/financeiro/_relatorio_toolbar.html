@@ -46,10 +46,126 @@
         </div>
 
         <div class="toolbar-actions">
-            <button type="submit" class="btn-primary-soft">Atualizar</button>
-            <a class="btn-outline-soft" href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener">Gerar PDF</a>
-            <button type="button" class="btn-dark-soft" onclick="window.print()">Imprimir</button>
+            <button type="submit" class="btn-primary-soft"><i class="fas fa-sync-alt"></i> Atualizar</button>
+            <a class="btn-outline-soft" href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Gerar PDF</a>
+            <button type="button" class="btn-dark-soft" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
         </div>
     </form>
+
+    <div class="justificativa-card">
+        <div class="justificativa-header">
+            <div>
+                <p class="toolbar-label">Pré-PDF</p>
+                <h3><i class="fas fa-pen-to-square"></i> Justificativa Contábil dos Repasses à Sede</h3>
+            </div>
+            <span class="status-pill {% if observacao_repasse_salva %}status-salva{% else %}status-auto{% endif %}">
+                {% if observacao_repasse_salva %}Texto salvo{% else %}Texto automático{% endif %}
+            </span>
+        </div>
+
+        <form method="post" action="{{ url_for('financeiro.salvar_justificativa_relatorio') }}" class="justificativa-form">
+            <input type="hidden" name="tipo_relatorio" value="{{ tipo_relatorio }}">
+            <input type="hidden" name="mes" value="{{ mes }}">
+            <input type="hidden" name="ano" value="{{ ano }}">
+
+            <textarea
+                name="observacao_repasse_sede"
+                class="justificativa-textarea"
+                rows="5"
+                placeholder="Digite a justificativa contábil dos repasses à sede"
+            >{{ observacao_repasse_sede }}</textarea>
+
+            <div class="toolbar-actions">
+                <button type="submit" name="acao" value="salvar" class="btn-primary-soft"><i class="fas fa-save"></i> Salvar Justificativa</button>
+                <button type="submit" name="acao" value="restaurar" class="btn-outline-soft"><i class="fas fa-rotate-left"></i> Restaurar Texto Automático</button>
+            </div>
+
+            <small class="toolbar-subtitle">A justificativa é salva por mês, ano e tipo de relatório. O PDF sempre usa o texto salvo para este contexto.</small>
+        </form>
+    </div>
 </div>
+
+<style>
+    .toolbar-actions .btn-primary-soft,
+    .toolbar-actions .btn-outline-soft,
+    .toolbar-actions .btn-dark-soft {
+        gap: 8px;
+    }
+
+    .justificativa-card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .justificativa-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .justificativa-header h3 {
+        margin: 4px 0 0;
+        font-size: 16px;
+        color: var(--brand);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .status-pill {
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid transparent;
+        white-space: nowrap;
+    }
+
+    .status-salva {
+        background: #d1fae5;
+        color: #065f46;
+        border-color: #a7f3d0;
+    }
+
+    .status-auto {
+        background: #fef3c7;
+        color: #92400e;
+        border-color: #fde68a;
+    }
+
+    .justificativa-form {
+        display: grid;
+        gap: 10px;
+    }
+
+    .justificativa-textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 10px 12px;
+        font: inherit;
+        color: var(--ink);
+        background: #fff;
+        resize: vertical;
+        min-height: 110px;
+    }
+
+    .justificativa-textarea:focus {
+        outline: none;
+        border-color: #2a7f62;
+        box-shadow: 0 0 0 3px rgba(42, 127, 98, 0.15);
+    }
+
+    @media (max-width: 900px) {
+        .justificativa-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
 {% endif %}

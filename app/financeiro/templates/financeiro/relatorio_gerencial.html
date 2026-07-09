@@ -92,6 +92,10 @@
         .executive-box p { margin: 10px 0 0; color: rgba(255,255,255,.82); line-height: 1.6; }
         .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
         .card { padding: 20px; }
+        .cards .card:nth-child(1) { border-top: 5px solid #2a7f62; }
+        .cards .card:nth-child(2) { border-top: 5px solid #16a34a; }
+        .cards .card:nth-child(3) { border-top: 5px solid #dc2626; }
+        .cards .card:nth-child(4) { border-top: 5px solid #2563eb; }
         .card-label { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; }
         .card-value { margin-top: 10px; font-size: 28px; font-weight: 700; }
         .card-note { margin-top: 8px; font-size: 13px; color: var(--muted); }
@@ -101,11 +105,13 @@
         .section-header p { margin: 0; color: var(--muted); }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
-        th { text-align: left; color: var(--muted); text-transform: uppercase; font-size: 12px; letter-spacing: .08em; }
+        th { text-align: left; color: #1e3a8a; text-transform: uppercase; font-size: 12px; letter-spacing: .08em; background: #eaf2ff; }
         td.numeric, th.numeric { text-align: right; }
         td.center, th.center { text-align: center; }
         tbody tr:nth-child(even) { background: #fafcff; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-size: 12px; }
+        .highlight-control { border: 2px solid #facc15; background: linear-gradient(180deg, #fffef4 0%, #ffffff 100%); }
+        .highlight-note { border: 2px solid #bfdbfe; background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%); }
         .text-success { color: var(--accent); }
         .text-danger { color: var(--danger); }
         .text-warning { color: var(--warning); }
@@ -188,7 +194,7 @@
             </article>
         </section>
 
-        <section class="table-card" style="margin-bottom: 22px;">
+        <section class="table-card highlight-control" style="margin-bottom: 22px;">
             <div class="section-header"><h3>Controle de Repasse à Sede</h3><p>Competência x pagamento</p></div>
             <table>
                 <tbody>
@@ -201,8 +207,8 @@
             </table>
         </section>
 
-        <section class="table-card" style="margin-bottom: 22px;">
-            <div class="section-header"><h3>Observação</h3><p>Repasses à Sede</p></div>
+        <section class="table-card highlight-note" style="margin-bottom: 22px;">
+            <div class="section-header"><h3>Justificativa Contábil dos Repasses à Sede</h3><p>Texto vigente para este relatório</p></div>
             <div style="white-space: pre-line; line-height: 1.6; color: #334155;">{{ observacao_repasse_sede }}</div>
         </section>
 

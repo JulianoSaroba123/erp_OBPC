@@ -37,13 +37,20 @@
         .header p { color: var(--muted); margin-top: 8px; }
         .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
         .stat { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
+        .stats .stat:nth-child(1) { border-top: 4px solid #2a7f62; }
+        .stats .stat:nth-child(2) { border-top: 4px solid #16a34a; }
+        .stats .stat:nth-child(3) { border-top: 4px solid #dc2626; }
+        .stats .stat:nth-child(4) { border-top: 4px solid #2563eb; }
         .stat strong { display: block; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; margin-bottom: 8px; }
         .stat span { font-size: 24px; font-weight: 700; }
         .section { margin-bottom: 22px; }
         .section h3 { margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; font-size: 13px; color: var(--accent); }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { border: 1px solid var(--line); padding: 10px 11px; font-size: 13px; vertical-align: top; }
-        th { background: #f3f6fb; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+        th { background: #eaf2ff; color: #1e3a8a; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+        .control-card, .note-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+        .control-card { background: linear-gradient(180deg, #fffef4 0%, #ffffff 100%); border-color: #fde68a; }
+        .note-card { background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%); border-color: #bfdbfe; }
         .audit-table th, .audit-table td {
             font-size: 12px;
             word-wrap: break-word;
@@ -143,6 +150,7 @@
 
             <section class="section">
                 <h3>Controle de Repasse à Sede</h3>
+                <div class="control-card">
                 <table>
                     <tbody>
                         <tr><td>Saldo pendente anterior</td><td class="numeric">{{ controle_repasse_sede.saldo_pendente_anterior|valor_com_cor|safe }}</td></tr>
@@ -152,11 +160,14 @@
                         <tr><td><strong>Saldo pendente atual</strong></td><td class="numeric"><strong>{{ controle_repasse_sede.saldo_pendente_atual|valor_com_cor|safe }}</strong></td></tr>
                     </tbody>
                 </table>
+                </div>
             </section>
 
             <section class="section">
-                <h3>Observação</h3>
-                <p style="margin: 0; white-space: pre-line; color: var(--ink); line-height: 1.6;">{{ observacao_repasse_sede }}</p>
+                <h3>Justificativa Contábil dos Repasses à Sede</h3>
+                <div class="note-card">
+                    <p style="margin: 0; white-space: pre-line; color: var(--ink); line-height: 1.6;">{{ observacao_repasse_sede }}</p>
+                </div>
             </section>
 
             <section class="section">

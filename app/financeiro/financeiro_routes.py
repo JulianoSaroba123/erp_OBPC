@@ -870,7 +870,12 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
     }
 
     controle_repasse_sede = _montar_controle_repasse_sede(mes, ano, percentual_conselho)
-    observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(mes, ano, controle_repasse_sede)
+    observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(
+        mes,
+        ano,
+        controle_repasse_sede,
+        tipo_relatorio=tipo_relatorio
+    )
 
     def percentual(categorias, total_base):
         total_base = float(total_base or 0)
@@ -3224,6 +3229,42 @@ def gerar_relatorio():
         return redirect(url_for('financeiro.lista_lancamentos'))
 
 
+@financeiro_bp.route('/financeiro/relatorio/justificativa', methods=['POST'])
+@login_required
+def salvar_justificativa_relatorio():
+    """Salva ou restaura a justificativa contábil por mes/ano/tipo de relatório."""
+    tipo_relatorio = (request.form.get('tipo_relatorio') or 'gerencial').strip().lower()
+    if tipo_relatorio not in {'gerencial', 'sede', 'auditoria'}:
+        tipo_relatorio = 'gerencial'
+
+    hoje = datetime.now()
+    mes = request.form.get('mes', type=int) or hoje.month
+    ano = request.form.get('ano', type=int) or hoje.year
+    acao = (request.form.get('acao') or 'salvar').strip().lower()
+
+    try:
+        if acao == 'restaurar':
+            removida = ObservacaoRelatorio.excluir_texto(mes, ano, tipo_relatorio=tipo_relatorio)
+            db.session.commit()
+            if removida:
+                flash('Texto automático restaurado com sucesso.', 'success')
+            else:
+                flash('Já estava usando o texto automático para este período.', 'info')
+        else:
+            observacao_texto = (request.form.get('observacao_repasse_sede') or '').strip()
+            if not observacao_texto:
+                flash('Informe um texto para salvar a justificativa.', 'warning')
+            else:
+                ObservacaoRelatorio.salvar_texto(mes, ano, observacao_texto, tipo_relatorio=tipo_relatorio)
+                db.session.commit()
+                flash('Justificativa contábil salva com sucesso.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar justificativa: {str(e)}', 'danger')
+
+    return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano))
+
+
 @financeiro_bp.route('/financeiro/relatorio/pdf')
 @login_required
 def relatorio_pdf():
@@ -3680,9 +3721,13 @@ def _gerar_observacao_repasse_padrao(controle_repasse_sede):
     return 'Os pagamentos realizados neste período referem-se exclusivamente às competências do próprio mês.'
 
 
-def _obter_observacao_repasse_sede(mes, ano, controle_repasse_sede):
+def _obter_observacao_repasse_sede(mes, ano, controle_repasse_sede, tipo_relatorio='gerencial'):
+    tipo_observacao = (tipo_relatorio or 'gerencial').strip().lower()
+    if tipo_observacao not in {'gerencial', 'sede', 'auditoria', 'caixa', 'repasses_sede'}:
+        tipo_observacao = 'gerencial'
+
     observacao_padrao = _gerar_observacao_repasse_padrao(controle_repasse_sede)
-    observacao_salva = ObservacaoRelatorio.obter_texto(mes, ano, tipo_relatorio='repasses_sede')
+    observacao_salva = ObservacaoRelatorio.obter_texto(mes, ano, tipo_relatorio=tipo_observacao)
     if observacao_salva:
         return observacao_salva, observacao_padrao, True
     return observacao_padrao, observacao_padrao, False
@@ -4066,7 +4111,12 @@ def gerenciar_despesas_fixas():
         percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         controle_repasse_sede = _montar_controle_repasse_sede(mes_ref, ano_ref, percentual_conselho)
         historico_pagamentos = EnvioSede.query.order_by(EnvioSede.data_pagamento.desc(), EnvioSede.id.desc()).limit(100).all()
-        observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(mes_ref, ano_ref, controle_repasse_sede)
+        observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(
+            mes_ref,
+            ano_ref,
+            controle_repasse_sede,
+            tipo_relatorio='repasses_sede'
+        )
         
         # Buscar categorias de saída dos lançamentos (para usar nas despesas fixas)
         categorias_saida = db.session.query(Lancamento.categoria).distinct().filter(
@@ -4342,7 +4392,12 @@ def relatorio_caixa_pdf():
         # Montar contexto de repasse à sede para renderização no PDF (informativo, sem alterar cálculos existentes)
         percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         controle_repasse_sede = _montar_controle_repasse_sede(mes, ano, percentual_conselho)
-        observacao_repasse_sede, _, _ = _obter_observacao_repasse_sede(mes, ano, controle_repasse_sede)
+        observacao_repasse_sede, _, _ = _obter_observacao_repasse_sede(
+            mes,
+            ano,
+            controle_repasse_sede,
+            tipo_relatorio='gerencial'
+        )
 
         # Criar instância do gerador com configuração
         current_app.logger.info("Criando instancia RelatorioFinanceiro...")
