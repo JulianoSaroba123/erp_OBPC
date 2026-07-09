@@ -95,27 +95,37 @@
                 <div class="col-md-7">
                     <div class="card border-success h-100">
                         <div class="card-header bg-success text-white">
-                            <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Registrar Pagamento de Repasse</h5>
+                            <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Regularização Inicial / Registro de Repasse</h5>
                         </div>
                         <div class="card-body">
+                            <div class="alert alert-info py-2">
+                                <small>
+                                    Use <strong>pagamento histórico sem movimentação bancária</strong> para baixar competências antigas sem gerar saída no caixa/banco.
+                                </small>
+                            </div>
                             <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" enctype="multipart/form-data">
                                 <input type="hidden" name="acao" value="registrar_pagamento_sede">
                                 <div class="row g-2">
                                     <div class="col-md-4">
                                         <label class="form-label">Data pagamento</label>
-                                        <input type="date" class="form-control" name="data_pagamento" required>
+                                        <input type="date" class="form-control" id="create_data_pagamento" name="data_pagamento">
+                                        <small class="text-muted">Informe quando houver movimentação real.</small>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label">Valor</label>
+                                        <label class="form-label">Valor pago</label>
                                         <input type="number" class="form-control" name="valor" step="0.01" min="0.01" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Valor devido</label>
+                                        <input type="number" class="form-control" name="valor_devido_competencia" step="0.01" min="0.01" placeholder="Opcional (usa valor pago se vazio)">
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Forma pagamento</label>
                                         <select class="form-select" name="forma_pagamento" required>
-                                            <option value="PIX">PIX</option>
-                                            <option value="Banco">Banco</option>
                                             <option value="Dinheiro">Dinheiro</option>
-                                            <option value="TED">TED</option>
+                                            <option value="PIX">PIX</option>
+                                            <option value="Transferência">Transferência</option>
+                                            <option value="Outro">Outro</option>
                                         </select>
                                     </div>
                                     <div class="col-md-8">
@@ -134,6 +144,14 @@
                                     <div class="col-md-2">
                                         <label class="form-label">Ano ref.</label>
                                         <input type="number" class="form-control" name="competencia_ano_ref" value="{{ ano_ref }}" min="2020" max="2035">
+                                    </div>
+                                    <div class="col-md-12">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input" type="checkbox" value="1" id="create_pagamento_historico_sem_movimentacao" name="pagamento_historico_sem_movimentacao">
+                                            <label class="form-check-label" for="create_pagamento_historico_sem_movimentacao">
+                                                Pagamento histórico sem movimentação bancária
+                                            </label>
+                                        </div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Comprovante</label>
@@ -201,9 +219,11 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>Data</th>
+                                    <th>Valor devido</th>
                                     <th>Valor</th>
                                     <th>Forma</th>
                                     <th>Competência</th>
+                                    <th>Tipo</th>
                                     <th>Comprovante</th>
                                     <th>Observação</th>
                                     <th class="text-center">Ações</th>
@@ -212,10 +232,30 @@
                             <tbody>
                                 {% for pagamento in historico_pagamentos %}
                                 <tr>
-                                    <td>{{ pagamento.data_pagamento.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        {% if pagamento.data_pagamento_informada is not sameas(false) %}
+                                        {{ pagamento.data_pagamento.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pagamento.valor_devido_competencia is not none %}
+                                        {{ "R$ %.2f"|format(pagamento.valor_devido_competencia)|replace(".", ",") }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
                                     <td><strong>{{ "R$ %.2f"|format(pagamento.valor)|replace(".", ",") }}</strong></td>
                                     <td>{{ pagamento.forma_pagamento }}</td>
                                     <td>{{ pagamento.competencia }}</td>
+                                    <td>
+                                        {% if pagamento.pagamento_historico_sem_movimentacao %}
+                                        <span class="badge bg-secondary">Histórico sem caixa</span>
+                                        {% else %}
+                                        <span class="badge bg-success">Com movimentação</span>
+                                        {% endif %}
+                                    </td>
                                     <td>
                                         {% if pagamento.comprovante %}
                                         <a href="{{ pagamento.comprovante }}" target="_blank" rel="noopener">Abrir</a>
@@ -235,6 +275,9 @@
                                                     data-competencia="{{ pagamento.competencia }}"
                                                     data-competencia-mes-ref="{{ pagamento.competencia_mes_ref if pagamento.competencia_mes_ref is not none else '' }}"
                                                     data-competencia-ano-ref="{{ pagamento.competencia_ano_ref if pagamento.competencia_ano_ref is not none else '' }}"
+                                                    data-valor-devido-competencia="{{ pagamento.valor_devido_competencia if pagamento.valor_devido_competencia is not none else '' }}"
+                                                    data-pagamento-historico-sem-movimentacao="{{ 1 if pagamento.pagamento_historico_sem_movimentacao else 0 }}"
+                                                    data-data-pagamento-informada="{{ 1 if pagamento.data_pagamento_informada is not sameas(false) else 0 }}"
                                                     data-observacao="{{ pagamento.observacao or '' }}"
                                                     onclick="editarPagamentoSede(this)">
                                                 <i class="fas fa-edit"></i>
@@ -250,7 +293,7 @@
                                     </td>
                                 </tr>
                                 {% else %}
-                                <tr><td colspan="7" class="text-center text-muted">Nenhum pagamento de repasse registrado.</td></tr>
+                                <tr><td colspan="9" class="text-center text-muted">Nenhum pagamento de repasse registrado.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -356,19 +399,23 @@
                     <div class="row g-2">
                         <div class="col-md-4">
                             <label class="form-label">Data pagamento</label>
-                            <input type="date" class="form-control" id="edit_data_pagamento" name="data_pagamento" required>
+                            <input type="date" class="form-control" id="edit_data_pagamento" name="data_pagamento">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Valor</label>
+                            <label class="form-label">Valor pago</label>
                             <input type="number" class="form-control" id="edit_valor" name="valor" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Valor devido</label>
+                            <input type="number" class="form-control" id="edit_valor_devido_competencia" name="valor_devido_competencia" step="0.01" min="0.01">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Forma pagamento</label>
                             <select class="form-select" id="edit_forma_pagamento" name="forma_pagamento" required>
-                                <option value="PIX">PIX</option>
-                                <option value="Banco">Banco</option>
                                 <option value="Dinheiro">Dinheiro</option>
-                                <option value="TED">TED</option>
+                                <option value="PIX">PIX</option>
+                                <option value="Transferência">Transferência</option>
+                                <option value="Outro">Outro</option>
                             </select>
                         </div>
                         <div class="col-md-8">
@@ -387,6 +434,14 @@
                         <div class="col-md-2">
                             <label class="form-label">Ano ref.</label>
                             <input type="number" class="form-control" id="edit_competencia_ano_ref" name="competencia_ano_ref" min="2020" max="2035">
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-check mt-1">
+                                <input class="form-check-input" type="checkbox" value="1" id="edit_pagamento_historico_sem_movimentacao" name="pagamento_historico_sem_movimentacao">
+                                <label class="form-check-label" for="edit_pagamento_historico_sem_movimentacao">
+                                    Pagamento histórico sem movimentação bancária
+                                </label>
+                            </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Novo comprovante</label>
@@ -680,15 +735,43 @@ function confirmarExclusao(id, nome) {
 
 function editarPagamentoSede(botao) {
     document.getElementById('edit_pagamento_id').value = botao.dataset.pagamentoId || '';
-    document.getElementById('edit_data_pagamento').value = botao.dataset.dataPagamento || '';
+    document.getElementById('edit_data_pagamento').value = (botao.dataset.dataPagamentoInformada === '1') ? (botao.dataset.dataPagamento || '') : '';
     document.getElementById('edit_valor').value = botao.dataset.valor || '';
     document.getElementById('edit_forma_pagamento').value = botao.dataset.formaPagamento || 'PIX';
     document.getElementById('edit_competencia').value = botao.dataset.competencia || '';
     document.getElementById('edit_competencia_mes_ref').value = botao.dataset.competenciaMesRef || '';
     document.getElementById('edit_competencia_ano_ref').value = botao.dataset.competenciaAnoRef || '';
+    document.getElementById('edit_valor_devido_competencia').value = botao.dataset.valorDevidoCompetencia || '';
+    document.getElementById('edit_pagamento_historico_sem_movimentacao').checked = (botao.dataset.pagamentoHistoricoSemMovimentacao === '1');
     document.getElementById('edit_observacao').value = botao.dataset.observacao || '';
+
+    atualizarObrigatoriedadeDataHistorico('edit_');
 
     new bootstrap.Modal(document.getElementById('editarPagamentoSedeModal')).show();
 }
+
+function atualizarObrigatoriedadeDataHistorico(prefixo) {
+    const checkbox = document.getElementById(`${prefixo}pagamento_historico_sem_movimentacao`);
+    const campoData = document.getElementById(`${prefixo}data_pagamento`);
+    if (!checkbox || !campoData) {
+        return;
+    }
+
+    const modoHistorico = checkbox.checked;
+    campoData.required = !modoHistorico;
+    if (modoHistorico) {
+        campoData.value = '';
+    }
+}
+
+document.getElementById('create_pagamento_historico_sem_movimentacao')?.addEventListener('change', function () {
+    atualizarObrigatoriedadeDataHistorico('create_');
+});
+
+document.getElementById('edit_pagamento_historico_sem_movimentacao')?.addEventListener('change', function () {
+    atualizarObrigatoriedadeDataHistorico('edit_');
+});
+
+atualizarObrigatoriedadeDataHistorico('create_');
 </script>
 {% endblock %}

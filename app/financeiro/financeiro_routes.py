@@ -11,7 +11,7 @@ from app.financeiro.recibo_model import Recibo
 from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
 from datetime import datetime, date
-from sqlalchemy import extract, or_, and_, func
+from sqlalchemy import extract, or_, and_, func, inspect, text
 from decimal import Decimal
 import os
 from werkzeug.utils import secure_filename
@@ -23,6 +23,8 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 financeiro_bp = Blueprint('financeiro', __name__, template_folder='templates')
+
+_ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK = False
 
 def obter_filtros_ativos():
     """Função auxiliar para capturar os filtros ativos da query string ou form"""
@@ -132,6 +134,52 @@ def _gerar_observacao_lancamento_repasse_sede(pagamento):
     return 'Pagamento de repasse à sede'
 
 
+def _mapear_conta_repasse_sede(forma_pagamento):
+    forma = (forma_pagamento or '').strip().lower()
+    if forma == 'dinheiro':
+        return 'Dinheiro'
+    if forma == 'pix':
+        return 'Pix'
+    return 'Banco'
+
+
+def _garantir_colunas_envio_sede_regularizacao():
+    """Garante colunas da rotina de regularização inicial sem depender de migrações externas."""
+    global _ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK
+    if _ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK:
+        return
+
+    insp = inspect(db.engine)
+    tabelas = set(insp.get_table_names())
+    if 'envios_sede' not in tabelas:
+        _ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK = True
+        return
+
+    colunas = {col['name'] for col in insp.get_columns('envios_sede')}
+    dialect = (db.engine.dialect.name or '').lower()
+
+    comandos = []
+    if 'valor_devido_competencia' not in colunas:
+        comandos.append('ALTER TABLE envios_sede ADD COLUMN valor_devido_competencia FLOAT')
+    if 'pagamento_historico_sem_movimentacao' not in colunas:
+        if dialect == 'postgresql':
+            comandos.append('ALTER TABLE envios_sede ADD COLUMN pagamento_historico_sem_movimentacao BOOLEAN NOT NULL DEFAULT FALSE')
+        else:
+            comandos.append('ALTER TABLE envios_sede ADD COLUMN pagamento_historico_sem_movimentacao INTEGER NOT NULL DEFAULT 0')
+    if 'data_pagamento_informada' not in colunas:
+        if dialect == 'postgresql':
+            comandos.append('ALTER TABLE envios_sede ADD COLUMN data_pagamento_informada BOOLEAN NOT NULL DEFAULT TRUE')
+        else:
+            comandos.append('ALTER TABLE envios_sede ADD COLUMN data_pagamento_informada INTEGER NOT NULL DEFAULT 1')
+
+    if comandos:
+        for comando in comandos:
+            db.session.execute(text(comando))
+        db.session.commit()
+
+    _ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK = True
+
+
 def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
     descricao = _gerar_descricao_lancamento_repasse_sede(pagamento)
     valor = float(pagamento.valor or 0)
@@ -141,6 +189,14 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
     if pagamento.lancamento_financeiro_id:
         lancamento = Lancamento.query.get(pagamento.lancamento_financeiro_id)
 
+    if bool(getattr(pagamento, 'pagamento_historico_sem_movimentacao', False)):
+        if lancamento is not None:
+            db.session.delete(lancamento)
+        pagamento.lancamento_financeiro_id = None
+        if commit:
+            db.session.flush()
+        return None
+
     if lancamento is None:
         lancamento = Lancamento(
             data=data_lancamento,
@@ -148,6 +204,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
             descricao=descricao,
             valor=valor,
             categoria='REPASSE À SEDE',
+            conta=_mapear_conta_repasse_sede(pagamento.forma_pagamento),
             observacoes=_gerar_observacao_lancamento_repasse_sede(pagamento),
             comprovante=pagamento.comprovante,
         )
@@ -160,6 +217,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
         lancamento.descricao = descricao
         lancamento.valor = valor
         lancamento.categoria = 'REPASSE À SEDE'
+        lancamento.conta = _mapear_conta_repasse_sede(pagamento.forma_pagamento)
         lancamento.observacoes = _gerar_observacao_lancamento_repasse_sede(pagamento)
         lancamento.comprovante = pagamento.comprovante
 
@@ -3685,12 +3743,13 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
             break
         obrigacoes_ate_anterior += _calcular_obrigacao_30_mes(mes_item, ano_item, percentual_conselho)
 
-    pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
+    pagos_ate_anterior = float(EnvioSede.somar_pagamentos_por_competencia_ate(mes - 1 if mes > 1 else 12, ano if mes > 1 else ano - 1) or 0.0)
     pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
+    pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_por_competencia_mes(mes, ano) or 0.0)
 
     saldo_pendente_anterior = obrigacoes_ate_anterior - pagos_ate_anterior
     total_devido = saldo_pendente_anterior + obrigacao_mes
-    saldo_pendente_atual = total_devido - pago_mes
+    saldo_pendente_atual = total_devido - pagamentos_competencia_mes
 
     pagamentos_mes = EnvioSede.listar_pagamentos_mes(mes, ano)
     observacao_quitacao_competencia_anterior = any(
@@ -3916,6 +3975,8 @@ def relatorio_obpc():
 def gerenciar_despesas_fixas():
     """Interface para gerenciar despesas fixas e controle de envio a sede."""
     try:
+        _garantir_colunas_envio_sede_regularizacao()
+
         # Processar ações de POST
         if request.method == 'POST':
             acao = request.form.get('acao')
@@ -3966,8 +4027,10 @@ def gerenciar_despesas_fixas():
                 forma_pagamento = request.form.get('forma_pagamento', 'PIX').strip() or 'PIX'
                 competencia = request.form.get('competencia', '').strip() or f'Competência {datetime.now().month:02d}/{datetime.now().year}'
                 observacao = request.form.get('observacao', '').strip() or None
+                valor_devido_competencia = request.form.get('valor_devido_competencia', type=float)
+                pagamento_historico_sem_movimentacao = bool(request.form.get('pagamento_historico_sem_movimentacao'))
 
-                if not data_pagamento_raw:
+                if not data_pagamento_raw and not pagamento_historico_sem_movimentacao:
                     flash('Informe a data do pagamento do repasse à sede.', 'danger')
                     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
@@ -3975,14 +4038,28 @@ def gerenciar_despesas_fixas():
                     flash('O valor do pagamento deve ser maior que zero.', 'danger')
                     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
-                try:
-                    data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date()
-                except ValueError:
-                    flash('Data de pagamento inválida.', 'danger')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-
                 competencia_mes_ref = request.form.get('competencia_mes_ref', type=int)
                 competencia_ano_ref = request.form.get('competencia_ano_ref', type=int)
+
+                if not competencia_mes_ref or not competencia_ano_ref:
+                    flash('Informe mês e ano de competência para registrar a baixa.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                data_pagamento_informada = True
+
+                if data_pagamento_raw:
+                    try:
+                        data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date()
+                    except ValueError:
+                        flash('Data de pagamento inválida.', 'danger')
+                        return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                else:
+                    # Para baixa histórica sem movimentação bancária, preserva competência sem gerar efeito em caixa/banco.
+                    data_pagamento = date(competencia_ano_ref, competencia_mes_ref, 1)
+                    data_pagamento_informada = False
+
+                if valor_devido_competencia is None or valor_devido_competencia <= 0:
+                    valor_devido_competencia = valor
 
                 comprovante = None
                 file = request.files.get('comprovante_sede')
@@ -3998,12 +4075,18 @@ def gerenciar_despesas_fixas():
                     competencia_ano_ref=competencia_ano_ref,
                     comprovante=comprovante,
                     observacao=observacao,
+                    valor_devido_competencia=valor_devido_competencia,
+                    pagamento_historico_sem_movimentacao=pagamento_historico_sem_movimentacao,
+                    data_pagamento_informada=data_pagamento_informada,
                 )
                 db.session.add(pagamento)
                 db.session.flush()
                 _sincronizar_lancamento_repasse_sede(pagamento)
                 db.session.commit()
-                flash('Pagamento de repasse à sede registrado com sucesso!', 'success')
+                if pagamento_historico_sem_movimentacao:
+                    flash('Baixa histórica registrada com sucesso (sem movimentação no caixa/banco).', 'success')
+                else:
+                    flash('Pagamento de repasse à sede registrado com sucesso!', 'success')
 
             elif acao == 'editar_pagamento_sede':
                 pagamento_id = request.form.get('pagamento_id', type=int)
@@ -4014,8 +4097,10 @@ def gerenciar_despesas_fixas():
                 forma_pagamento = request.form.get('forma_pagamento', 'PIX').strip() or 'PIX'
                 competencia = request.form.get('competencia', '').strip() or f'Competência {datetime.now().month:02d}/{datetime.now().year}'
                 observacao = request.form.get('observacao', '').strip() or None
+                valor_devido_competencia = request.form.get('valor_devido_competencia', type=float)
+                pagamento_historico_sem_movimentacao = bool(request.form.get('pagamento_historico_sem_movimentacao'))
 
-                if not data_pagamento_raw:
+                if not data_pagamento_raw and not pagamento_historico_sem_movimentacao:
                     flash('Informe a data do pagamento do repasse à sede.', 'danger')
                     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
@@ -4023,14 +4108,26 @@ def gerenciar_despesas_fixas():
                     flash('O valor do pagamento deve ser maior que zero.', 'danger')
                     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
-                try:
-                    data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date()
-                except ValueError:
-                    flash('Data de pagamento inválida.', 'danger')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-
                 competencia_mes_ref = request.form.get('competencia_mes_ref', type=int)
                 competencia_ano_ref = request.form.get('competencia_ano_ref', type=int)
+
+                if not competencia_mes_ref or not competencia_ano_ref:
+                    flash('Informe mês e ano de competência para atualizar a baixa.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                data_pagamento_informada = True
+                if data_pagamento_raw:
+                    try:
+                        data_pagamento = datetime.strptime(data_pagamento_raw, '%Y-%m-%d').date()
+                    except ValueError:
+                        flash('Data de pagamento inválida.', 'danger')
+                        return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                else:
+                    data_pagamento = date(competencia_ano_ref, competencia_mes_ref, 1)
+                    data_pagamento_informada = False
+
+                if valor_devido_competencia is None or valor_devido_competencia <= 0:
+                    valor_devido_competencia = valor
 
                 if pagamento.comprovante:
                     pagamento.comprovante = pagamento.comprovante
@@ -4045,9 +4142,15 @@ def gerenciar_despesas_fixas():
                 pagamento.competencia_mes_ref = competencia_mes_ref
                 pagamento.competencia_ano_ref = competencia_ano_ref
                 pagamento.observacao = observacao
+                pagamento.valor_devido_competencia = valor_devido_competencia
+                pagamento.pagamento_historico_sem_movimentacao = pagamento_historico_sem_movimentacao
+                pagamento.data_pagamento_informada = data_pagamento_informada
                 _sincronizar_lancamento_repasse_sede(pagamento)
                 db.session.commit()
-                flash('Pagamento de repasse à sede atualizado com sucesso!', 'success')
+                if pagamento_historico_sem_movimentacao:
+                    flash('Baixa histórica atualizada com sucesso (sem movimentação no caixa/banco).', 'success')
+                else:
+                    flash('Pagamento de repasse à sede atualizado com sucesso!', 'success')
 
             elif acao == 'excluir_pagamento_sede':
                 pagamento_id = request.form.get('pagamento_id', type=int)

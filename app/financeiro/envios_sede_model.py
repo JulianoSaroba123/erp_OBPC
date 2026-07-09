@@ -1,6 +1,6 @@
 from app.extensoes import db
 from datetime import datetime, date
-from sqlalchemy import extract, func
+from sqlalchemy import extract, func, and_, or_
 
 
 class EnvioSede(db.Model):
@@ -17,6 +17,9 @@ class EnvioSede(db.Model):
     lancamento_financeiro_id = db.Column(db.Integer, db.ForeignKey('lancamentos.id'), nullable=True, unique=True, index=True)
     comprovante = db.Column(db.String(300), nullable=True)
     observacao = db.Column(db.Text, nullable=True)
+    valor_devido_competencia = db.Column(db.Float, nullable=True)
+    pagamento_historico_sem_movimentacao = db.Column(db.Boolean, nullable=False, default=False)
+    data_pagamento_informada = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -34,6 +37,9 @@ class EnvioSede(db.Model):
             'lancamento_financeiro_id': self.lancamento_financeiro_id,
             'comprovante': self.comprovante,
             'observacao': self.observacao,
+            'valor_devido_competencia': float(self.valor_devido_competencia or 0) if self.valor_devido_competencia is not None else None,
+            'pagamento_historico_sem_movimentacao': bool(self.pagamento_historico_sem_movimentacao),
+            'data_pagamento_informada': bool(self.data_pagamento_informada),
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None,
             'updated_at': self.updated_at.strftime('%Y-%m-%d %H:%M:%S') if self.updated_at else None,
         }
@@ -58,3 +64,45 @@ class EnvioSede(db.Model):
             extract('month', cls.data_pagamento) == mes,
             extract('year', cls.data_pagamento) == ano
         ).order_by(cls.data_pagamento.asc(), cls.id.asc()).all()
+
+    @staticmethod
+    def _competencia_ordem(mes, ano):
+        return (ano * 100) + mes
+
+    @classmethod
+    def _ordem_competencia_registro(cls, pagamento):
+        if pagamento.competencia_ano_ref is not None and pagamento.competencia_mes_ref is not None:
+            return cls._competencia_ordem(int(pagamento.competencia_mes_ref), int(pagamento.competencia_ano_ref))
+
+        if pagamento.data_pagamento:
+            return cls._competencia_ordem(pagamento.data_pagamento.month, pagamento.data_pagamento.year)
+
+        return None
+
+    @classmethod
+    def listar_pagamentos_por_competencia_ate(cls, mes, ano):
+        limite = cls._competencia_ordem(mes, ano)
+        pagamentos = []
+
+        for pagamento in cls.query.order_by(cls.data_pagamento.asc(), cls.id.asc()).all():
+            ordem = cls._ordem_competencia_registro(pagamento)
+            if ordem is not None and ordem <= limite:
+                pagamentos.append(pagamento)
+
+        return pagamentos
+
+    @classmethod
+    def somar_pagamentos_por_competencia_ate(cls, mes, ano):
+        return sum(float(pagamento.valor or 0) for pagamento in cls.listar_pagamentos_por_competencia_ate(mes, ano))
+
+    @classmethod
+    def somar_pagamentos_por_competencia_mes(cls, mes, ano):
+        alvo = cls._competencia_ordem(mes, ano)
+        total = 0.0
+
+        for pagamento in cls.query.order_by(cls.data_pagamento.asc(), cls.id.asc()).all():
+            ordem = cls._ordem_competencia_registro(pagamento)
+            if ordem == alvo:
+                total += float(pagamento.valor or 0)
+
+        return total
