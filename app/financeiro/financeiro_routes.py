@@ -181,6 +181,25 @@ def _garantir_colunas_envio_sede_regularizacao():
     _ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK = True
 
 
+def _envio_sede_tem_schema_moderno():
+    """Indica se a tabela envios_sede já possui as colunas novas esperadas pelo ORM."""
+    try:
+        insp = inspect(db.engine)
+        tabelas = set(insp.get_table_names())
+        if 'envios_sede' not in tabelas:
+            return False
+
+        colunas = {col['name'] for col in insp.get_columns('envios_sede')}
+        obrigatorias = {
+            'valor_devido_competencia',
+            'pagamento_historico_sem_movimentacao',
+            'data_pagamento_informada',
+        }
+        return obrigatorias.issubset(colunas)
+    except Exception:
+        return False
+
+
 def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
     descricao = _gerar_descricao_lancamento_repasse_sede(pagamento)
     valor = float(pagamento.valor or 0)
@@ -3786,23 +3805,30 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
             break
         obrigacoes_ate_anterior += _calcular_obrigacao_30_mes(mes_item, ano_item, percentual_conselho)
 
-    try:
-        pagos_ate_anterior = float(
-            EnvioSede.somar_pagamentos_por_competencia_ate(
-                mes - 1 if mes > 1 else 12,
-                ano if mes > 1 else ano - 1,
-            ) or 0.0
-        )
-    except (OperationalError, ProgrammingError, AttributeError):
-        db.session.rollback()
-        # Fallback de compatibilidade para bases antigas sem colunas de competencia.
-        pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
+    schema_moderno = _envio_sede_tem_schema_moderno()
 
-    pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
-    try:
-        pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_por_competencia_mes(mes, ano) or 0.0)
-    except (OperationalError, ProgrammingError, AttributeError):
-        db.session.rollback()
+    if schema_moderno:
+        try:
+            pagos_ate_anterior = float(
+                EnvioSede.somar_pagamentos_por_competencia_ate(
+                    mes - 1 if mes > 1 else 12,
+                    ano if mes > 1 else ano - 1,
+                ) or 0.0
+            )
+        except (OperationalError, ProgrammingError, AttributeError):
+            db.session.rollback()
+            pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
+
+        pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
+        try:
+            pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_por_competencia_mes(mes, ano) or 0.0)
+        except (OperationalError, ProgrammingError, AttributeError):
+            db.session.rollback()
+            pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
+    else:
+        # Em schema antigo, evita carregar entidade completa (que referencia colunas inexistentes).
+        pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
+        pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
         pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
 
     saldo_pendente_anterior = obrigacoes_ate_anterior - pagos_ate_anterior
@@ -3810,7 +3836,7 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
     saldo_pendente_atual = total_devido - pagamentos_competencia_mes
 
     try:
-        pagamentos_mes = EnvioSede.listar_pagamentos_mes(mes, ano)
+        pagamentos_mes = EnvioSede.listar_pagamentos_mes(mes, ano) if schema_moderno else []
     except (OperationalError, ProgrammingError, AttributeError):
         db.session.rollback()
         pagamentos_mes = []

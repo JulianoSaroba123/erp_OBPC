@@ -178,14 +178,30 @@ def create_app():
 
             if 'envios_sede' in inspector.get_table_names():
                 colunas = {col['name'] for col in inspector.get_columns('envios_sede')}
+                dialect = (db.engine.dialect.name or '').lower()
+                comandos = []
+
                 if 'lancamento_financeiro_id' not in colunas:
-                    try:
-                        db.session.execute(text('ALTER TABLE envios_sede ADD COLUMN lancamento_financeiro_id INTEGER'))
-                        db.session.commit()
-                    except:
-                        db.session.rollback()
-        except Exception as e:
-            pass
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN lancamento_financeiro_id INTEGER')
+                if 'valor_devido_competencia' not in colunas:
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN valor_devido_competencia FLOAT')
+                if 'pagamento_historico_sem_movimentacao' not in colunas:
+                    if dialect == 'postgresql':
+                        comandos.append('ALTER TABLE envios_sede ADD COLUMN pagamento_historico_sem_movimentacao BOOLEAN NOT NULL DEFAULT FALSE')
+                    else:
+                        comandos.append('ALTER TABLE envios_sede ADD COLUMN pagamento_historico_sem_movimentacao INTEGER NOT NULL DEFAULT 0')
+                if 'data_pagamento_informada' not in colunas:
+                    if dialect == 'postgresql':
+                        comandos.append('ALTER TABLE envios_sede ADD COLUMN data_pagamento_informada BOOLEAN NOT NULL DEFAULT TRUE')
+                    else:
+                        comandos.append('ALTER TABLE envios_sede ADD COLUMN data_pagamento_informada INTEGER NOT NULL DEFAULT 1')
+
+                if comandos:
+                    for comando in comandos:
+                        db.session.execute(text(comando))
+                    db.session.commit()
+        except Exception:
+            db.session.rollback()
 
         try:
             ObservacaoRelatorio.garantir_tabela()
