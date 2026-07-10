@@ -250,7 +250,9 @@
                                     <td>{{ pagamento.forma_pagamento }}</td>
                                     <td>{{ pagamento.competencia }}</td>
                                     <td>
-                                        {% if pagamento.pagamento_historico_sem_movimentacao %}
+                                        {% if pagamento.tipo_registro == 'legado' %}
+                                        <span class="badge bg-warning text-dark">Legado</span>
+                                        {% elif pagamento.pagamento_historico_sem_movimentacao %}
                                         <span class="badge bg-secondary">Histórico sem caixa</span>
                                         {% else %}
                                         <span class="badge bg-success">Com movimentação</span>
@@ -265,6 +267,9 @@
                                     </td>
                                     <td>{{ pagamento.observacao or '-' }}</td>
                                     <td class="text-center">
+                                        {% if pagamento.tipo_registro == 'legado' %}
+                                        <span class="text-muted">-</span>
+                                        {% else %}
                                         <div class="btn-group btn-group-sm" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary"
@@ -290,6 +295,7 @@
                                                 </button>
                                             </form>
                                         </div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% else %}

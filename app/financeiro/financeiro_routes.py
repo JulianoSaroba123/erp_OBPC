@@ -19,9 +19,11 @@ from werkzeug.utils import secure_filename
 import io
 import csv
 import re
+import unicodedata
 from flask import Response
 from difflib import SequenceMatcher
 from pathlib import Path
+from types import SimpleNamespace
 
 financeiro_bp = Blueprint('financeiro', __name__, template_folder='templates')
 
@@ -3779,20 +3781,92 @@ def _eh_pagamento_repasse_sede_legado(lancamento):
     if not lancamento or (lancamento.tipo or '').strip().lower() != 'saída':
         return False
 
+    origem = (getattr(lancamento, 'origem', '') or '').strip().lower()
     categoria = (lancamento.categoria or '').strip().lower()
     descricao = (lancamento.descricao or '').strip().lower()
+    observacoes = (lancamento.observacoes or '').strip().lower()
 
-    termos_categoria = (
-        'contrib. sede',
-        'contrib sede',
-        'repasse à sede',
-        'repasse a sede',
-    )
+    def _normalizar_texto(txt):
+        valor = (txt or '').strip().lower()
+        return ''.join(
+            ch for ch in unicodedata.normalize('NFD', valor)
+            if unicodedata.category(ch) != 'Mn'
+        )
 
-    if any(termo in categoria for termo in termos_categoria):
-        return True
+    def _eh_obrigacao_automatica_30():
+        categoria_norm = _normalizar_texto(categoria)
+        descricao_norm = _normalizar_texto(descricao)
+        observacoes_norm = _normalizar_texto(observacoes)
+        padrao_obrigacao = (
+            'administrativo' in descricao_norm and
+            'conselho sede' in descricao_norm and
+            'contrib. sede' in categoria_norm
+        )
+        base_calculo_auto = 'base de calculo' in observacoes_norm
+        if origem == 'automatico' and padrao_obrigacao:
+            return True
+        return padrao_obrigacao and base_calculo_auto
 
-    return 'repasse' in descricao and 'sede' in descricao
+    def _tem_assunto_repasse_sede():
+        categoria_norm = _normalizar_texto(categoria)
+        descricao_norm = _normalizar_texto(descricao)
+        termos_categoria = (
+            'contrib. sede',
+            'contrib sede',
+            'repasse a sede',
+        )
+        if any(termo in categoria_norm for termo in termos_categoria):
+            return True
+        return 'repasse' in descricao_norm and 'sede' in descricao_norm
+
+    def _tem_vinculo_explicito():
+        for attr in (
+            'envio_sede_id',
+            'lancamento_financeiro_id',
+            'repasse_sede_id',
+            'vinculo_expresso_pagamento_sede',
+        ):
+            valor = getattr(lancamento, attr, None)
+            if isinstance(valor, bool):
+                if valor:
+                    return True
+                continue
+            if valor not in (None, '', 0):
+                return True
+        return False
+
+    def _tem_evidencia_movimentacao_real():
+        conta = (lancamento.conta or '').strip().lower()
+        comprovante = (lancamento.comprovante or '').strip()
+        observacoes_norm = _normalizar_texto(observacoes)
+        evidencias_obs = (
+            'pagamento' in observacoes_norm or
+            'pago' in observacoes_norm or
+            'enviado' in observacoes_norm or
+            'transferencia' in observacoes_norm or
+            'deposito' in observacoes_norm or
+            'ted' in observacoes_norm or
+            'pix' in observacoes_norm
+        )
+        conta_valida = conta not in ('', '-', 'nao informado', 'não informado')
+        return bool(comprovante) or conta_valida or evidencias_obs
+
+    if _eh_obrigacao_automatica_30():
+        return False
+
+    if not _tem_assunto_repasse_sede():
+        return False
+
+    # Critério mínimo para legado válido: origem manual OU vínculo explícito,
+    # mais evidência de movimentação real.
+    origem_manual_ou_vinculo = origem == 'manual' or _tem_vinculo_explicito()
+    if not origem_manual_ou_vinculo:
+        return False
+
+    if not _tem_evidencia_movimentacao_real():
+        return False
+
+    return True
 
 
 def _somar_pagamentos_repasse_legado_ate(mes, ano):
@@ -3811,6 +3885,65 @@ def _somar_pagamentos_repasse_legado_mes(mes, ano):
         Lancamento.tipo == 'Saída'
     ).all()
     return sum(float(l.valor or 0) for l in lancamentos if _eh_pagamento_repasse_sede_legado(l))
+
+
+def _conta_para_forma_pagamento(conta):
+    conta_txt = (conta or '').strip().lower()
+    if 'dinheiro' in conta_txt:
+        return 'Dinheiro'
+    if 'pix' in conta_txt:
+        return 'PIX'
+    if conta_txt:
+        return conta.strip()
+    return 'Legado'
+
+
+def _listar_pagamentos_repasse_legado(excluir_lancamento_ids=None, limite=100):
+    excluir_lancamento_ids = set(excluir_lancamento_ids or [])
+    itens = []
+    lancamentos = Lancamento.query.filter(
+        Lancamento.tipo == 'Saída'
+    ).order_by(
+        Lancamento.data.desc(),
+        Lancamento.id.desc()
+    ).all()
+
+    for lancamento in lancamentos:
+        if lancamento.id in excluir_lancamento_ids:
+            continue
+        if not _eh_pagamento_repasse_sede_legado(lancamento):
+            continue
+
+        competencia_txt = f'Competência {lancamento.data.month:02d}/{lancamento.data.year}' if lancamento.data else 'Competência estimada'
+        observacao_partes = []
+        if lancamento.descricao:
+            observacao_partes.append(lancamento.descricao)
+        if lancamento.observacoes and str(lancamento.observacoes).strip() and str(lancamento.observacoes).strip().lower() != 'none':
+            observacao_partes.append(str(lancamento.observacoes).strip())
+
+        item = SimpleNamespace(
+            id=f'legacy-{lancamento.id}',
+            data_pagamento=lancamento.data,
+            data_pagamento_informada=True,
+            valor=float(lancamento.valor or 0),
+            valor_devido_competencia=None,
+            forma_pagamento=_conta_para_forma_pagamento(lancamento.conta),
+            competencia=competencia_txt,
+            competencia_mes_ref=lancamento.data.month if lancamento.data else None,
+            competencia_ano_ref=lancamento.data.year if lancamento.data else None,
+            comprovante=lancamento.comprovante,
+            observacao=' | '.join(observacao_partes) if observacao_partes else '-',
+            pagamento_historico_sem_movimentacao=False,
+            tipo_registro='legado',
+            lancamento_origem_id=lancamento.id,
+            origem=(lancamento.origem or 'manual')
+        )
+        itens.append(item)
+
+        if limite and len(itens) >= limite:
+            break
+
+    return itens
 
 
 def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
@@ -4338,7 +4471,18 @@ def gerenciar_despesas_fixas():
         config = Configuracao.obter_configuracao()
         percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         controle_repasse_sede = _montar_controle_repasse_sede(mes_ref, ano_ref, percentual_conselho)
-        historico_pagamentos = EnvioSede.query.order_by(EnvioSede.data_pagamento.desc(), EnvioSede.id.desc()).limit(100).all()
+        historico_envios = EnvioSede.query.order_by(EnvioSede.data_pagamento.desc(), EnvioSede.id.desc()).limit(100).all()
+        ids_vinculados_envio = {
+            p.lancamento_financeiro_id
+            for p in historico_envios
+            if getattr(p, 'lancamento_financeiro_id', None)
+        }
+        historico_legado = _listar_pagamentos_repasse_legado(excluir_lancamento_ids=ids_vinculados_envio, limite=100)
+        historico_pagamentos = sorted(
+            [*historico_envios, *historico_legado],
+            key=lambda p: (p.data_pagamento or date.min, str(p.id)),
+            reverse=True
+        )[:100]
         observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(
             mes_ref,
             ano_ref,
