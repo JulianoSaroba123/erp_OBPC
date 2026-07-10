@@ -226,6 +226,35 @@
             <div class="separator"></div>
 
             <section>
+                <h3 class="section-title">Pagamentos Realizados no Mês</h3>
+                <table class="official-table">
+                    <thead>
+                        <tr>
+                            <th class="label">Data</th>
+                            <th class="label">Competência</th>
+                            <th class="label">Forma</th>
+                            <th class="value">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pagamento in controle_repasse_sede.pagamentos_mes %}
+                        <tr>
+                            <td class="label">{{ pagamento.data_pagamento.strftime('%d/%m/%Y') if pagamento.data_pagamento else '-' }}</td>
+                            <td class="label">{{ pagamento.competencia or (("%02d"|format(pagamento.competencia_mes_ref)) ~ '/' ~ pagamento.competencia_ano_ref if pagamento.competencia_mes_ref and pagamento.competencia_ano_ref else '-') }}</td>
+                            <td class="label">{{ pagamento.forma_pagamento or '-' }}</td>
+                            <td class="value">{{ (pagamento.valor or 0)|valor_com_cor|safe }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td class="label" colspan="4" style="text-align:center;">Nenhum pagamento registrado no mês.</td></tr>
+                        {% endfor %}
+                        <tr class="total"><td class="label" colspan="3">Total pago no mês</td><td class="value">{{ controle_repasse_sede.valor_enviado_mes|valor_com_cor|safe }}</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <div class="separator"></div>
+
+            <section>
                 <h3 class="section-title">Justificativa Contábil dos Repasses à Sede</h3>
                 <div class="note-card">
                     <div class="muted-note" style="white-space: pre-line; line-height: 1.7;">{{ observacao_repasse_sede }}</div>

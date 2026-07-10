@@ -164,6 +164,36 @@
             </section>
 
             <section class="section">
+                <h3>Pagamentos Realizados no Mês</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Competência</th>
+                            <th>Forma</th>
+                            <th class="numeric">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pagamento in controle_repasse_sede.pagamentos_mes %}
+                        <tr>
+                            <td>{{ pagamento.data_pagamento.strftime('%d/%m/%Y') if pagamento.data_pagamento else '-' }}</td>
+                            <td>{{ pagamento.competencia or (("%02d"|format(pagamento.competencia_mes_ref)) ~ '/' ~ pagamento.competencia_ano_ref if pagamento.competencia_mes_ref and pagamento.competencia_ano_ref else '-') }}</td>
+                            <td>{{ pagamento.forma_pagamento or '-' }}</td>
+                            <td class="numeric">{{ (pagamento.valor or 0)|valor_com_cor|safe }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="numeric" style="text-align:center;">Nenhum pagamento registrado no mês.</td></tr>
+                        {% endfor %}
+                        <tr>
+                            <td colspan="3"><strong>Total pago no mês</strong></td>
+                            <td class="numeric"><strong>{{ controle_repasse_sede.valor_enviado_mes|valor_com_cor|safe }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="section">
                 <h3>Justificativa Contábil dos Repasses à Sede</h3>
                 <div class="note-card">
                     <p style="margin: 0; white-space: pre-line; color: var(--ink); line-height: 1.6;">{{ observacao_repasse_sede }}</p>

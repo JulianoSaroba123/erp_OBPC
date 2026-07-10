@@ -207,6 +207,44 @@
             </table>
         </section>
 
+        <section class="table-card" style="margin-bottom: 22px;">
+            <div class="section-header"><h3>Pagamentos Realizados no Mês</h3><p>Baixas por competência registradas em envios_sede</p></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Competência</th>
+                        <th>Forma</th>
+                        <th class="numeric">Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pagamento in controle_repasse_sede.pagamentos_mes %}
+                    <tr>
+                        <td>
+                            {% if pagamento.data_pagamento %}
+                            {{ pagamento.data_pagamento.strftime('%d/%m/%Y') }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>{{ pagamento.competencia or (("%02d"|format(pagamento.competencia_mes_ref)) ~ '/' ~ pagamento.competencia_ano_ref if pagamento.competencia_mes_ref and pagamento.competencia_ano_ref else '-') }}</td>
+                        <td>{{ pagamento.forma_pagamento or '-' }}</td>
+                        <td class="numeric">{{ (pagamento.valor or 0)|valor_com_cor|safe }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="numeric" style="text-align: center;">Nenhum pagamento registrado no mês.</td>
+                    </tr>
+                    {% endfor %}
+                    <tr>
+                        <td colspan="3"><strong>Total pago no mês</strong></td>
+                        <td class="numeric"><strong>{{ controle_repasse_sede.valor_enviado_mes|valor_com_cor|safe }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
         <section class="table-card highlight-note" style="margin-bottom: 22px;">
             <div class="section-header"><h3>Justificativa Contábil dos Repasses à Sede</h3><p>Texto vigente para este relatório</p></div>
             <div style="white-space: pre-line; line-height: 1.6; color: #334155;">{{ observacao_repasse_sede }}</div>

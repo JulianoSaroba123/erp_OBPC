@@ -655,6 +655,63 @@ class RelatorioFinanceiro:
 
         return elementos
 
+    def _criar_secao_pagamentos_repasse_mes(self, controle_repasse_sede=None):
+        """Cria bloco PAGAMENTOS REALIZADOS NO MÊS usando registros de envios_sede."""
+        elementos = []
+        controle = controle_repasse_sede or {}
+        pagamentos_mes = list(controle.get('pagamentos_mes') or [])
+
+        elementos.append(Spacer(1, 12))
+        elementos.append(Paragraph("PAGAMENTOS REALIZADOS NO MÊS", self.styles['cabecalho_secao']))
+
+        dados_pagamentos = [['DATA', 'COMPETÊNCIA', 'FORMA', 'VALOR']]
+        total_pago_mes = 0.0
+
+        for pagamento in pagamentos_mes:
+            valor = float(getattr(pagamento, 'valor', 0) or 0)
+            total_pago_mes += valor
+            data_pagamento = getattr(pagamento, 'data_pagamento', None)
+            competencia = getattr(pagamento, 'competencia', None)
+            competencia_mes_ref = getattr(pagamento, 'competencia_mes_ref', None)
+            competencia_ano_ref = getattr(pagamento, 'competencia_ano_ref', None)
+
+            if not competencia and competencia_mes_ref and competencia_ano_ref:
+                competencia = f"{int(competencia_mes_ref):02d}/{int(competencia_ano_ref)}"
+
+            dados_pagamentos.append([
+                data_pagamento.strftime('%d/%m/%Y') if data_pagamento else '-',
+                competencia or '-',
+                getattr(pagamento, 'forma_pagamento', None) or '-',
+                self._formatar_moeda(valor),
+            ])
+
+        if len(dados_pagamentos) == 1:
+            dados_pagamentos.append(['-', 'Nenhum pagamento registrado no mês.', '-', self._formatar_moeda(0)])
+
+        dados_pagamentos.append(['', '', 'TOTAL PAGO NO MÊS', self._formatar_moeda(float(controle.get('valor_enviado_mes', total_pago_mes) or 0))])
+
+        tabela_pagamentos = Table(dados_pagamentos, colWidths=[3.2*cm, 6.1*cm, 2.7*cm, 3*cm])
+        ultima_linha = len(dados_pagamentos) - 1
+        tabela_pagamentos.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (3, 0), colors.HexColor('#001f3f')),
+            ('TEXTCOLOR', (0, 0), (3, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (3, 0), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (3, 0), 'CENTER'),
+            ('FONTNAME', (0, 1), (3, ultima_linha), 'Helvetica'),
+            ('ALIGN', (0, 1), (2, ultima_linha), 'LEFT'),
+            ('ALIGN', (3, 1), (3, ultima_linha), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0, 1), (3, ultima_linha - 1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('FONTNAME', (2, ultima_linha), (3, ultima_linha), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, ultima_linha), (3, ultima_linha), colors.HexColor('#fff7ed')),
+            ('GRID', (0, 0), (3, ultima_linha), 1, colors.black),
+            ('VALIGN', (0, 0), (3, ultima_linha), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (3, ultima_linha), 6),
+            ('BOTTOMPADDING', (0, 0), (3, ultima_linha), 6),
+        ]))
+        elementos.append(tabela_pagamentos)
+
+        return elementos
+
     def _criar_secao_justificativa_repasse_sede(self, observacao_repasse_sede=None):
         """Cria o bloco JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE preservando quebras de linha."""
         elementos = []
@@ -946,6 +1003,7 @@ class RelatorioFinanceiro:
             # Blocos complementares solicitados no PDF de caixa.
             try:
                 elementos.extend(self._criar_secao_controle_repasse_sede(controle_repasse_sede))
+                elementos.extend(self._criar_secao_pagamentos_repasse_mes(controle_repasse_sede))
                 elementos.extend(self._criar_secao_justificativa_repasse_sede(observacao_repasse_sede))
             except Exception as e:
                 current_app.logger.error(f"Erro ao criar blocos de repasse à sede: {e}")
