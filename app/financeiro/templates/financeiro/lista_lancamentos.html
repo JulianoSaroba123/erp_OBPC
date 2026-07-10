@@ -178,7 +178,7 @@
                                 <div>
                                     <h5 class="card-title mb-0">Entradas</h5>
                                     <h3 class="mb-0">R$ {{ "%.2f"|format(totais_filtrados.entradas)|replace(".", ",") }}</h3>
-                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
+                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.mes_ref or filtros.ano_ref or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
                                     <small class="opacity-75">Filtrado: R$ {{ "%.2f"|format(totais_filtrados.entradas)|replace(".", ",") }}</small><br>
                                     <small class="opacity-75">Total Geral: R$ {{ "%.2f"|format(totais_gerais.entradas)|replace(".", ",") }}</small>
                                     {% endif %}
@@ -195,7 +195,7 @@
                                 <div>
                                     <h5 class="card-title mb-0">Saídas</h5>
                                     <h3 class="mb-0">R$ {{ "%.2f"|format(totais_filtrados.saidas)|replace(".", ",") }}</h3>
-                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
+                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.mes_ref or filtros.ano_ref or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
                                     <small class="opacity-75">Filtrado: R$ {{ "%.2f"|format(totais_filtrados.saidas)|replace(".", ",") }}</small><br>
                                     <small class="opacity-75">Total Geral: R$ {{ "%.2f"|format(totais_gerais.saidas)|replace(".", ",") }}</small>
                                     {% endif %}
@@ -212,7 +212,7 @@
                                 <div>
                                     <h5 class="card-title mb-0">Saldo</h5>
                                     <h3 class="mb-0">R$ {{ "%.2f"|format(totais_filtrados.saldo)|replace(".", ",") }}</h3>
-                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
+                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.mes_ref or filtros.ano_ref or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
                                     <small class="opacity-75">Filtrado: R$ {{ "%.2f"|format(totais_filtrados.saldo)|replace(".", ",") }}</small><br>
                                     <small class="opacity-75">Total Geral: R$ {{ "%.2f"|format(totais_gerais.saldo)|replace(".", ",") }}</small>
                                     {% endif %}
@@ -229,7 +229,7 @@
                                 <div>
                                     <h5 class="card-title mb-0">Registros</h5>
                                     <h3 class="mb-0">{{ lancamentos|length }}</h3>
-                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
+                                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.mes_ref or filtros.ano_ref or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
                                     <small class="opacity-75">Filtrados: {{ lancamentos|length }}</small>
                                     {% endif %}
                                 </div>
@@ -297,6 +297,27 @@
                             </div>
                         </div>
 
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-2">
+                                <label for="mes_ref" class="form-label">Mês</label>
+                                <select class="form-select" id="mes_ref" name="mes_ref">
+                                    <option value="">Todos</option>
+                                    {% for mes_opcao in range(1, 13) %}
+                                    <option value="{{ mes_opcao }}" {% if filtros.mes_ref == mes_opcao %}selected{% endif %}>{{ "%02d"|format(mes_opcao) }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="ano_ref" class="form-label">Ano</label>
+                                <select class="form-select" id="ano_ref" name="ano_ref">
+                                    <option value="">Todos</option>
+                                    {% for ano_opcao in range(2020, 2036) %}
+                                    <option value="{{ ano_opcao }}" {% if filtros.ano_ref == ano_opcao %}selected{% endif %}>{{ ano_opcao }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
                         <!-- Filtros Avançados (colapsáveis) -->
                         <div class="collapse" id="filtrosAvancados">
                             <hr>
@@ -332,7 +353,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search me-1"></i> Filtrar
                             </button>
-                            {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
+                            {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.mes_ref or filtros.ano_ref or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
                             <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-secondary">
                                 <i class="fas fa-times me-1"></i> Limpar Todos
                             </a>
@@ -412,12 +433,15 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fas fa-list me-2"></i>Lista de Lançamentos
-                        {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
+                        {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.mes_ref or filtros.ano_ref or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
                         <span class="badge bg-primary ms-2">
                             Filtrado
                             {% if filtros.categoria %}por "{{ filtros.categoria }}"{% endif %}
                             {% if filtros.tipo %}({{ filtros.tipo }}){% endif %}
                             {% if filtros.conta %}[{{ filtros.conta }}]{% endif %}
+                            {% if filtros.mes_ref or filtros.ano_ref %}
+                                <i class="fas fa-calendar-day ms-1"></i>
+                            {% endif %}
                             {% if filtros.data_inicial or filtros.data_final %}
                                 <i class="fas fa-calendar-alt ms-1"></i>
                             {% endif %}
@@ -430,7 +454,7 @@
                         </span>
                         {% endif %}
                     </h5>
-                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
+                    {% if filtros.categoria or filtros.tipo or filtros.conta or filtros.mes_ref or filtros.ano_ref or filtros.data_inicial or filtros.data_final or filtros.valor_min or filtros.valor_max or filtros.busca_texto %}
                     <small class="text-muted">
                         Mostrando {{ lancamentos|length }} registros filtrados
                     </small>

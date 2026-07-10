@@ -32,7 +32,7 @@ def obter_filtros_ativos():
     filtros = {}
     
     # Lista de filtros possíveis
-    campos_filtro = ['categoria', 'tipo', 'conta', 'data_inicial', 'data_final', 
+    campos_filtro = ['categoria', 'tipo', 'conta', 'mes_ref', 'ano_ref', 'data_inicial', 'data_final', 
                      'valor_min', 'valor_max', 'busca_texto']
     
     # Tentar pegar dos argumentos da URL primeiro
@@ -1626,6 +1626,8 @@ def lista_lancamentos():
         categoria_filtro = request.args.get('categoria', '').strip()
         tipo_filtro = request.args.get('tipo', '').strip()
         conta_filtro = request.args.get('conta', '').strip()
+        mes_ref = request.args.get('mes_ref', type=int)
+        ano_ref = request.args.get('ano_ref', type=int)
         
         # Novos filtros avançados
         data_inicial = request.args.get('data_inicial', '').strip()
@@ -1689,6 +1691,19 @@ def lista_lancamentos():
         # Aplicar filtro por conta
         if conta_filtro:
             query = query.filter(Lancamento.conta.ilike(f'%{conta_filtro}%'))
+
+        # Aplicar filtro por mês/ano de referência
+        if mes_ref is not None:
+            if 1 <= mes_ref <= 12:
+                query = query.filter(extract('month', Lancamento.data) == mes_ref)
+            else:
+                flash('Mês de referência inválido', 'warning')
+
+        if ano_ref is not None:
+            if 2020 <= ano_ref <= 2035:
+                query = query.filter(extract('year', Lancamento.data) == ano_ref)
+            else:
+                flash('Ano de referência inválido', 'warning')
             
         # Aplicar filtro por data inicial
         if data_inicial:
@@ -1866,6 +1881,8 @@ def lista_lancamentos():
                                  'categoria': categoria_filtro,
                                  'tipo': tipo_filtro,
                                  'conta': conta_filtro,
+                                 'mes_ref': mes_ref,
+                                 'ano_ref': ano_ref,
                                  'data_inicial': data_inicial,
                                  'data_final': data_final,
                                  'valor_min': valor_min,
@@ -1886,6 +1903,7 @@ def lista_lancamentos():
                              contas_unicas=[],
                              filtros={
                                  'categoria': '', 'tipo': '', 'conta': '',
+                                 'mes_ref': '', 'ano_ref': '',
                                  'data_inicial': '', 'data_final': '',
                                  'valor_min': '', 'valor_max': '', 'busca_texto': ''
                              },
