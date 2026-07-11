@@ -76,7 +76,7 @@ class ObservacaoRelatorio(db.Model):
             return None
 
         registro = cls.obter(mes, ano, tipo_relatorio)
-        texto = (observacao or '').strip()
+        texto = observacao if observacao is not None else ''
 
         if registro is None:
             registro = cls(

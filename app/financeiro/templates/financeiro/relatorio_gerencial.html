@@ -215,7 +215,9 @@
                         <th>Data</th>
                         <th>Competência</th>
                         <th>Forma</th>
-                        <th class="numeric">Valor</th>
+                        <th class="numeric">Administrativo</th>
+                        <th class="numeric">Despesas Fixas</th>
+                        <th class="numeric">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -230,16 +232,32 @@
                         </td>
                         <td>{{ pagamento.competencia or (("%02d"|format(pagamento.competencia_mes_ref)) ~ '/' ~ pagamento.competencia_ano_ref if pagamento.competencia_mes_ref and pagamento.competencia_ano_ref else '-') }}</td>
                         <td>{{ pagamento.forma_pagamento or '-' }}</td>
-                        <td class="numeric">{{ (pagamento.valor or 0)|valor_com_cor|safe }}</td>
+                        <td class="numeric">{{ ((pagamento.valor_administrativo if pagamento.valor_administrativo is not none else pagamento.valor) or 0)|valor_com_cor|safe }}</td>
+                        <td class="numeric">{{ ((pagamento.valor_despesas_fixas if pagamento.valor_despesas_fixas is not none else 0) or 0)|valor_com_cor|safe }}</td>
+                        <td class="numeric">{{ ((pagamento.valor_total if pagamento.valor_total is not none else pagamento.valor) or 0)|valor_com_cor|safe }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="4" class="numeric" style="text-align: center;">Nenhum pagamento registrado no mês.</td>
+                        <td colspan="6" class="numeric" style="text-align: center;">Nenhum pagamento registrado no mês.</td>
                     </tr>
                     {% endfor %}
                     <tr>
+                        <td colspan="3"><strong>Total administrativo pago no mês</strong></td>
+                        <td class="numeric"><strong>{{ controle_repasse_sede.total_administrativo_pago_mes|valor_com_cor|safe }}</strong></td>
+                        <td class="numeric"></td>
+                        <td class="numeric"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="3"><strong>Total despesas fixas pagas no mês</strong></td>
+                        <td class="numeric"></td>
+                        <td class="numeric"><strong>{{ controle_repasse_sede.total_despesas_fixas_pago_mes|valor_com_cor|safe }}</strong></td>
+                        <td class="numeric"></td>
+                    </tr>
+                    <tr>
                         <td colspan="3"><strong>Total pago no mês</strong></td>
-                        <td class="numeric"><strong>{{ controle_repasse_sede.valor_enviado_mes|valor_com_cor|safe }}</strong></td>
+                        <td class="numeric"></td>
+                        <td class="numeric"></td>
+                        <td class="numeric"><strong>{{ controle_repasse_sede.total_pago_mes|valor_com_cor|safe }}</strong></td>
                     </tr>
                 </tbody>
             </table>

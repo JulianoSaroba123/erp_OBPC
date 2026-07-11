@@ -664,12 +664,18 @@ class RelatorioFinanceiro:
         elementos.append(Spacer(1, 12))
         elementos.append(Paragraph("PAGAMENTOS REALIZADOS NO MÊS", self.styles['cabecalho_secao']))
 
-        dados_pagamentos = [['DATA', 'COMPETÊNCIA', 'FORMA', 'VALOR']]
+        dados_pagamentos = [['DATA', 'COMPETÊNCIA', 'FORMA', 'ADMINISTRATIVO', 'DESPESAS FIXAS', 'TOTAL']]
+        total_admin_mes = 0.0
+        total_despesas_fixas_mes = 0.0
         total_pago_mes = 0.0
 
         for pagamento in pagamentos_mes:
-            valor = float(getattr(pagamento, 'valor', 0) or 0)
-            total_pago_mes += valor
+            valor_admin = float((getattr(pagamento, 'valor_administrativo', None) if getattr(pagamento, 'valor_administrativo', None) is not None else getattr(pagamento, 'valor', 0)) or 0)
+            valor_fixas = float((getattr(pagamento, 'valor_despesas_fixas', None) if getattr(pagamento, 'valor_despesas_fixas', None) is not None else 0) or 0)
+            valor_total = float((getattr(pagamento, 'valor_total', None) if getattr(pagamento, 'valor_total', None) is not None else getattr(pagamento, 'valor', 0)) or 0)
+            total_admin_mes += valor_admin
+            total_despesas_fixas_mes += valor_fixas
+            total_pago_mes += valor_total
             data_pagamento = getattr(pagamento, 'data_pagamento', None)
             competencia = getattr(pagamento, 'competencia', None)
             competencia_mes_ref = getattr(pagamento, 'competencia_mes_ref', None)
@@ -682,31 +688,37 @@ class RelatorioFinanceiro:
                 data_pagamento.strftime('%d/%m/%Y') if data_pagamento else '-',
                 competencia or '-',
                 getattr(pagamento, 'forma_pagamento', None) or '-',
-                self._formatar_moeda(valor),
+                self._formatar_moeda(valor_admin),
+                self._formatar_moeda(valor_fixas),
+                self._formatar_moeda(valor_total),
             ])
 
         if len(dados_pagamentos) == 1:
-            dados_pagamentos.append(['-', 'Nenhum pagamento registrado no mês.', '-', self._formatar_moeda(0)])
+            dados_pagamentos.append(['-', 'Nenhum pagamento registrado no mês.', '-', self._formatar_moeda(0), self._formatar_moeda(0), self._formatar_moeda(0)])
 
-        dados_pagamentos.append(['', '', 'TOTAL PAGO NO MÊS', self._formatar_moeda(float(controle.get('valor_enviado_mes', total_pago_mes) or 0))])
+        dados_pagamentos.append(['', '', 'TOTAL ADMINISTRATIVO NO MÊS', self._formatar_moeda(float(controle.get('total_administrativo_pago_mes', total_admin_mes) or 0)), '', ''])
+        dados_pagamentos.append(['', '', 'TOTAL DESPESAS FIXAS NO MÊS', '', self._formatar_moeda(float(controle.get('total_despesas_fixas_pago_mes', total_despesas_fixas_mes) or 0)), ''])
+        dados_pagamentos.append(['', '', 'TOTAL PAGO NO MÊS', '', '', self._formatar_moeda(float(controle.get('total_pago_mes', total_pago_mes) or 0))])
 
-        tabela_pagamentos = Table(dados_pagamentos, colWidths=[3.2*cm, 6.1*cm, 2.7*cm, 3*cm])
+        tabela_pagamentos = Table(dados_pagamentos, colWidths=[2.2*cm, 4.1*cm, 2.2*cm, 2.8*cm, 2.8*cm, 2.8*cm])
         ultima_linha = len(dados_pagamentos) - 1
+        primeira_linha_totais = ultima_linha - 2
         tabela_pagamentos.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (3, 0), colors.HexColor('#001f3f')),
-            ('TEXTCOLOR', (0, 0), (3, 0), colors.whitesmoke),
-            ('FONTNAME', (0, 0), (3, 0), 'Helvetica-Bold'),
-            ('ALIGN', (0, 0), (3, 0), 'CENTER'),
-            ('FONTNAME', (0, 1), (3, ultima_linha), 'Helvetica'),
+            ('BACKGROUND', (0, 0), (5, 0), colors.HexColor('#001f3f')),
+            ('TEXTCOLOR', (0, 0), (5, 0), colors.whitesmoke),
+            ('FONTNAME', (0, 0), (5, 0), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (5, 0), 'CENTER'),
+            ('FONTSIZE', (0, 0), (5, 0), 9),
+            ('FONTNAME', (0, 1), (5, ultima_linha), 'Helvetica'),
             ('ALIGN', (0, 1), (2, ultima_linha), 'LEFT'),
-            ('ALIGN', (3, 1), (3, ultima_linha), 'RIGHT'),
-            ('ROWBACKGROUNDS', (0, 1), (3, ultima_linha - 1), [colors.white, colors.HexColor('#f8f9fa')]),
-            ('FONTNAME', (2, ultima_linha), (3, ultima_linha), 'Helvetica-Bold'),
-            ('BACKGROUND', (0, ultima_linha), (3, ultima_linha), colors.HexColor('#fff7ed')),
-            ('GRID', (0, 0), (3, ultima_linha), 1, colors.black),
-            ('VALIGN', (0, 0), (3, ultima_linha), 'MIDDLE'),
-            ('TOPPADDING', (0, 0), (3, ultima_linha), 6),
-            ('BOTTOMPADDING', (0, 0), (3, ultima_linha), 6),
+            ('ALIGN', (3, 1), (5, ultima_linha), 'RIGHT'),
+            ('ROWBACKGROUNDS', (0, 1), (5, primeira_linha_totais - 1), [colors.white, colors.HexColor('#f8f9fa')]),
+            ('FONTNAME', (2, primeira_linha_totais), (5, ultima_linha), 'Helvetica-Bold'),
+            ('BACKGROUND', (0, primeira_linha_totais), (5, ultima_linha), colors.HexColor('#fff7ed')),
+            ('GRID', (0, 0), (5, ultima_linha), 1, colors.black),
+            ('VALIGN', (0, 0), (5, ultima_linha), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (5, ultima_linha), 6),
+            ('BOTTOMPADDING', (0, 0), (5, ultima_linha), 6),
         ]))
         elementos.append(tabela_pagamentos)
 
@@ -715,7 +727,7 @@ class RelatorioFinanceiro:
     def _criar_secao_justificativa_repasse_sede(self, observacao_repasse_sede=None):
         """Cria o bloco JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE preservando quebras de linha."""
         elementos = []
-        texto = (observacao_repasse_sede or '').strip() or '-'
+        texto = observacao_repasse_sede if observacao_repasse_sede not in (None, '') else '-'
         texto_html = escape(texto).replace('\n', '<br/>')
 
         elementos.append(Spacer(1, 14))

@@ -10,10 +10,16 @@ class EnvioSede(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     data_pagamento = db.Column(db.Date, nullable=False, index=True)
     valor = db.Column(db.Float, nullable=False)
+    valor_administrativo = db.Column(db.Float, nullable=True)
+    valor_despesas_fixas = db.Column(db.Float, nullable=True)
+    valor_total = db.Column(db.Float, nullable=True)
     forma_pagamento = db.Column(db.String(50), nullable=False, default='PIX')
     competencia = db.Column(db.String(150), nullable=False)
     competencia_mes_ref = db.Column(db.Integer, nullable=True)
     competencia_ano_ref = db.Column(db.Integer, nullable=True)
+    competencia_mes = db.Column(db.Integer, nullable=True)
+    competencia_ano = db.Column(db.Integer, nullable=True)
+    tipo_pagamento = db.Column(db.String(50), nullable=True)
     lancamento_financeiro_id = db.Column(db.Integer, db.ForeignKey('lancamentos.id'), nullable=True, unique=True, index=True)
     comprovante = db.Column(db.String(300), nullable=True)
     observacao = db.Column(db.Text, nullable=True)
@@ -26,14 +32,23 @@ class EnvioSede(db.Model):
     lancamento_financeiro = db.relationship('Lancamento', foreign_keys=[lancamento_financeiro_id], uselist=False)
 
     def to_dict(self):
+        competencia_mes = self.competencia_mes if self.competencia_mes is not None else self.competencia_mes_ref
+        competencia_ano = self.competencia_ano if self.competencia_ano is not None else self.competencia_ano_ref
+        valor_total = self.valor_total if self.valor_total is not None else self.valor
         return {
             'id': self.id,
             'data_pagamento': self.data_pagamento.strftime('%Y-%m-%d') if self.data_pagamento else None,
             'valor': float(self.valor or 0),
+            'valor_administrativo': float(self.valor_administrativo or 0),
+            'valor_despesas_fixas': float(self.valor_despesas_fixas or 0),
+            'valor_total': float(valor_total or 0),
             'forma_pagamento': self.forma_pagamento,
             'competencia': self.competencia,
-            'competencia_mes_ref': self.competencia_mes_ref,
-            'competencia_ano_ref': self.competencia_ano_ref,
+            'competencia_mes': competencia_mes,
+            'competencia_ano': competencia_ano,
+            'competencia_mes_ref': competencia_mes,
+            'competencia_ano_ref': competencia_ano,
+            'tipo_pagamento': self.tipo_pagamento,
             'lancamento_financeiro_id': self.lancamento_financeiro_id,
             'comprovante': self.comprovante,
             'observacao': self.observacao,
@@ -46,7 +61,7 @@ class EnvioSede(db.Model):
 
     @classmethod
     def somar_pagamentos_mes(cls, mes, ano):
-        return db.session.query(func.sum(cls.valor)).filter(
+        return db.session.query(func.sum(func.coalesce(cls.valor_total, cls.valor))).filter(
             extract('month', cls.data_pagamento) == mes,
             extract('year', cls.data_pagamento) == ano
         ).scalar() or 0.0
@@ -54,7 +69,7 @@ class EnvioSede(db.Model):
     @classmethod
     def somar_pagamentos_antes_do_mes(cls, mes, ano):
         data_inicio = date(ano, mes, 1)
-        return db.session.query(func.sum(cls.valor)).filter(
+        return db.session.query(func.sum(func.coalesce(cls.valor_total, cls.valor))).filter(
             cls.data_pagamento < data_inicio
         ).scalar() or 0.0
 
@@ -71,8 +86,11 @@ class EnvioSede(db.Model):
 
     @classmethod
     def _ordem_competencia_registro(cls, pagamento):
-        if pagamento.competencia_ano_ref is not None and pagamento.competencia_mes_ref is not None:
-            return cls._competencia_ordem(int(pagamento.competencia_mes_ref), int(pagamento.competencia_ano_ref))
+        comp_mes = pagamento.competencia_mes if pagamento.competencia_mes is not None else pagamento.competencia_mes_ref
+        comp_ano = pagamento.competencia_ano if pagamento.competencia_ano is not None else pagamento.competencia_ano_ref
+
+        if comp_ano is not None and comp_mes is not None:
+            return cls._competencia_ordem(int(comp_mes), int(comp_ano))
 
         if pagamento.data_pagamento:
             return cls._competencia_ordem(pagamento.data_pagamento.month, pagamento.data_pagamento.year)
@@ -93,7 +111,7 @@ class EnvioSede(db.Model):
 
     @classmethod
     def somar_pagamentos_por_competencia_ate(cls, mes, ano):
-        return sum(float(pagamento.valor or 0) for pagamento in cls.listar_pagamentos_por_competencia_ate(mes, ano))
+        return sum(float((pagamento.valor_total if pagamento.valor_total is not None else pagamento.valor) or 0) for pagamento in cls.listar_pagamentos_por_competencia_ate(mes, ano))
 
     @classmethod
     def somar_pagamentos_por_competencia_mes(cls, mes, ano):
@@ -103,6 +121,6 @@ class EnvioSede(db.Model):
         for pagamento in cls.query.order_by(cls.data_pagamento.asc(), cls.id.asc()).all():
             ordem = cls._ordem_competencia_registro(pagamento)
             if ordem == alvo:
-                total += float(pagamento.valor or 0)
+                total += float((pagamento.valor_total if pagamento.valor_total is not None else pagamento.valor) or 0)
 
         return total

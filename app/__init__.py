@@ -25,6 +25,63 @@ from app.financeiro.envios_sede_model import EnvioSede  # Controle de pagamentos
 from app.financeiro.observacao_relatorio_model import ObservacaoRelatorio  # Observações informativas dos repasses
 from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes, HistoricoNotificacoes  # Modelos de notificações
 
+
+def _garantir_schema_envios_sede(app):
+    """Evolui a tabela envios_sede sem recriá-la e sem duplicar colunas."""
+    from sqlalchemy import inspect, text
+
+    try:
+        inspector = inspect(db.engine)
+        if 'envios_sede' not in inspector.get_table_names():
+            return
+
+        colunas_existentes = {col['name'] for col in inspector.get_columns('envios_sede')}
+        dialect = (db.engine.dialect.name or '').lower()
+
+        def ddl_add(coluna, tipo_sql, default_sql=None):
+            if dialect == 'postgresql' and default_sql is not None:
+                return f'ALTER TABLE envios_sede ADD COLUMN IF NOT EXISTS {coluna} {tipo_sql} DEFAULT {default_sql}'
+            if default_sql is not None:
+                return f'ALTER TABLE envios_sede ADD COLUMN {coluna} {tipo_sql} DEFAULT {default_sql}'
+            return f'ALTER TABLE envios_sede ADD COLUMN {coluna} {tipo_sql}'
+
+        comandos = []
+        colunas = [
+            ('lancamento_financeiro_id', 'INTEGER', None),
+            ('valor_devido_competencia', 'FLOAT', '0'),
+            ('pagamento_historico_sem_movimentacao', 'BOOLEAN' if dialect == 'postgresql' else 'INTEGER', 'FALSE' if dialect == 'postgresql' else '0'),
+            ('data_pagamento_informada', 'BOOLEAN' if dialect == 'postgresql' else 'INTEGER', 'TRUE' if dialect == 'postgresql' else '1'),
+            ('valor_administrativo', 'FLOAT', '0'),
+            ('valor_despesas_fixas', 'FLOAT', '0'),
+            ('valor_total', 'FLOAT', '0'),
+            ('competencia_mes', 'INTEGER', None),
+            ('competencia_ano', 'INTEGER', None),
+            ('competencia_mes_ref', 'INTEGER', None),
+            ('competencia_ano_ref', 'INTEGER', None),
+            ('tipo_pagamento', 'VARCHAR(50)', None),
+        ]
+
+        for nome, tipo_sql, default_sql in colunas:
+            if nome not in colunas_existentes:
+                comandos.append(ddl_add(nome, tipo_sql, default_sql))
+
+        if not comandos:
+            return
+
+        app.logger.info('Evolucao de schema envios_sede: adicionando colunas faltantes: %s', ', '.join([c.split()[5] if 'ADD COLUMN IF NOT EXISTS' in c else c.split()[4] for c in comandos]))
+        with db.engine.begin() as conn:
+            for comando in comandos:
+                conn.execute(text(comando))
+
+        try:
+            with db.engine.begin() as conn:
+                conn.execute(text("UPDATE envios_sede SET valor_total = COALESCE(valor_total, valor) WHERE valor_total IS NULL"))
+                conn.execute(text("UPDATE envios_sede SET valor_devido_competencia = COALESCE(valor_devido_competencia, valor_total) WHERE valor_devido_competencia IS NULL AND valor_total IS NOT NULL"))
+        except Exception as backfill_error:
+            app.logger.warning('Falha ao aplicar backfill seguro em envios_sede: %s', backfill_error)
+    except Exception as exc:
+        app.logger.warning('Falha ao garantir schema de envios_sede: %s', exc)
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -195,6 +252,18 @@ def create_app():
                         comandos.append('ALTER TABLE envios_sede ADD COLUMN data_pagamento_informada BOOLEAN NOT NULL DEFAULT TRUE')
                     else:
                         comandos.append('ALTER TABLE envios_sede ADD COLUMN data_pagamento_informada INTEGER NOT NULL DEFAULT 1')
+                if 'valor_administrativo' not in colunas:
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN valor_administrativo FLOAT')
+                if 'valor_despesas_fixas' not in colunas:
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN valor_despesas_fixas FLOAT')
+                if 'valor_total' not in colunas:
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN valor_total FLOAT')
+                if 'competencia_mes' not in colunas:
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN competencia_mes INTEGER')
+                if 'competencia_ano' not in colunas:
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN competencia_ano INTEGER')
+                if 'tipo_pagamento' not in colunas:
+                    comandos.append('ALTER TABLE envios_sede ADD COLUMN tipo_pagamento VARCHAR(50)')
 
                 if comandos:
                     for comando in comandos:
@@ -202,6 +271,11 @@ def create_app():
                     db.session.commit()
         except Exception:
             db.session.rollback()
+
+        try:
+            _garantir_schema_envios_sede(app)
+        except Exception as e:
+            app.logger.warning(f'⚠️  Erro ao garantir schema de envios_sede: {str(e)}')
 
         try:
             ObservacaoRelatorio.garantir_tabela()

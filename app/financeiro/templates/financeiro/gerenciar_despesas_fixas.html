@@ -106,18 +106,30 @@
                             <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" enctype="multipart/form-data">
                                 <input type="hidden" name="acao" value="registrar_pagamento_sede">
                                 <div class="row g-2">
-                                    <div class="col-md-4">
-                                        <label class="form-label">Data pagamento</label>
-                                        <input type="date" class="form-control" id="create_data_pagamento" name="data_pagamento">
-                                        <small class="text-muted">Informe quando houver movimentação real.</small>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Mês</label>
+                                        <select class="form-select" name="competencia_mes_ref" id="create_competencia_mes_ref" required>
+                                            <option value="">-</option>
+                                            {% for m in range(1, 13) %}
+                                            <option value="{{ m }}">{{ "%02d"|format(m) }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label class="form-label">Ano</label>
+                                        <input type="number" class="form-control" name="competencia_ano_ref" id="create_competencia_ano_ref" value="{{ ano_ref }}" min="2020" max="2035" required>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label">Valor pago</label>
-                                        <input type="number" class="form-control" name="valor" step="0.01" min="0.01" required>
+                                        <label class="form-label">30% Administrativo</label>
+                                        <input type="number" class="form-control" id="create_valor_administrativo" name="valor_administrativo" step="0.01" min="0" required>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label">Valor devido</label>
-                                        <input type="number" class="form-control" name="valor_devido_competencia" step="0.01" min="0.01" placeholder="Opcional (usa valor pago se vazio)">
+                                        <label class="form-label">Despesas Fixas</label>
+                                        <input type="number" class="form-control" id="create_valor_despesas_fixas" name="valor_despesas_fixas" step="0.01" min="0" required>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Valor Total</label>
+                                        <input type="number" class="form-control" id="create_valor_total" name="valor_total" step="0.01" min="0.01" required readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Forma pagamento</label>
@@ -130,26 +142,18 @@
                                     </div>
                                     <div class="col-md-8">
                                         <label class="form-label">Competência (texto livre)</label>
-                                        <input type="text" class="form-control" name="competencia" placeholder="Ex: Janeiro a Junho/2026" required>
+                                        <input type="text" class="form-control" id="create_competencia" name="competencia" placeholder="Ex: Abril/2026" required>
                                     </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Mês ref.</label>
-                                        <select class="form-select" name="competencia_mes_ref">
-                                            <option value="">-</option>
-                                            {% for m in range(1, 13) %}
-                                            <option value="{{ m }}">{{ "%02d"|format(m) }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <label class="form-label">Ano ref.</label>
-                                        <input type="number" class="form-control" name="competencia_ano_ref" value="{{ ano_ref }}" min="2020" max="2035">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Data pagamento</label>
+                                        <input type="date" class="form-control" id="create_data_pagamento" name="data_pagamento">
+                                        <small class="text-muted">Obrigatória para pagamento bancário.</small>
                                     </div>
                                     <div class="col-md-12">
                                         <div class="form-check mt-1">
                                             <input class="form-check-input" type="checkbox" value="1" id="create_pagamento_historico_sem_movimentacao" name="pagamento_historico_sem_movimentacao">
                                             <label class="form-check-label" for="create_pagamento_historico_sem_movimentacao">
-                                                Pagamento histórico sem movimentação bancária
+                                                Tipo: Histórico sem movimentação bancária
                                             </label>
                                         </div>
                                     </div>
@@ -219,8 +223,9 @@
                             <thead class="table-dark">
                                 <tr>
                                     <th>Data</th>
-                                    <th>Valor devido</th>
-                                    <th>Valor</th>
+                                    <th>Administrativo</th>
+                                    <th>Despesas Fixas</th>
+                                    <th>Total</th>
                                     <th>Forma</th>
                                     <th>Competência</th>
                                     <th>Tipo</th>
@@ -240,19 +245,14 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if pagamento.valor_devido_competencia is not none %}
-                                        {{ "R$ %.2f"|format(pagamento.valor_devido_competencia)|replace(".", ",") }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
+                                        {{ "R$ %.2f"|format((pagamento.valor_administrativo if pagamento.valor_administrativo is not none else pagamento.valor)|default(0, true))|replace(".", ",") }}
                                     </td>
-                                    <td><strong>{{ "R$ %.2f"|format(pagamento.valor)|replace(".", ",") }}</strong></td>
+                                    <td>{{ "R$ %.2f"|format((pagamento.valor_despesas_fixas if pagamento.valor_despesas_fixas is not none else 0)|default(0, true))|replace(".", ",") }}</td>
+                                    <td><strong>{{ "R$ %.2f"|format((pagamento.valor_total if pagamento.valor_total is not none else pagamento.valor)|default(0, true))|replace(".", ",") }}</strong></td>
                                     <td>{{ pagamento.forma_pagamento }}</td>
                                     <td>{{ pagamento.competencia }}</td>
                                     <td>
-                                        {% if pagamento.tipo_registro == 'legado' %}
-                                        <span class="badge bg-warning text-dark">Legado</span>
-                                        {% elif pagamento.pagamento_historico_sem_movimentacao %}
+                                        {% if pagamento.pagamento_historico_sem_movimentacao %}
                                         <span class="badge bg-secondary">Histórico sem movimentação bancária</span>
                                         {% else %}
                                         <span class="badge bg-success">Pagamento bancário</span>
@@ -267,20 +267,18 @@
                                     </td>
                                     <td>{{ pagamento.observacao or '-' }}</td>
                                     <td class="text-center">
-                                        {% if pagamento.tipo_registro == 'legado' %}
-                                        <span class="text-muted">-</span>
-                                        {% else %}
                                         <div class="btn-group btn-group-sm" role="group">
                                             <button type="button"
                                                     class="btn btn-outline-primary"
                                                     data-pagamento-id="{{ pagamento.id }}"
                                                     data-data-pagamento="{{ pagamento.data_pagamento.strftime('%Y-%m-%d') }}"
-                                                    data-valor="{{ pagamento.valor }}"
+                                                    data-valor-administrativo="{{ (pagamento.valor_administrativo if pagamento.valor_administrativo is not none else pagamento.valor)|default(0, true) }}"
+                                                    data-valor-despesas-fixas="{{ (pagamento.valor_despesas_fixas if pagamento.valor_despesas_fixas is not none else 0)|default(0, true) }}"
+                                                    data-valor-total="{{ (pagamento.valor_total if pagamento.valor_total is not none else pagamento.valor)|default(0, true) }}"
                                                     data-forma-pagamento="{{ pagamento.forma_pagamento }}"
                                                     data-competencia="{{ pagamento.competencia }}"
                                                     data-competencia-mes-ref="{{ pagamento.competencia_mes_ref if pagamento.competencia_mes_ref is not none else '' }}"
                                                     data-competencia-ano-ref="{{ pagamento.competencia_ano_ref if pagamento.competencia_ano_ref is not none else '' }}"
-                                                    data-valor-devido-competencia="{{ pagamento.valor_devido_competencia if pagamento.valor_devido_competencia is not none else '' }}"
                                                     data-pagamento-historico-sem-movimentacao="{{ 1 if pagamento.pagamento_historico_sem_movimentacao else 0 }}"
                                                     data-data-pagamento-informada="{{ 1 if pagamento.data_pagamento_informada is not sameas(false) else 0 }}"
                                                     data-observacao="{{ pagamento.observacao or '' }}"
@@ -295,11 +293,10 @@
                                                 </button>
                                             </form>
                                         </div>
-                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% else %}
-                                <tr><td colspan="9" class="text-center text-muted">Nenhum pagamento de repasse registrado.</td></tr>
+                                <tr><td colspan="11" class="text-center text-muted">Nenhum pagamento de repasse registrado.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -408,12 +405,16 @@
                             <input type="date" class="form-control" id="edit_data_pagamento" name="data_pagamento">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Valor pago</label>
-                            <input type="number" class="form-control" id="edit_valor" name="valor" step="0.01" min="0.01" required>
+                            <label class="form-label">30% Administrativo</label>
+                            <input type="number" class="form-control" id="edit_valor_administrativo" name="valor_administrativo" step="0.01" min="0" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Valor devido</label>
-                            <input type="number" class="form-control" id="edit_valor_devido_competencia" name="valor_devido_competencia" step="0.01" min="0.01">
+                            <label class="form-label">Despesas Fixas</label>
+                            <input type="number" class="form-control" id="edit_valor_despesas_fixas" name="valor_despesas_fixas" step="0.01" min="0" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Valor Total</label>
+                            <input type="number" class="form-control" id="edit_valor_total" name="valor_total" step="0.01" min="0.01" required readonly>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Forma pagamento</label>
@@ -742,15 +743,17 @@ function confirmarExclusao(id, nome) {
 function editarPagamentoSede(botao) {
     document.getElementById('edit_pagamento_id').value = botao.dataset.pagamentoId || '';
     document.getElementById('edit_data_pagamento').value = (botao.dataset.dataPagamentoInformada === '1') ? (botao.dataset.dataPagamento || '') : '';
-    document.getElementById('edit_valor').value = botao.dataset.valor || '';
+    document.getElementById('edit_valor_administrativo').value = botao.dataset.valorAdministrativo || '';
+    document.getElementById('edit_valor_despesas_fixas').value = botao.dataset.valorDespesasFixas || '';
+    document.getElementById('edit_valor_total').value = botao.dataset.valorTotal || '';
     document.getElementById('edit_forma_pagamento').value = botao.dataset.formaPagamento || 'PIX';
     document.getElementById('edit_competencia').value = botao.dataset.competencia || '';
     document.getElementById('edit_competencia_mes_ref').value = botao.dataset.competenciaMesRef || '';
     document.getElementById('edit_competencia_ano_ref').value = botao.dataset.competenciaAnoRef || '';
-    document.getElementById('edit_valor_devido_competencia').value = botao.dataset.valorDevidoCompetencia || '';
     document.getElementById('edit_pagamento_historico_sem_movimentacao').checked = (botao.dataset.pagamentoHistoricoSemMovimentacao === '1');
     document.getElementById('edit_observacao').value = botao.dataset.observacao || '';
 
+    recalcularTotal('edit_');
     atualizarObrigatoriedadeDataHistorico('edit_');
 
     new bootstrap.Modal(document.getElementById('editarPagamentoSedeModal')).show();
@@ -770,6 +773,30 @@ function atualizarObrigatoriedadeDataHistorico(prefixo) {
     }
 }
 
+function recalcularTotal(prefixo) {
+    const admin = parseFloat(document.getElementById(`${prefixo}valor_administrativo`)?.value || '0') || 0;
+    const fixas = parseFloat(document.getElementById(`${prefixo}valor_despesas_fixas`)?.value || '0') || 0;
+    const total = (admin + fixas).toFixed(2);
+    const campoTotal = document.getElementById(`${prefixo}valor_total`);
+    if (campoTotal) {
+        campoTotal.value = total;
+    }
+}
+
+document.getElementById('create_competencia_mes_ref')?.addEventListener('change', function () {
+    const mes = this.value;
+    const ano = document.getElementById('create_competencia_ano_ref')?.value;
+    const campo = document.getElementById('create_competencia');
+    if (mes && ano && campo && !campo.value.trim()) {
+        campo.value = `${String(mes).padStart(2, '0')}/${ano}`;
+    }
+});
+
+document.getElementById('create_valor_administrativo')?.addEventListener('input', function(){ recalcularTotal('create_'); });
+document.getElementById('create_valor_despesas_fixas')?.addEventListener('input', function(){ recalcularTotal('create_'); });
+document.getElementById('edit_valor_administrativo')?.addEventListener('input', function(){ recalcularTotal('edit_'); });
+document.getElementById('edit_valor_despesas_fixas')?.addEventListener('input', function(){ recalcularTotal('edit_'); });
+
 document.getElementById('create_pagamento_historico_sem_movimentacao')?.addEventListener('change', function () {
     atualizarObrigatoriedadeDataHistorico('create_');
 });
@@ -779,5 +806,6 @@ document.getElementById('edit_pagamento_historico_sem_movimentacao')?.addEventLi
 });
 
 atualizarObrigatoriedadeDataHistorico('create_');
+recalcularTotal('create_');
 </script>
 {% endblock %}
