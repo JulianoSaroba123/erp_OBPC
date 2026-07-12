@@ -55,6 +55,28 @@ def _competencia_ref_pagamento_sede(pagamento):
 def _tipo_pagamento_sede(pagamento_historico_sem_movimentacao):
     return 'HISTORICO_SEM_MOVIMENTACAO' if bool(pagamento_historico_sem_movimentacao) else 'PAGAMENTO_BANCARIO'
 
+
+def _descricao_repassa_sede_normalizada(descricao):
+    texto = (descricao or '').strip().lower()
+    return texto.startswith('30% administrativo - conselho sede')
+
+
+def _categoria_lancamento_normalizada_repasse_sede(lancamento):
+    categoria = (getattr(lancamento, 'categoria', '') or '').strip()
+    if not categoria:
+        return 'Sem categoria'
+
+    if categoria.upper() in {'CONTRIB. SEDE', 'REPASSE À SEDE'}:
+        return 'CONTRIB. SEDE'
+
+    if categoria.upper() in {'DESP. VARIAVEIS', 'DESP. VARIÁVEIS'} and _descricao_repassa_sede_normalizada(getattr(lancamento, 'descricao', '')):
+        return 'CONTRIB. SEDE'
+
+    if _descricao_repassa_sede_normalizada(getattr(lancamento, 'descricao', '')):
+        return 'CONTRIB. SEDE'
+
+    return categoria
+
 def obter_filtros_ativos():
     """Função auxiliar para capturar os filtros ativos da query string ou form"""
     filtros = {}
@@ -353,7 +375,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
         saidas = {}
 
         for lancamento in lancamentos:
-            categoria = lancamento.categoria or 'Sem categoria'
+            categoria = _categoria_lancamento_normalizada_repasse_sede(lancamento)
             valor = float(lancamento.valor or 0)
 
             if lancamento.tipo == 'Entrada':
@@ -535,7 +557,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
             if lancamento.tipo != 'Entrada':
                 continue
 
-            categoria = (lancamento.categoria or '').lower()
+            categoria = _categoria_lancamento_normalizada_repasse_sede(lancamento).lower()
             if 'dízimo' in categoria or 'dizimo' in categoria:
                 continue
             if 'omn' in categoria or 'missionaria' in categoria or 'missionária' in categoria:
@@ -890,8 +912,8 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
 
     for lancamento in lancamentos:
         conta = lancamento.conta.lower() if lancamento.conta else 'dinheiro'
-        categoria = lancamento.categoria.lower() if lancamento.categoria else ''
         categoria_original = lancamento.categoria or 'Sem categoria'
+        categoria = _categoria_lancamento_normalizada_repasse_sede(lancamento).lower()
         valor = float(lancamento.valor or 0)
         destino = eh_destinacao(categoria)
 
@@ -1787,10 +1809,16 @@ def lista_lancamentos():
                 query = query.filter(
                     or_(
                         Lancamento.categoria.ilike('%repasse%'),
-                        Lancamento.categoria.ilike('%contrib%')
+                        Lancamento.categoria.ilike('%contrib%'),
+                        Lancamento.categoria.ilike('DESP. VARIAVEIS'),
+                        Lancamento.categoria.ilike('DESP. VARIÁVEIS'),
+                        Lancamento.descricao.ilike(r'30\% Administrativo - Conselho Sede%', escape='\\')
                     )
                 ).filter(
-                    Lancamento.categoria.ilike('%sede%')
+                    or_(
+                        Lancamento.categoria.ilike('%sede%'),
+                        Lancamento.descricao.ilike(r'30\% Administrativo - Conselho Sede%', escape='\\')
+                    )
                 )
             else:
                 # Filtro padrão para outras categorias
@@ -1901,6 +1929,18 @@ def lista_lancamentos():
         # 3. Outras Ofertas = Especiais, Voluntárias (NÃO computa conselho)
         for categoria in sorted(categorias_brutas):
             cat_lower = categoria.lower()
+
+            if categoria.upper() in {'DESP. VARIAVEIS', 'DESP. VARIÁVEIS'}:
+                tem_repasse_legado = db.session.query(Lancamento.id).filter(
+                    or_(
+                        Lancamento.categoria.ilike('DESP. VARIAVEIS'),
+                        Lancamento.categoria.ilike('DESP. VARIÁVEIS')
+                    ),
+                    Lancamento.descricao.ilike(r'30\% Administrativo - Conselho Sede%', escape='\\')
+                ).first()
+                if tem_repasse_legado:
+                    categorias_organizadas.append('CONTRIB. SEDE')
+                    continue
             
             # Verificar se é oferta e especificar o tipo
             if 'oferta' in cat_lower:
@@ -1916,7 +1956,7 @@ def lista_lancamentos():
                     categorias_organizadas.append('Ofertas Alçadas')
             else:
                 # Padroniza contribuição/repasse à sede em uma única opção de filtro
-                if ('sede' in cat_lower) and ('repasse' in cat_lower or 'contrib' in cat_lower):
+                if ('sede' in cat_lower) and ('repasse' in cat_lower or 'contrib' in cat_lower or 'administrativo' in cat_lower):
                     categorias_organizadas.append('CONTRIB. SEDE')
                 else:
                     # Não é oferta, manter como está
@@ -1968,10 +2008,12 @@ def lista_lancamentos():
                     return ('oferta' in lanc_cat_lower and 
                             ('outras' in lanc_cat_lower or 'especial' in lanc_cat_lower or 'voluntaria' in lanc_cat_lower))
                 elif cat == 'CONTRIB. SEDE':
-                    return ('sede' in lanc_cat_lower and ('repasse' in lanc_cat_lower or 'contrib' in lanc_cat_lower))
+                    return (
+                        'sede' in lanc_cat_lower and ('repasse' in lanc_cat_lower or 'contrib' in lanc_cat_lower or 'administrativo' in lanc_cat_lower)
+                    ) or _descricao_repassa_sede_normalizada(lanc.descricao) or lanc_cat_lower in {'desp. variaveis', 'desp. variáveis'}
                 else:
                     # Comparação direta
-                    return lanc.categoria == cat
+                    return _categoria_lancamento_normalizada_repasse_sede(lanc) == cat
             
             lancamentos_cat = [l for l in lancamentos_filtrados if pertence_categoria(l, categoria)]
             if lancamentos_cat:

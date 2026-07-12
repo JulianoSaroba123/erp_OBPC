@@ -71,6 +71,7 @@
                                     
                                     <!-- Saídas -->
                                     <optgroup label="SAÍDAS">
+                                        <option value="CONTRIB. SEDE" {% if lancamento and lancamento.categoria == 'CONTRIB. SEDE' %}selected{% endif %}>CONTRIB. SEDE</option>
                                         <option value="DESP. FIXAS" {% if lancamento and lancamento.categoria == 'DESP. FIXAS' %}selected{% endif %}>DESP. FIXAS</option>
                                         <option value="DESP. VARIAVEIS" {% if lancamento and lancamento.categoria == 'DESP. VARIAVEIS' %}selected{% endif %}>DESP. VARIAVEIS</option>
                                         <option value="PREBENDA" {% if lancamento and lancamento.categoria == 'PREBENDA' %}selected{% endif %}>PREBENDA</option>

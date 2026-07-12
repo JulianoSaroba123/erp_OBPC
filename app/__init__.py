@@ -82,6 +82,28 @@ def _garantir_schema_envios_sede(app):
     except Exception as exc:
         app.logger.warning('Falha ao garantir schema de envios_sede: %s', exc)
 
+
+def _migrar_lancamentos_repasse_sede_legado(app):
+    """Normaliza lançamentos antigos de 30% administrativo que ficaram em DESP. VARIÁVEIS."""
+    from sqlalchemy import inspect, text
+
+    try:
+        inspector = inspect(db.engine)
+        if 'lancamentos' not in inspector.get_table_names():
+            return 0
+
+        with db.engine.begin() as conn:
+            result = conn.execute(text("""
+                UPDATE lancamentos
+                   SET categoria = 'CONTRIB. SEDE'
+                 WHERE (categoria = 'DESP. VARIÁVEIS' OR categoria = 'DESP. VARIAVEIS')
+                                     AND LOWER(COALESCE(descricao, '')) LIKE '30\\% administrativo - conselho sede%' ESCAPE '\\'
+            """))
+            return result.rowcount or 0
+    except Exception as exc:
+        app.logger.warning('Falha ao migrar lançamentos legados de repasse à sede: %s', exc)
+        return 0
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -276,6 +298,13 @@ def create_app():
             _garantir_schema_envios_sede(app)
         except Exception as e:
             app.logger.warning(f'⚠️  Erro ao garantir schema de envios_sede: {str(e)}')
+
+        try:
+            migrados = _migrar_lancamentos_repasse_sede_legado(app)
+            if migrados:
+                app.logger.info('Migração de repasse à sede concluída: %s lançamentos atualizados para CONTRIB. SEDE', migrados)
+        except Exception as e:
+            app.logger.warning(f'⚠️  Erro ao migrar lançamentos legados de repasse à sede: {str(e)}')
 
         try:
             ObservacaoRelatorio.garantir_tabela()
