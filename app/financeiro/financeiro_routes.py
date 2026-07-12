@@ -61,21 +61,23 @@ def _descricao_repassa_sede_normalizada(descricao):
     return texto.startswith('30% administrativo - conselho sede')
 
 
-def _categoria_lancamento_normalizada_repasse_sede(lancamento):
+def normalizar_categoria_lancamento(lancamento):
     categoria = (getattr(lancamento, 'categoria', '') or '').strip()
     if not categoria:
         return 'Sem categoria'
 
-    if categoria.upper() in {'CONTRIB. SEDE', 'REPASSE À SEDE'}:
-        return 'CONTRIB. SEDE'
-
-    if categoria.upper() in {'DESP. VARIAVEIS', 'DESP. VARIÁVEIS'} and _descricao_repassa_sede_normalizada(getattr(lancamento, 'descricao', '')):
-        return 'CONTRIB. SEDE'
-
+    # Regra centralizada: descrição padrão de 30% classifica exclusivamente como CONTRIB. SEDE.
     if _descricao_repassa_sede_normalizada(getattr(lancamento, 'descricao', '')):
         return 'CONTRIB. SEDE'
 
+    if categoria.upper() in {'CONTRIB. SEDE', 'REPASSE À SEDE'}:
+        return 'CONTRIB. SEDE'
+
     return categoria
+
+
+def _categoria_lancamento_normalizada_repasse_sede(lancamento):
+    return normalizar_categoria_lancamento(lancamento)
 
 def obter_filtros_ativos():
     """Função auxiliar para capturar os filtros ativos da query string ou form"""
@@ -1805,20 +1807,25 @@ def lista_lancamentos():
                     )
                 )
             elif categoria_filtro == 'CONTRIB. SEDE':
-                # Contribuição/Repasse à sede (suporta variações antigas)
+                # CONTRIB. SEDE + repasse + legados de 30% em DESP. VARIAVEIS.
                 query = query.filter(
                     or_(
-                        Lancamento.categoria.ilike('%repasse%'),
-                        Lancamento.categoria.ilike('%contrib%'),
-                        Lancamento.categoria.ilike('DESP. VARIAVEIS'),
-                        Lancamento.categoria.ilike('DESP. VARIÁVEIS'),
+                        Lancamento.categoria.ilike('CONTRIB. SEDE'),
+                        Lancamento.categoria.ilike('REPASSE À SEDE'),
                         Lancamento.descricao.ilike(r'30\% Administrativo - Conselho Sede%', escape='\\')
                     )
                 ).filter(
+                    Lancamento.tipo == 'Saída'
+                )
+            elif categoria_filtro in {'DESP. VARIAVEIS', 'DESP. VARIÁVEIS'}:
+                # DESP. VARIAVEIS exclui legados 30% que são normalizados para CONTRIB. SEDE.
+                query = query.filter(
                     or_(
-                        Lancamento.categoria.ilike('%sede%'),
-                        Lancamento.descricao.ilike(r'30\% Administrativo - Conselho Sede%', escape='\\')
+                        Lancamento.categoria.ilike('DESP. VARIAVEIS'),
+                        Lancamento.categoria.ilike('DESP. VARIÁVEIS')
                     )
+                ).filter(
+                    ~Lancamento.descricao.ilike(r'30\% Administrativo - Conselho Sede%', escape='\\')
                 )
             else:
                 # Filtro padrão para outras categorias
@@ -1929,18 +1936,6 @@ def lista_lancamentos():
         # 3. Outras Ofertas = Especiais, Voluntárias (NÃO computa conselho)
         for categoria in sorted(categorias_brutas):
             cat_lower = categoria.lower()
-
-            if categoria.upper() in {'DESP. VARIAVEIS', 'DESP. VARIÁVEIS'}:
-                tem_repasse_legado = db.session.query(Lancamento.id).filter(
-                    or_(
-                        Lancamento.categoria.ilike('DESP. VARIAVEIS'),
-                        Lancamento.categoria.ilike('DESP. VARIÁVEIS')
-                    ),
-                    Lancamento.descricao.ilike(r'30\% Administrativo - Conselho Sede%', escape='\\')
-                ).first()
-                if tem_repasse_legado:
-                    categorias_organizadas.append('CONTRIB. SEDE')
-                    continue
             
             # Verificar se é oferta e especificar o tipo
             if 'oferta' in cat_lower:
@@ -1988,7 +1983,7 @@ def lista_lancamentos():
         for categoria in categorias_unicas:
             # Função auxiliar para verificar se um lançamento pertence à categoria
             def pertence_categoria(lanc, cat):
-                cat_lower = cat.lower()
+                categoria_normalizada = normalizar_categoria_lancamento(lanc)
                 lanc_cat_lower = lanc.categoria.lower() if lanc.categoria else ''
                 
                 if cat == 'Ofertas Alçadas':
@@ -2007,13 +2002,9 @@ def lista_lancamentos():
                     # Outras ofertas especiais
                     return ('oferta' in lanc_cat_lower and 
                             ('outras' in lanc_cat_lower or 'especial' in lanc_cat_lower or 'voluntaria' in lanc_cat_lower))
-                elif cat == 'CONTRIB. SEDE':
-                    return (
-                        'sede' in lanc_cat_lower and ('repasse' in lanc_cat_lower or 'contrib' in lanc_cat_lower or 'administrativo' in lanc_cat_lower)
-                    ) or _descricao_repassa_sede_normalizada(lanc.descricao) or lanc_cat_lower in {'desp. variaveis', 'desp. variáveis'}
                 else:
-                    # Comparação direta
-                    return _categoria_lancamento_normalizada_repasse_sede(lanc) == cat
+                    # Regra única para categorias financeiras comuns.
+                    return categoria_normalizada == cat
             
             lancamentos_cat = [l for l in lancamentos_filtrados if pertence_categoria(l, categoria)]
             if lancamentos_cat:
