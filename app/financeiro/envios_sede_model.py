@@ -124,3 +124,43 @@ class EnvioSede(db.Model):
                 total += float((pagamento.valor_total if pagamento.valor_total is not None else pagamento.valor) or 0)
 
         return total
+
+    @staticmethod
+    def _valor_administrativo_para_controle(pagamento):
+        """Retorna o valor administrativo sem misturar despesas fixas no controle de repasse.
+
+        Regras:
+        - Se houver valor_administrativo explícito, usa-o.
+        - Se não houver valor_administrativo, mas houver valor_despesas_fixas, deduz do total.
+        - Sem separação de componentes (legado): usa o total legado (valor_total/valor).
+        """
+        valor_admin = getattr(pagamento, 'valor_administrativo', None)
+        if valor_admin is not None:
+            return float(valor_admin or 0)
+
+        valor_total = float((getattr(pagamento, 'valor_total', None) if getattr(pagamento, 'valor_total', None) is not None else getattr(pagamento, 'valor', 0)) or 0)
+        valor_fixas = getattr(pagamento, 'valor_despesas_fixas', None)
+
+        if valor_fixas is not None:
+            return max(valor_total - float(valor_fixas or 0), 0.0)
+
+        return valor_total
+
+    @classmethod
+    def somar_pagamentos_administrativos_por_competencia_ate(cls, mes, ano):
+        return sum(
+            cls._valor_administrativo_para_controle(pagamento)
+            for pagamento in cls.listar_pagamentos_por_competencia_ate(mes, ano)
+        )
+
+    @classmethod
+    def somar_pagamentos_administrativos_por_competencia_mes(cls, mes, ano):
+        alvo = cls._competencia_ordem(mes, ano)
+        total = 0.0
+
+        for pagamento in cls.query.order_by(cls.data_pagamento.asc(), cls.id.asc()).all():
+            ordem = cls._ordem_competencia_registro(pagamento)
+            if ordem == alvo:
+                total += cls._valor_administrativo_para_controle(pagamento)
+
+        return total

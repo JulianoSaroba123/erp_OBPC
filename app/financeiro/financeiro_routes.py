@@ -3944,7 +3944,7 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
     if schema_moderno:
         try:
             pagos_ate_anterior = float(
-                EnvioSede.somar_pagamentos_por_competencia_ate(
+                EnvioSede.somar_pagamentos_administrativos_por_competencia_ate(
                     mes - 1 if mes > 1 else 12,
                     ano if mes > 1 else ano - 1,
                 ) or 0.0
@@ -3955,7 +3955,7 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
 
         pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
         try:
-            pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_por_competencia_mes(mes, ano) or 0.0)
+            pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_administrativos_por_competencia_mes(mes, ano) or 0.0)
         except (OperationalError, ProgrammingError, AttributeError):
             db.session.rollback()
             pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
