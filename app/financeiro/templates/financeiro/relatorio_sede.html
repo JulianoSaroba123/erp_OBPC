@@ -107,6 +107,41 @@
             color: var(--brand);
             padding-top: 10px;
         }
+        .pagamentos-sede-card {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .mobile-table-scroll {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+        }
+        .official-table.pagamentos-table {
+            width: 920px;
+            min-width: 920px;
+            max-width: none;
+            table-layout: auto;
+        }
+        .official-table.pagamentos-table th,
+        .official-table.pagamentos-table td {
+            white-space: nowrap;
+            padding-right: 14px;
+        }
+        .official-table.pagamentos-table th:nth-child(1),
+        .official-table.pagamentos-table td:nth-child(1) { min-width: 120px; }
+        .official-table.pagamentos-table th:nth-child(2),
+        .official-table.pagamentos-table td:nth-child(2) { min-width: 120px; }
+        .official-table.pagamentos-table th:nth-child(3),
+        .official-table.pagamentos-table td:nth-child(3) { min-width: 110px; }
+        .official-table.pagamentos-table th.value,
+        .official-table.pagamentos-table td.value { min-width: 140px; }
         .muted-note {
             margin: 0;
             color: var(--muted);
@@ -225,9 +260,10 @@
 
             <div class="separator"></div>
 
-            <section>
+            <section class="pagamentos-sede-card">
                 <h3 class="section-title">Pagamentos Realizados no Mês</h3>
-                <table class="official-table">
+                <div class="mobile-table-scroll">
+                <table class="official-table pagamentos-table">
                     <thead>
                         <tr>
                             <th class="label">Data</th>
@@ -271,6 +307,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </section>
 
             <div class="separator"></div>
