@@ -189,7 +189,8 @@
             {% set base_fixas = totais_sede.despesas_fixas|default(0) %}
             {% set usadas_fixas = valor_contador + valor_site + valor_filipe + valor_forca + valor_conchas %}
             {% set outras_fixas = (base_fixas - usadas_fixas) if (base_fixas - usadas_fixas) > 0 else 0 %}
-            {% set total_enviar_exibicao = valor_admin + valor_contador + valor_site + valor_filipe + valor_forca + valor_conchas + outras_fixas + (valor_omn if valor_omn > 0 else 0) %}
+            {% set total_destinado_sede = valor_admin + valor_contador + valor_site + valor_filipe + valor_forca + valor_conchas + outras_fixas %}
+            {% set total_destinado_convencao = valor_omn %}
 
             <section>
                 <div class="info-strip">
@@ -322,7 +323,7 @@
             <div class="separator"></div>
 
             <section>
-                <h3 class="section-title">Valores Destinados a Sede</h3>
+                <h3 class="section-title">Valores Destinados à Sede</h3>
                 <table class="official-table">
                     <tbody>
                         <tr><td class="label">30% Administrativo</td><td class="value">{{ valor_admin|valor_com_cor|safe }}</td></tr>
@@ -334,9 +335,6 @@
                         {% if outras_fixas > 0 %}
                         <tr><td class="label">Outras Despesas Fixas</td><td class="value">{{ outras_fixas|valor_com_cor|safe }}</td></tr>
                         {% endif %}
-                        {% if valor_omn > 0 %}
-                        <tr><td class="label">Oferta OMN</td><td class="value">{{ valor_omn|valor_com_cor|safe }}</td></tr>
-                        {% endif %}
                     </tbody>
                 </table>
             </section>
@@ -346,10 +344,31 @@
             <section>
                 <table class="official-table">
                     <tbody>
-                        <tr class="total"><td class="label">Total a Enviar</td><td class="value">{{ total_enviar_exibicao|valor_com_cor|safe }}</td></tr>
+                        <tr class="total"><td class="label">Total destinado à Sede</td><td class="value">{{ total_destinado_sede|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
                 <p class="muted-note">Relatorio mensal oficial sem movimentacao detalhada de caixa.</p>
+            </section>
+
+            <div class="separator"></div>
+
+            <section>
+                <h3 class="section-title">Valores Destinados à Convenção</h3>
+                <table class="official-table">
+                    <tbody>
+                        <tr><td class="label">Oferta OMN</td><td class="value">{{ total_destinado_convencao|valor_com_cor|safe }}</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <div class="separator"></div>
+
+            <section>
+                <table class="official-table">
+                    <tbody>
+                        <tr class="total"><td class="label">Total destinado à Convenção</td><td class="value">{{ total_destinado_convencao|valor_com_cor|safe }}</td></tr>
+                    </tbody>
+                </table>
             </section>
         </section>
 
