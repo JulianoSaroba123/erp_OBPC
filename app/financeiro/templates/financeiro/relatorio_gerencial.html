@@ -151,6 +151,36 @@
         .pagamentos-table th.numeric,
         .pagamentos-table td.numeric { min-width: 140px; }
 
+        .movimentacao-card {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+        .movimentacao-scroll-x {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+        }
+        .movimentacao-scroll-y {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        .movimentacao-table {
+            width: 100%;
+            max-width: none;
+            min-width: 0;
+            table-layout: auto;
+        }
+
         @media print {
             @page { size: A4; margin: 12mm; }
             body { background: #fff; }
@@ -362,9 +392,11 @@
             </table>
         </section>
 
-        <section class="table-card" style="margin-bottom: 22px;">
+        <section class="table-card movimentacao-card" style="margin-bottom: 22px;">
             <div class="section-header"><h3>Movimentação Financeira</h3><p>{{ movimentacao|length }} lançamentos no período</p></div>
-            <table>
+            <div class="movimentacao-scroll-y">
+            <div class="movimentacao-scroll-x">
+            <table class="movimentacao-table">
                 <thead>
                     <tr>
                         <th class="center">Data</th>
@@ -392,6 +424,8 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
+            </div>
         </section>
 
         <section class="table-card">
