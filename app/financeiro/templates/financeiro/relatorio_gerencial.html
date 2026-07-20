@@ -133,17 +133,23 @@
             overflow-y: hidden;
             -webkit-overflow-scrolling: touch;
         }
-        .pagamentos-table { min-width: 850px; }
-        .pagamentos-table th:nth-child(1),
-        .pagamentos-table td:nth-child(1),
-        .pagamentos-table th:nth-child(2),
-        .pagamentos-table td:nth-child(2),
-        .pagamentos-table th:nth-child(3),
-        .pagamentos-table td:nth-child(3),
-        .pagamentos-table th.numeric,
-        .pagamentos-table td.numeric {
+        .pagamentos-table {
+            min-width: 920px;
+            width: max-content;
+            table-layout: auto;
+        }
+        .pagamentos-table th,
+        .pagamentos-table td {
             white-space: nowrap;
         }
+        .pagamentos-table th:nth-child(1),
+        .pagamentos-table td:nth-child(1) { min-width: 120px; }
+        .pagamentos-table th:nth-child(2),
+        .pagamentos-table td:nth-child(2) { min-width: 120px; }
+        .pagamentos-table th:nth-child(3),
+        .pagamentos-table td:nth-child(3) { min-width: 110px; }
+        .pagamentos-table th.numeric,
+        .pagamentos-table td.numeric { min-width: 140px; }
 
         @media print {
             @page { size: A4; margin: 12mm; }
