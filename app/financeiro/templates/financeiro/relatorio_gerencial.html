@@ -181,6 +181,31 @@
             table-layout: auto;
         }
 
+        .evolucao-card {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .evolucao-scroll-x {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-x: contain;
+            box-sizing: border-box;
+        }
+        .evolucao-content {
+            width: 100%;
+            max-width: none;
+            min-width: 320px;
+            table-layout: auto;
+        }
+
         @media print {
             @page { size: A4; margin: 12mm; }
             body { background: #fff; }
@@ -375,9 +400,10 @@
             </article>
         </section>
 
-        <section class="table-card" style="margin-bottom: 22px;">
+        <section class="table-card evolucao-card" style="margin-bottom: 22px;">
             <div class="section-header"><h3>Evolução Financeira</h3><p>Últimos meses disponíveis no exercício</p></div>
-            <table>
+            <div class="evolucao-scroll-x">
+            <table class="evolucao-content">
                 <thead><tr><th>Mês</th><th class="numeric">Entradas</th><th class="numeric">Saídas</th><th class="numeric">Saldo</th></tr></thead>
                 <tbody>
                     {% for item in evolucao_financeira %}
@@ -390,6 +416,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
         </section>
 
         <section class="table-card movimentacao-card" style="margin-bottom: 22px;">
