@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 from flask import Flask
 from sqlalchemy import inspect
@@ -14,8 +15,10 @@ from sqlalchemy.exc import IntegrityError
 from app.extensoes import db
 from app import create_app
 from app.financeiro.financeiro_model import Lancamento
+from app.financeiro.despesas_fixas_model import DespesaFixaConselho
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.comprovante_model import Comprovante
+from app.financeiro.financeiro_routes import gerar_obrigacoes_despesas_fixas
 from app.financeiro.obrigacoes_model import (
     ObrigacaoFinanceira,
     ObrigacaoEvento,
@@ -60,6 +63,7 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         db.session.query(ObrigacaoEvento).delete()
         db.session.query(PagamentoObrigacao).delete()
         db.session.query(ObrigacaoFinanceira).delete()
+        db.session.query(DespesaFixaConselho).delete()
         db.session.query(Lancamento).delete()
         db.session.query(Projeto).delete()
         db.session.commit()
@@ -119,6 +123,28 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         db.session.add(pagamento)
         db.session.flush()
         return pagamento
+
+    def _nova_despesa_fixa(self, nome, valor=100.0, ativa=True, descricao="Despesa fixa teste", categoria="DESP. FIXAS"):
+        despesa = DespesaFixaConselho(
+            nome=nome,
+            descricao=descricao,
+            valor_padrao=valor,
+            ativo=ativa,
+            categoria=categoria,
+        )
+        db.session.add(despesa)
+        db.session.flush()
+        return despesa
+
+    def _saldo_lancamentos(self):
+        saldo = Decimal("0.00")
+        for lancamento in Lancamento.query.all():
+            valor = Decimal(str(lancamento.valor or 0))
+            if (lancamento.tipo or "").strip().lower() == "entrada":
+                saldo += valor
+            else:
+                saldo -= valor
+        return saldo.quantize(Decimal("0.01"))
 
     def test_caso_a_sem_pagamentos(self):
         obrigacao = self._nova_obrigacao(valor="1000.00")
@@ -422,6 +448,215 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
 
         self.assertIsNotNone(obrigacao_1.id)
         self.assertIsNotNone(obrigacao_2.id)
+
+    def test_caso_r_gera_obrigacao_sem_lancamento(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(resultado["erros"], [])
+        self.assertEqual(resultado["criadas"], ["Internet Sede"])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 1)
+        self.assertEqual(Lancamento.query.count(), 0)
+
+        obrigacao = ObrigacaoFinanceira.query.first()
+        self.assertEqual(obrigacao.tipo_obrigacao, "DESPESA_FIXA")
+        self.assertEqual(obrigacao.origem_obrigacao, "automatico")
+        self.assertEqual(obrigacao.referencia_origem_tipo, "DESPESA_FIXA_CONSELHO")
+        self.assertEqual(obrigacao.referencia_origem_id, despesa.id)
+        self.assertEqual(obrigacao.categoria, "DESP. FIXAS")
+        self.assertEqual(obrigacao.descricao, "Internet Sede - Despesa Fixa 07/2026")
+        self.assertEqual(obrigacao.competencia_mes, 7)
+        self.assertEqual(obrigacao.competencia_ano, 2026)
+        self.assertEqual(obrigacao.valor_devido, Decimal("100.00"))
+        self.assertEqual(obrigacao.status, "PENDENTE")
+        self.assertFalse(obrigacao.historico_sem_movimentacao)
+        self.assertIsNone(getattr(obrigacao, "conta", None))
+
+    def test_caso_s_idempotencia_mesmo_mes(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        primeiro = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+        segundo = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(primeiro["criadas"], ["Internet Sede"])
+        self.assertEqual(segundo["criadas"], [])
+        self.assertEqual(segundo["ja_existentes"], ["Internet Sede"])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 1)
+
+    def test_caso_t_duas_despesas_mesmo_mes(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0)
+        self._nova_despesa_fixa("Contabilidade", valor=250.0)
+
+        resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(sorted(resultado["criadas"]), ["Contabilidade", "Internet Sede"])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 2)
+
+    def test_caso_u_mes_diferente_permite_nova(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+        gerar_obrigacoes_despesas_fixas(mes=8, ano=2026)
+
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 2)
+
+    def test_caso_v_despesa_inativa_nao_gera(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0, ativa=False)
+
+        resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(resultado["criadas"], [])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
+
+    def test_caso_w_saldo_inalterado_sem_lancamento(self):
+        self._nova_despesa_fixa("Internet Sede", valor=300.0)
+        lancamento_entrada = Lancamento(
+            data=date(2026, 7, 1),
+            tipo="Entrada",
+            categoria="TESTE",
+            descricao="Saldo inicial",
+            valor=1000.0,
+            conta="Banco",
+            origem="manual",
+        )
+        db.session.add(lancamento_entrada)
+        db.session.commit()
+
+        saldo_antes = self._saldo_lancamentos()
+        resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+        saldo_depois = self._saldo_lancamentos()
+
+        self.assertEqual(resultado["criadas"], ["Internet Sede"])
+        self.assertEqual(saldo_antes, Decimal("1000.00"))
+        self.assertEqual(saldo_depois, Decimal("1000.00"))
+        self.assertEqual(ObrigacaoFinanceira.query.first().status, "PENDENTE")
+
+    def test_caso_x_evento_criacao_registrado(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(resultado["erros"], [])
+        evento = ObrigacaoEvento.query.first()
+        self.assertIsNotNone(evento)
+        self.assertEqual(evento.evento_tipo, "CRIACAO")
+        self.assertIn('"origem": "automatico"', evento.payload_json)
+        self.assertIn('"referencia_origem_id":', evento.payload_json)
+        self.assertIn('"competencia": "07/2026"', evento.payload_json)
+        self.assertIn('"valor_devido": "100.00"', evento.payload_json)
+
+    def test_caso_y_erro_reverte_transacao(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0)
+        self._nova_despesa_fixa("Contabilidade", valor=250.0)
+
+        original_add = db.session.add
+
+        def _add_com_falha(objeto):
+            if isinstance(objeto, ObrigacaoEvento):
+                raise RuntimeError("falha forçada no evento")
+            return original_add(objeto)
+
+        with patch.object(db.session, "add", side_effect=_add_com_falha):
+            resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertTrue(resultado["erros"])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
+        self.assertEqual(ObrigacaoEvento.query.count(), 0)
+
+    def test_caso_z_legacy_nao_cria_saida_automatica(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(resultado["criadas"], ["Internet Sede"])
+        lancamentos_automaticos = Lancamento.query.filter(
+            Lancamento.origem.ilike("automatico"),
+            Lancamento.tipo.ilike("saída"),
+        ).count()
+        self.assertEqual(lancamentos_automaticos, 0)
+
+    def test_caso_aa_mes_sem_despesas_nao_gera(self):
+        resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(resultado["criadas"], [])
+        self.assertEqual(resultado["ja_existentes"], [])
+        self.assertEqual(resultado["erros"], [])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
+        self.assertEqual(ObrigacaoEvento.query.count(), 0)
+
+    def test_caso_ab_snapshot_historico_preservado(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0, descricao="Internet mensal", categoria="DESP. FIXAS")
+
+        gerar_obrigacoes_despesas_fixas(mes=1, ano=2026)
+
+        obrigacao_janeiro = ObrigacaoFinanceira.query.filter_by(competencia_mes=1, competencia_ano=2026).first()
+        self.assertIsNotNone(obrigacao_janeiro)
+        self.assertEqual(obrigacao_janeiro.valor_devido, Decimal("100.00"))
+        self.assertEqual(obrigacao_janeiro.categoria, "DESP. FIXAS")
+        self.assertEqual(obrigacao_janeiro.descricao, "Internet Sede - Despesa Fixa 01/2026")
+        self.assertEqual(obrigacao_janeiro.referencia_origem_id, despesa.id)
+
+        despesa.valor_padrao = 150.0
+        despesa.categoria = "OUTRA CATEGORIA"
+        despesa.descricao = "Internet atualizada"
+        db.session.commit()
+
+        obrigacao_janeiro_db = db.session.get(ObrigacaoFinanceira, obrigacao_janeiro.id)
+        self.assertEqual(obrigacao_janeiro_db.valor_devido, Decimal("100.00"))
+        self.assertEqual(obrigacao_janeiro_db.categoria, "DESP. FIXAS")
+        self.assertEqual(obrigacao_janeiro_db.descricao, "Internet Sede - Despesa Fixa 01/2026")
+
+        gerar_obrigacoes_despesas_fixas(mes=2, ano=2026)
+        obrigacao_fevereiro = ObrigacaoFinanceira.query.filter_by(competencia_mes=2, competencia_ano=2026).first()
+        self.assertIsNotNone(obrigacao_fevereiro)
+        self.assertEqual(obrigacao_fevereiro.valor_devido, Decimal("150.00"))
+        self.assertEqual(obrigacao_fevereiro.categoria, "OUTRA CATEGORIA")
+        self.assertEqual(obrigacao_fevereiro.descricao, "Internet Sede - Despesa Fixa 02/2026")
+
+    def test_caso_ac_inativa_reativada_sem_afetar_histórico(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0, ativa=False)
+
+        resultado_inativa = gerar_obrigacoes_despesas_fixas(mes=3, ano=2026)
+        self.assertEqual(resultado_inativa["criadas"], [])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
+
+        despesa.ativo = True
+        db.session.commit()
+
+        resultado_reativada = gerar_obrigacoes_despesas_fixas(mes=4, ano=2026)
+        self.assertEqual(resultado_reativada["criadas"], ["Internet Sede"])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 1)
+
+        despesa.ativo = False
+        db.session.commit()
+
+        obrigacao_apurada = ObrigacaoFinanceira.query.first()
+        self.assertIsNotNone(obrigacao_apurada)
+        self.assertEqual(obrigacao_apurada.valor_devido, Decimal("100.00"))
+        self.assertEqual(obrigacao_apurada.status, "PENDENTE")
+
+    def test_caso_ad_geracao_atomica_rollback_total(self):
+        self._nova_despesa_fixa("Despesa A", valor=100.0)
+        self._nova_despesa_fixa("Despesa B", valor=80.0)
+        self._nova_despesa_fixa("Despesa C", valor=60.0)
+
+        original_add = db.session.add
+        contador_obrigacoes = {"total": 0}
+
+        def _add_com_falha_na_terceira_obrigacao(objeto):
+            if isinstance(objeto, ObrigacaoFinanceira):
+                contador_obrigacoes["total"] += 1
+                if contador_obrigacoes["total"] == 3:
+                    raise RuntimeError("falha controlada na terceira obrigacao")
+            return original_add(objeto)
+
+        with patch.object(db.session, "add", side_effect=_add_com_falha_na_terceira_obrigacao):
+            resultado = gerar_obrigacoes_despesas_fixas(mes=5, ano=2026)
+
+        self.assertTrue(resultado["erros"])
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
+        self.assertEqual(ObrigacaoEvento.query.count(), 0)
 
     def test_caso_r_startup_nao_cria_tabelas_novas(self):
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:

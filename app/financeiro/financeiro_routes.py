@@ -6,6 +6,7 @@ from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.despesas_fixas_model import DespesaFixaConselho
 from app.financeiro.envios_sede_model import EnvioSede
+from app.financeiro.obrigacoes_model import ObrigacaoFinanceira, ObrigacaoEvento
 from app.financeiro.observacao_relatorio_model import ObservacaoRelatorio
 from app.financeiro.recibo_model import Recibo
 from app.configuracoes.configuracoes_model import Configuracao
@@ -14,6 +15,7 @@ from datetime import datetime, date
 from sqlalchemy import extract, or_, and_, func, inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from decimal import Decimal
+import json
 import os
 from werkzeug.utils import secure_filename
 import io
@@ -78,6 +80,92 @@ def normalizar_categoria_lancamento(lancamento):
 
 def _categoria_lancamento_normalizada_repasse_sede(lancamento):
     return normalizar_categoria_lancamento(lancamento)
+
+
+def gerar_obrigacoes_despesas_fixas(mes=None, ano=None):
+    """Gera obrigações automáticas para despesas fixas ativas do mês informado."""
+    mes = mes or datetime.now().month
+    ano = ano or datetime.now().year
+
+    resultado = {
+        'criadas': [],
+        'ja_existentes': [],
+        'erros': [],
+    }
+
+    despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
+    if not despesas_ativas:
+        return resultado
+
+    try:
+        for despesa in despesas_ativas:
+            chave_busca = {
+                'tipo_obrigacao': 'DESPESA_FIXA',
+                'origem_obrigacao': 'automatico',
+                'referencia_origem_tipo': 'DESPESA_FIXA_CONSELHO',
+                'referencia_origem_id': despesa.id,
+                'competencia_mes': mes,
+                'competencia_ano': ano,
+            }
+
+            existente = ObrigacaoFinanceira.query.filter_by(**chave_busca).first()
+            if existente:
+                resultado['ja_existentes'].append(despesa.nome)
+                continue
+
+            descricao = f'{despesa.nome} - Despesa Fixa {mes:02d}/{ano}'
+            observacao = (despesa.descricao or '').strip() or 'Despesa fixa mensal'
+            valor_devido = Decimal(str(despesa.valor_padrao or 0)).quantize(Decimal('0.01'))
+
+            obrigacao = ObrigacaoFinanceira(
+                tipo_obrigacao='DESPESA_FIXA',
+                origem_obrigacao='automatico',
+                referencia_origem_tipo='DESPESA_FIXA_CONSELHO',
+                referencia_origem_id=despesa.id,
+                categoria=despesa.categoria or 'DESP. FIXAS',
+                descricao=descricao,
+                competencia_mes=mes,
+                competencia_ano=ano,
+                valor_devido=valor_devido,
+                status='PENDENTE',
+                historico_sem_movimentacao=False,
+                data_vencimento=None,
+                observacao=observacao,
+            )
+
+            obrigacao.validar()
+            obrigacao.validar_duplicidade_automatica(db.session)
+            db.session.add(obrigacao)
+            db.session.flush()
+
+            evento = ObrigacaoEvento(
+                obrigacao_financeira_id=obrigacao.id,
+                evento_tipo='CRIACAO',
+                payload_json=json.dumps(
+                    {
+                        'origem': 'automatico',
+                        'referencia_origem_tipo': 'DESPESA_FIXA_CONSELHO',
+                        'referencia_origem_id': despesa.id,
+                        'competencia': f'{mes:02d}/{ano}',
+                        'valor_devido': str(valor_devido),
+                    },
+                    ensure_ascii=False,
+                ),
+                usuario=None,
+            )
+            db.session.add(evento)
+            db.session.flush()
+
+            resultado['criadas'].append(despesa.nome)
+
+        db.session.commit()
+        return resultado
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f'Erro ao gerar obrigacoes de despesas fixas: {e}')
+        resultado['erros'].append(str(e))
+        return resultado
 
 def obter_filtros_ativos():
     """Função auxiliar para capturar os filtros ativos da query string ou form"""
@@ -4579,63 +4667,21 @@ def excluir_despesa_fixa(id):
 @financeiro_bp.route('/financeiro/despesas-fixas/gerar-lancamentos', methods=['POST'])
 @login_required
 def gerar_lancamentos_despesas_fixas():
-    """Gera lançamentos automáticos para o mês atual baseado nas despesas fixas ativas"""
-    try:
-        mes = request.form.get('mes', type=int) or datetime.now().month
-        ano = request.form.get('ano', type=int) or datetime.now().year
-        
-        # Buscar despesas fixas ativas
-        despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
-        
-        if not despesas_ativas:
-            flash('Nenhuma despesa fixa ativa encontrada!', 'warning')
-            return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-        
-        # Data do lançamento (primeiro dia do mês)
-        data_lancamento = date(ano, mes, 1)
-        
-        lancamentos_criados = 0
-        lancamentos_existentes = 0
-        
-        for despesa in despesas_ativas:
-            # Verificar se já existe lançamento para esta despesa neste mês
-            existe = Lancamento.query.filter(
-                extract('month', Lancamento.data) == mes,
-                extract('year', Lancamento.data) == ano,
-                Lancamento.descricao.ilike(f'%{despesa.nome}%'),
-                Lancamento.tipo.ilike('saída')
-            ).first()
-            
-            if existe:
-                lancamentos_existentes += 1
-                continue
-            
-            # Criar lançamento
-            novo_lancamento = Lancamento(
-                data=data_lancamento,
-                tipo='Saída',
-                categoria=despesa.categoria or 'DESP. FIXAS',
-                descricao=f'{despesa.nome} - Despesa Fixa {mes:02d}/{ano}',
-                valor=despesa.valor_padrao,
-                conta='Dinheiro',
-                observacoes=f'Gerado automaticamente de: {despesa.descricao}' if despesa.descricao else 'Despesa fixa mensal',
-                origem='automatico'
-            )
-            
-            db.session.add(novo_lancamento)
-            lancamentos_criados += 1
-        
-        db.session.commit()
-        
-        mensagem = f'{lancamentos_criados} lançamento(s) criado(s) para {mes:02d}/{ano}!'
-        if lancamentos_existentes > 0:
-            mensagem += f' ({lancamentos_existentes} já existia(m))'
-        
+    """Gera obrigações automáticas para o mês baseado nas despesas fixas ativas."""
+    mes = request.form.get('mes', type=int) or datetime.now().month
+    ano = request.form.get('ano', type=int) or datetime.now().year
+
+    resultado = gerar_obrigacoes_despesas_fixas(mes=mes, ano=ano)
+
+    if resultado['erros']:
+        flash(f'Erro ao gerar obrigações de despesas fixas: {resultado["erros"][0]}', 'danger')
+    elif not resultado['criadas'] and not resultado['ja_existentes']:
+        flash('Nenhuma despesa fixa ativa encontrada!', 'warning')
+    else:
+        mensagem = f'Obrigações de despesas fixas geradas: {len(resultado["criadas"])} criada(s)'
+        if resultado['ja_existentes']:
+            mensagem += f', {len(resultado["ja_existentes"])} já existente(s)'
         flash(mensagem, 'success')
-        
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao gerar lançamentos: {str(e)}', 'danger')
     
     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 

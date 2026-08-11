@@ -585,7 +585,7 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-magic me-2"></i>Gerar Lançamentos Automáticos
+                    <i class="fas fa-magic me-2"></i>Gerar Obrigações Automáticas
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -593,7 +593,7 @@
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
                     <strong>Como funciona:</strong><br>
-                    Esta função cria automaticamente lançamentos de saída para o mês selecionado.
+                    Esta função cria automaticamente obrigações de despesas fixas para o mês selecionado.
                 </div>
                 
                 <!-- Seleção de Mês e Ano -->
@@ -630,7 +630,7 @@
                                 <h6 class="mb-0"><i class="fas fa-list me-2"></i>Despesas Fixas</h6>
                             </div>
                             <div class="card-body">
-                                <p class="small">Cria lançamentos de saída para todas as despesas fixas ativas:</p>
+                                <p class="small">Cria obrigações de despesas fixas para todas as despesas fixas ativas:</p>
                                 <ul class="small mb-3">
                                     {% for despesa in despesas_ativas %}
                                     <li>{{ despesa.nome }} - <strong>R$ {{ "%.2f"|format(despesa.valor_padrao)|replace(".", ",") }}</strong></li>
@@ -643,7 +643,7 @@
                                     <input type="hidden" name="mes" id="mes_despesas">
                                     <input type="hidden" name="ano" id="ano_despesas">
                                     <button type="submit" class="btn btn-primary btn-sm w-100">
-                                        <i class="fas fa-check me-1"></i>Gerar Despesas Fixas
+                                        <i class="fas fa-check me-1"></i>Gerar Obrigações de Despesas Fixas
                                     </button>
                                 </form>
                             </div>
@@ -683,7 +683,7 @@
                 
                 <div class="alert alert-warning mt-3 mb-0">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    <strong>Atenção:</strong> Lançamentos já existentes não serão duplicados.
+                    <strong>Atenção:</strong> Obrigações já existentes não serão duplicadas.
                 </div>
             </div>
             <div class="modal-footer">
