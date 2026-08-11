@@ -291,6 +291,261 @@ def _slice_old_new(rows: list[dict], limit: int = 100) -> list[dict]:
     return old + new
 
 
+def _fmt_date(value: Any) -> str:
+    d = _to_date(value)
+    if d is None:
+        return ""
+    return d.strftime("%Y-%m-%d")
+
+
+def _fmt_datetime(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(value, date):
+        return value.strftime("%Y-%m-%d")
+    return _to_str(value)
+
+
+def _fmt_cell(value: Any) -> str:
+    if isinstance(value, bool):
+        return "SIM" if value else "NAO"
+    if isinstance(value, (datetime, date)):
+        return _fmt_datetime(value)
+    if isinstance(value, float):
+        return f"{value:.2f}"
+    return _to_str(value)
+
+
+def _table_exists(insp, table_name: str) -> bool:
+    return table_name in set(insp.get_table_names())
+
+
+def _table_columns(insp, table_name: str) -> set[str]:
+    if not _table_exists(insp, table_name):
+        return set()
+    return {col["name"] for col in insp.get_columns(table_name)}
+
+
+def _select_table_rows(conn, insp, table_name: str, wanted_columns: list[str], order_by: str = "id", where_sql: str = "", params: dict | None = None) -> tuple[list[dict], list[str]]:
+    columns = _table_columns(insp, table_name)
+    if not columns:
+        return [], []
+
+    selected = [column for column in wanted_columns if column in columns]
+    if order_by and order_by in columns and order_by not in selected:
+        selected.append(order_by)
+    if not selected:
+        return [], []
+
+    sql = f"SELECT {', '.join(selected)} FROM {table_name}"
+    if where_sql:
+        sql += f" WHERE {where_sql}"
+    if order_by and order_by in columns:
+        sql += f" ORDER BY {order_by}"
+    return _fetch_all(conn, sql, params), selected
+
+
+def _print_table_rows(title: str, rows: list[dict], fields: list[str]):
+    print(f"\n{title}")
+    if not rows:
+        print("SEM REGISTROS")
+        return
+    for row in rows:
+        partes = []
+        for field in fields:
+            partes.append(f"{field}={_fmt_cell(row.get(field))}")
+        print(" | ".join(partes))
+
+
+def _classificar_candidato_envio_lancamento(envio: dict, lancamento: dict | None) -> tuple[str, str]:
+    if lancamento is None:
+        return "SEM_CORRESPONDENCIA", "nenhum lançamento vinculado ou candidato encontrado"
+
+    score = 0.0
+    motivos = []
+
+    lancamento_id = envio.get("lancamento_financeiro_id")
+    if lancamento_id and lancamento_id == lancamento.get("id"):
+        score += 0.60
+        motivos.append("lancamento_financeiro_id")
+
+    valor_envio = _to_float(envio.get("valor_total")) if envio.get("valor_total") is not None else _to_float(envio.get("valor"))
+    valor_lancamento = _to_float(lancamento.get("valor"))
+    if abs(valor_envio - valor_lancamento) <= 0.01:
+        score += 0.20
+        motivos.append("valor exato")
+
+    data_envio = _to_date(envio.get("data_pagamento")) or _to_date(envio.get("data"))
+    data_lancamento = _to_date(lancamento.get("data"))
+    if data_envio and data_lancamento:
+        diff_dias = abs((data_envio - data_lancamento).days)
+        if diff_dias <= 3:
+            score += 0.10
+            motivos.append("data próxima")
+        elif diff_dias <= 7:
+            score += 0.05
+            motivos.append("data razoavelmente próxima")
+
+    desc_envio = _to_str(envio.get("observacao")) + " " + _to_str(envio.get("competencia"))
+    desc_lancamento = _to_str(lancamento.get("descricao")) + " " + _to_str(lancamento.get("observacoes"))
+    sim_desc = SequenceMatcher(None, desc_envio.lower(), desc_lancamento.lower()).ratio()
+    if sim_desc >= 0.75:
+        score += 0.08
+        motivos.append("descrição semelhante")
+
+    documento_envio = _to_str(envio.get("comprovante"))
+    documento_lancamento = _to_str(lancamento.get("documento_ref"))
+    if documento_envio and documento_lancamento and documento_envio == documento_lancamento:
+        score += 0.10
+        motivos.append("documento_ref coincidente")
+
+    origem_lancamento = _origem_norm(lancamento.get("origem"))
+    conta_lancamento = _to_str(lancamento.get("conta")).strip().lower()
+    if origem_lancamento in ("manual", "importado", "automatico"):
+        score += 0.02
+        motivos.append(f"origem={origem_lancamento}")
+    if conta_lancamento in ("dinheiro", "banco", "pix"):
+        score += 0.01
+        motivos.append(f"conta={conta_lancamento}")
+
+    if score >= 0.80:
+        confidence = "ALTA"
+    elif score >= 0.50:
+        confidence = "MEDIA"
+    elif score > 0:
+        confidence = "BAIXA"
+    else:
+        confidence = "SEM_CORRESPONDENCIA"
+
+    motivo = "; ".join(motivos) if motivos else "sem critérios fortes"
+    return confidence, motivo
+
+
+def _build_envio_match_rows(conn, insp, envios: list[dict], lancamentos: list[dict]) -> list[dict]:
+    lanc_by_id = {l.get("id"): l for l in lancamentos}
+    rows = []
+    for envio in sorted(envios, key=lambda e: e.get("id") or 0):
+        lancamento_vinculado = lanc_by_id.get(envio.get("lancamento_financeiro_id")) if envio.get("lancamento_financeiro_id") else None
+        if lancamento_vinculado is not None:
+            confidence, motivo = _classificar_candidato_envio_lancamento(envio, lancamento_vinculado)
+            rows.append({
+                "ENVIO_ID": envio.get("id"),
+                "COMPETENCIA": envio.get("competencia"),
+                "VALOR_ENVIO": _to_float(envio.get("valor_total")) if envio.get("valor_total") is not None else _to_float(envio.get("valor")),
+                "TIPO_PAGAMENTO": envio.get("tipo_pagamento"),
+                "HISTORICO_SEM_MOVIMENTO": _bool_norm(envio.get("pagamento_historico_sem_movimentacao")),
+                "LANCAMENTO_FINANCEIRO_ID": envio.get("lancamento_financeiro_id"),
+                "CANDIDATO_LANCAMENTO_ID": lancamento_vinculado.get("id"),
+                "VALOR_CANDIDATO": _to_float(lancamento_vinculado.get("valor")),
+                "DATA_CANDIDATO": lancamento_vinculado.get("data"),
+                "ORIGEM_CANDIDATO": lancamento_vinculado.get("origem"),
+                "CONFIANCA": confidence,
+                "MOTIVO": motivo,
+            })
+            continue
+
+        valor_envio = _to_float(envio.get("valor_total")) if envio.get("valor_total") is not None else _to_float(envio.get("valor"))
+        data_envio = _to_date(envio.get("data_pagamento"))
+        candidatos = []
+        for lancamento in lancamentos:
+            if _tipo_norm(lancamento.get("tipo")) != "saida":
+                continue
+            valor_lancamento = _to_float(lancamento.get("valor"))
+            data_lancamento = _to_date(lancamento.get("data"))
+            documento_lancamento = _to_str(lancamento.get("documento_ref"))
+            descricao_lancamento = _to_str(lancamento.get("descricao"))
+            observacoes_lancamento = _to_str(lancamento.get("observacoes"))
+            origem_lancamento = _origem_norm(lancamento.get("origem"))
+            conta_lancamento = _to_str(lancamento.get("conta")).strip().lower()
+
+            pontuacao = 0.0
+            motivos = []
+            if abs(valor_envio - valor_lancamento) <= 0.01:
+                pontuacao += 0.50
+                motivos.append("valor exato")
+            elif abs(valor_envio - valor_lancamento) <= max(1.0, valor_envio * 0.02):
+                pontuacao += 0.25
+                motivos.append("valor próximo")
+
+            if data_envio and data_lancamento:
+                diff_dias = abs((data_envio - data_lancamento).days)
+                if diff_dias <= 3:
+                    pontuacao += 0.20
+                    motivos.append("data próxima")
+                elif diff_dias <= 7:
+                    pontuacao += 0.10
+                    motivos.append("data razoável")
+
+            texto_envio = (_to_str(envio.get("competencia")) + " " + _to_str(envio.get("observacao"))).lower()
+            texto_lancamento = (descricao_lancamento + " " + observacoes_lancamento).lower()
+            similaridade = SequenceMatcher(None, texto_envio, texto_lancamento).ratio()
+            if similaridade >= 0.70:
+                pontuacao += 0.15
+                motivos.append("descrição semelhante")
+
+            if documento_lancamento and _to_str(envio.get("comprovante")) and documento_lancamento == _to_str(envio.get("comprovante")):
+                pontuacao += 0.10
+                motivos.append("documento_ref")
+
+            if origem_lancamento in ("manual", "importado", "automatico"):
+                pontuacao += 0.03
+                motivos.append(f"origem={origem_lancamento}")
+            if conta_lancamento in ("dinheiro", "banco", "pix"):
+                pontuacao += 0.02
+                motivos.append(f"conta={conta_lancamento}")
+
+            if pontuacao >= 0.75:
+                confidence = "ALTA"
+            elif pontuacao >= 0.45:
+                confidence = "MEDIA"
+            elif pontuacao > 0:
+                confidence = "BAIXA"
+            else:
+                confidence = "SEM_CORRESPONDENCIA"
+
+            candidatos.append((pontuacao, lancamento, confidence, "; ".join(motivos) if motivos else "sem critérios fortes"))
+
+        if candidatos:
+            candidatos.sort(key=lambda item: item[0], reverse=True)
+            melhor = candidatos[0]
+            lancamento = melhor[1]
+            confidence = melhor[2]
+            motivo = melhor[3]
+            rows.append({
+                "ENVIO_ID": envio.get("id"),
+                "COMPETENCIA": envio.get("competencia"),
+                "VALOR_ENVIO": valor_envio,
+                "TIPO_PAGAMENTO": envio.get("tipo_pagamento"),
+                "HISTORICO_SEM_MOVIMENTO": _bool_norm(envio.get("pagamento_historico_sem_movimentacao")),
+                "LANCAMENTO_FINANCEIRO_ID": envio.get("lancamento_financeiro_id"),
+                "CANDIDATO_LANCAMENTO_ID": lancamento.get("id"),
+                "VALOR_CANDIDATO": _to_float(lancamento.get("valor")),
+                "DATA_CANDIDATO": lancamento.get("data"),
+                "ORIGEM_CANDIDATO": lancamento.get("origem"),
+                "CONFIANCA": confidence,
+                "MOTIVO": motivo,
+            })
+        else:
+            rows.append({
+                "ENVIO_ID": envio.get("id"),
+                "COMPETENCIA": envio.get("competencia"),
+                "VALOR_ENVIO": valor_envio,
+                "TIPO_PAGAMENTO": envio.get("tipo_pagamento"),
+                "HISTORICO_SEM_MOVIMENTO": _bool_norm(envio.get("pagamento_historico_sem_movimentacao")),
+                "LANCAMENTO_FINANCEIRO_ID": envio.get("lancamento_financeiro_id"),
+                "CANDIDATO_LANCAMENTO_ID": None,
+                "VALOR_CANDIDATO": None,
+                "DATA_CANDIDATO": None,
+                "ORIGEM_CANDIDATO": None,
+                "CONFIANCA": "SEM_CORRESPONDENCIA",
+                "MOTIVO": "nenhum candidato encontrado",
+            })
+
+    return rows
+
+
 def main():
     database_url = os.environ.get("DATABASE_URL")
 
@@ -357,6 +612,10 @@ def main():
         FROM lancamentos
         """
         lancamentos = _fetch_all(conn, lanc_sql)
+        envios: list[dict] = []
+        pares: list[dict] = []
+        envios_cols: set[str] = set()
+        pares_cols: set[str] = set()
 
         print("\nPARTE 2 - TOTAL DE LANCAMENTOS")
         total_lancamentos = len(lancamentos)
@@ -986,6 +1245,344 @@ def main():
                 f"descricao={l.get('descricao')} | valor={_fmt_money(_to_float(l.get('valor')))} | "
                 f"conta={l.get('conta')} | origem={l.get('origem')}"
             )
+
+        # ==================================================================
+        # PARTE NOVA - RASTREABILIDADE ATUAL DE PRODUÇÃO
+        # ==================================================================
+        print("\nPARTE EXTRA - RASTREABILIDADE PRODUCAO ATUAL")
+
+        if _table_exists(insp, "envios_sede"):
+            envios_wanted = [
+                "id",
+                "data_pagamento",
+                "competencia",
+                "competencia_mes",
+                "competencia_ano",
+                "competencia_mes_ref",
+                "competencia_ano_ref",
+                "valor",
+                "valor_total",
+                "valor_administrativo",
+                "valor_despesas_fixas",
+                "tipo_pagamento",
+                "pagamento_historico_sem_movimentacao",
+                "lancamento_financeiro_id",
+                "created_at",
+                "updated_at",
+                "comprovante",
+                "observacao",
+            ]
+            envios, envios_cols = _select_table_rows(conn, insp, "envios_sede", envios_wanted, order_by="id")
+        else:
+            envios = []
+
+        _print_table_rows(
+            "ENVIOS_SEDE_ATUAIS",
+            envios,
+            [
+                "id",
+                "data_pagamento",
+                "competencia",
+                "competencia_mes",
+                "competencia_ano",
+                "competencia_mes_ref",
+                "competencia_ano_ref",
+                "valor",
+                "valor_total",
+                "valor_administrativo",
+                "valor_despesas_fixas",
+                "tipo_pagamento",
+                "pagamento_historico_sem_movimentacao",
+                "lancamento_financeiro_id",
+                "created_at",
+                "updated_at",
+            ],
+        )
+        total_envios_sede_atual = len(envios)
+        print("TOTAL_ENVIOS_SEDE_ATUAL:", total_envios_sede_atual)
+
+        envios_by_id = {row.get("id"): row for row in envios}
+        for target_id in (15, 16, 17, 18, 19, 20):
+            print(f"ID_{target_id}_EXISTE:", "SIM" if target_id in envios_by_id else "NAO")
+
+        ids_missings = [target_id for target_id in (19, 20) if target_id not in envios_by_id]
+        if ids_missings:
+            audit_like_tables = [
+                table_name
+                for table_name in table_names
+                if any(token in table_name.lower() for token in ("audit", "auditoria", "histor", "hist", "log"))
+            ]
+            if audit_like_tables:
+                print("\nHISTORICO/AUDITORIA PARA IDS AUSENTES")
+                for table_name in sorted(audit_like_tables):
+                    columns = _table_columns(insp, table_name)
+                    id_columns = [
+                        column_name
+                        for column_name in ("envio_id", "envios_sede_id", "envio_sede_id", "id_envio", "id")
+                        if column_name in columns
+                    ]
+                    if not id_columns:
+                        continue
+                    selected_rows = []
+                    for id_column in id_columns:
+                        rows = _fetch_all(
+                            conn,
+                            f"SELECT * FROM {table_name} WHERE {id_column} IN (:id1, :id2)",
+                            {"id1": ids_missings[0], "id2": ids_missings[-1]},
+                        )
+                        if rows:
+                            selected_rows.extend(rows)
+                    if selected_rows:
+                        print(f"TABELA {table_name}:")
+                        for row in selected_rows:
+                            print(row)
+
+        lancamentos_julho = [
+            l
+            for l in lancamentos
+            if _tipo_norm(l.get("tipo")) == "saida"
+            and (_to_date(l.get("data")) is not None)
+            and date(2026, 7, 1) <= _to_date(l.get("data")) <= date(2026, 7, 31)
+        ]
+        _print_table_rows(
+            "SAIDAS_JULHO_2026",
+            lancamentos_julho,
+            [
+                "id",
+                "data",
+                "tipo",
+                "categoria",
+                "descricao",
+                "valor",
+                "conta",
+                "origem",
+                "conciliado",
+                "documento_ref",
+                "criado_em",
+                "par_conciliacao_id",
+                "projeto_id",
+            ],
+        )
+        print("TOTAL_SAIDAS_JULHO:", len(lancamentos_julho))
+        print("VALOR_SAIDAS_JULHO:", _fmt_money(sum(_to_float(l.get("valor")) for l in lancamentos_julho)))
+
+        for origem in ("manual", "importado", "automatico", "outros"):
+            if origem == "outros":
+                grupo = [l for l in lancamentos_julho if _origem_norm(l.get("origem")) not in ("manual", "importado", "automatico")]
+            else:
+                grupo = [l for l in lancamentos_julho if _origem_norm(l.get("origem")) == origem]
+            print(f"\nSAIDAS_JULHO_ORIGEM_{origem.upper()}:")
+            _print_table_rows(
+                f"SAIDAS_JULHO_{origem.upper()}",
+                grupo,
+                [
+                    "id",
+                    "data",
+                    "tipo",
+                    "categoria",
+                    "descricao",
+                    "valor",
+                    "conta",
+                    "origem",
+                    "conciliado",
+                    "documento_ref",
+                    "criado_em",
+                    "par_conciliacao_id",
+                    "projeto_id",
+                ],
+            )
+
+        candidatos_juizo = []
+        valores_alvo = {1520.00, 1641.01, 2109.11, 934.49, 1000.00, 1425.59, 1240.00, 1361.01, 1829.11, 654.49, 1145.59, 280.00}
+        for lancamento in lancamentos_julho:
+            if round(_to_float(lancamento.get("valor")), 2) in valores_alvo:
+                candidatos_juizo.append(lancamento)
+        _print_table_rows(
+            "CANDIDATOS_JULHO_POR_VALOR",
+            candidatos_juizo,
+            [
+                "id",
+                "data",
+                "tipo",
+                "categoria",
+                "descricao",
+                "valor",
+                "conta",
+                "origem",
+                "conciliado",
+                "documento_ref",
+                "criado_em",
+                "par_conciliacao_id",
+                "projeto_id",
+            ],
+        )
+
+        if _table_exists(insp, "envios_sede"):
+            envios_match_rows = _build_envio_match_rows(conn, insp, envios, lancamentos)
+        else:
+            envios_match_rows = []
+
+        print("\nCORRELACAO_ENVIOS_SEDE")
+        if not envios_match_rows:
+            print("SEM REGISTROS")
+        else:
+            for row in envios_match_rows:
+                print(
+                    " | ".join(
+                        [
+                            f"ENVIO_ID={row.get('ENVIO_ID')}",
+                            f"COMPETENCIA={row.get('COMPETENCIA')}",
+                            f"VALOR_ENVIO={_fmt_money(_to_float(row.get('VALOR_ENVIO')))}",
+                            f"TIPO_PAGAMENTO={row.get('TIPO_PAGAMENTO')}",
+                            f"HISTORICO_SEM_MOVIMENTO={row.get('HISTORICO_SEM_MOVIMENTO')}",
+                            f"LANCAMENTO_FINANCEIRO_ID={row.get('LANCAMENTO_FINANCEIRO_ID')}",
+                            f"CANDIDATO_LANCAMENTO_ID={row.get('CANDIDATO_LANCAMENTO_ID')}",
+                            f"VALOR_CANDIDATO={_fmt_money(_to_float(row.get('VALOR_CANDIDATO')))}" if row.get('VALOR_CANDIDATO') is not None else "VALOR_CANDIDATO=",
+                            f"DATA_CANDIDATO={_fmt_date(row.get('DATA_CANDIDATO'))}",
+                            f"ORIGEM_CANDIDATO={row.get('ORIGEM_CANDIDATO')}",
+                            f"CONFIANCA={row.get('CONFIANCA')}",
+                            f"MOTIVO={row.get('MOTIVO')}",
+                        ]
+                    )
+                )
+
+        lancamento_by_id = {l.get("id"): l for l in lancamentos}
+        if _table_exists(insp, "conciliacao_pares"):
+            pares_wanted = [
+                "id",
+                "historico_id",
+                "lancamento_manual_id",
+                "lancamento_importado_id",
+                "score_similaridade",
+                "regra_aplicada",
+                "metodo_conciliacao",
+                "usuario",
+                "criado_em",
+                "ativo",
+            ]
+            pares, pares_cols = _select_table_rows(conn, insp, "conciliacao_pares", pares_wanted, order_by="id")
+        else:
+            pares = []
+
+        print("\nCONCILIACAO_PARES_ESTRUTURA")
+        if pares_cols:
+            print("TOTAL_PARES_CONCILIACAO:", len(pares))
+            print("COLUNAS:", ", ".join(sorted(pares_cols)))
+        else:
+            print("TOTAL_PARES_CONCILIACAO: 0")
+            print("COLUNAS: SEM TABELA")
+
+        lancamentos_conciliado_true = sum(1 for l in lancamentos if _bool_norm(l.get("conciliado")))
+        lancamentos_com_par_conciliacao = sum(1 for l in lancamentos if l.get("par_conciliacao_id") is not None)
+        pares_ativos = sum(1 for p in pares if isinstance(p, dict) and _bool_norm(p.get("ativo")))
+        pares_desfeitos = len(pares) - pares_ativos
+
+        print("LANCAMENTOS_CONCILIADO_TRUE:", lancamentos_conciliado_true)
+        print("LANCAMENTOS_COM_PAR_CONCILIACAO:", lancamentos_com_par_conciliacao)
+        print("PARES_ATIVOS:", pares_ativos)
+        print("PARES_DESFEITOS:", pares_desfeitos)
+
+        pares_by_launch = set()
+        for par in pares:
+            pares_by_launch.add(par.get("lancamento_manual_id"))
+            pares_by_launch.add(par.get("lancamento_importado_id"))
+
+        tem_divergencia_conciliacao = any(
+            (l.get("par_conciliacao_id") is not None and not _bool_norm(l.get("conciliado")))
+            or (_bool_norm(l.get("conciliado")) and l.get("id") not in pares_by_launch)
+            for l in lancamentos
+        )
+        if tem_divergencia_conciliacao:
+            campo_fonte = "PARCIAL"
+            justificativa_conciliacao = "existe divergencia entre campo booleano, pares e referencias de par_conciliacao_id"
+        elif lancamentos_com_par_conciliacao == lancamentos_conciliado_true and pares_ativos > 0:
+            campo_fonte = "SIM"
+            justificativa_conciliacao = "campo booleano e pares ativos apontam na mesma direção"
+        else:
+            campo_fonte = "PARCIAL"
+            justificativa_conciliacao = "há indicios de fonte duplicada e o par pode não refletir todo o estado dos lancamentos"
+
+        print("CAMPO_CONCILIADO_E_FONTE_DE_VERDADE:", campo_fonte)
+        print("JUSTIFICATIVA_CONCILIACAO:", justificativa_conciliacao)
+
+        lanc79 = lancamento_by_id.get(79)
+        print("\nID_79_DETALHE")
+        if lanc79 is None:
+            print("ID_79_CLASSIFICACAO: INDETERMINADO")
+            print("ID_79_ENCONTRADO: NAO")
+        else:
+            _print_table_rows(
+                "ID_79_REGISTRO",
+                [lanc79],
+                [
+                    "id",
+                    "data",
+                    "tipo",
+                    "categoria",
+                    "descricao",
+                    "valor",
+                    "conta",
+                    "origem",
+                    "conciliado",
+                    "documento_ref",
+                    "criado_em",
+                    "observacoes",
+                    "updated_at",
+                    "par_conciliacao_id",
+                    "projeto_id",
+                ],
+            )
+            if eh_obrigacao_30_automatica(lanc79):
+                classificacao_id79 = "OBRIGACAO_COMPROVADA"
+            elif lanc79.get("lancamento_financeiro_id") is not None or _bool_norm(lanc79.get("conciliado")):
+                classificacao_id79 = "MOVIMENTO_REAL_COMPROVADO"
+            else:
+                classificacao_id79 = "INDETERMINADO"
+            print("ID_79_CLASSIFICACAO:", classificacao_id79)
+
+        saldo_erp_atual = round(total_entradas_erp - total_saidas_erp, 2)
+        valor_id79 = _to_float(lanc79.get("valor")) if lanc79 else 0.0
+        saldo_caixa_comprovado = round(saldo_erp_atual + obrigacoes_automaticas_total, 2)
+        saldo_caixa_conservador = saldo_caixa_comprovado
+        saldo_hipotese_id79 = round(saldo_caixa_comprovado + valor_id79, 2) if lanc79 else saldo_caixa_comprovado
+
+        print("\n=== RASTREABILIDADE PRODUCAO ===")
+        print(f"TOTAL_ENVIOS_SEDE_ATUAL: {total_envios_sede_atual}")
+        print(f"ID_19_EXISTE: {'SIM' if 19 in envios_by_id else 'NAO'}")
+        print(f"ID_20_EXISTE: {'SIM' if 20 in envios_by_id else 'NAO'}")
+        if 19 in envios_by_id and 20 in envios_by_id:
+            causa_divergencia = "os IDs 19 e 20 existem na tabela atual; a divergencia anterior foi recorte/filtro do script anterior"
+        elif 19 not in envios_by_id and 20 not in envios_by_id and ids_missings:
+            causa_divergencia = "os IDs 19 e 20 não estão na tabela atual; foi encontrada apenas ausência atual, sem excluir hipótese de histórico"
+        else:
+            causa_divergencia = "divergencia atual ainda não fechada somente com as tabelas presentes"
+        print(f"CAUSA_DIVERGENCIA_4_VS_6: {causa_divergencia}")
+        print(f"TOTAL_SAIDAS_JULHO: {len(lancamentos_julho)}")
+        print(f"VALOR_SAIDAS_JULHO: {_fmt_money(sum(_to_float(l.get('valor')) for l in lancamentos_julho))}")
+        pagamentos_julho = [
+            row for row in envios_match_rows
+            if _to_date(envios_by_id.get(row.get('ENVIO_ID'), {}).get('data_pagamento')) is not None
+            and date(2026, 7, 1) <= _to_date(envios_by_id.get(row.get('ENVIO_ID'), {}).get('data_pagamento')) <= date(2026, 7, 31)
+            and row.get('CONFIANCA') in ("ALTA", "MEDIA")
+        ]
+        valor_pagamentos_julho = sum(_to_float(row.get("VALOR_ENVIO")) for row in pagamentos_julho)
+        print(f"PAGAMENTOS_SEDE_JULHO_COMPROVADOS: {len(pagamentos_julho)}")
+        print(f"VALOR_PAGAMENTOS_SEDE_JULHO: {_fmt_money(valor_pagamentos_julho)}")
+        print(f"ENVIOS_COM_LANCAMENTO: {sum(1 for row in envios_match_rows if row.get('LANCAMENTO_FINANCEIRO_ID') is not None and not row.get('HISTORICO_SEM_MOVIMENTO'))}")
+        print(f"ENVIOS_HISTORICOS_SEM_MOVIMENTO: {sum(1 for row in envios_match_rows if row.get('HISTORICO_SEM_MOVIMENTO'))}")
+        print(f"ENVIOS_REAIS_SEM_LANCAMENTO: {sum(1 for row in envios_match_rows if not row.get('HISTORICO_SEM_MOVIMENTO') and row.get('LANCAMENTO_FINANCEIRO_ID') is None)}")
+        print(f"TOTAL_PARES_CONCILIACAO: {len(pares)}")
+        print(f"CAMPO_CONCILIADO_E_FONTE_DE_VERDADE: {campo_fonte}")
+        print(f"ID_79_CLASSIFICACAO: {classificacao_id79 if lanc79 else 'INDETERMINADO'}")
+        print(f"SALDO_ERP_ATUAL: {_fmt_money(saldo_erp_atual)}")
+        print(f"SALDO_CAIXA_COMPROVADO: {_fmt_money(saldo_caixa_comprovado)}")
+        print(f"SALDO_CAIXA_CONSERVADOR: {_fmt_money(saldo_caixa_conservador)}")
+        print(f"SALDO_HIPOTESE_ID79_OBRIGACAO: {_fmt_money(saldo_hipotese_id79)}")
+        correcao_codigo_necessaria = "SIM" if campo_fonte != "SIM" or classificacao_id79 == "INDETERMINADO" else "NÃO"
+        correcao_dados_historicos_necessaria = "INDETERMINADO" if ids_missings else "NÃO"
+        print(f"CORRECAO_DE_CODIGO_NECESSARIA: {correcao_codigo_necessaria}")
+        print(f"CORRECAO_DE_DADOS_HISTORICOS_NECESSARIA: {correcao_dados_historicos_necessaria}")
+        print("=== FIM RASTREABILIDADE ===")
 
         tx.rollback()
 
