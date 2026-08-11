@@ -231,7 +231,18 @@ def create_app():
     # Cria as tabelas no primeiro uso (pode depois mover isso pro script separado)
     with app.app_context():
         try:
-            db.create_all()
+            tabelas_controladas_etapa_a = {
+                'obrigacoes_financeiras',
+                'pagamentos_obrigacao',
+                'pagamentos_obrigacao_itens',
+                'obrigacao_eventos',
+            }
+            tabelas_startup = [
+                tabela
+                for nome, tabela in db.metadata.tables.items()
+                if nome not in tabelas_controladas_etapa_a
+            ]
+            db.metadata.create_all(bind=db.engine, tables=tabelas_startup)
         except Exception as e:
             app.logger.warning(f"⚠️  Erro ao criar tabelas: {str(e)}")
         

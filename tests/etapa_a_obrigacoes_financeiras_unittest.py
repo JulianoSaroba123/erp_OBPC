@@ -1,0 +1,518 @@
+from datetime import date
+from decimal import Decimal
+import unittest
+import os
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+from flask import Flask
+from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError
+
+from app.extensoes import db
+from app import create_app
+from app.financeiro.financeiro_model import Lancamento
+from app.financeiro.projeto_model import Projeto
+from app.financeiro.comprovante_model import Comprovante
+from app.financeiro.obrigacoes_model import (
+    ObrigacaoFinanceira,
+    ObrigacaoEvento,
+    PagamentoObrigacao,
+    PagamentoObrigacaoItem,
+)
+
+
+class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
+    NOVAS_TABELAS = {
+        "obrigacoes_financeiras",
+        "pagamentos_obrigacao",
+        "pagamentos_obrigacao_itens",
+        "obrigacao_eventos",
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.app = Flask(__name__)
+        cls.app.config["TESTING"] = True
+        cls.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
+        cls.app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+        db.init_app(cls.app)
+
+        with cls.app.app_context():
+            db.create_all()
+
+    @classmethod
+    def tearDownClass(cls):
+        with cls.app.app_context():
+            db.session.remove()
+            db.drop_all()
+
+    def setUp(self):
+        self.ctx = self.app.app_context()
+        self.ctx.push()
+        db.session.rollback()
+
+        # Limpeza determinística para isolamento dos cenários
+        db.session.query(Comprovante).delete()
+        db.session.query(PagamentoObrigacaoItem).delete()
+        db.session.query(ObrigacaoEvento).delete()
+        db.session.query(PagamentoObrigacao).delete()
+        db.session.query(ObrigacaoFinanceira).delete()
+        db.session.query(Lancamento).delete()
+        db.session.query(Projeto).delete()
+        db.session.commit()
+
+    def tearDown(self):
+        db.session.rollback()
+        db.session.remove()
+        self.ctx.pop()
+
+    def _project_root(self) -> Path:
+        return Path(__file__).resolve().parents[1]
+
+    def _run_schema_script(self, database_url: str):
+        env = os.environ.copy()
+        env["DATABASE_URL"] = database_url
+        env["PYTHONPATH"] = "."
+
+        return subprocess.run(
+            [
+                sys.executable,
+                "scripts/garantir_schema_obrigacoes_financeiras.py",
+            ],
+            cwd=str(self._project_root()),
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+    def _nova_obrigacao(self, valor="1000.00", **kwargs):
+        obrigacao = ObrigacaoFinanceira(
+            tipo_obrigacao=kwargs.get("tipo_obrigacao", "OUTRA"),
+            origem_obrigacao=kwargs.get("origem_obrigacao", "manual"),
+            referencia_origem_tipo=kwargs.get("referencia_origem_tipo"),
+            referencia_origem_id=kwargs.get("referencia_origem_id"),
+            categoria=kwargs.get("categoria", "TESTE"),
+            descricao=kwargs.get("descricao", "Obrigação de teste"),
+            competencia_mes=kwargs.get("competencia_mes", 7),
+            competencia_ano=kwargs.get("competencia_ano", 2026),
+            valor_devido=Decimal(valor),
+            status=kwargs.get("status", "PENDENTE"),
+        )
+        obrigacao.validar()
+        obrigacao.validar_duplicidade_automatica(db.session)
+        db.session.add(obrigacao)
+        db.session.flush()
+        return obrigacao
+
+    def _novo_pagamento(self, valor="1000.00", tipo_pagamento="PAGAMENTO_BANCARIO", lancamento_id=None):
+        pagamento = PagamentoObrigacao(
+            data_pagamento=date(2026, 7, 3),
+            valor_pago=Decimal(valor),
+            tipo_pagamento=tipo_pagamento,
+            forma_pagamento="PIX",
+            lancamento_financeiro_id=lancamento_id,
+        )
+        pagamento.validar()
+        db.session.add(pagamento)
+        db.session.flush()
+        return pagamento
+
+    def test_caso_a_sem_pagamentos(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        obrigacao.atualizar_status()
+        db.session.commit()
+
+        self.assertEqual(obrigacao.valor_pago, Decimal("0.00"))
+        self.assertEqual(obrigacao.valor_pendente, Decimal("1000.00"))
+        self.assertEqual(obrigacao.status, "PENDENTE")
+
+    def test_caso_b_pagamento_parcial(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        pagamento = self._novo_pagamento(valor="400.00")
+
+        pagamento.adicionar_item(obrigacao, Decimal("400.00"))
+        pagamento.validar_limite_alocacao()
+        obrigacao.atualizar_status()
+        db.session.commit()
+
+        self.assertEqual(obrigacao.valor_pago, Decimal("400.00"))
+        self.assertEqual(obrigacao.valor_pendente, Decimal("600.00"))
+        self.assertEqual(obrigacao.status, "PARCIAL")
+
+    def test_caso_c_quitacao_com_segundo_pagamento(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        pagamento1 = self._novo_pagamento(valor="400.00")
+        pagamento1.adicionar_item(obrigacao, Decimal("400.00"))
+        pagamento1.validar_limite_alocacao()
+
+        pagamento2 = self._novo_pagamento(valor="600.00")
+        pagamento2.adicionar_item(obrigacao, Decimal("600.00"))
+        pagamento2.validar_limite_alocacao()
+
+        obrigacao.atualizar_status()
+        db.session.commit()
+
+        self.assertEqual(obrigacao.valor_pago, Decimal("1000.00"))
+        self.assertEqual(obrigacao.valor_pendente, Decimal("0.00"))
+        self.assertEqual(obrigacao.status, "PAGO")
+        self.assertIsNotNone(obrigacao.data_quitacao)
+
+    def test_caso_d_bloqueia_pagamento_acima_do_saldo(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        pagamento1 = self._novo_pagamento(valor="400.00")
+        pagamento1.adicionar_item(obrigacao, Decimal("400.00"))
+        pagamento1.validar_limite_alocacao()
+        obrigacao.atualizar_status()
+
+        pagamento2 = self._novo_pagamento(valor="700.00")
+        with self.assertRaises(ValueError):
+            pagamento2.adicionar_item(obrigacao, Decimal("700.00"))
+
+    def test_caso_e_rateio_um_pagamento_duas_obrigacoes(self):
+        obrigacao_a = self._nova_obrigacao(valor="1000.00", descricao="Obrigação A")
+        obrigacao_b = self._nova_obrigacao(valor="1000.00", descricao="Obrigação B")
+
+        pagamento = self._novo_pagamento(valor="1000.00")
+        pagamento.adicionar_item(obrigacao_a, Decimal("400.00"))
+        pagamento.adicionar_item(obrigacao_b, Decimal("600.00"))
+        pagamento.validar_limite_alocacao()
+
+        obrigacao_a.atualizar_status()
+        obrigacao_b.atualizar_status()
+        db.session.commit()
+
+        self.assertEqual(pagamento.valor_alocado_total, Decimal("1000.00"))
+        self.assertEqual(obrigacao_a.valor_pago, Decimal("400.00"))
+        self.assertEqual(obrigacao_b.valor_pago, Decimal("600.00"))
+        self.assertEqual(obrigacao_a.status, "PARCIAL")
+        self.assertEqual(obrigacao_b.status, "PARCIAL")
+
+    def test_caso_f_historico_sem_movimentacao_sem_lancamento(self):
+        self._nova_obrigacao(valor="1000.00")
+        pagamento = self._novo_pagamento(valor="1000.00", tipo_pagamento="HISTORICO_SEM_MOVIMENTACAO", lancamento_id=None)
+        db.session.commit()
+
+        self.assertIsNone(pagamento.lancamento_financeiro_id)
+
+    def test_caso_g_pagamento_bancario_com_lancamento(self):
+        lancamento = Lancamento(
+            data=date(2026, 7, 3),
+            tipo="Saída",
+            categoria="REPASSE À SEDE",
+            descricao="Pagamento bancário de teste",
+            valor=1000.0,
+            conta="Banco",
+            origem="manual",
+        )
+        db.session.add(lancamento)
+        db.session.flush()
+
+        pagamento = self._novo_pagamento(valor="1000.00", tipo_pagamento="PAGAMENTO_BANCARIO", lancamento_id=lancamento.id)
+        db.session.commit()
+
+        self.assertEqual(pagamento.lancamento_financeiro_id, lancamento.id)
+        self.assertIsNotNone(pagamento.lancamento_financeiro)
+
+    def test_caso_h_competencia_mes_invalida(self):
+        with self.assertRaises(ValueError):
+            self._nova_obrigacao(valor="1000.00", competencia_mes=13)
+
+    def test_caso_i_valor_devido_invalido(self):
+        with self.assertRaises(ValueError):
+            self._nova_obrigacao(valor="0.00")
+
+    def test_caso_j_bloqueia_duplicidade_automatica(self):
+        self._nova_obrigacao(
+            valor="1200.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=1,
+            competencia_mes=7,
+            competencia_ano=2026,
+            descricao="30% julho",
+        )
+
+        duplicada = ObrigacaoFinanceira(
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=1,
+            categoria="CONTRIB. SEDE",
+            descricao="30% julho duplicado",
+            competencia_mes=7,
+            competencia_ano=2026,
+            valor_devido=Decimal("1200.00"),
+            status="PENDENTE",
+        )
+        duplicada.validar()
+
+        with self.assertRaises(ValueError):
+            duplicada.validar_duplicidade_automatica(db.session)
+
+    def test_caso_k_pago_para_parcial_mesma_sessao(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        pagamento_1 = self._novo_pagamento(valor="600.00")
+        pagamento_1.adicionar_item(obrigacao, Decimal("600.00"))
+
+        pagamento_2 = self._novo_pagamento(valor="400.00")
+        item_2 = pagamento_2.adicionar_item(obrigacao, Decimal("400.00"))
+
+        obrigacao.recalcular_em_sessao(flush=True)
+        self.assertEqual(obrigacao.status, "PAGO")
+        self.assertEqual(obrigacao.valor_pago, Decimal("1000.00"))
+
+        pagamento_2.remover_item(item_2, flush=False)
+        self.assertEqual(obrigacao.valor_pago, Decimal("600.00"))
+        self.assertEqual(obrigacao.valor_pendente, Decimal("400.00"))
+        self.assertEqual(obrigacao.status, "PARCIAL")
+
+        db.session.flush()
+        self.assertEqual(obrigacao.valor_pago, Decimal("600.00"))
+        self.assertEqual(obrigacao.valor_pendente, Decimal("400.00"))
+        self.assertEqual(obrigacao.status, "PARCIAL")
+
+        db.session.commit()
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        obrigacao_db.recalcular_em_sessao(flush=False)
+        self.assertEqual(obrigacao_db.valor_pago, Decimal("600.00"))
+        self.assertEqual(obrigacao_db.valor_pendente, Decimal("400.00"))
+        self.assertEqual(obrigacao_db.status, "PARCIAL")
+
+    def test_caso_l_data_quitacao_limpa_ao_reverter_para_parcial(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        pagamento_1 = self._novo_pagamento(valor="600.00")
+        pagamento_1.adicionar_item(obrigacao, Decimal("600.00"))
+
+        pagamento_2 = self._novo_pagamento(valor="400.00")
+        item_2 = pagamento_2.adicionar_item(obrigacao, Decimal("400.00"))
+
+        obrigacao.recalcular_em_sessao(flush=True)
+        self.assertEqual(obrigacao.status, "PAGO")
+        self.assertIsNotNone(obrigacao.data_quitacao)
+
+        pagamento_2.remover_item(item_2, flush=False)
+        self.assertEqual(obrigacao.status, "PARCIAL")
+        self.assertIsNone(obrigacao.data_quitacao)
+
+    def test_caso_m_exclusao_obrigacao_com_itens_bloqueada(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        pagamento = self._novo_pagamento(valor="300.00")
+        pagamento.adicionar_item(obrigacao, Decimal("300.00"))
+        db.session.flush()
+
+        db.session.delete(obrigacao)
+        with self.assertRaises(IntegrityError):
+            db.session.flush()
+        db.session.rollback()
+
+    def test_caso_n_exclusao_pagamento_com_itens_bloqueada(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        pagamento = self._novo_pagamento(valor="300.00")
+        pagamento.adicionar_item(obrigacao, Decimal("300.00"))
+        db.session.flush()
+
+        db.session.delete(pagamento)
+        with self.assertRaises(IntegrityError):
+            db.session.flush()
+        db.session.rollback()
+
+    def test_caso_o_admin_sede_duplicado_mesma_competencia_bloqueado(self):
+        obrigacao_1 = ObrigacaoFinanceira(
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% julho",
+            competencia_mes=7,
+            competencia_ano=2026,
+            valor_devido=Decimal("1200.00"),
+            status="PENDENTE",
+        )
+        obrigacao_1.validar()
+        obrigacao_1.validar_duplicidade_automatica(db.session)
+        db.session.add(obrigacao_1)
+        db.session.flush()
+
+        obrigacao_2 = ObrigacaoFinanceira(
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% julho duplicado",
+            competencia_mes=7,
+            competencia_ano=2026,
+            valor_devido=Decimal("1200.00"),
+            status="PENDENTE",
+        )
+        obrigacao_2.validar()
+        with self.assertRaises(ValueError):
+            obrigacao_2.validar_duplicidade_automatica(db.session)
+
+    def test_caso_p_despesa_fixa_duplicada_mesma_referencia_bloqueada(self):
+        obrigacao_1 = ObrigacaoFinanceira(
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=10,
+            categoria="DESP. FIXAS",
+            descricao="Despesa fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+            valor_devido=Decimal("150.00"),
+            status="PENDENTE",
+        )
+        obrigacao_1.validar()
+        obrigacao_1.validar_duplicidade_automatica(db.session)
+        db.session.add(obrigacao_1)
+        db.session.flush()
+
+        obrigacao_2 = ObrigacaoFinanceira(
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=10,
+            categoria="DESP. FIXAS",
+            descricao="Despesa fixa 07/2026 duplicada",
+            competencia_mes=7,
+            competencia_ano=2026,
+            valor_devido=Decimal("150.00"),
+            status="PENDENTE",
+        )
+        obrigacao_2.validar()
+        with self.assertRaises(ValueError):
+            obrigacao_2.validar_duplicidade_automatica(db.session)
+
+    def test_caso_q_outra_duplicada_permitida(self):
+        obrigacao_1 = self._nova_obrigacao(
+            valor="100.00",
+            tipo_obrigacao="OUTRA",
+            origem_obrigacao="manual",
+            referencia_origem_tipo="MANUAL",
+            referencia_origem_id=77,
+            competencia_mes=7,
+            competencia_ano=2026,
+            descricao="Outra 1",
+        )
+
+        obrigacao_2 = ObrigacaoFinanceira(
+            tipo_obrigacao="OUTRA",
+            origem_obrigacao="manual",
+            referencia_origem_tipo="MANUAL",
+            referencia_origem_id=77,
+            categoria="TESTE",
+            descricao="Outra 2",
+            competencia_mes=7,
+            competencia_ano=2026,
+            valor_devido=Decimal("200.00"),
+            status="PENDENTE",
+        )
+        obrigacao_2.validar()
+        obrigacao_2.validar_duplicidade_automatica(db.session)
+        db.session.add(obrigacao_2)
+        db.session.flush()
+
+        self.assertIsNotNone(obrigacao_1.id)
+        self.assertIsNotNone(obrigacao_2.id)
+
+    def test_caso_r_startup_nao_cria_tabelas_novas(self):
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        database_url = f"sqlite:///{db_path.replace('\\', '/')}"
+
+        try:
+            env = os.environ.copy()
+            env["DATABASE_URL"] = database_url
+            env["PYTHONPATH"] = "."
+
+            probe_script = """
+from app import create_app
+from app.extensoes import db
+from sqlalchemy import inspect
+app = create_app()
+with app.app_context():
+    insp = inspect(db.engine)
+    alvo = {'obrigacoes_financeiras','pagamentos_obrigacao','pagamentos_obrigacao_itens','obrigacao_eventos'}
+    existentes = set(insp.get_table_names())
+    inter = sorted(alvo.intersection(existentes))
+    print(','.join(inter))
+"""
+
+            proc = subprocess.run(
+                [sys.executable, "-c", probe_script],
+                cwd=str(self._project_root()),
+                env=env,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(proc.returncode, 0, msg=proc.stdout + "\n" + proc.stderr)
+            saida = (proc.stdout or "").strip()
+            self.assertEqual(saida, "", msg=f"tabelas novas criadas no startup: {saida}")
+        finally:
+            try:
+                os.remove(db_path)
+            except OSError:
+                pass
+
+    def test_caso_s_script_schema_cria_tabelas(self):
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        database_url = f"sqlite:///{db_path.replace('\\', '/')}"
+        try:
+            run_result = self._run_schema_script(database_url)
+            self.assertEqual(run_result.returncode, 0, msg=run_result.stdout + "\n" + run_result.stderr)
+
+            check_app = Flask(__name__)
+            check_app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+            check_app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+            db.init_app(check_app)
+            with check_app.app_context():
+                insp = inspect(db.engine)
+                tabelas = set(insp.get_table_names())
+                self.assertTrue(self.NOVAS_TABELAS.issubset(tabelas))
+        finally:
+            try:
+                os.remove(db_path)
+            except OSError:
+                pass
+
+    def test_caso_t_script_schema_idempotente(self):
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
+            db_path = tmp.name
+
+        database_url = f"sqlite:///{db_path.replace('\\', '/')}"
+        try:
+            first_run = self._run_schema_script(database_url)
+            self.assertEqual(first_run.returncode, 0, msg=first_run.stdout + "\n" + first_run.stderr)
+
+            second_run = self._run_schema_script(database_url)
+            self.assertEqual(second_run.returncode, 0, msg=second_run.stdout + "\n" + second_run.stderr)
+
+            check_app = Flask(__name__)
+            check_app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+            check_app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+            db.init_app(check_app)
+            with check_app.app_context():
+                insp = inspect(db.engine)
+                tabelas = set(insp.get_table_names())
+                self.assertTrue(self.NOVAS_TABELAS.issubset(tabelas))
+        finally:
+            try:
+                os.remove(db_path)
+            except OSError:
+                pass
+
+
+if __name__ == "__main__":
+    unittest.main()
