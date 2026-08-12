@@ -20,8 +20,12 @@ from app.financeiro.obrigacoes_model import (
 )
 
 
-TARGET_B2_COMMIT = "05d0137"
-TARGET_B3_COMMIT = "a241a7f"
+DIAG_COMMITS = ["05d0137", "a241a7f", "6278e57"]
+ARQUIVOS_OBRIGATORIOS = [
+    "app/financeiro/financeiro_routes.py",
+    "scripts/precheck_b3.py",
+    "scripts/smoke_b3.py",
+]
 MES_TESTE = 12
 ANO_TESTE = 2099
 
@@ -35,7 +39,14 @@ def novo_app() -> Flask:
 
 def obter_head() -> str:
     try:
-        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    except Exception:
+        return "INDEFINIDO"
+
+
+def obter_origin_main() -> str:
+    try:
+        return subprocess.check_output(["git", "rev-parse", "origin/main"], text=True).strip()
     except Exception:
         return "INDEFINIDO"
 
@@ -48,7 +59,7 @@ def repositorio_shallow() -> str:
         return "NAO"
 
 
-def commit_b2_ancestral(target_commit: str) -> str:
+def commit_ancestral(target_commit: str) -> str:
     try:
         rc = subprocess.run(
             ["git", "merge-base", "--is-ancestor", target_commit, "HEAD"],
@@ -63,11 +74,27 @@ def commit_b2_ancestral(target_commit: str) -> str:
         return "INDISPONIVEL"
 
 
-def avaliar_validacao_deploy(head: str, target_b3_commit: str, b2_ancestral: str) -> dict[str, str]:
-    head_b3_exato = "SIM" if head == target_b3_commit else "NAO"
-    deploy_validado = "SIM" if (head_b3_exato == "SIM" or b2_ancestral == "SIM") else "NAO"
+def arquivo_tracked_no_head(caminho: str) -> str:
+    try:
+        rc = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", caminho],
+            capture_output=True,
+        ).returncode
+        return "SIM" if rc == 0 else "NAO"
+    except Exception:
+        return "NAO"
+
+
+def avaliar_validacao_deploy(
+    head: str,
+    origin_main: str,
+    arquivos_deploy_ok: str,
+    helper_existe: str,
+) -> dict[str, str]:
+    head_igual_origin_main = "SIM" if (head != "INDEFINIDO" and origin_main != "INDEFINIDO" and head == origin_main) else "NAO"
+    deploy_validado = "SIM" if (head_igual_origin_main == "SIM" and arquivos_deploy_ok == "SIM" and helper_existe == "SIM") else "NAO"
     return {
-        "HEAD_B3_EXATO": head_b3_exato,
+        "HEAD_IGUAL_ORIGIN_MAIN": head_igual_origin_main,
         "DEPLOY_VALIDADO": deploy_validado,
     }
 
@@ -149,18 +176,29 @@ def main() -> int:
     app = novo_app()
     with app.app_context():
         head = obter_head()
+        origin_main = obter_origin_main()
         shallow = repositorio_shallow()
-        b2_ancestral = commit_b2_ancestral(TARGET_B2_COMMIT)
-        deploy = avaliar_validacao_deploy(head, TARGET_B3_COMMIT, b2_ancestral)
+
+        arquivos_tracked = {caminho: arquivo_tracked_no_head(caminho) for caminho in ARQUIVOS_OBRIGATORIOS}
+        arquivos_deploy_ok = "SIM" if all(status == "SIM" for status in arquivos_tracked.values()) else "NAO"
+
+        helper_existe = "SIM" if callable(_criar_obrigacao_despesa_fixa_sem_commit) else "NAO"
+        deploy = avaliar_validacao_deploy(head, origin_main, arquivos_deploy_ok, helper_existe)
 
         print(f"HEAD: {head}")
+        print(f"ORIGIN_MAIN: {origin_main}")
+        print(f"HEAD_IGUAL_ORIGIN_MAIN: {deploy['HEAD_IGUAL_ORIGIN_MAIN']}")
         print(f"REPOSITORIO_SHALLOW: {shallow}")
-        print(f"HEAD_B3_EXATO: {deploy['HEAD_B3_EXATO']}")
-        print(f"COMMIT_B2_ANCESTRAL: {b2_ancestral}")
-        print(f"DEPLOY_VALIDADO: {deploy['DEPLOY_VALIDADO']}")
+        for caminho, status in arquivos_tracked.items():
+            print(f"{caminho} TRACKED: {status}")
+        print(f"ARQUIVOS_DEPLOY_OK: {arquivos_deploy_ok}")
+        print(f"HELPER_EXISTE: {helper_existe}")
 
-        helper_ok = callable(_criar_obrigacao_despesa_fixa_sem_commit)
-        print(f"HELPER_OK: {'SIM' if helper_ok else 'NAO'}")
+        if shallow == "NAO":
+            for commit in DIAG_COMMITS:
+                print(f"DIAG_COMMIT_{commit}_ANCESTRAL: {commit_ancestral(commit)}")
+
+        print(f"DEPLOY_VALIDADO: {deploy['DEPLOY_VALIDADO']}")
 
         dialeto = (db.engine.dialect.name or "").lower()
         print(f"DIALETO: {dialeto}")
@@ -177,7 +215,7 @@ def main() -> int:
         }
         if (
             deploy["DEPLOY_VALIDADO"] != "SIM"
-            or not helper_ok
+            or helper_existe != "SIM"
             or dialeto != "postgresql"
             or not required.issubset(set(insp.get_table_names()))
         ):
