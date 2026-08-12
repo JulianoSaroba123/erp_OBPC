@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from datetime import datetime
 
 from flask import Flask
 from sqlalchemy import case, func, inspect
@@ -27,8 +28,7 @@ ARQUIVOS_OBRIGATORIOS = [
     "scripts/precheck_c1.py",
     "scripts/smoke_c1.py",
 ]
-MES_TESTE = 12
-ANO_TESTE = 2099
+MAX_COMPETENCIAS_RETROATIVAS = 24
 
 
 def novo_app() -> Flask:
@@ -110,6 +110,64 @@ def percentual_conselho_sem_escrita() -> float:
     return 30.0
 
 
+def iterar_competencias_retroativas(limite: int):
+    agora = datetime.now()
+    mes = agora.month - 1
+    ano = agora.year
+    if mes == 0:
+        mes = 12
+        ano -= 1
+
+    for _ in range(limite):
+        yield mes, ano
+        mes -= 1
+        if mes == 0:
+            mes = 12
+            ano -= 1
+
+
+def selecionar_competencia_historica_segura(limite: int = MAX_COMPETENCIAS_RETROATIVAS) -> dict[str, object]:
+    percentual = percentual_conselho_sem_escrita()
+    analisadas = 0
+
+    for mes, ano in iterar_competencias_retroativas(limite):
+        analisadas += 1
+        calculo_legacy = _calcular_admin_sede_30_legado(mes, ano, percentual)
+        valor_30 = round(float(calculo_legacy.get("valor_conselho", 0.0) or 0.0), 2)
+
+        if valor_30 <= 0:
+            continue
+
+        admin_existente = ObrigacaoFinanceira.query.filter(
+            ObrigacaoFinanceira.tipo_obrigacao == "ADMIN_SEDE_30",
+            ObrigacaoFinanceira.origem_obrigacao == "automatico",
+            ObrigacaoFinanceira.competencia_mes == mes,
+            ObrigacaoFinanceira.competencia_ano == ano,
+        ).first() is not None
+
+        if admin_existente:
+            continue
+
+        return {
+            "status": "OK",
+            "analisadas": analisadas,
+            "mes": mes,
+            "ano": ano,
+            "percentual": percentual,
+            "calculo_legacy": calculo_legacy,
+            "valor_30": valor_30,
+            "base_calculo": round(float(calculo_legacy.get("base_calculo", 0.0) or 0.0), 2),
+            "obrigacao_admin_existente": "NAO",
+            "base_calculo_disponivel": "SIM",
+        }
+
+    return {
+        "status": "FALHA",
+        "analisadas": analisadas,
+        "percentual": percentual,
+    }
+
+
 def main() -> int:
     print("=== PRE-CHECK C.1 ===")
 
@@ -167,22 +225,35 @@ def main() -> int:
         print(f"ENVIOS: {envios}")
         print(f"SALDO: {saldo}")
 
-        percentual = percentual_conselho_sem_escrita()
-        calculo = _calcular_admin_sede_30_legado(MES_TESTE, ANO_TESTE, percentual)
-        valor_30 = float(calculo.get("valor_conselho", 0.0) or 0.0)
-        base_calculo_disponivel = "SIM" if valor_30 > 0 else "NAO"
+        selecao = selecionar_competencia_historica_segura()
+        selecao_status = str(selecao.get("status", "FALHA"))
+        competencias_analisadas = int(selecao.get("analisadas", 0) or 0)
+        percentual = float(selecao.get("percentual", percentual_conselho_sem_escrita()) or 0.0)
 
-        admin_existente = ObrigacaoFinanceira.query.filter(
-            ObrigacaoFinanceira.tipo_obrigacao == "ADMIN_SEDE_30",
-            ObrigacaoFinanceira.origem_obrigacao == "automatico",
-            ObrigacaoFinanceira.competencia_mes == MES_TESTE,
-            ObrigacaoFinanceira.competencia_ano == ANO_TESTE,
-        ).first() is not None
+        print(f"COMPETENCIAS_ANALISADAS: {competencias_analisadas}")
+        print(f"PERCENTUAL_CONSELHO: {percentual}")
 
-        print(f"COMPETENCIA: {MES_TESTE:02d}/{ANO_TESTE}")
-        print(f"OBRIGACAO_ADMIN_EXISTENTE: {'SIM' if admin_existente else 'NAO'}")
-        print(f"VALOR_30_CALCULADO: {round(valor_30, 2)}")
-        print(f"BASE_CALCULO_DISPONIVEL: {base_calculo_disponivel}")
+        if selecao_status == "OK":
+            mes_teste = int(selecao["mes"])
+            ano_teste = int(selecao["ano"])
+            valor_30 = round(float(selecao["valor_30"]), 2)
+            base_calculo = round(float(selecao["base_calculo"]), 2)
+            base_calculo_disponivel = str(selecao["base_calculo_disponivel"])
+            obrigacao_admin_existente = str(selecao["obrigacao_admin_existente"])
+
+            print(f"COMPETENCIA_SELECIONADA: {mes_teste:02d}/{ano_teste}")
+            print(f"BASE_CALCULO: {base_calculo}")
+            print(f"VALOR_30_CALCULADO: {valor_30}")
+            print(f"OBRIGACAO_ADMIN_EXISTENTE: {obrigacao_admin_existente}")
+            print(f"BASE_CALCULO_DISPONIVEL: {base_calculo_disponivel}")
+            print("SELECAO_COMPETENCIA: OK")
+        else:
+            print("COMPETENCIA_SELECIONADA: NENHUMA")
+            print("BASE_CALCULO: 0.0")
+            print("VALOR_30_CALCULADO: 0.0")
+            print("OBRIGACAO_ADMIN_EXISTENTE: NAO")
+            print("BASE_CALCULO_DISPONIVEL: NAO")
+            print("SELECAO_COMPETENCIA: FALHA")
 
         if deploy["DEPLOY_VALIDADO"] != "SIM":
             resultado = "ABORTAR"
@@ -193,12 +264,9 @@ def main() -> int:
         elif not tabelas_novas_ok:
             resultado = "ABORTAR"
             abortar_motivo = "tabelas necessarias ausentes"
-        elif admin_existente:
+        elif selecao_status != "OK":
             resultado = "ABORTAR"
-            abortar_motivo = "obrigacao ADMIN_SEDE_30 ja existe para 12/2099"
-        elif base_calculo_disponivel != "SIM":
-            resultado = "ABORTAR"
-            abortar_motivo = "valor 30 calculado igual a zero para competencia de teste"
+            abortar_motivo = "nenhuma competencia historica segura com valor 30 > 0"
 
         print("RESULTADO_PRE_CHECK:")
         print(resultado)
