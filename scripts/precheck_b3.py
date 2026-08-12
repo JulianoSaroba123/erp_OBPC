@@ -20,7 +20,8 @@ from app.financeiro.obrigacoes_model import (
 )
 
 
-TARGET_COMMIT = "05d0137"
+TARGET_B2_COMMIT = "05d0137"
+TARGET_B3_COMMIT = "a241a7f"
 MES_TESTE = 12
 ANO_TESTE = 2099
 
@@ -32,16 +33,43 @@ def novo_app() -> Flask:
     return app
 
 
-def head_contem_commit_alvo(target_commit: str) -> tuple[str, bool]:
-    head = "INDEFINIDO"
-    ok = False
+def obter_head() -> str:
     try:
-        head = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-        rc = subprocess.run(["git", "merge-base", "--is-ancestor", target_commit, "HEAD"], capture_output=True)
-        ok = rc.returncode == 0
+        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
     except Exception:
-        ok = False
-    return head, ok
+        return "INDEFINIDO"
+
+
+def repositorio_shallow() -> str:
+    try:
+        shallow_raw = subprocess.check_output(["git", "rev-parse", "--is-shallow-repository"], text=True).strip().lower()
+        return "SIM" if shallow_raw == "true" else "NAO"
+    except Exception:
+        return "NAO"
+
+
+def commit_b2_ancestral(target_commit: str) -> str:
+    try:
+        rc = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", target_commit, "HEAD"],
+            capture_output=True,
+        ).returncode
+        if rc == 0:
+            return "SIM"
+        if rc == 1:
+            return "NAO"
+        return "INDISPONIVEL"
+    except Exception:
+        return "INDISPONIVEL"
+
+
+def avaliar_validacao_deploy(head: str, target_b3_commit: str, b2_ancestral: str) -> dict[str, str]:
+    head_b3_exato = "SIM" if head == target_b3_commit else "NAO"
+    deploy_validado = "SIM" if (head_b3_exato == "SIM" or b2_ancestral == "SIM") else "NAO"
+    return {
+        "HEAD_B3_EXATO": head_b3_exato,
+        "DEPLOY_VALIDADO": deploy_validado,
+    }
 
 
 def saldo_atual() -> float:
@@ -82,9 +110,16 @@ def main() -> int:
 
     app = novo_app()
     with app.app_context():
-        head, head_ok = head_contem_commit_alvo(TARGET_COMMIT)
+        head = obter_head()
+        shallow = repositorio_shallow()
+        b2_ancestral = commit_b2_ancestral(TARGET_B2_COMMIT)
+        deploy = avaliar_validacao_deploy(head, TARGET_B3_COMMIT, b2_ancestral)
+
         print(f"HEAD: {head}")
-        print(f"COMMIT_B2_PRESENTE: {'SIM' if head_ok else 'NAO'}")
+        print(f"REPOSITORIO_SHALLOW: {shallow}")
+        print(f"HEAD_B3_EXATO: {deploy['HEAD_B3_EXATO']}")
+        print(f"COMMIT_B2_ANCESTRAL: {b2_ancestral}")
+        print(f"DEPLOY_VALIDADO: {deploy['DEPLOY_VALIDADO']}")
 
         helper_existe = callable(_criar_obrigacao_despesa_fixa_sem_commit)
         print(f"HELPER_EXISTE: {'SIM' if helper_existe else 'NAO'}")
@@ -153,9 +188,12 @@ def main() -> int:
                 resultado = "ABORTAR"
                 abortar_motivo = "competencia 12/2099 ocupada para a despesa candidata"
 
-        if not head_ok:
+        if deploy["DEPLOY_VALIDADO"] != "SIM":
             resultado = "ABORTAR"
-            abortar_motivo = f"HEAD nao contem {TARGET_COMMIT}"
+            abortar_motivo = (
+                f"deploy invalido: head={head}, b3_exato={deploy['HEAD_B3_EXATO']}, "
+                f"b2_ancestral={b2_ancestral}"
+            )
         elif not helper_existe:
             resultado = "ABORTAR"
             abortar_motivo = "helper ausente"

@@ -20,7 +20,8 @@ from app.financeiro.obrigacoes_model import (
 )
 
 
-TARGET_COMMIT = "05d0137"
+TARGET_B2_COMMIT = "05d0137"
+TARGET_B3_COMMIT = "a241a7f"
 MES_TESTE = 12
 ANO_TESTE = 2099
 
@@ -32,16 +33,43 @@ def novo_app() -> Flask:
     return app
 
 
-def head_contem_commit_alvo(target_commit: str) -> tuple[str, bool]:
-    head = "INDEFINIDO"
-    ok = False
+def obter_head() -> str:
     try:
-        head = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
-        rc = subprocess.run(["git", "merge-base", "--is-ancestor", target_commit, "HEAD"], capture_output=True)
-        ok = rc.returncode == 0
+        return subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
     except Exception:
-        ok = False
-    return head, ok
+        return "INDEFINIDO"
+
+
+def repositorio_shallow() -> str:
+    try:
+        shallow_raw = subprocess.check_output(["git", "rev-parse", "--is-shallow-repository"], text=True).strip().lower()
+        return "SIM" if shallow_raw == "true" else "NAO"
+    except Exception:
+        return "NAO"
+
+
+def commit_b2_ancestral(target_commit: str) -> str:
+    try:
+        rc = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", target_commit, "HEAD"],
+            capture_output=True,
+        ).returncode
+        if rc == 0:
+            return "SIM"
+        if rc == 1:
+            return "NAO"
+        return "INDISPONIVEL"
+    except Exception:
+        return "INDISPONIVEL"
+
+
+def avaliar_validacao_deploy(head: str, target_b3_commit: str, b2_ancestral: str) -> dict[str, str]:
+    head_b3_exato = "SIM" if head == target_b3_commit else "NAO"
+    deploy_validado = "SIM" if (head_b3_exato == "SIM" or b2_ancestral == "SIM") else "NAO"
+    return {
+        "HEAD_B3_EXATO": head_b3_exato,
+        "DEPLOY_VALIDADO": deploy_validado,
+    }
 
 
 def saldo_atual() -> float:
@@ -120,8 +148,16 @@ def main() -> int:
 
     app = novo_app()
     with app.app_context():
-        head, head_ok = head_contem_commit_alvo(TARGET_COMMIT)
+        head = obter_head()
+        shallow = repositorio_shallow()
+        b2_ancestral = commit_b2_ancestral(TARGET_B2_COMMIT)
+        deploy = avaliar_validacao_deploy(head, TARGET_B3_COMMIT, b2_ancestral)
+
         print(f"HEAD: {head}")
+        print(f"REPOSITORIO_SHALLOW: {shallow}")
+        print(f"HEAD_B3_EXATO: {deploy['HEAD_B3_EXATO']}")
+        print(f"COMMIT_B2_ANCESTRAL: {b2_ancestral}")
+        print(f"DEPLOY_VALIDADO: {deploy['DEPLOY_VALIDADO']}")
 
         helper_ok = callable(_criar_obrigacao_despesa_fixa_sem_commit)
         print(f"HELPER_OK: {'SIM' if helper_ok else 'NAO'}")
@@ -139,7 +175,12 @@ def main() -> int:
             "envios_sede",
             "despesas_fixas_conselho",
         }
-        if not head_ok or not helper_ok or dialeto != "postgresql" or not required.issubset(set(insp.get_table_names())):
+        if (
+            deploy["DEPLOY_VALIDADO"] != "SIM"
+            or not helper_ok
+            or dialeto != "postgresql"
+            or not required.issubset(set(insp.get_table_names()))
+        ):
             print(f"RESULTADO_SMOKE: {resultado_smoke}")
             print("=== FIM SMOKE B.3 ===")
             return 1
