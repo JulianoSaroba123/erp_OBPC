@@ -82,6 +82,73 @@ def _categoria_lancamento_normalizada_repasse_sede(lancamento):
     return normalizar_categoria_lancamento(lancamento)
 
 
+def _criar_obrigacao_despesa_fixa_sem_commit(despesa, mes, ano):
+    """Cria obrigação+evento para uma despesa fixa sem controlar transação."""
+    chave_busca = {
+        'tipo_obrigacao': 'DESPESA_FIXA',
+        'origem_obrigacao': 'automatico',
+        'referencia_origem_tipo': 'DESPESA_FIXA_CONSELHO',
+        'referencia_origem_id': despesa.id,
+        'competencia_mes': mes,
+        'competencia_ano': ano,
+    }
+
+    existente = ObrigacaoFinanceira.query.filter_by(**chave_busca).first()
+    if existente:
+        return {
+            'status': 'ja_existente',
+            'obrigacao': None,
+        }
+
+    descricao = f'{despesa.nome} - Despesa Fixa {mes:02d}/{ano}'
+    observacao = (despesa.descricao or '').strip() or 'Despesa fixa mensal'
+    valor_devido = Decimal(str(despesa.valor_padrao or 0)).quantize(Decimal('0.01'))
+
+    obrigacao = ObrigacaoFinanceira(
+        tipo_obrigacao='DESPESA_FIXA',
+        origem_obrigacao='automatico',
+        referencia_origem_tipo='DESPESA_FIXA_CONSELHO',
+        referencia_origem_id=despesa.id,
+        categoria=despesa.categoria or 'DESP. FIXAS',
+        descricao=descricao,
+        competencia_mes=mes,
+        competencia_ano=ano,
+        valor_devido=valor_devido,
+        status='PENDENTE',
+        historico_sem_movimentacao=False,
+        data_vencimento=None,
+        observacao=observacao,
+    )
+
+    obrigacao.validar()
+    obrigacao.validar_duplicidade_automatica(db.session)
+    db.session.add(obrigacao)
+    db.session.flush()
+
+    evento = ObrigacaoEvento(
+        obrigacao_financeira_id=obrigacao.id,
+        evento_tipo='CRIACAO',
+        payload_json=json.dumps(
+            {
+                'origem': 'automatico',
+                'referencia_origem_tipo': 'DESPESA_FIXA_CONSELHO',
+                'referencia_origem_id': despesa.id,
+                'competencia': f'{mes:02d}/{ano}',
+                'valor_devido': str(valor_devido),
+            },
+            ensure_ascii=False,
+        ),
+        usuario=None,
+    )
+    db.session.add(evento)
+    db.session.flush()
+
+    return {
+        'status': 'criada',
+        'obrigacao': obrigacao,
+    }
+
+
 def gerar_obrigacoes_despesas_fixas(mes=None, ano=None):
     """Gera obrigações automáticas para despesas fixas ativas do mês informado."""
     mes = mes or datetime.now().month
@@ -99,62 +166,10 @@ def gerar_obrigacoes_despesas_fixas(mes=None, ano=None):
 
     try:
         for despesa in despesas_ativas:
-            chave_busca = {
-                'tipo_obrigacao': 'DESPESA_FIXA',
-                'origem_obrigacao': 'automatico',
-                'referencia_origem_tipo': 'DESPESA_FIXA_CONSELHO',
-                'referencia_origem_id': despesa.id,
-                'competencia_mes': mes,
-                'competencia_ano': ano,
-            }
-
-            existente = ObrigacaoFinanceira.query.filter_by(**chave_busca).first()
-            if existente:
+            retorno = _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=mes, ano=ano)
+            if retorno['status'] == 'ja_existente':
                 resultado['ja_existentes'].append(despesa.nome)
                 continue
-
-            descricao = f'{despesa.nome} - Despesa Fixa {mes:02d}/{ano}'
-            observacao = (despesa.descricao or '').strip() or 'Despesa fixa mensal'
-            valor_devido = Decimal(str(despesa.valor_padrao or 0)).quantize(Decimal('0.01'))
-
-            obrigacao = ObrigacaoFinanceira(
-                tipo_obrigacao='DESPESA_FIXA',
-                origem_obrigacao='automatico',
-                referencia_origem_tipo='DESPESA_FIXA_CONSELHO',
-                referencia_origem_id=despesa.id,
-                categoria=despesa.categoria or 'DESP. FIXAS',
-                descricao=descricao,
-                competencia_mes=mes,
-                competencia_ano=ano,
-                valor_devido=valor_devido,
-                status='PENDENTE',
-                historico_sem_movimentacao=False,
-                data_vencimento=None,
-                observacao=observacao,
-            )
-
-            obrigacao.validar()
-            obrigacao.validar_duplicidade_automatica(db.session)
-            db.session.add(obrigacao)
-            db.session.flush()
-
-            evento = ObrigacaoEvento(
-                obrigacao_financeira_id=obrigacao.id,
-                evento_tipo='CRIACAO',
-                payload_json=json.dumps(
-                    {
-                        'origem': 'automatico',
-                        'referencia_origem_tipo': 'DESPESA_FIXA_CONSELHO',
-                        'referencia_origem_id': despesa.id,
-                        'competencia': f'{mes:02d}/{ano}',
-                        'valor_devido': str(valor_devido),
-                    },
-                    ensure_ascii=False,
-                ),
-                usuario=None,
-            )
-            db.session.add(evento)
-            db.session.flush()
 
             resultado['criadas'].append(despesa.nome)
 

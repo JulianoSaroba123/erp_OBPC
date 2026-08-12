@@ -18,7 +18,10 @@ from app.financeiro.financeiro_model import Lancamento
 from app.financeiro.despesas_fixas_model import DespesaFixaConselho
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.comprovante_model import Comprovante
-from app.financeiro.financeiro_routes import gerar_obrigacoes_despesas_fixas
+from app.financeiro.financeiro_routes import (
+    gerar_obrigacoes_despesas_fixas,
+    _criar_obrigacao_despesa_fixa_sem_commit,
+)
 from app.financeiro.obrigacoes_model import (
     ObrigacaoFinanceira,
     ObrigacaoEvento,
@@ -613,6 +616,105 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         self.assertEqual(obrigacao_fevereiro.valor_devido, Decimal("150.00"))
         self.assertEqual(obrigacao_fevereiro.categoria, "OUTRA CATEGORIA")
         self.assertEqual(obrigacao_fevereiro.descricao, "Internet Sede - Despesa Fixa 02/2026")
+
+    def test_caso_ab1_helper_sem_commit_cria_obrigacao(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        retorno = _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=7, ano=2026)
+
+        self.assertEqual(retorno["status"], "criada")
+        self.assertIsNotNone(retorno["obrigacao"])
+        self.assertIsNotNone(retorno["obrigacao"].id)
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 1)
+
+        db.session.rollback()
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
+
+    def test_caso_ab2_helper_sem_commit_cria_evento(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        retorno = _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=7, ano=2026)
+
+        self.assertEqual(retorno["status"], "criada")
+        self.assertEqual(ObrigacaoEvento.query.count(), 1)
+        evento = ObrigacaoEvento.query.first()
+        self.assertEqual(evento.evento_tipo, "CRIACAO")
+        self.assertIn('"competencia": "07/2026"', evento.payload_json)
+
+    def test_caso_ab3_helper_idempotente_mesma_competencia(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        primeiro = _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=7, ano=2026)
+        segundo = _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=7, ano=2026)
+
+        self.assertEqual(primeiro["status"], "criada")
+        self.assertEqual(segundo["status"], "ja_existente")
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 1)
+        self.assertEqual(ObrigacaoEvento.query.count(), 1)
+
+    def test_caso_ab4_orquestrador_commit_unico_ao_final(self):
+        self._nova_despesa_fixa("Internet Sede", valor=100.0)
+        self._nova_despesa_fixa("Contabilidade", valor=250.0)
+
+        original_commit = db.session.commit
+        with patch.object(db.session, "commit", wraps=original_commit) as commit_spy:
+            resultado = gerar_obrigacoes_despesas_fixas(mes=7, ano=2026)
+
+        self.assertEqual(resultado["erros"], [])
+        self.assertEqual(len(resultado["criadas"]), 2)
+        self.assertEqual(commit_spy.call_count, 1)
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 2)
+
+    def test_caso_ab5_helper_nunca_cria_lancamento(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0)
+
+        _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=7, ano=2026)
+
+        self.assertEqual(Lancamento.query.count(), 0)
+
+    def test_caso_ab6_smoke_transacional_local_sem_commit(self):
+        despesa = self._nova_despesa_fixa("Internet Sede", valor=300.0)
+        lancamento_entrada = Lancamento(
+            data=date(2026, 7, 1),
+            tipo="Entrada",
+            categoria="TESTE",
+            descricao="Saldo inicial",
+            valor=1000.0,
+            conta="Banco",
+            origem="manual",
+        )
+        db.session.add(lancamento_entrada)
+        db.session.commit()
+
+        counts_antes = {
+            "obrigacoes": ObrigacaoFinanceira.query.count(),
+            "eventos": ObrigacaoEvento.query.count(),
+            "lancamentos": Lancamento.query.count(),
+            "pagamentos": PagamentoObrigacao.query.count(),
+            "itens": PagamentoObrigacaoItem.query.count(),
+        }
+        saldo_antes = self._saldo_lancamentos()
+
+        primeiro = _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=12, ano=2099)
+        segundo = _criar_obrigacao_despesa_fixa_sem_commit(despesa=despesa, mes=12, ano=2099)
+
+        self.assertEqual(primeiro["status"], "criada")
+        self.assertEqual(segundo["status"], "ja_existente")
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+
+        db.session.rollback()
+
+        counts_depois = {
+            "obrigacoes": ObrigacaoFinanceira.query.count(),
+            "eventos": ObrigacaoEvento.query.count(),
+            "lancamentos": Lancamento.query.count(),
+            "pagamentos": PagamentoObrigacao.query.count(),
+            "itens": PagamentoObrigacaoItem.query.count(),
+        }
+        saldo_depois = self._saldo_lancamentos()
+
+        self.assertEqual(counts_antes, counts_depois)
+        self.assertEqual(saldo_antes, saldo_depois)
 
     def test_caso_ac_inativa_reativada_sem_afetar_histórico(self):
         despesa = self._nova_despesa_fixa("Internet Sede", valor=100.0, ativa=False)
