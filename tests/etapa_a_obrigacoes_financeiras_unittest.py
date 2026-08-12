@@ -24,6 +24,8 @@ from app.financeiro.financeiro_routes import (
     _calcular_admin_sede_30_legado,
     _criar_obrigacao_admin_sede_sem_commit,
     gerar_obrigacao_admin_sede_30,
+    _registrar_pagamento_obrigacao_sem_commit,
+    registrar_pagamento_obrigacao,
 )
 from app.financeiro.envios_sede_model import EnvioSede
 from app.configuracoes.configuracoes_model import Configuracao
@@ -162,6 +164,16 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
             if (lancamento.tipo or "").strip().lower() in {"saída", "saida"}:
                 total += Decimal(str(lancamento.valor or 0))
         return total.quantize(Decimal("0.01"))
+
+    def _counts_pagamento_core(self):
+        return {
+            "obrigacoes": ObrigacaoFinanceira.query.count(),
+            "eventos": ObrigacaoEvento.query.count(),
+            "pagamentos": PagamentoObrigacao.query.count(),
+            "itens": PagamentoObrigacaoItem.query.count(),
+            "lancamentos": Lancamento.query.count(),
+            "envios": EnvioSede.query.count(),
+        }
 
     def _criar_entradas_base_admin(self, mes, ano, dizimos=0.0, ofertas=0.0, outras_ofertas=0.0, omn=0.0):
         entradas = []
@@ -967,6 +979,422 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         }
 
         self.assertEqual(counts_antes, counts_depois)
+
+    def test_caso_d1_a_pagamento_bancario_parcial(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        saldo_antes = self._saldo_lancamentos()
+
+        retorno = registrar_pagamento_obrigacao(
+            obrigacao_id=obrigacao.id,
+            valor_pago="400.00",
+            data_pagamento=date(2026, 7, 10),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            observacao="Parcial 1",
+        )
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(obrigacao_db.status, "PARCIAL")
+        self.assertEqual(obrigacao_db.valor_pago, Decimal("400.00"))
+        self.assertEqual(obrigacao_db.valor_pendente, Decimal("600.00"))
+        self.assertEqual(PagamentoObrigacao.query.count(), 1)
+        self.assertEqual(PagamentoObrigacaoItem.query.count(), 1)
+        self.assertEqual(Lancamento.query.count(), 1)
+        self.assertEqual(EnvioSede.query.count(), 0)
+        self.assertEqual(self._saldo_lancamentos(), (saldo_antes - Decimal("400.00")).quantize(Decimal("0.01")))
+
+    def test_caso_d1_b_quitacao_bancaria_total(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        registrar_pagamento_obrigacao(obrigacao.id, "400.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "600.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(obrigacao_db.status, "PAGO")
+        self.assertEqual(obrigacao_db.valor_pendente, Decimal("0.00"))
+        self.assertIsNotNone(obrigacao_db.data_quitacao)
+        self.assertEqual(PagamentoObrigacao.query.count(), 2)
+        self.assertEqual(PagamentoObrigacaoItem.query.count(), 2)
+        self.assertEqual(Lancamento.query.count(), 2)
+
+    def test_caso_d1_c_dois_pagamentos_parciais(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        registrar_pagamento_obrigacao(obrigacao.id, "300.00", date(2026, 7, 10), "Banco", "PAGAMENTO_BANCARIO")
+        registrar_pagamento_obrigacao(obrigacao.id, "300.00", date(2026, 7, 11), "Banco", "PAGAMENTO_BANCARIO")
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(obrigacao_db.status, "PARCIAL")
+        self.assertEqual(obrigacao_db.valor_pago, Decimal("600.00"))
+        self.assertEqual(obrigacao_db.valor_pendente, Decimal("400.00"))
+
+    def test_caso_d1_d_historico_sem_movimentacao(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+        saldo_antes = self._saldo_lancamentos()
+
+        retorno = registrar_pagamento_obrigacao(
+            obrigacao_id=obrigacao.id,
+            valor_pago="500.00",
+            data_pagamento=date(2026, 7, 12),
+            forma_pagamento="PIX",
+            tipo_pagamento="HISTORICO_SEM_MOVIMENTACAO",
+        )
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(obrigacao_db.status, "PAGO")
+        self.assertEqual(Lancamento.query.count(), 0)
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+
+    def test_caso_d1_e_sobrepagamento_bloqueado(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        registrar_pagamento_obrigacao(obrigacao.id, "700.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+
+        counts_antes = self._counts_pagamento_core()
+        saldo_antes = self._saldo_lancamentos()
+
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "400.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+
+        self.assertEqual(retorno["status"], "erro")
+        self.assertEqual(self._counts_pagamento_core(), counts_antes)
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertGreaterEqual(obrigacao_db.valor_pendente, Decimal("0.00"))
+        self.assertLessEqual(obrigacao_db.valor_pago, obrigacao_db.valor_devido)
+
+    def test_caso_d1_f_valor_zero_bloqueado(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "0.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+        self.assertEqual(retorno["status"], "erro")
+        self.assertEqual(PagamentoObrigacao.query.count(), 0)
+
+    def test_caso_d1_g_valor_negativo_bloqueado(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "-10.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+        self.assertEqual(retorno["status"], "erro")
+        self.assertEqual(PagamentoObrigacao.query.count(), 0)
+
+    def test_caso_d1_h_replay_idempotente(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        r1 = registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "  pix  ", "PAGAMENTO_BANCARIO", observacao="Replay", comprovante="comprovante-a.pdf")
+        counts_depois_primeiro = self._counts_pagamento_core()
+        r2 = registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO", observacao="Replay diferente", comprovante="comprovante-b.pdf")
+
+        self.assertEqual(r1["status"], "criado")
+        self.assertEqual(r2["status"], "ja_existente")
+        self.assertEqual(self._counts_pagamento_core(), counts_depois_primeiro)
+
+    def test_caso_d1_u_replay_observacao_diferente_bloqueado(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO", observacao="primeira observacao")
+        replay = registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "  pix  ", "PAGAMENTO_BANCARIO", observacao="segunda observacao")
+
+        self.assertEqual(replay["status"], "ja_existente")
+
+    def test_caso_d1_v_replay_comprovante_diferente_bloqueado(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO", comprovante="comprovante-a.pdf")
+        replay = registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO", comprovante="comprovante-b.pdf")
+
+        self.assertEqual(replay["status"], "ja_existente")
+
+    def test_caso_d1_w_replay_obs_e_comprovante_diferentes_bloqueado(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        registrar_pagamento_obrigacao(
+            obrigacao.id,
+            "250.00",
+            date(2026, 7, 10),
+            " PIX ",
+            "PAGAMENTO_BANCARIO",
+            observacao="obs 1",
+            comprovante="comprovante-a.pdf",
+        )
+        replay = registrar_pagamento_obrigacao(
+            obrigacao.id,
+            "250.00",
+            date(2026, 7, 10),
+            "pix",
+            "PAGAMENTO_BANCARIO",
+            observacao="obs 2",
+            comprovante="comprovante-b.pdf",
+        )
+
+        self.assertEqual(replay["status"], "ja_existente")
+
+    def test_caso_d1_x_pagamento_mesmo_valor_data_diferente_permitido(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        primeiro = registrar_pagamento_obrigacao(obrigacao.id, "400.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        segundo = registrar_pagamento_obrigacao(obrigacao.id, "400.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+
+        self.assertEqual(primeiro["status"], "criado")
+        self.assertEqual(segundo["status"], "criado")
+
+    def test_caso_d1_y_obrigacao_diferente_mesmo_valor_data_permitido(self):
+        obrigacao_a = self._nova_obrigacao(valor="1000.00", descricao="A")
+        obrigacao_b = self._nova_obrigacao(valor="1000.00", descricao="B", competencia_mes=8)
+
+        primeiro = registrar_pagamento_obrigacao(obrigacao_a.id, "300.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        segundo = registrar_pagamento_obrigacao(obrigacao_b.id, "300.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+
+        self.assertEqual(primeiro["status"], "criado")
+        self.assertEqual(segundo["status"], "criado")
+
+    def test_caso_d1_z_lock_aplicado_antes_do_calculo_do_saldo(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        chamadas = []
+
+        class QueryFake:
+            def filter(self, *args, **kwargs):
+                chamadas.append("filter")
+                return self
+
+            def with_for_update(self, *args, **kwargs):
+                chamadas.append("with_for_update")
+                return self
+
+            def one_or_none(self):
+                chamadas.append("one_or_none")
+                return obrigacao
+
+        def recalcular_com_rastro(self, session=None, flush=False):
+            chamadas.append("recalcular")
+            return self.status
+
+        with patch("app.financeiro.financeiro_routes.db.session.query", return_value=QueryFake()), patch.object(
+            ObrigacaoFinanceira,
+            "recalcular_em_sessao",
+            autospec=True,
+            side_effect=recalcular_com_rastro,
+        ):
+            retorno = _registrar_pagamento_obrigacao_sem_commit(
+                obrigacao_id=obrigacao.id,
+                valor_pago="100.00",
+                data_pagamento=date(2026, 7, 10),
+                forma_pagamento="PIX",
+                tipo_pagamento="PAGAMENTO_BANCARIO",
+            )
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertLess(chamadas.index("with_for_update"), chamadas.index("recalcular"))
+
+    def test_caso_d1_aa_corrida_700_700_uma_efetiva(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        primeiro = registrar_pagamento_obrigacao(obrigacao.id, "700.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        segundo = registrar_pagamento_obrigacao(obrigacao.id, "700.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(primeiro["status"], "criado")
+        self.assertEqual(segundo["status"], "erro")
+        self.assertEqual(obrigacao_db.valor_pago, Decimal("700.00"))
+        self.assertEqual(obrigacao_db.valor_pendente, Decimal("300.00"))
+
+    def test_caso_d1_ac_saldo_nunca_negativo(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        registrar_pagamento_obrigacao(obrigacao.id, "800.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertGreaterEqual(obrigacao_db.valor_pendente, Decimal("0.00"))
+
+    def test_caso_d1_ad_valor_pago_acumulado_nunca_supera_devido(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        registrar_pagamento_obrigacao(obrigacao.id, "800.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 11), "PIX", "PAGAMENTO_BANCARIO")
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertLessEqual(obrigacao_db.valor_pago, obrigacao_db.valor_devido)
+
+    def test_caso_d1_ae_rollback_preservado_apos_erro_com_lock(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        db.session.commit()
+        counts_antes = self._counts_pagamento_core()
+        saldo_antes = self._saldo_lancamentos()
+
+        retorno = registrar_pagamento_obrigacao(
+            obrigacao_id=obrigacao.id,
+            valor_pago="300.00",
+            data_pagamento=date(2026, 7, 10),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            forcar_erro_etapa="apos_lancamento",
+        )
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(retorno["status"], "erro")
+        self.assertEqual(self._counts_pagamento_core(), counts_antes)
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+        self.assertEqual(obrigacao_db.status, "PENDENTE")
+
+    def test_caso_d1_ab_replay_concorrente_identico_uma_efetiva(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+
+        primeiro = registrar_pagamento_obrigacao(
+            obrigacao.id,
+            "250.00",
+            date(2026, 7, 10),
+            "PIX",
+            "PAGAMENTO_BANCARIO",
+            observacao="concorrente",
+            comprovante="a.pdf",
+        )
+        segundo = registrar_pagamento_obrigacao(
+            obrigacao.id,
+            "250.00",
+            date(2026, 7, 10),
+            "pix",
+            "PAGAMENTO_BANCARIO",
+            observacao="concorrente alterada",
+            comprovante="b.pdf",
+        )
+
+        self.assertEqual(primeiro["status"], "criado")
+        self.assertEqual(segundo["status"], "ja_existente")
+
+    def test_caso_d1_af_historico_sem_movimentacao_idempotente(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+
+        primeiro = registrar_pagamento_obrigacao(obrigacao.id, "500.00", date(2026, 7, 12), "PIX", "HISTORICO_SEM_MOVIMENTACAO", observacao="hist 1")
+        segundo = registrar_pagamento_obrigacao(obrigacao.id, "500.00", date(2026, 7, 12), "  pix  ", "HISTORICO_SEM_MOVIMENTACAO", observacao="hist 2")
+
+        self.assertEqual(primeiro["status"], "criado")
+        self.assertEqual(segundo["status"], "ja_existente")
+
+    def test_caso_d1_i_rollback_total_erro_intermediario(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        db.session.commit()
+        counts_antes = self._counts_pagamento_core()
+        saldo_antes = self._saldo_lancamentos()
+
+        retorno = registrar_pagamento_obrigacao(
+            obrigacao_id=obrigacao.id,
+            valor_pago="300.00",
+            data_pagamento=date(2026, 7, 10),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            forcar_erro_etapa="apos_item",
+        )
+
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(retorno["status"], "erro")
+        self.assertEqual(self._counts_pagamento_core(), counts_antes)
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+        self.assertEqual(obrigacao_db.status, "PENDENTE")
+
+    def test_caso_d1_j_caixa_movimentado_exatamente_uma_vez(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        saidas_antes = self._total_saidas_lancamentos()
+
+        registrar_pagamento_obrigacao(obrigacao.id, "333.33", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+
+        saidas_depois = self._total_saidas_lancamentos()
+        self.assertEqual(saidas_depois - saidas_antes, Decimal("333.33"))
+        self.assertEqual(Lancamento.query.count(), 1)
+
+    def test_caso_d1_k_pagamento_vinculado_ao_lancamento(self):
+        obrigacao = self._nova_obrigacao(valor="1000.00")
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "200.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        pagamento = retorno["pagamento"]
+        self.assertIsNotNone(pagamento.lancamento_financeiro_id)
+        self.assertIsNotNone(pagamento.lancamento_financeiro)
+
+    def test_caso_d1_l_historico_sem_lancamento(self):
+        obrigacao = self._nova_obrigacao(valor="200.00")
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "200.00", date(2026, 7, 10), "PIX", "HISTORICO_SEM_MOVIMENTACAO")
+        pagamento = retorno["pagamento"]
+        self.assertEqual(retorno["status"], "criado")
+        self.assertIsNone(pagamento.lancamento_financeiro_id)
+        self.assertEqual(Lancamento.query.count(), 0)
+
+    def test_caso_d1_m_status_parcial_correto(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+        registrar_pagamento_obrigacao(obrigacao.id, "100.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(obrigacao_db.status, "PARCIAL")
+
+    def test_caso_d1_n_status_pago_correto(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+        registrar_pagamento_obrigacao(obrigacao.id, "500.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(obrigacao_db.status, "PAGO")
+
+    def test_caso_d1_o_data_quitacao_correta(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+        registrar_pagamento_obrigacao(obrigacao.id, "500.00", date(2026, 7, 15), "PIX", "PAGAMENTO_BANCARIO")
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+        self.assertEqual(obrigacao_db.data_quitacao, date(2026, 7, 15))
+
+    def test_caso_d1_p_admin_sede_pago_parcialmente(self):
+        obrigacao = self._nova_obrigacao(
+            valor="1122.56",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "400.00", date(2026, 7, 20), "PIX", "PAGAMENTO_BANCARIO")
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(obrigacao_db.status, "PARCIAL")
+        self.assertEqual(obrigacao_db.valor_pendente, Decimal("722.56"))
+
+    def test_caso_d1_q_despesa_fixa_paga_total(self):
+        obrigacao = self._nova_obrigacao(
+            valor="300.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=55,
+            categoria="DESP. FIXAS",
+            descricao="Internet Sede - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        retorno = registrar_pagamento_obrigacao(obrigacao.id, "300.00", date(2026, 7, 21), "Banco", "PAGAMENTO_BANCARIO")
+        obrigacao_db = db.session.get(ObrigacaoFinanceira, obrigacao.id)
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(obrigacao_db.status, "PAGO")
+        self.assertEqual(obrigacao_db.valor_pendente, Decimal("0.00"))
+
+    def test_caso_d1_r_saldo_alterado_somente_bancario(self):
+        obrigacao_a = self._nova_obrigacao(valor="300.00", descricao="A")
+        obrigacao_b = self._nova_obrigacao(valor="300.00", descricao="B", competencia_mes=8)
+        saldo_antes = self._saldo_lancamentos()
+
+        registrar_pagamento_obrigacao(obrigacao_a.id, "300.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        saldo_pos_bancario = self._saldo_lancamentos()
+        registrar_pagamento_obrigacao(obrigacao_b.id, "300.00", date(2026, 7, 10), "PIX", "HISTORICO_SEM_MOVIMENTACAO")
+        saldo_pos_historico = self._saldo_lancamentos()
+
+        self.assertEqual(saldo_pos_bancario - saldo_antes, Decimal("-300.00"))
+        self.assertEqual(saldo_pos_historico, saldo_pos_bancario)
+
+    def test_caso_d1_s_saldo_inalterado_no_historico(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+        saldo_antes = self._saldo_lancamentos()
+        registrar_pagamento_obrigacao(obrigacao.id, "500.00", date(2026, 7, 10), "PIX", "HISTORICO_SEM_MOVIMENTACAO")
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+
+    def test_caso_d1_t_nenhuma_alteracao_envio_sede(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+        envios_antes = EnvioSede.query.count()
+        registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
+        self.assertEqual(EnvioSede.query.count(), envios_antes)
 
     def test_caso_r_startup_nao_cria_tabelas_novas(self):
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:

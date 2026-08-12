@@ -6,7 +6,12 @@ from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.despesas_fixas_model import DespesaFixaConselho
 from app.financeiro.envios_sede_model import EnvioSede
-from app.financeiro.obrigacoes_model import ObrigacaoFinanceira, ObrigacaoEvento
+from app.financeiro.obrigacoes_model import (
+    ObrigacaoFinanceira,
+    ObrigacaoEvento,
+    PagamentoObrigacao,
+    PagamentoObrigacaoItem,
+)
 from app.financeiro.observacao_relatorio_model import ObservacaoRelatorio
 from app.financeiro.recibo_model import Recibo
 from app.configuracoes.configuracoes_model import Configuracao
@@ -14,7 +19,7 @@ from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquiv
 from datetime import datetime, date
 from sqlalchemy import extract, or_, and_, func, inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import json
 import os
 from werkzeug.utils import secure_filename
@@ -337,6 +342,252 @@ def gerar_obrigacoes_despesas_fixas(mes=None, ano=None):
         db.session.rollback()
         current_app.logger.exception(f'Erro ao gerar obrigacoes de despesas fixas: {e}')
         resultado['erros'].append(str(e))
+        return resultado
+
+
+def _decimal_pagamento(valor) -> Decimal:
+    return Decimal(str(valor or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def _descricao_lancamento_pagamento_obrigacao(obrigacao: ObrigacaoFinanceira) -> str:
+    competencia = ""
+    if obrigacao.competencia_mes is not None and obrigacao.competencia_ano is not None:
+        competencia = f" {int(obrigacao.competencia_mes):02d}/{int(obrigacao.competencia_ano)}"
+    return f"Pagamento obrigação #{obrigacao.id} - {obrigacao.tipo_obrigacao}{competencia}"
+
+
+def _observacao_lancamento_pagamento_obrigacao(obrigacao: ObrigacaoFinanceira, observacao_pagamento: str | None = None) -> str:
+    partes = [
+        f"Obrigação ID: {obrigacao.id}",
+        f"Tipo: {obrigacao.tipo_obrigacao}",
+        f"Descrição: {(obrigacao.descricao or '').strip() or '-'}",
+    ]
+    if observacao_pagamento:
+        partes.append(f"Obs pagamento: {observacao_pagamento}")
+    return " | ".join(partes)
+
+
+def _normalizar_texto_identidade_pagamento(valor: str | None) -> str | None:
+    if valor is None:
+        return None
+    normalizado = " ".join(str(valor).split()).strip()
+    if not normalizado:
+        return None
+    return normalizado.upper()
+
+
+def _carregar_obrigacao_para_pagamento(obrigacao_id: int):
+    query = db.session.query(ObrigacaoFinanceira).filter(
+        ObrigacaoFinanceira.id == obrigacao_id,
+    )
+    query = query.with_for_update()
+    return query.one_or_none()
+
+
+def _detectar_replay_pagamento_obrigacao(
+    obrigacao_id: int,
+    data_pagamento,
+    valor_pago: Decimal,
+    tipo_pagamento: str,
+    forma_pagamento: str | None,
+):
+    query = PagamentoObrigacao.query.join(
+        PagamentoObrigacaoItem,
+        PagamentoObrigacaoItem.pagamento_obrigacao_id == PagamentoObrigacao.id,
+    ).filter(
+        PagamentoObrigacaoItem.obrigacao_financeira_id == obrigacao_id,
+        PagamentoObrigacao.data_pagamento == data_pagamento,
+        PagamentoObrigacao.valor_pago == valor_pago,
+        PagamentoObrigacao.tipo_pagamento == tipo_pagamento,
+        PagamentoObrigacaoItem.valor_alocado == valor_pago,
+    )
+
+    if forma_pagamento is None:
+        query = query.filter(PagamentoObrigacao.forma_pagamento.is_(None))
+    else:
+        query = query.filter(PagamentoObrigacao.forma_pagamento == forma_pagamento)
+
+    return query.order_by(PagamentoObrigacao.id.asc()).first()
+
+
+def _registrar_pagamento_obrigacao_sem_commit(
+    obrigacao_id: int,
+    valor_pago,
+    data_pagamento,
+    forma_pagamento: str | None,
+    tipo_pagamento: str,
+    comprovante: str | None = None,
+    observacao: str | None = None,
+    usuario: str | None = None,
+    forcar_erro_etapa: str | None = None,
+):
+    obrigacao = _carregar_obrigacao_para_pagamento(obrigacao_id)
+    if obrigacao is None:
+        raise ValueError("obrigacao_financeira não encontrada")
+
+    if obrigacao.status in {"CANCELADA", "BAIXADA_HISTORICA"}:
+        raise ValueError("obrigacao_financeira não está ativa para pagamento")
+
+    valor = _decimal_pagamento(valor_pago)
+    if valor <= Decimal("0.00"):
+        raise ValueError("valor_pago deve ser maior que zero")
+
+    if data_pagamento is None:
+        raise ValueError("data_pagamento é obrigatória")
+
+    tipo = (tipo_pagamento or "").strip().upper()
+    if tipo not in {"PAGAMENTO_BANCARIO", "HISTORICO_SEM_MOVIMENTACAO"}:
+        raise ValueError("tipo_pagamento inválido")
+
+    forma = _normalizar_texto_identidade_pagamento(forma_pagamento)
+    obs = (observacao or "").strip() or None
+    comp = (comprovante or "").strip() or None
+
+    obrigacao.recalcular_em_sessao(session=db.session, flush=True)
+    pendente_antes = _decimal_pagamento(obrigacao.valor_pendente)
+
+    replay = _detectar_replay_pagamento_obrigacao(
+        obrigacao_id=obrigacao.id,
+        data_pagamento=data_pagamento,
+        valor_pago=valor,
+        tipo_pagamento=tipo,
+        forma_pagamento=forma,
+    )
+    if replay is not None:
+        return {
+            "status": "ja_existente",
+            "obrigacao": obrigacao,
+            "pagamento": replay,
+            "item": None,
+            "lancamento": replay.lancamento_financeiro,
+            "valor_pago": valor,
+            "tipo_pagamento": tipo,
+        }
+
+    if valor > (pendente_antes + Decimal("0.01")):
+        raise ValueError("valor_pago excede saldo pendente da obrigação")
+
+    pagamento = PagamentoObrigacao(
+        data_pagamento=data_pagamento,
+        valor_pago=valor,
+        forma_pagamento=forma,
+        tipo_pagamento=tipo,
+        comprovante=comp,
+        observacao=obs,
+        criado_por=usuario,
+        atualizado_por=usuario,
+    )
+    pagamento.validar()
+    db.session.add(pagamento)
+    db.session.flush()
+
+    if forcar_erro_etapa == "apos_pagamento":
+        raise RuntimeError("falha_forcada_apos_pagamento")
+
+    item = pagamento.adicionar_item(obrigacao, valor)
+    pagamento.validar_limite_alocacao()
+
+    if forcar_erro_etapa == "apos_item":
+        raise RuntimeError("falha_forcada_apos_item")
+
+    lancamento = None
+    if tipo == "PAGAMENTO_BANCARIO":
+        categoria = (obrigacao.categoria or "").strip() or "DESP. FIXAS"
+        lancamento = Lancamento(
+            data=data_pagamento,
+            tipo="Saída",
+            categoria=categoria,
+            descricao=_descricao_lancamento_pagamento_obrigacao(obrigacao),
+            valor=float(valor),
+            conta=_mapear_conta_repasse_sede(forma),
+            observacoes=_observacao_lancamento_pagamento_obrigacao(obrigacao, obs),
+            comprovante=comp,
+            origem="manual",
+        )
+        db.session.add(lancamento)
+        db.session.flush()
+        pagamento.lancamento_financeiro_id = lancamento.id
+
+    if forcar_erro_etapa == "apos_lancamento":
+        raise RuntimeError("falha_forcada_apos_lancamento")
+
+    obrigacao.recalcular_em_sessao(session=db.session, flush=True)
+
+    if forcar_erro_etapa == "apos_status":
+        raise RuntimeError("falha_forcada_apos_status")
+
+    evento = ObrigacaoEvento(
+        obrigacao_financeira_id=obrigacao.id,
+        evento_tipo="PAGAMENTO",
+        payload_json=json.dumps(
+            {
+                "pagamento_obrigacao_id": pagamento.id,
+                "valor_pago": str(valor),
+                "tipo_pagamento": tipo,
+                "lancamento_financeiro_id": pagamento.lancamento_financeiro_id,
+                "status_obrigacao_pos_pagamento": obrigacao.status,
+            },
+            ensure_ascii=False,
+        ),
+        usuario=usuario,
+    )
+    evento.validar()
+    db.session.add(evento)
+    db.session.flush()
+
+    return {
+        "status": "criado",
+        "obrigacao": obrigacao,
+        "pagamento": pagamento,
+        "item": item,
+        "lancamento": lancamento,
+        "valor_pago": valor,
+        "tipo_pagamento": tipo,
+        "valor_pendente_pos": _decimal_pagamento(obrigacao.valor_pendente),
+        "status_obrigacao_pos": obrigacao.status,
+    }
+
+
+def registrar_pagamento_obrigacao(
+    obrigacao_id: int,
+    valor_pago,
+    data_pagamento,
+    forma_pagamento: str | None,
+    tipo_pagamento: str,
+    comprovante: str | None = None,
+    observacao: str | None = None,
+    usuario: str | None = None,
+    forcar_erro_etapa: str | None = None,
+):
+    resultado = {
+        "status": "erro",
+        "erro": None,
+    }
+
+    try:
+        retorno = _registrar_pagamento_obrigacao_sem_commit(
+            obrigacao_id=obrigacao_id,
+            valor_pago=valor_pago,
+            data_pagamento=data_pagamento,
+            forma_pagamento=forma_pagamento,
+            tipo_pagamento=tipo_pagamento,
+            comprovante=comprovante,
+            observacao=observacao,
+            usuario=usuario,
+            forcar_erro_etapa=forcar_erro_etapa,
+        )
+
+        if retorno["status"] == "ja_existente":
+            resultado.update(retorno)
+            return resultado
+
+        db.session.commit()
+        resultado.update(retorno)
+        return resultado
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f"Erro ao registrar pagamento da obrigação {obrigacao_id}: {e}")
+        resultado["erro"] = str(e)
         return resultado
 
 def obter_filtros_ativos():
