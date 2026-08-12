@@ -149,6 +149,163 @@ def _criar_obrigacao_despesa_fixa_sem_commit(despesa, mes, ano):
     }
 
 
+def _calcular_admin_sede_30_legado(mes, ano, percentual_conselho):
+    """Replica o cálculo legado do 30% administrativo sem efeitos colaterais."""
+    lancamentos_mes = Lancamento.query.filter(
+        extract('month', Lancamento.data) == mes,
+        extract('year', Lancamento.data) == ano
+    ).all()
+
+    dizimos = 0.0
+    ofertas_alcadas = 0.0
+
+    for lancamento in lancamentos_mes:
+        if (lancamento.tipo or '').strip().lower() != 'entrada':
+            continue
+
+        categoria_lower = (lancamento.categoria or '').lower()
+        valor = float(lancamento.valor or 0.0)
+
+        if 'dizimo' in categoria_lower or 'dízimo' in categoria_lower:
+            dizimos += valor
+        elif 'oferta' in categoria_lower:
+            if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
+                continue
+            if any(x in categoria_lower for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
+                continue
+            ofertas_alcadas += valor
+
+    base_calculo = dizimos + ofertas_alcadas
+    valor_conselho = base_calculo * (float(percentual_conselho or 0) / 100.0)
+
+    return {
+        'dizimos': round(dizimos, 2),
+        'ofertas_alcadas': round(ofertas_alcadas, 2),
+        'base_calculo': round(base_calculo, 2),
+        'valor_conselho': round(valor_conselho, 2),
+    }
+
+
+def _criar_obrigacao_admin_sede_sem_commit(mes, ano, percentual_conselho, calculo_legacy):
+    """Cria obrigação+evento de 30% administrativo sem controlar transação."""
+    existente = ObrigacaoFinanceira.query.filter(
+        ObrigacaoFinanceira.tipo_obrigacao == 'ADMIN_SEDE_30',
+        ObrigacaoFinanceira.origem_obrigacao == 'automatico',
+        ObrigacaoFinanceira.competencia_mes == mes,
+        ObrigacaoFinanceira.competencia_ano == ano,
+    ).first()
+    if existente:
+        return {
+            'status': 'ja_existente',
+            'obrigacao': None,
+            'valor_devido': Decimal('0.00'),
+        }
+
+    valor_devido = Decimal(str(calculo_legacy['valor_conselho'] or 0)).quantize(Decimal('0.01'))
+    if valor_devido <= Decimal('0.00'):
+        return {
+            'status': 'sem_base',
+            'obrigacao': None,
+            'valor_devido': valor_devido,
+        }
+
+    referencia_origem_id = (int(ano) * 100) + int(mes)
+    descricao = f"{float(percentual_conselho):.0f}% Administrativo - Conselho Sede {int(mes):02d}/{int(ano)}"
+    observacao = (
+        f"Base de cálculo: R$ {calculo_legacy['base_calculo']:.2f} "
+        f"(Dízimos: R$ {calculo_legacy['dizimos']:.2f} + "
+        f"Ofertas Alçadas: R$ {calculo_legacy['ofertas_alcadas']:.2f})"
+    )
+
+    obrigacao = ObrigacaoFinanceira(
+        tipo_obrigacao='ADMIN_SEDE_30',
+        origem_obrigacao='automatico',
+        referencia_origem_tipo='FECHAMENTO_MENSAL',
+        referencia_origem_id=referencia_origem_id,
+        categoria='CONTRIB. SEDE',
+        descricao=descricao,
+        competencia_mes=mes,
+        competencia_ano=ano,
+        valor_devido=valor_devido,
+        status='PENDENTE',
+        historico_sem_movimentacao=False,
+        data_vencimento=None,
+        observacao=observacao,
+    )
+
+    obrigacao.validar()
+    obrigacao.validar_duplicidade_automatica(db.session)
+    db.session.add(obrigacao)
+    db.session.flush()
+
+    evento = ObrigacaoEvento(
+        obrigacao_financeira_id=obrigacao.id,
+        evento_tipo='CRIACAO',
+        payload_json=json.dumps(
+            {
+                'tipo_obrigacao': 'ADMIN_SEDE_30',
+                'competencia': f'{int(mes):02d}/{int(ano)}',
+                'percentual': float(percentual_conselho or 0),
+                'valor_devido': str(valor_devido),
+                'base_calculo_resumida': {
+                    'dizimos': calculo_legacy['dizimos'],
+                    'ofertas_alcadas': calculo_legacy['ofertas_alcadas'],
+                    'base_calculo': calculo_legacy['base_calculo'],
+                },
+            },
+            ensure_ascii=False,
+        ),
+        usuario=None,
+    )
+    db.session.add(evento)
+    db.session.flush()
+
+    return {
+        'status': 'criada',
+        'obrigacao': obrigacao,
+        'valor_devido': valor_devido,
+    }
+
+
+def gerar_obrigacao_admin_sede_30(mes=None, ano=None):
+    """Orquestra a geração da obrigação ADMIN_SEDE_30 com commit único ao final."""
+    mes = mes or datetime.now().month
+    ano = ano or datetime.now().year
+
+    config = Configuracao.obter_configuracao()
+    percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30.0
+    calculo_legacy = _calcular_admin_sede_30_legado(mes, ano, percentual_conselho)
+
+    resultado = {
+        'status': 'erro',
+        'erro': None,
+        'mes': mes,
+        'ano': ano,
+        'percentual': float(percentual_conselho),
+        'calculo_legacy': calculo_legacy,
+        'valor_obrigacao': Decimal(str(calculo_legacy['valor_conselho'])).quantize(Decimal('0.01')),
+    }
+
+    try:
+        retorno = _criar_obrigacao_admin_sede_sem_commit(
+            mes=mes,
+            ano=ano,
+            percentual_conselho=percentual_conselho,
+            calculo_legacy=calculo_legacy,
+        )
+        resultado['status'] = retorno['status']
+        resultado['obrigacao'] = retorno.get('obrigacao')
+
+        if retorno['status'] == 'criada':
+            db.session.commit()
+        return resultado
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f'Erro ao gerar obrigação administrativa da sede: {e}')
+        resultado['erro'] = str(e)
+        return resultado
+
+
 def gerar_obrigacoes_despesas_fixas(mes=None, ano=None):
     """Gera obrigações automáticas para despesas fixas ativas do mês informado."""
     mes = mes or datetime.now().month
@@ -4704,86 +4861,34 @@ def gerar_lancamentos_despesas_fixas():
 @financeiro_bp.route('/financeiro/gerar-lancamento-administrativo', methods=['POST'])
 @login_required
 def gerar_lancamento_administrativo():
-    """Gera lançamento de saída dos 30% administrativo para a sede"""
+    """Gera obrigação ADMIN_SEDE_30 (sem criar lançamento automático)."""
     try:
         mes = request.form.get('mes', type=int) or datetime.now().month
         ano = request.form.get('ano', type=int) or datetime.now().year
-        
-        # Buscar configuração do sistema para obter percentual
-        config = Configuracao.obter_configuracao()
-        percentual_conselho = config.percentual_conselho if config else 30.0
-        
-        # Filtrar lançamentos do mês para calcular base
-        lancamentos_mes = Lancamento.query.filter(
-            extract('month', Lancamento.data) == mes,
-            extract('year', Lancamento.data) == ano
-        ).all()
-        
-        # Calcular base do conselho (Dízimos + Ofertas Alçadas)
-        dizimos = 0.0
-        ofertas_alcadas = 0.0
-        
-        for lancamento in lancamentos_mes:
-            if lancamento.tipo.lower() == 'entrada':
-                categoria_lower = lancamento.categoria.lower() if lancamento.categoria else ''
-                valor = lancamento.valor or 0.0
-                
-                # Dízimos
-                if 'dizimo' in categoria_lower or 'dízimo' in categoria_lower:
-                    dizimos += valor
-                # Ofertas Alçadas (excluindo OMN e Outras Ofertas)
-                elif 'oferta' in categoria_lower:
-                    # Excluir OMN
-                    if 'omn' in categoria_lower or 'missionaria' in categoria_lower or 'missionária' in categoria_lower:
-                        continue
-                    # Excluir Outras Ofertas
-                    elif any(x in categoria_lower for x in ['outras', 'especial', 'voluntaria', 'voluntária']):
-                        continue
-                    else:
-                        ofertas_alcadas += valor
-        
-        # Calcular valor do conselho
-        base_calculo = dizimos + ofertas_alcadas
-        valor_conselho = base_calculo * (percentual_conselho / 100)
-        
-        if valor_conselho <= 0:
-            flash(f'Não há base de cálculo para os {percentual_conselho:.0f}% administrativo no mês {mes:02d}/{ano}!', 'warning')
+        resultado = gerar_obrigacao_admin_sede_30(mes=mes, ano=ano)
+
+        if resultado['erro']:
+            flash(f'Erro ao gerar obrigação administrativa: {resultado["erro"]}', 'danger')
             return redirect(request.referrer or url_for('financeiro.dashboard_moderno'))
-        
-        # Verificar se já existe lançamento dos 30% para este mês
-        existe = Lancamento.query.filter(
-            extract('month', Lancamento.data) == mes,
-            extract('year', Lancamento.data) == ano,
-            Lancamento.descricao.ilike(f'%{percentual_conselho:.0f}% administrativo%'),
-            Lancamento.tipo.ilike('saída')
-        ).first()
-        
-        if existe:
-            flash(f'Já existe um lançamento de {percentual_conselho:.0f}% administrativo para {mes:02d}/{ano}!', 'warning')
+
+        percentual = resultado['percentual']
+        valor = float(resultado['valor_obrigacao'])
+        if valor <= 0:
+            flash(f'Não há base de cálculo para os {percentual:.0f}% administrativo no mês {mes:02d}/{ano}!', 'warning')
             return redirect(request.referrer or url_for('financeiro.dashboard_moderno'))
-        
-        # Criar lançamento de saída
-        data_lancamento = date(ano, mes, 1)
-        
-        novo_lancamento = Lancamento(
-            data=data_lancamento,
-            tipo='Saída',
-            categoria='CONTRIB. SEDE',
-            descricao=f'{percentual_conselho:.0f}% Administrativo - Conselho Sede {mes:02d}/{ano}',
-            valor=valor_conselho,
-            conta='Dinheiro',
-            observacoes=f'Base de cálculo: R$ {base_calculo:.2f} (Dízimos: R$ {dizimos:.2f} + Ofertas Alçadas: R$ {ofertas_alcadas:.2f})',
-            origem='automatico'
+
+        if resultado['status'] == 'ja_existente':
+            flash(f'Já existe obrigação de {percentual:.0f}% administrativo para {mes:02d}/{ano}!', 'warning')
+            return redirect(request.referrer or url_for('financeiro.dashboard_moderno'))
+
+        flash(
+            f'Obrigação de {percentual:.0f}% administrativo criada: R$ {valor:.2f} para {mes:02d}/{ano} (sem lançamento automático).',
+            'success'
         )
-        
-        db.session.add(novo_lancamento)
-        db.session.commit()
-        
-        flash(f'Lançamento de {percentual_conselho:.0f}% administrativo criado: R$ {valor_conselho:.2f} para {mes:02d}/{ano}!', 'success')
         
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao gerar lançamento administrativo: {str(e)}', 'danger')
+        flash(f'Erro ao gerar obrigação administrativa: {str(e)}', 'danger')
     
     return redirect(request.referrer or url_for('financeiro.dashboard_moderno'))
 

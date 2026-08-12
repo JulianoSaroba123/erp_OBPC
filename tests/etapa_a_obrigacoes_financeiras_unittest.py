@@ -21,7 +21,12 @@ from app.financeiro.comprovante_model import Comprovante
 from app.financeiro.financeiro_routes import (
     gerar_obrigacoes_despesas_fixas,
     _criar_obrigacao_despesa_fixa_sem_commit,
+    _calcular_admin_sede_30_legado,
+    _criar_obrigacao_admin_sede_sem_commit,
+    gerar_obrigacao_admin_sede_30,
 )
+from app.financeiro.envios_sede_model import EnvioSede
+from app.configuracoes.configuracoes_model import Configuracao
 from app.financeiro.obrigacoes_model import (
     ObrigacaoFinanceira,
     ObrigacaoEvento,
@@ -66,9 +71,11 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         db.session.query(ObrigacaoEvento).delete()
         db.session.query(PagamentoObrigacao).delete()
         db.session.query(ObrigacaoFinanceira).delete()
+        db.session.query(EnvioSede).delete()
         db.session.query(DespesaFixaConselho).delete()
         db.session.query(Lancamento).delete()
         db.session.query(Projeto).delete()
+        db.session.query(Configuracao).delete()
         db.session.commit()
 
     def tearDown(self):
@@ -148,6 +155,38 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
             else:
                 saldo -= valor
         return saldo.quantize(Decimal("0.01"))
+
+    def _total_saidas_lancamentos(self):
+        total = Decimal("0.00")
+        for lancamento in Lancamento.query.all():
+            if (lancamento.tipo or "").strip().lower() in {"saída", "saida"}:
+                total += Decimal(str(lancamento.valor or 0))
+        return total.quantize(Decimal("0.01"))
+
+    def _criar_entradas_base_admin(self, mes, ano, dizimos=0.0, ofertas=0.0, outras_ofertas=0.0, omn=0.0):
+        entradas = []
+        if dizimos:
+            entradas.append(("DÍZIMO", dizimos, "Dízimos"))
+        if ofertas:
+            entradas.append(("OFERTA", ofertas, "Ofertas Alçadas"))
+        if outras_ofertas:
+            entradas.append(("OUTRAS OFERTAS", outras_ofertas, "Outras Ofertas"))
+        if omn:
+            entradas.append(("OFERTA OMN", omn, "Oferta Missionária"))
+
+        for categoria, valor, descricao in entradas:
+            db.session.add(
+                Lancamento(
+                    data=date(ano, mes, 5),
+                    tipo="Entrada",
+                    categoria=categoria,
+                    descricao=descricao,
+                    valor=float(valor),
+                    conta="Banco",
+                    origem="manual",
+                )
+            )
+        db.session.commit()
 
     def test_caso_a_sem_pagamentos(self):
         obrigacao = self._nova_obrigacao(valor="1000.00")
@@ -759,6 +798,175 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         self.assertTrue(resultado["erros"])
         self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
         self.assertEqual(ObrigacaoEvento.query.count(), 0)
+
+    def test_caso_ae_admin_a_cria_obrigacao_sem_lancamento(self):
+        config = Configuracao.obter_configuracao()
+        config.percentual_conselho = 25.0
+        db.session.commit()
+
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=2500.0, ofertas=1500.0)
+        saldo_antes = self._saldo_lancamentos()
+        lancamentos_antes = Lancamento.query.count()
+
+        resultado = gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        self.assertEqual(resultado["status"], "criada")
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 1)
+        self.assertEqual(ObrigacaoEvento.query.count(), 1)
+        obrigacao = ObrigacaoFinanceira.query.first()
+        self.assertEqual(obrigacao.tipo_obrigacao, "ADMIN_SEDE_30")
+        self.assertEqual(obrigacao.status, "PENDENTE")
+        self.assertEqual(obrigacao.valor_devido, Decimal("1000.00"))
+        self.assertEqual(obrigacao.categoria, "CONTRIB. SEDE")
+        self.assertEqual(Lancamento.query.count(), lancamentos_antes)
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+
+    def test_caso_af_admin_b_reexecucao_mesma_competencia_idempotente(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+
+        primeiro = gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+        segundo = gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        self.assertEqual(primeiro["status"], "criada")
+        self.assertEqual(segundo["status"], "ja_existente")
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 1)
+
+    def test_caso_ag_admin_c_mes_diferente_permite_nova(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+        self._criar_entradas_base_admin(mes=8, ano=2026, dizimos=1200.0, ofertas=1800.0)
+
+        r1 = gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+        r2 = gerar_obrigacao_admin_sede_30(mes=8, ano=2026)
+
+        self.assertEqual(r1["status"], "criada")
+        self.assertEqual(r2["status"], "criada")
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 2)
+
+    def test_caso_ah_admin_d_evento_criacao_um(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+
+        gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        eventos = ObrigacaoEvento.query.all()
+        self.assertEqual(len(eventos), 1)
+        self.assertEqual(eventos[0].evento_tipo, "CRIACAO")
+        self.assertIn('"tipo_obrigacao": "ADMIN_SEDE_30"', eventos[0].payload_json)
+        self.assertIn('"competencia": "07/2026"', eventos[0].payload_json)
+
+    def test_caso_ai_admin_e_sem_evento_duplicado(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+
+        gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+        gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        self.assertEqual(ObrigacaoEvento.query.count(), 1)
+
+    def test_caso_aj_admin_f_g_sem_pagamentos_ou_itens(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+
+        gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        self.assertEqual(PagamentoObrigacao.query.count(), 0)
+        self.assertEqual(PagamentoObrigacaoItem.query.count(), 0)
+
+    def test_caso_ak_admin_h_sem_alterar_envio_sede(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+        envios_antes = EnvioSede.query.count()
+
+        gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        self.assertEqual(EnvioSede.query.count(), envios_antes)
+
+    def test_caso_al_admin_i_j_saldo_e_saidas_inalterados(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1200.0, ofertas=1800.0)
+        db.session.add(
+            Lancamento(
+                data=date(2026, 7, 7),
+                tipo="Saída",
+                categoria="DESP. VARIAVEIS",
+                descricao="Saída manual",
+                valor=500.0,
+                conta="Banco",
+                origem="manual",
+            )
+        )
+        db.session.commit()
+
+        saldo_antes = self._saldo_lancamentos()
+        saidas_antes = self._total_saidas_lancamentos()
+
+        gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        self.assertEqual(self._saldo_lancamentos(), saldo_antes)
+        self.assertEqual(self._total_saidas_lancamentos(), saidas_antes)
+
+    def test_caso_am_admin_k_equivalencia_formula_legado(self):
+        config = Configuracao.obter_configuracao()
+        config.percentual_conselho = 30.0
+        db.session.commit()
+
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0, outras_ofertas=400.0, omn=500.0)
+
+        calculo_legado = _calcular_admin_sede_30_legado(7, 2026, 30.0)
+        resultado = gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+        obrigacao = ObrigacaoFinanceira.query.first()
+
+        valor_30_legado = Decimal(str(calculo_legado["valor_conselho"])).quantize(Decimal("0.01"))
+        valor_obrigacao_nova = obrigacao.valor_devido
+        diferenca = abs(valor_30_legado - valor_obrigacao_nova)
+
+        self.assertEqual(resultado["status"], "criada")
+        self.assertEqual(diferenca, Decimal("0.00"))
+
+    def test_caso_an_admin_l_falha_controlada_rollback_total(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+
+        original_add = db.session.add
+
+        def _add_com_falha_evento(objeto):
+            if isinstance(objeto, ObrigacaoEvento):
+                raise RuntimeError("falha controlada no evento admin")
+            return original_add(objeto)
+
+        with patch.object(db.session, "add", side_effect=_add_com_falha_evento):
+            resultado = gerar_obrigacao_admin_sede_30(mes=7, ano=2026)
+
+        self.assertEqual(resultado["status"], "erro")
+        self.assertEqual(ObrigacaoFinanceira.query.count(), 0)
+        self.assertEqual(ObrigacaoEvento.query.count(), 0)
+
+    def test_caso_ao_admin_m_helper_transacao_externa_persistencia_zero(self):
+        self._criar_entradas_base_admin(mes=7, ano=2026, dizimos=1000.0, ofertas=2000.0)
+        calculo = _calcular_admin_sede_30_legado(7, 2026, 30.0)
+
+        counts_antes = {
+            "obrigacoes": ObrigacaoFinanceira.query.count(),
+            "eventos": ObrigacaoEvento.query.count(),
+            "lancamentos": Lancamento.query.count(),
+            "pagamentos": PagamentoObrigacao.query.count(),
+            "itens": PagamentoObrigacaoItem.query.count(),
+            "envios": EnvioSede.query.count(),
+        }
+
+        primeiro = _criar_obrigacao_admin_sede_sem_commit(7, 2026, 30.0, calculo)
+        segundo = _criar_obrigacao_admin_sede_sem_commit(7, 2026, 30.0, calculo)
+
+        self.assertEqual(primeiro["status"], "criada")
+        self.assertEqual(segundo["status"], "ja_existente")
+
+        db.session.flush()
+        db.session.rollback()
+
+        counts_depois = {
+            "obrigacoes": ObrigacaoFinanceira.query.count(),
+            "eventos": ObrigacaoEvento.query.count(),
+            "lancamentos": Lancamento.query.count(),
+            "pagamentos": PagamentoObrigacao.query.count(),
+            "itens": PagamentoObrigacaoItem.query.count(),
+            "envios": EnvioSede.query.count(),
+        }
+
+        self.assertEqual(counts_antes, counts_depois)
 
     def test_caso_r_startup_nao_cria_tabelas_novas(self):
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
