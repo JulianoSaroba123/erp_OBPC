@@ -28,6 +28,8 @@ from app.financeiro.financeiro_routes import (
     _registrar_pagamento_obrigacoes_sem_commit,
     registrar_pagamento_obrigacao,
     registrar_pagamento_obrigacoes,
+    _registrar_repasse_sede_composto_sem_commit,
+    registrar_repasse_sede_composto,
 )
 from app.financeiro.envios_sede_model import EnvioSede
 from app.configuracoes.configuracoes_model import Configuracao
@@ -1604,6 +1606,247 @@ with app.app_context():
                 os.remove(db_path)
             except OSError:
                 pass
+
+    def test_d23b_pagamento_composto_cria_envio_espelho_sem_sync_legado(self):
+        admin = self._nova_obrigacao(
+            valor="1000.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa = self._nova_obrigacao(
+            valor="300.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=99,
+            categoria="DESP. FIXAS",
+            descricao="Internet - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+
+        with patch("app.financeiro.financeiro_routes._sincronizar_lancamento_repasse_sede") as sync_mock:
+            retorno = _registrar_repasse_sede_composto_sem_commit(
+                alocacoes=[
+                    {"obrigacao_id": admin.id, "valor": "1000.00"},
+                    {"obrigacao_id": despesa.id, "valor": "300.00"},
+                ],
+                competencia_mes_ref=7,
+                competencia_ano_ref=2026,
+                data_pagamento=date(2026, 7, 15),
+                forma_pagamento="PIX",
+                tipo_pagamento="PAGAMENTO_BANCARIO",
+                comprovante="comprovante.pdf",
+                observacao="Repasse composto",
+            )
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(PagamentoObrigacao.query.count(), 1)
+        self.assertEqual(PagamentoObrigacaoItem.query.count(), 2)
+        self.assertEqual(Lancamento.query.count(), 1)
+        self.assertEqual(EnvioSede.query.count(), 1)
+        self.assertEqual(retorno["envio"].valor_total, 1300.0)
+        self.assertEqual(retorno["envio"].valor_administrativo, 1000.0)
+        self.assertEqual(retorno["envio"].valor_despesas_fixas, 300.0)
+        sync_mock.assert_not_called()
+
+    def test_d23b_replay_composto_nao_cria_segundo_envio(self):
+        admin = self._nova_obrigacao(
+            valor="1000.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa = self._nova_obrigacao(
+            valor="200.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=100,
+            categoria="DESP. FIXAS",
+            descricao="Energia - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+
+        primeiro = registrar_repasse_sede_composto(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa.id, "valor": "200.00"},
+            ],
+            competencia_mes_ref=7,
+            competencia_ano_ref=2026,
+            data_pagamento=date(2026, 7, 18),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            observacao="Primeira",
+        )
+        segundo = registrar_repasse_sede_composto(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa.id, "valor": "200.00"},
+            ],
+            competencia_mes_ref=7,
+            competencia_ano_ref=2026,
+            data_pagamento=date(2026, 7, 18),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            observacao="Segunda",
+        )
+
+        self.assertEqual(primeiro["status"], "criado")
+        self.assertEqual(segundo["status"], "ja_existente")
+        self.assertEqual(PagamentoObrigacao.query.count(), 1)
+        self.assertEqual(Lancamento.query.count(), 1)
+        self.assertEqual(EnvioSede.query.count(), 1)
+
+    def test_d23d_envio_espelho_terceiro_seta_relacao_explicita_com_pagamento(self):
+        admin = self._nova_obrigacao(
+            valor="1000.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa = self._nova_obrigacao(
+            valor="300.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=99,
+            categoria="DESP. FIXAS",
+            descricao="Internet - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+
+        retorno = registrar_repasse_sede_composto(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa.id, "valor": "300.00"},
+            ],
+            competencia_mes_ref=7,
+            competencia_ano_ref=2026,
+            data_pagamento=date(2026, 7, 15),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            observacao="Repasse composto",
+        )
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(PagamentoObrigacao.query.count(), 1)
+        self.assertEqual(EnvioSede.query.count(), 1)
+
+        envio = EnvioSede.query.one()
+        pagamento = PagamentoObrigacao.query.one()
+        self.assertIsNotNone(envio.pagamento_obrigacao_id)
+        self.assertEqual(envio.pagamento_obrigacao_id, pagamento.id)
+        self.assertEqual(envio.pagamento_obrigacao.id, pagamento.id)
+        self.assertTrue(envio.is_pagamento_obrigacao_ref())
+
+    def test_d23d_envio_com_relacao_explicita_nao_pode_ser_editado_ou_excluido(self):
+        admin = self._nova_obrigacao(
+            valor="1000.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa = self._nova_obrigacao(
+            valor="300.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=99,
+            categoria="DESP. FIXAS",
+            descricao="Internet - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+
+        retorno = registrar_repasse_sede_composto(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa.id, "valor": "300.00"},
+            ],
+            competencia_mes_ref=7,
+            competencia_ano_ref=2026,
+            data_pagamento=date(2026, 7, 15),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            observacao="Repasse composto",
+        )
+        self.assertEqual(retorno["status"], "criado")
+
+        envio = EnvioSede.query.one()
+        self.assertTrue(envio.is_pagamento_obrigacao_ref())
+
+        with self.assertRaises(ValueError):
+            envio.validar_edicao_ou_exclusao_aceita()
+
+    def test_d23b_total_browser_adulterado_deve_ser_ignorado(self):
+        admin = self._nova_obrigacao(
+            valor="1000.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa = self._nova_obrigacao(
+            valor="300.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=101,
+            categoria="DESP. FIXAS",
+            descricao="Telefone - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+
+        retorno = _registrar_repasse_sede_composto_sem_commit(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa.id, "valor": "300.00"},
+            ],
+            competencia_mes_ref=7,
+            competencia_ano_ref=2026,
+            data_pagamento=date(2026, 7, 19),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            valor_total=9999.0,
+            valor_administrativo=1.0,
+            valor_despesas_fixas=2.0,
+        )
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(retorno["pagamento"].valor_pago, Decimal("1300.00"))
+        self.assertEqual(retorno["envio"].valor_total, 1300.0)
+        self.assertEqual(retorno["envio"].valor_administrativo, 1000.0)
+        self.assertEqual(retorno["envio"].valor_despesas_fixas, 300.0)
 
 
 if __name__ == "__main__":

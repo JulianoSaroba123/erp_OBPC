@@ -20,6 +20,7 @@ class EnvioSede(db.Model):
     competencia_mes = db.Column(db.Integer, nullable=True)
     competencia_ano = db.Column(db.Integer, nullable=True)
     tipo_pagamento = db.Column(db.String(50), nullable=True)
+    pagamento_obrigacao_id = db.Column(db.Integer, db.ForeignKey('pagamentos_obrigacao.id'), nullable=True, unique=True, index=True)
     lancamento_financeiro_id = db.Column(db.Integer, db.ForeignKey('lancamentos.id'), nullable=True, unique=True, index=True)
     comprovante = db.Column(db.String(300), nullable=True)
     observacao = db.Column(db.Text, nullable=True)
@@ -30,6 +31,14 @@ class EnvioSede(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     lancamento_financeiro = db.relationship('Lancamento', foreign_keys=[lancamento_financeiro_id], uselist=False)
+    pagamento_obrigacao = db.relationship('PagamentoObrigacao', back_populates='envio_sede', foreign_keys=[pagamento_obrigacao_id], uselist=False)
+
+    def is_pagamento_obrigacao_ref(self):
+        return self.pagamento_obrigacao_id is not None
+
+    def validar_edicao_ou_exclusao_aceita(self):
+        if self.is_pagamento_obrigacao_ref():
+            raise ValueError('Este pagamento de repasse foi gerado a partir de um pagamento de obrigação e não pode ser editado ou excluído manualmente.')
 
     def to_dict(self):
         competencia_mes = self.competencia_mes if self.competencia_mes is not None else self.competencia_mes_ref
@@ -49,6 +58,7 @@ class EnvioSede(db.Model):
             'competencia_mes_ref': competencia_mes,
             'competencia_ano_ref': competencia_ano,
             'tipo_pagamento': self.tipo_pagamento,
+            'pagamento_obrigacao_id': self.pagamento_obrigacao_id,
             'lancamento_financeiro_id': self.lancamento_financeiro_id,
             'comprovante': self.comprovante,
             'observacao': self.observacao,

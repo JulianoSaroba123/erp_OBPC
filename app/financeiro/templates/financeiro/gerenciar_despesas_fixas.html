@@ -103,7 +103,7 @@
                                     Use <strong>pagamento histórico sem movimentação bancária</strong> para baixar competências antigas sem gerar saída no caixa/banco.
                                 </small>
                             </div>
-                            <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" enctype="multipart/form-data">
+                            <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" enctype="multipart/form-data" id="form_pagamento_composto">
                                 <input type="hidden" name="acao" value="registrar_pagamento_sede">
                                 <div class="row g-2">
                                     <div class="col-md-2">
@@ -121,21 +121,21 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">30% Administrativo</label>
-                                        <input type="number" class="form-control" id="create_valor_administrativo" name="valor_administrativo" step="0.01" min="0" required>
+                                        <input type="number" class="form-control" id="create_valor_administrativo" name="valor_administrativo" step="0.01" min="0" readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Despesas Fixas</label>
-                                        <input type="number" class="form-control" id="create_valor_despesas_fixas" name="valor_despesas_fixas" step="0.01" min="0" required>
+                                        <input type="number" class="form-control" id="create_valor_despesas_fixas" name="valor_despesas_fixas" step="0.01" min="0" readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Valor Total</label>
-                                        <input type="number" class="form-control" id="create_valor_total" name="valor_total" step="0.01" min="0.01" required readonly>
+                                        <input type="number" class="form-control" id="create_valor_total" name="valor_total" step="0.01" min="0.01" readonly>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Forma pagamento</label>
                                         <select class="form-select" name="forma_pagamento" required>
                                             <option value="Dinheiro">Dinheiro</option>
-                                            <option value="PIX">PIX</option>
+                                            <option value="PIX" selected>PIX</option>
                                             <option value="Transferência">Transferência</option>
                                             <option value="Outro">Outro</option>
                                         </select>
@@ -165,9 +165,51 @@
                                         <label class="form-label">Observação</label>
                                         <input type="text" class="form-control" name="observacao" placeholder="Ex: Quitação de saldo acumulado">
                                     </div>
+                                    <div class="col-md-12 mt-3">
+                                        <div class="card border-info">
+                                            <div class="card-header bg-light py-2">
+                                                <strong>Alocações da obrigação</strong>
+                                            </div>
+                                            <div class="card-body p-2">
+                                                {% if obrigacoes_disponiveis %}
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm mb-0">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Tipo</th>
+                                                                    <th>Descrição</th>
+                                                                    <th>Valor devido</th>
+                                                                    <th>Valor pendente</th>
+                                                                    <th>Alocação</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% for obrigacao in obrigacoes_disponiveis %}
+                                                                <tr>
+                                                                    <td>
+                                                                        <span class="badge bg-light text-dark">{{ obrigacao.tipo_obrigacao }}</span>
+                                                                    </td>
+                                                                    <td>{{ obrigacao.descricao }}</td>
+                                                                    <td class="text-end">{{ "R$ %.2f"|format(obrigacao.valor_devido)|replace(".", ",") }}</td>
+                                                                    <td class="text-end">{{ "R$ %.2f"|format(obrigacao.valor_pendente)|replace(".", ",") }}</td>
+                                                                    <td style="min-width: 140px;">
+                                                                        <input type="hidden" name="alocacao_obrigacao_id[]" value="{{ obrigacao.id }}">
+                                                                        <input type="number" class="form-control form-control-sm alocacao-valor" name="alocacao_valor[]" min="0" step="0.01" value="0" data-obrigacao-id="{{ obrigacao.id }}" data-tipo="{{ obrigacao.tipo_obrigacao }}">
+                                                                    </td>
+                                                                </tr>
+                                                                {% endfor %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="alert alert-warning mb-0">Nenhuma obrigação automática foi gerada para a competência selecionada.</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="mt-3 d-flex justify-content-end">
-                                    <button type="submit" class="btn btn-success"><i class="fas fa-save me-1"></i>Registrar Pagamento</button>
+                                    <button type="submit" class="btn btn-success" id="btn_registrar_pagamento_composto" data-processando="false"><i class="fas fa-save me-1"></i>Registrar Pagamento</button>
                                 </div>
                             </form>
                         </div>
@@ -268,6 +310,15 @@
                                     <td>{{ pagamento.observacao or '-' }}</td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm" role="group">
+                                            {% if pagamento.pagamento_obrigacao_id is not none %}
+                                            <span class="badge bg-secondary" title="Pagamento vinculado ao motor de obrigações.">Controlado por obrigação</span>
+                                            <button type="button" class="btn btn-outline-secondary" disabled title="Pagamento vinculado a uma obrigação financeira; edição e exclusão bloqueadas.">
+                                                <i class="fas fa-lock"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary" disabled title="Pagamento vinculado a uma obrigação financeira; edição e exclusão bloqueadas.">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                            {% else %}
                                             <button type="button"
                                                     class="btn btn-outline-primary"
                                                     data-pagamento-id="{{ pagamento.id }}"
@@ -292,6 +343,7 @@
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </form>
+                                            {% endif %}
                                         </div>
                                     </td>
                                 </tr>
@@ -805,7 +857,48 @@ document.getElementById('edit_pagamento_historico_sem_movimentacao')?.addEventLi
     atualizarObrigatoriedadeDataHistorico('edit_');
 });
 
+function recalcularValoresVisuaisAlocacoes() {
+    const valores = document.querySelectorAll('.alocacao-valor');
+    let admin = 0;
+    let fixas = 0;
+    let total = 0;
+
+    valores.forEach(function (campo) {
+        const valor = parseFloat(campo.value || '0') || 0;
+        total += valor;
+        const tipo = campo.dataset.tipo || '';
+        if (tipo === 'ADMIN_SEDE_30') {
+            admin += valor;
+        } else if (tipo === 'DESPESA_FIXA') {
+            fixas += valor;
+        }
+    });
+
+    const campoAdmin = document.getElementById('create_valor_administrativo');
+    const campoFixas = document.getElementById('create_valor_despesas_fixas');
+    const campoTotal = document.getElementById('create_valor_total');
+    if (campoAdmin) campoAdmin.value = admin.toFixed(2);
+    if (campoFixas) campoFixas.value = fixas.toFixed(2);
+    if (campoTotal) campoTotal.value = total.toFixed(2);
+}
+
+document.querySelectorAll('.alocacao-valor').forEach(function (campo) {
+    campo.addEventListener('input', recalcularValoresVisuaisAlocacoes);
+});
+
+document.getElementById('form_pagamento_composto')?.addEventListener('submit', function (event) {
+    const botao = document.getElementById('btn_registrar_pagamento_composto');
+    if (!botao || botao.dataset.processando === 'true') {
+        event.preventDefault();
+        return;
+    }
+    botao.dataset.processando = 'true';
+    botao.disabled = true;
+    botao.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Processando...';
+});
+
 atualizarObrigatoriedadeDataHistorico('create_');
 recalcularTotal('create_');
+recalcularValoresVisuaisAlocacoes();
 </script>
 {% endblock %}

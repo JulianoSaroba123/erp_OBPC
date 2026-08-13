@@ -470,6 +470,195 @@ def _detectar_replay_pagamento_composto(
     return None
 
 
+def _parse_obrigacoes_alocadas_interface(alocacoes_payload):
+    if not alocacoes_payload:
+        raise ValueError("Selecione pelo menos uma obrigação para alocar o pagamento.")
+
+    alocacoes = []
+    vistos = set()
+    for idx, item in enumerate(alocacoes_payload):
+        if not isinstance(item, dict):
+            raise ValueError(f"Alocação inválida na posição {idx}.")
+        obrigacao_id = item.get("obrigacao_id")
+        valor = item.get("valor")
+        if obrigacao_id is None:
+            raise ValueError("Obrigação da alocação não informada.")
+        try:
+            obrigacao_id_int = int(obrigacao_id)
+        except (TypeError, ValueError):
+            raise ValueError(f"Obrigação inválida na alocação {idx}.")
+        if obrigacao_id_int <= 0:
+            raise ValueError(f"Obrigação inválida na alocação {idx}.")
+        valor_decimal = _decimal_pagamento(valor)
+        if valor_decimal <= Decimal("0.00"):
+            raise ValueError(f"Valor da alocação da obrigação {obrigacao_id_int} deve ser maior que zero.")
+        if obrigacao_id_int in vistos:
+            raise ValueError(f"Obrigação duplicada na alocação: {obrigacao_id_int}.")
+        vistos.add(obrigacao_id_int)
+        alocacoes.append({"obrigacao_id": obrigacao_id_int, "valor": valor_decimal})
+
+    return alocacoes
+
+
+def _validar_alocacoes_obrigacoes_compostas(alocacoes, *, competencia_mes_ref, competencia_ano_ref):
+    if not alocacoes:
+        raise ValueError("A alocação do repasse deve conter pelo menos uma obrigação válida.")
+
+    obrigacoes = []
+    for item in alocacoes:
+        obrigacao_id = int(item["obrigacao_id"])
+        obrigacao = db.session.get(ObrigacaoFinanceira, obrigacao_id)
+        if obrigacao is None:
+            raise ValueError(f"Obrigação inexistente para pagamento: {obrigacao_id}.")
+        if obrigacao.tipo_obrigacao not in {"ADMIN_SEDE_30", "DESPESA_FIXA"}:
+            raise ValueError(f"Obrigação {obrigacao_id} não pertence ao tipo permitido para repasse.")
+        if obrigacao.origem_obrigacao != "automatico":
+            raise ValueError(f"Obrigação {obrigacao_id} não é uma obrigação automática do repasse.")
+        if obrigacao.competencia_mes != competencia_mes_ref or obrigacao.competencia_ano != competencia_ano_ref:
+            raise ValueError(f"Obrigação {obrigacao_id} não pertence à competência {competencia_mes_ref:02d}/{competencia_ano_ref}.")
+        obrigacoes.append(obrigacao)
+
+    return obrigacoes
+
+
+def _registrar_repasse_sede_composto_sem_commit(
+    alocacoes,
+    competencia_mes_ref,
+    competencia_ano_ref,
+    data_pagamento,
+    forma_pagamento,
+    tipo_pagamento,
+    comprovante=None,
+    observacao=None,
+    usuario=None,
+    valor_total=None,
+    valor_administrativo=None,
+    valor_despesas_fixas=None,
+):
+    if competencia_mes_ref is None or competencia_ano_ref is None:
+        raise ValueError("Informe mês e ano de competência para registrar o repasse.")
+
+    alocacoes_norm = _parse_obrigacoes_alocadas_interface(alocacoes)
+    _validar_alocacoes_obrigacoes_compostas(alocacoes_norm, competencia_mes_ref=competencia_mes_ref, competencia_ano_ref=competencia_ano_ref)
+
+    validado_tipo = (tipo_pagamento or "").strip().upper()
+    if validado_tipo not in {"PAGAMENTO_BANCARIO", "HISTORICO_SEM_MOVIMENTACAO"}:
+        raise ValueError("Tipo de pagamento inválido para o repasse à sede.")
+
+    if data_pagamento is None:
+        raise ValueError("Data do pagamento é obrigatória para o repasse à sede.")
+
+    retorno = _registrar_pagamento_obrigacoes_sem_commit(
+        alocacoes=alocacoes_norm,
+        data_pagamento=data_pagamento,
+        forma_pagamento=forma_pagamento,
+        tipo_pagamento=validado_tipo,
+        comprovante=comprovante,
+        observacao=observacao,
+        usuario=usuario,
+    )
+
+    if retorno["status"] == "ja_existente":
+        return {
+            "status": "ja_existente",
+            "pagamento": retorno["pagamento"],
+            "obrigacoes": retorno.get("obrigacoes", []),
+            "itens": retorno.get("itens", []),
+            "lancamento": retorno.get("lancamento"),
+            "valor_pago": retorno.get("valor_pago"),
+            "tipo_pagamento": validado_tipo,
+        }
+
+    competencia = f"Competência {int(competencia_mes_ref):02d}/{int(competencia_ano_ref)}"
+    valor_pagamento = float(retorno["valor_pago"] or 0)
+    valor_admin = 0.0
+    valor_fixas = 0.0
+    for item in retorno.get("itens") or []:
+        obrigacao = item.obrigacao_financeira
+        if obrigacao.tipo_obrigacao == "ADMIN_SEDE_30":
+            valor_admin += float(item.valor_alocado or 0)
+        elif obrigacao.tipo_obrigacao == "DESPESA_FIXA":
+            valor_fixas += float(item.valor_alocado or 0)
+
+    envio = EnvioSede(
+        data_pagamento=data_pagamento,
+        valor=valor_pagamento,
+        valor_administrativo=valor_admin,
+        valor_despesas_fixas=valor_fixas,
+        valor_total=valor_pagamento,
+        forma_pagamento=forma_pagamento or "PIX",
+        competencia=competencia,
+        competencia_mes_ref=competencia_mes_ref,
+        competencia_ano_ref=competencia_ano_ref,
+        competencia_mes=competencia_mes_ref,
+        competencia_ano=competencia_ano_ref,
+        tipo_pagamento=validado_tipo,
+        pagamento_obrigacao_id=retorno["pagamento"].id,
+        comprovante=comprovante,
+        observacao=observacao,
+        valor_devido_competencia=valor_pagamento,
+        pagamento_historico_sem_movimentacao=(validado_tipo == "HISTORICO_SEM_MOVIMENTACAO"),
+        data_pagamento_informada=True,
+    )
+    db.session.add(envio)
+    db.session.flush()
+
+    return {
+        "status": "criado",
+        "pagamento": retorno["pagamento"],
+        "obrigacoes": retorno.get("obrigacoes", []),
+        "itens": retorno.get("itens", []),
+        "lancamento": retorno.get("lancamento"),
+        "envio": envio,
+        "valor_pago": retorno.get("valor_pago"),
+        "tipo_pagamento": validado_tipo,
+        "valor_total_operacao": retorno.get("valor_total_operacao"),
+    }
+
+
+def registrar_repasse_sede_composto(
+    alocacoes,
+    competencia_mes_ref,
+    competencia_ano_ref,
+    data_pagamento,
+    forma_pagamento,
+    tipo_pagamento,
+    comprovante=None,
+    observacao=None,
+    usuario=None,
+    valor_total=None,
+    valor_administrativo=None,
+    valor_despesas_fixas=None,
+):
+    resultado = {"status": "erro", "erro": None}
+    try:
+        retorno = _registrar_repasse_sede_composto_sem_commit(
+            alocacoes=alocacoes,
+            competencia_mes_ref=competencia_mes_ref,
+            competencia_ano_ref=competencia_ano_ref,
+            data_pagamento=data_pagamento,
+            forma_pagamento=forma_pagamento,
+            tipo_pagamento=tipo_pagamento,
+            comprovante=comprovante,
+            observacao=observacao,
+            usuario=usuario,
+            valor_total=valor_total,
+            valor_administrativo=valor_administrativo,
+            valor_despesas_fixas=valor_despesas_fixas,
+        )
+        if retorno["status"] == "ja_existente":
+            resultado.update(retorno)
+            return resultado
+        db.session.commit()
+        resultado.update(retorno)
+        return resultado
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f"Erro ao registrar repasse à sede composto: {e}")
+        resultado["erro"] = str(e)
+        return resultado
+
+
 def _registrar_pagamento_obrigacoes_sem_commit(
     alocacoes,
     data_pagamento,
@@ -4941,31 +5130,11 @@ def gerenciar_despesas_fixas():
 
             elif acao == 'registrar_pagamento_sede':
                 data_pagamento_raw = request.form.get('data_pagamento', '').strip()
-                valor_administrativo = float(request.form.get('valor_administrativo', 0) or 0)
-                valor_despesas_fixas = float(request.form.get('valor_despesas_fixas', 0) or 0)
-                valor_total = float(request.form.get('valor_total', 0) or 0)
                 forma_pagamento = request.form.get('forma_pagamento', 'PIX').strip() or 'PIX'
                 competencia = request.form.get('competencia', '').strip() or f'Competência {datetime.now().month:02d}/{datetime.now().year}'
                 observacao = request.form.get('observacao', '').strip() or None
                 pagamento_historico_sem_movimentacao = bool(request.form.get('pagamento_historico_sem_movimentacao'))
-
-                if not data_pagamento_raw and not pagamento_historico_sem_movimentacao:
-                    flash('Informe a data do pagamento do repasse à sede.', 'danger')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-
-                if valor_administrativo < 0 or valor_despesas_fixas < 0:
-                    flash('Valores de administrativo e despesas fixas não podem ser negativos.', 'danger')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-
-                soma_componentes = round(valor_administrativo + valor_despesas_fixas, 2)
-                valor_total = round(valor_total, 2)
-                if valor_total <= 0:
-                    flash('O valor do pagamento deve ser maior que zero.', 'danger')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-                if abs(valor_total - soma_componentes) > 0.009:
-                    flash('O valor total deve ser igual à soma de administrativo + despesas fixas.', 'danger')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-
+                tipo_pagamento = 'HISTORICO_SEM_MOVIMENTACAO' if pagamento_historico_sem_movimentacao else 'PAGAMENTO_BANCARIO'
                 competencia_mes_ref = request.form.get('competencia_mes_ref', type=int)
                 competencia_ano_ref = request.form.get('competencia_ano_ref', type=int)
 
@@ -4973,17 +5142,9 @@ def gerenciar_despesas_fixas():
                     flash('Informe mês e ano de competência para registrar a baixa.', 'danger')
                     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
-                valido, resultado_limites = _validar_limites_repasse_sede(
-                    competencia_mes_ref,
-                    competencia_ano_ref,
-                    valor_administrativo,
-                    valor_despesas_fixas,
-                )
-                if not valido:
-                    flash(resultado_limites, 'danger')
+                if not data_pagamento_raw and not pagamento_historico_sem_movimentacao:
+                    flash('Informe a data do pagamento do repasse à sede.', 'danger')
                     return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
-
-                data_pagamento_informada = True
 
                 if data_pagamento_raw:
                     try:
@@ -4992,46 +5153,74 @@ def gerenciar_despesas_fixas():
                         flash('Data de pagamento inválida.', 'danger')
                         return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
                 else:
-                    # Para baixa histórica sem movimentação bancária, preserva competência sem gerar efeito em caixa/banco.
                     data_pagamento = date(competencia_ano_ref, competencia_mes_ref, 1)
-                    data_pagamento_informada = False
+
+                ids = request.form.getlist('alocacao_obrigacao_id[]')
+                valores = request.form.getlist('alocacao_valor[]')
+                if not ids and request.form.get('alocacao_obrigacao_id') is not None:
+                    ids = [request.form.get('alocacao_obrigacao_id')]
+                if not valores and request.form.get('alocacao_valor') is not None:
+                    valores = [request.form.get('alocacao_valor')]
+
+                if len(ids) != len(valores):
+                    flash('A alocação do pagamento deve informar cada obrigação com seu valor correspondente.', 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
+                alocacoes = []
+                for index, obrigacao_id in enumerate(ids):
+                    try:
+                        valor = float((valores[index] or '0').replace(',', '.'))
+                    except (TypeError, ValueError):
+                        flash(f'Valor inválido para a alocação da obrigação {obrigacao_id}.', 'danger')
+                        return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                    if obrigacao_id is None or str(obrigacao_id).strip() == '':
+                        flash('Obrigação da alocação não informada.', 'danger')
+                        return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                    alocacoes.append({"obrigacao_id": obrigacao_id, "valor": valor})
 
                 comprovante = None
                 file = request.files.get('comprovante_sede')
                 if file and file.filename:
                     comprovante = processar_upload_comprovante(file)
 
-                pagamento = EnvioSede(
-                    data_pagamento=data_pagamento,
-                    valor=valor_total,
-                    valor_administrativo=valor_administrativo,
-                    valor_despesas_fixas=valor_despesas_fixas,
-                    valor_total=valor_total,
-                    forma_pagamento=forma_pagamento,
-                    competencia=competencia,
+                resultado = registrar_repasse_sede_composto(
+                    alocacoes=alocacoes,
                     competencia_mes_ref=competencia_mes_ref,
                     competencia_ano_ref=competencia_ano_ref,
-                    competencia_mes=competencia_mes_ref,
-                    competencia_ano=competencia_ano_ref,
-                    tipo_pagamento=_tipo_pagamento_sede(pagamento_historico_sem_movimentacao),
+                    data_pagamento=data_pagamento,
+                    forma_pagamento=forma_pagamento,
+                    tipo_pagamento=tipo_pagamento,
                     comprovante=comprovante,
                     observacao=observacao,
-                    valor_devido_competencia=valor_total,
-                    pagamento_historico_sem_movimentacao=pagamento_historico_sem_movimentacao,
-                    data_pagamento_informada=data_pagamento_informada,
+                    usuario=getattr(current_user, 'nome', None) or getattr(current_user, 'username', None),
+                    valor_total=None,
+                    valor_administrativo=None,
+                    valor_despesas_fixas=None,
                 )
-                db.session.add(pagamento)
-                db.session.flush()
-                _sincronizar_lancamento_repasse_sede(pagamento)
-                db.session.commit()
+
+                if resultado.get('status') == 'ja_existente':
+                    flash('Este pagamento composto já foi registrado para a mesma alocação e competência.', 'info')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                if resultado.get('status') == 'erro' or resultado.get('erro'):
+                    flash(f"Erro ao registrar pagamento composto: {resultado.get('erro') or 'falha ao processar o repasse.'}", 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
                 if pagamento_historico_sem_movimentacao:
                     flash('Baixa histórica registrada com sucesso (sem movimentação no caixa/banco).', 'success')
                 else:
                     flash('Pagamento de repasse à sede registrado com sucesso!', 'success')
 
+                return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
             elif acao == 'editar_pagamento_sede':
                 pagamento_id = request.form.get('pagamento_id', type=int)
                 pagamento = EnvioSede.query.get_or_404(pagamento_id)
+
+                try:
+                    pagamento.validar_edicao_ou_exclusao_aceita()
+                except ValueError as exc:
+                    flash(str(exc), 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
 
                 data_pagamento_raw = request.form.get('data_pagamento', '').strip()
                 valor_administrativo = float(request.form.get('valor_administrativo', 0) or 0)
@@ -5120,6 +5309,13 @@ def gerenciar_despesas_fixas():
             elif acao == 'excluir_pagamento_sede':
                 pagamento_id = request.form.get('pagamento_id', type=int)
                 pagamento = EnvioSede.query.get_or_404(pagamento_id)
+
+                try:
+                    pagamento.validar_edicao_ou_exclusao_aceita()
+                except ValueError as exc:
+                    flash(str(exc), 'danger')
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+
                 if pagamento.lancamento_financeiro_id:
                     lancamento = Lancamento.query.get(pagamento.lancamento_financeiro_id)
                     if lancamento:
@@ -5196,6 +5392,17 @@ def gerenciar_despesas_fixas():
         ).order_by(Lancamento.categoria).all()
         categorias_saida = [c[0] for c in categorias_saida if c[0] and c[0].strip()]
         
+        obrigacoes_disponiveis = db.session.query(ObrigacaoFinanceira).filter(
+            ObrigacaoFinanceira.competencia_mes == mes_ref,
+            ObrigacaoFinanceira.competencia_ano == ano_ref,
+            ObrigacaoFinanceira.origem_obrigacao == 'automatico',
+            ObrigacaoFinanceira.tipo_obrigacao.in_(['ADMIN_SEDE_30', 'DESPESA_FIXA']),
+            ObrigacaoFinanceira.status != 'CANCELADA',
+        ).order_by(
+            ObrigacaoFinanceira.tipo_obrigacao.asc(),
+            ObrigacaoFinanceira.id.asc(),
+        ).all()
+
         return render_template('financeiro/gerenciar_despesas_fixas.html',
                              despesas_todas=despesas_todas,
                              despesas_ativas=despesas_ativas,
@@ -5208,7 +5415,8 @@ def gerenciar_despesas_fixas():
                              observacao_repasse_salva=observacao_repasse_salva,
                              mes_ref=mes_ref,
                              ano_ref=ano_ref,
-                             now=hoje)
+                             now=hoje,
+                             obrigacoes_disponiveis=obrigacoes_disponiveis)
     
     except Exception as e:
         db.session.rollback()

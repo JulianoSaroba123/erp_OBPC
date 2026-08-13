@@ -273,6 +273,13 @@ class PagamentoObrigacao(db.Model):
     atualizado_por = db.Column(db.String(100), nullable=True)
 
     lancamento_financeiro = db.relationship("Lancamento", foreign_keys=[lancamento_financeiro_id], uselist=False)
+    envio_sede = db.relationship(
+        "EnvioSede",
+        back_populates="pagamento_obrigacao",
+        uselist=False,
+        foreign_keys="[EnvioSede.pagamento_obrigacao_id]",
+        cascade="save-update, merge",
+    )
     itens = db.relationship(
         "PagamentoObrigacaoItem",
         back_populates="pagamento_obrigacao",
