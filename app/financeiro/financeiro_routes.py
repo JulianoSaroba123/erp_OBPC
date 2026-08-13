@@ -410,9 +410,68 @@ def _detectar_replay_pagamento_obrigacao(
     return query.order_by(PagamentoObrigacao.id.asc()).first()
 
 
-def _registrar_pagamento_obrigacao_sem_commit(
-    obrigacao_id: int,
-    valor_pago,
+def _normalizar_alocacoes_pagamento_composto(alocacoes):
+    if not alocacoes:
+        raise ValueError("alocacoes não pode estar vazia")
+
+    consolidado = {}
+    for alloc in alocacoes:
+        if not isinstance(alloc, dict):
+            raise ValueError("cada alocação deve ser um dicionário")
+
+        obrigacao_id = alloc.get("obrigacao_id")
+        if obrigacao_id is None:
+            raise ValueError("obrigacao_id é obrigatório em cada alocação")
+        try:
+            obrigacao_id = int(obrigacao_id)
+        except (TypeError, ValueError):
+            raise ValueError("obrigacao_id inválido")
+        if obrigacao_id <= 0:
+            raise ValueError("obrigacao_id deve ser positivo")
+
+        valor = _decimal_pagamento(alloc.get("valor"))
+        if valor <= Decimal("0.00"):
+            raise ValueError("valor da alocação deve ser maior que zero")
+
+        consolidado[obrigacao_id] = consolidado.get(obrigacao_id, Decimal("0.00")) + valor
+
+    itens = [{"obrigacao_id": obrigacao_id, "valor": valor} for obrigacao_id, valor in sorted(consolidado.items())]
+    valor_total = sum((item["valor"] for item in itens), Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return itens, valor_total
+
+
+def _detectar_replay_pagamento_composto(
+    data_pagamento,
+    valor_total: Decimal,
+    tipo_pagamento: str,
+    forma_pagamento: str | None,
+    alocacoes,
+):
+    forma = _normalizar_texto_identidade_pagamento(forma_pagamento)
+    chave = tuple((int(item["obrigacao_id"]), _decimal_pagamento(item["valor"])) for item in alocacoes)
+
+    for pagamento in PagamentoObrigacao.query.order_by(PagamentoObrigacao.id.asc()).all():
+        if pagamento.data_pagamento != data_pagamento:
+            continue
+        if pagamento.valor_pago != valor_total:
+            continue
+        if pagamento.tipo_pagamento != tipo_pagamento:
+            continue
+        if pagamento.forma_pagamento != forma:
+            continue
+
+        itens = sorted(
+            (item.obrigacao_financeira_id, _decimal_pagamento(item.valor_alocado))
+            for item in (pagamento.itens or [])
+        )
+        if tuple(itens) == chave:
+            return pagamento
+
+    return None
+
+
+def _registrar_pagamento_obrigacoes_sem_commit(
+    alocacoes,
     data_pagamento,
     forma_pagamento: str | None,
     tipo_pagamento: str,
@@ -421,16 +480,7 @@ def _registrar_pagamento_obrigacao_sem_commit(
     usuario: str | None = None,
     forcar_erro_etapa: str | None = None,
 ):
-    obrigacao = _carregar_obrigacao_para_pagamento(obrigacao_id)
-    if obrigacao is None:
-        raise ValueError("obrigacao_financeira não encontrada")
-
-    if obrigacao.status in {"CANCELADA", "BAIXADA_HISTORICA"}:
-        raise ValueError("obrigacao_financeira não está ativa para pagamento")
-
-    valor = _decimal_pagamento(valor_pago)
-    if valor <= Decimal("0.00"):
-        raise ValueError("valor_pago deve ser maior que zero")
+    alocacoes_norm, valor_total = _normalizar_alocacoes_pagamento_composto(alocacoes)
 
     if data_pagamento is None:
         raise ValueError("data_pagamento é obrigatória")
@@ -443,33 +493,58 @@ def _registrar_pagamento_obrigacao_sem_commit(
     obs = (observacao or "").strip() or None
     comp = (comprovante or "").strip() or None
 
-    obrigacao.recalcular_em_sessao(session=db.session, flush=True)
-    pendente_antes = _decimal_pagamento(obrigacao.valor_pendente)
+    ids = sorted({int(item["obrigacao_id"]) for item in alocacoes_norm})
+    query = db.session.query(ObrigacaoFinanceira).filter(ObrigacaoFinanceira.id.in_(ids))
+    if hasattr(query, "with_for_update"):
+        query = query.with_for_update()
 
-    replay = _detectar_replay_pagamento_obrigacao(
-        obrigacao_id=obrigacao.id,
+    if hasattr(query, "all"):
+        obrigacoes = query.all()
+    else:
+        obrigacoes = [
+            db.session.get(ObrigacaoFinanceira, obrigacao_id)
+            for obrigacao_id in ids
+            if db.session.get(ObrigacaoFinanceira, obrigacao_id) is not None
+        ]
+
+    if len(obrigacoes) != len(ids):
+        faltantes = sorted(set(ids) - {obrigacao.id for obrigacao in obrigacoes})
+        raise ValueError(f"obrigacao_financeira não encontrada: {faltantes}")
+
+    lookup = {obrigacao.id: obrigacao for obrigacao in obrigacoes}
+
+    replay = _detectar_replay_pagamento_composto(
         data_pagamento=data_pagamento,
-        valor_pago=valor,
+        valor_total=valor_total,
         tipo_pagamento=tipo,
         forma_pagamento=forma,
+        alocacoes=alocacoes_norm,
     )
     if replay is not None:
         return {
             "status": "ja_existente",
-            "obrigacao": obrigacao,
             "pagamento": replay,
-            "item": None,
+            "obrigacoes": [lookup[item.obrigacao_financeira_id] for item in (replay.itens or [])],
+            "itens": list(replay.itens or []),
             "lancamento": replay.lancamento_financeiro,
-            "valor_pago": valor,
+            "valor_pago": valor_total,
             "tipo_pagamento": tipo,
         }
 
-    if valor > (pendente_antes + Decimal("0.01")):
-        raise ValueError("valor_pago excede saldo pendente da obrigação")
+    for obrigacao in obrigacoes:
+        if obrigacao.status in {"CANCELADA", "BAIXADA_HISTORICA"}:
+            raise ValueError(f"obrigacao_financeira {obrigacao.id} não está ativa para pagamento")
+        obrigacao.recalcular_em_sessao(session=db.session, flush=True)
+
+    alocacoes_por_id = {int(item["obrigacao_id"]): _decimal_pagamento(item["valor"]) for item in alocacoes_norm}
+    for obrigacao_id, valor_alocado in alocacoes_por_id.items():
+        obrigacao = lookup[obrigacao_id]
+        if valor_alocado > (_decimal_pagamento(obrigacao.valor_pendente) + Decimal("0.01")):
+            raise ValueError(f"valor_alocado excede saldo pendente da obrigação {obrigacao_id}")
 
     pagamento = PagamentoObrigacao(
         data_pagamento=data_pagamento,
-        valor_pago=valor,
+        valor_pago=valor_total,
         forma_pagamento=forma,
         tipo_pagamento=tipo,
         comprovante=comp,
@@ -484,23 +559,33 @@ def _registrar_pagamento_obrigacao_sem_commit(
     if forcar_erro_etapa == "apos_pagamento":
         raise RuntimeError("falha_forcada_apos_pagamento")
 
-    item = pagamento.adicionar_item(obrigacao, valor)
-    pagamento.validar_limite_alocacao()
+    itens = []
+    for item in alocacoes_norm:
+        obrigacao = lookup[int(item["obrigacao_id"])]
+        item_db = PagamentoObrigacaoItem(
+            pagamento_obrigacao=pagamento,
+            obrigacao_financeira=obrigacao,
+            valor_alocado=_decimal_pagamento(item["valor"]),
+        )
+        db.session.add(item_db)
+        itens.append(item_db)
+    db.session.flush()
 
     if forcar_erro_etapa == "apos_item":
         raise RuntimeError("falha_forcada_apos_item")
 
     lancamento = None
     if tipo == "PAGAMENTO_BANCARIO":
-        categoria = (obrigacao.categoria or "").strip() or "DESP. FIXAS"
+        categoria = (obrigacoes[0].categoria or "").strip() or "DESP. FIXAS"
+        descricao = f"Pagamento composto de {len(alocacoes_norm)} obrigação(ões)"
         lancamento = Lancamento(
             data=data_pagamento,
             tipo="Saída",
             categoria=categoria,
-            descricao=_descricao_lancamento_pagamento_obrigacao(obrigacao),
-            valor=float(valor),
+            descricao=descricao,
+            valor=float(valor_total),
             conta=_mapear_conta_repasse_sede(forma),
-            observacoes=_observacao_lancamento_pagamento_obrigacao(obrigacao, obs),
+            observacoes=(obs or "Pagamento composto de obrigações")[:255],
             comprovante=comp,
             origem="manual",
         )
@@ -511,41 +596,129 @@ def _registrar_pagamento_obrigacao_sem_commit(
     if forcar_erro_etapa == "apos_lancamento":
         raise RuntimeError("falha_forcada_apos_lancamento")
 
-    obrigacao.recalcular_em_sessao(session=db.session, flush=True)
+    for obrigacao in obrigacoes:
+        obrigacao.recalcular_em_sessao(session=db.session, flush=True)
 
     if forcar_erro_etapa == "apos_status":
         raise RuntimeError("falha_forcada_apos_status")
 
-    evento = ObrigacaoEvento(
-        obrigacao_financeira_id=obrigacao.id,
-        evento_tipo="PAGAMENTO",
-        payload_json=json.dumps(
-            {
-                "pagamento_obrigacao_id": pagamento.id,
-                "valor_pago": str(valor),
-                "tipo_pagamento": tipo,
-                "lancamento_financeiro_id": pagamento.lancamento_financeiro_id,
-                "status_obrigacao_pos_pagamento": obrigacao.status,
-            },
-            ensure_ascii=False,
-        ),
-        usuario=usuario,
-    )
-    evento.validar()
-    db.session.add(evento)
+    for obrigacao in obrigacoes:
+        valor_alocado = alocacoes_por_id.get(obrigacao.id, Decimal("0.00"))
+        evento = ObrigacaoEvento(
+            obrigacao_financeira_id=obrigacao.id,
+            evento_tipo="PAGAMENTO",
+            payload_json=json.dumps(
+                {
+                    "pagamento_id": pagamento.id,
+                    "valor_alocado": str(valor_alocado),
+                    "valor_total_operacao": str(valor_total),
+                    "tipo_pagamento": tipo,
+                    "lancamento_financeiro_id": pagamento.lancamento_financeiro_id,
+                },
+                ensure_ascii=False,
+            ),
+            usuario=usuario,
+        )
+        evento.validar()
+        db.session.add(evento)
     db.session.flush()
 
     return {
         "status": "criado",
+        "pagamento": pagamento,
+        "obrigacoes": obrigacoes,
+        "itens": itens,
+        "lancamento": lancamento,
+        "valor_pago": valor_total,
+        "tipo_pagamento": tipo,
+        "valor_total_operacao": valor_total,
+    }
+
+
+def _registrar_pagamento_obrigacao_sem_commit(
+    obrigacao_id: int,
+    valor_pago,
+    data_pagamento,
+    forma_pagamento: str | None,
+    tipo_pagamento: str,
+    comprovante: str | None = None,
+    observacao: str | None = None,
+    usuario: str | None = None,
+    forcar_erro_etapa: str | None = None,
+):
+    retorno = _registrar_pagamento_obrigacoes_sem_commit(
+        alocacoes=[{"obrigacao_id": obrigacao_id, "valor": valor_pago}],
+        data_pagamento=data_pagamento,
+        forma_pagamento=forma_pagamento,
+        tipo_pagamento=tipo_pagamento,
+        comprovante=comprovante,
+        observacao=observacao,
+        usuario=usuario,
+        forcar_erro_etapa=forcar_erro_etapa,
+    )
+
+    if retorno["status"] == "ja_existente":
+        pagamento = retorno["pagamento"]
+        return {
+            "status": "ja_existente",
+            "obrigacao": pagamento.itens[0].obrigacao_financeira if pagamento.itens else None,
+            "pagamento": pagamento,
+            "item": None,
+            "lancamento": pagamento.lancamento_financeiro,
+            "valor_pago": retorno["valor_pago"],
+            "tipo_pagamento": retorno["tipo_pagamento"],
+        }
+
+    pagamento = retorno["pagamento"]
+    obrigacao = retorno["obrigacoes"][0]
+    item = retorno["itens"][0] if retorno.get("itens") else None
+    retorno_compat = {
+        "status": "criado",
         "obrigacao": obrigacao,
         "pagamento": pagamento,
         "item": item,
-        "lancamento": lancamento,
-        "valor_pago": valor,
-        "tipo_pagamento": tipo,
+        "lancamento": retorno["lancamento"],
+        "valor_pago": retorno["valor_pago"],
+        "tipo_pagamento": retorno["tipo_pagamento"],
         "valor_pendente_pos": _decimal_pagamento(obrigacao.valor_pendente),
         "status_obrigacao_pos": obrigacao.status,
     }
+    return retorno_compat
+
+
+def registrar_pagamento_obrigacoes(
+    alocacoes,
+    data_pagamento,
+    forma_pagamento: str | None,
+    tipo_pagamento: str,
+    comprovante: str | None = None,
+    observacao: str | None = None,
+    usuario: str | None = None,
+    forcar_erro_etapa: str | None = None,
+):
+    resultado = {"status": "erro", "erro": None}
+    try:
+        retorno = _registrar_pagamento_obrigacoes_sem_commit(
+            alocacoes=alocacoes,
+            data_pagamento=data_pagamento,
+            forma_pagamento=forma_pagamento,
+            tipo_pagamento=tipo_pagamento,
+            comprovante=comprovante,
+            observacao=observacao,
+            usuario=usuario,
+            forcar_erro_etapa=forcar_erro_etapa,
+        )
+        if retorno["status"] == "ja_existente":
+            resultado.update(retorno)
+            return resultado
+        db.session.commit()
+        resultado.update(retorno)
+        return resultado
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception(f"Erro ao registrar pagamentos em lote: {e}")
+        resultado["erro"] = str(e)
+        return resultado
 
 
 def registrar_pagamento_obrigacao(

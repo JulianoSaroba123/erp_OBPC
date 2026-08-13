@@ -25,7 +25,9 @@ from app.financeiro.financeiro_routes import (
     _criar_obrigacao_admin_sede_sem_commit,
     gerar_obrigacao_admin_sede_30,
     _registrar_pagamento_obrigacao_sem_commit,
+    _registrar_pagamento_obrigacoes_sem_commit,
     registrar_pagamento_obrigacao,
+    registrar_pagamento_obrigacoes,
 )
 from app.financeiro.envios_sede_model import EnvioSede
 from app.configuracoes.configuracoes_model import Configuracao
@@ -1395,6 +1397,123 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         envios_antes = EnvioSede.query.count()
         registrar_pagamento_obrigacao(obrigacao.id, "250.00", date(2026, 7, 10), "PIX", "PAGAMENTO_BANCARIO")
         self.assertEqual(EnvioSede.query.count(), envios_antes)
+
+    def test_d22_pagamento_composto_admin_mais_despesas(self):
+        admin = self._nova_obrigacao(
+            valor="1000.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa_a = self._nova_obrigacao(
+            valor="150.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=10,
+            categoria="DESP. FIXAS",
+            descricao="Internet - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa_b = self._nova_obrigacao(
+            valor="200.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=11,
+            categoria="DESP. FIXAS",
+            descricao="Contador - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+
+        retorno = _registrar_pagamento_obrigacoes_sem_commit(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa_a.id, "valor": "150.00"},
+                {"obrigacao_id": despesa_b.id, "valor": "200.00"},
+            ],
+            data_pagamento=date(2026, 7, 12),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+        )
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(PagamentoObrigacao.query.count(), 1)
+        self.assertEqual(PagamentoObrigacaoItem.query.count(), 3)
+        self.assertEqual(Lancamento.query.count(), 1)
+        self.assertEqual(retorno["pagamento"].valor_pago, Decimal("1350.00"))
+        self.assertEqual(db.session.get(ObrigacaoFinanceira, admin.id).status, "PAGO")
+
+    def test_d22_wrapper_unitario_continua_funcionando(self):
+        obrigacao = self._nova_obrigacao(valor="500.00")
+
+        retorno = registrar_pagamento_obrigacao(
+            obrigacao_id=obrigacao.id,
+            valor_pago="250.00",
+            data_pagamento=date(2026, 7, 15),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+        )
+
+        self.assertEqual(retorno["status"], "criado")
+        self.assertEqual(PagamentoObrigacao.query.count(), 1)
+        self.assertEqual(PagamentoObrigacaoItem.query.count(), 1)
+        self.assertEqual(Lancamento.query.count(), 1)
+
+    def test_d22_replay_composto_identico_ja_existente(self):
+        admin = self._nova_obrigacao(
+            valor="1000.00",
+            tipo_obrigacao="ADMIN_SEDE_30",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="FECHAMENTO_MENSAL",
+            referencia_origem_id=202607,
+            categoria="CONTRIB. SEDE",
+            descricao="30% Administrativo - Conselho Sede 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+        despesa = self._nova_obrigacao(
+            valor="100.00",
+            tipo_obrigacao="DESPESA_FIXA",
+            origem_obrigacao="automatico",
+            referencia_origem_tipo="DESPESA_FIXA_CONSELHO",
+            referencia_origem_id=12,
+            categoria="DESP. FIXAS",
+            descricao="Energia - Despesa Fixa 07/2026",
+            competencia_mes=7,
+            competencia_ano=2026,
+        )
+
+        primeiro = _registrar_pagamento_obrigacoes_sem_commit(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa.id, "valor": "100.00"},
+            ],
+            data_pagamento=date(2026, 7, 13),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            observacao="Primeira",
+        )
+        segundo = _registrar_pagamento_obrigacoes_sem_commit(
+            alocacoes=[
+                {"obrigacao_id": admin.id, "valor": "1000.00"},
+                {"obrigacao_id": despesa.id, "valor": "100.00"},
+            ],
+            data_pagamento=date(2026, 7, 13),
+            forma_pagamento="PIX",
+            tipo_pagamento="PAGAMENTO_BANCARIO",
+            observacao="Segunda",
+        )
+
+        self.assertEqual(primeiro["status"], "criado")
+        self.assertEqual(segundo["status"], "ja_existente")
 
     def test_caso_r_startup_nao_cria_tabelas_novas(self):
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
