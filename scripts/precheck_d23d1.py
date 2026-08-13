@@ -69,53 +69,50 @@ def _contagens_basicas() -> dict[str, int]:
     }
 
 
+def _bloquear(motivo: str) -> int:
+    print("RESULTADO_PRECHECK_D23D1: BLOQUEADO")
+    print(f"ABORTAR_MOTIVO: {motivo}")
+    print("=== FIM PRECHECK D.2.3D.1 ===")
+    return 1
+
+
 def main() -> int:
     print("=== PRECHECK D.2.3D.1 ===")
+    try:
+        app = novo_app()
+        with app.app_context():
+            resultado = "APROVADO"
 
-    app = novo_app()
-    with app.app_context():
-        resultado = "APROVADO"
+            inspector = inspect(db.engine)
+            dialeto = (db.engine.dialect.name or "").lower()
+            postgresql_ok = dialeto == "postgresql"
 
-        before_counts = _contagens_basicas()
+            print(f"DIALETO: {dialeto}")
+            print(f"POSTGRESQL_OK: {'SIM' if postgresql_ok else 'NAO'}")
 
-        inspector = inspect(db.engine)
-        dialeto = (db.engine.dialect.name or "").lower()
-        postgresql_ok = dialeto == "postgresql"
+            if not postgresql_ok:
+                return _bloquear("dialeto nao e postgresql")
 
-        print(f"DIALETO: {dialeto}")
-        print(f"POSTGRESQL_OK: {'SIM' if postgresql_ok else 'NAO'}")
+            tabelas = set(inspector.get_table_names())
+            tabela_envios = "envios_sede" in tabelas
+            tabela_pagamentos = "pagamentos_obrigacao" in tabelas
 
-        if not postgresql_ok:
-            print("RESULTADO_PRECHECK_D23D1: BLOQUEADO")
-            print("ABORTAR_MOTIVO: dialeto nao e postgresql")
-            print("=== FIM PRECHECK D.2.3D.1 ===")
-            return 1
+            print(f"TABELA_ENVIOS_SEDE: {'SIM' if tabela_envios else 'NAO'}")
+            print(f"TABELA_PAGAMENTOS_OBRIGACAO: {'SIM' if tabela_pagamentos else 'NAO'}")
 
-        tabelas = set(inspector.get_table_names())
-        tabela_envios = "envios_sede" in tabelas
-        tabela_pagamentos = "pagamentos_obrigacao" in tabelas
+            if not tabela_envios:
+                return _bloquear("schema desatualizado: tabela envios_sede ausente")
+            if not tabela_pagamentos:
+                return _bloquear("schema desatualizado: tabela pagamentos_obrigacao ausente")
 
-        print(f"TABELA_ENVIOS_SEDE: {'SIM' if tabela_envios else 'NAO'}")
-        print(f"TABELA_PAGAMENTOS_OBRIGACAO: {'SIM' if tabela_pagamentos else 'NAO'}")
-
-        coluna_existe = False
-        coluna_nullable = False
-        tipo_coluna_compativel = False
-        fk_real = False
-        unique_real = False
-        fk_tabela_destino = "-"
-        fk_coluna_destino = "-"
-
-        if tabela_envios and tabela_pagamentos:
             colunas_envios = {c["name"]: c for c in inspector.get_columns("envios_sede")}
             colunas_pagamentos = {c["name"]: c for c in inspector.get_columns("pagamentos_obrigacao")}
 
             coluna = colunas_envios.get("pagamento_obrigacao_id")
             coluna_ref = colunas_pagamentos.get("id")
-
             coluna_existe = coluna is not None
-            if coluna_existe:
-                coluna_nullable = bool(coluna.get("nullable", False))
+            coluna_nullable = bool(coluna.get("nullable", False)) if coluna_existe else False
+            tipo_coluna_compativel = False
 
             if coluna_existe and coluna_ref is not None:
                 tipo_coluna_compativel = _tipo_compativel(
@@ -123,8 +120,20 @@ def main() -> int:
                     _normalizar_tipo(coluna_ref.get("type")),
                 )
 
+            print(f"COLUNA_PAGAMENTO_OBRIGACAO_ID: {'SIM' if coluna_existe else 'NAO'}")
+            print(f"COLUNA_NULLABLE: {'SIM' if coluna_nullable else 'NAO'}")
+            print(f"TIPO_COLUNA_COMPATIVEL: {'SIM' if tipo_coluna_compativel else 'NAO'}")
+
+            if not coluna_existe:
+                return _bloquear("schema desatualizado: pagamento_obrigacao_id ausente")
+
+            if coluna_ref is None:
+                return _bloquear("schema desatualizado: coluna id ausente em pagamentos_obrigacao")
+
             fk = _buscar_fk_envios_para_pagamentos(inspector)
             fk_real = fk is not None
+            fk_tabela_destino = "-"
+            fk_coluna_destino = "-"
             if fk is not None:
                 fk_tabela_destino = str(fk.get("referred_table") or "-")
                 cols_ref = fk.get("referred_columns") or []
@@ -132,77 +141,76 @@ def main() -> int:
 
             unique_real = _tem_unique_coluna(inspector)
 
-        print(f"COLUNA_PAGAMENTO_OBRIGACAO_ID: {'SIM' if coluna_existe else 'NAO'}")
-        print(f"COLUNA_NULLABLE: {'SIM' if coluna_nullable else 'NAO'}")
-        print(f"TIPO_COLUNA_COMPATIVEL: {'SIM' if tipo_coluna_compativel else 'NAO'}")
+            print(f"FK_REAL: {'SIM' if fk_real else 'NAO'}")
+            print(f"FK_TABELA_DESTINO: {fk_tabela_destino}")
+            print(f"FK_COLUNA_DESTINO: {fk_coluna_destino}")
+            print(f"UNIQUE_REAL: {'SIM' if unique_real else 'NAO'}")
 
-        print(f"FK_REAL: {'SIM' if fk_real else 'NAO'}")
-        print(f"FK_TABELA_DESTINO: {fk_tabela_destino}")
-        print(f"FK_COLUNA_DESTINO: {fk_coluna_destino}")
+            before_counts = _contagens_basicas()
 
-        print(f"UNIQUE_REAL: {'SIM' if unique_real else 'NAO'}")
+            hist = db.session.execute(
+                text(
+                    """
+                    select
+                        count(*) as total_envios_sede,
+                        count(pagamento_obrigacao_id) as envios_com_pagamento_obrigacao_id,
+                        sum(case when pagamento_obrigacao_id is null then 1 else 0 end) as envios_com_pagamento_obrigacao_id_null
+                    from envios_sede
+                    """
+                )
+            ).mappings().first()
 
-        hist = db.session.execute(
-            text(
-                """
-                select
-                    count(*) as total_envios_sede,
-                    count(pagamento_obrigacao_id) as envios_com_pagamento_obrigacao_id,
-                    sum(case when pagamento_obrigacao_id is null then 1 else 0 end) as envios_com_pagamento_obrigacao_id_null
-                from envios_sede
-                """
+            total_envios_sede = int(hist["total_envios_sede"])
+            envios_com_fk = int(hist["envios_com_pagamento_obrigacao_id"])
+            envios_fk_null = int(hist["envios_com_pagamento_obrigacao_id_null"] or 0)
+
+            print(f"TOTAL_ENVIOS_SEDE: {total_envios_sede}")
+            print(f"ENVIOS_COM_PAGAMENTO_OBRIGACAO_ID: {envios_com_fk}")
+            print(f"ENVIOS_COM_PAGAMENTO_OBRIGACAO_ID_NULL: {envios_fk_null}")
+
+            orfaos = db.session.execute(
+                text(
+                    """
+                    select count(*) as vinculos_orfaos
+                    from envios_sede es
+                    left join pagamentos_obrigacao po
+                      on po.id = es.pagamento_obrigacao_id
+                    where es.pagamento_obrigacao_id is not null
+                      and po.id is null
+                    """
+                )
+            ).mappings().first()
+            vinculos_orfaos = int(orfaos["vinculos_orfaos"])
+            print(f"VINCULOS_ORFAOS: {vinculos_orfaos}")
+
+            after_counts = _contagens_basicas()
+            persistencia_alterada = before_counts != after_counts
+            print(f"PERSISTENCIA_ALTERADA: {'SIM' if persistencia_alterada else 'NAO'}")
+
+            aprovado = all(
+                [
+                    postgresql_ok,
+                    tabela_envios,
+                    tabela_pagamentos,
+                    coluna_existe,
+                    coluna_nullable,
+                    tipo_coluna_compativel,
+                    fk_real,
+                    unique_real,
+                    vinculos_orfaos == 0,
+                    not persistencia_alterada,
+                ]
             )
-        ).mappings().first()
 
-        total_envios_sede = int(hist["total_envios_sede"])
-        envios_com_fk = int(hist["envios_com_pagamento_obrigacao_id"])
-        envios_fk_null = int(hist["envios_com_pagamento_obrigacao_id_null"] or 0)
+            if not aprovado:
+                resultado = "BLOQUEADO"
 
-        print(f"TOTAL_ENVIOS_SEDE: {total_envios_sede}")
-        print(f"ENVIOS_COM_PAGAMENTO_OBRIGACAO_ID: {envios_com_fk}")
-        print(f"ENVIOS_COM_PAGAMENTO_OBRIGACAO_ID_NULL: {envios_fk_null}")
+            print(f"RESULTADO_PRECHECK_D23D1: {resultado}")
 
-        orfaos = db.session.execute(
-            text(
-                """
-                select count(*) as vinculos_orfaos
-                from envios_sede es
-                left join pagamentos_obrigacao po
-                  on po.id = es.pagamento_obrigacao_id
-                where es.pagamento_obrigacao_id is not null
-                  and po.id is null
-                """
-            )
-        ).mappings().first()
-        vinculos_orfaos = int(orfaos["vinculos_orfaos"])
-        print(f"VINCULOS_ORFAOS: {vinculos_orfaos}")
-
-        after_counts = _contagens_basicas()
-        persistencia_alterada = before_counts != after_counts
-        print(f"PERSISTENCIA_ALTERADA: {'SIM' if persistencia_alterada else 'NAO'}")
-
-        aprovado = all(
-            [
-                postgresql_ok,
-                tabela_envios,
-                tabela_pagamentos,
-                coluna_existe,
-                coluna_nullable,
-                tipo_coluna_compativel,
-                fk_real,
-                unique_real,
-                vinculos_orfaos == 0,
-                not persistencia_alterada,
-            ]
-        )
-
-        if not aprovado:
-            resultado = "BLOQUEADO"
-
-        print(f"RESULTADO_PRECHECK_D23D1: {resultado}")
-
-    print("=== FIM PRECHECK D.2.3D.1 ===")
-    return 0 if resultado == "APROVADO" else 1
+        print("=== FIM PRECHECK D.2.3D.1 ===")
+        return 0 if resultado == "APROVADO" else 1
+    except Exception as exc:
+        return _bloquear(f"falha controlada: {exc}")
 
 
 if __name__ == "__main__":
