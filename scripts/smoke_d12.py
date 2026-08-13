@@ -12,6 +12,7 @@ from app.extensoes import db
 from app.financeiro.envios_sede_model import EnvioSede
 from app.financeiro.financeiro_model import Lancamento
 from app.financeiro.financeiro_routes import (
+    _carregar_obrigacao_para_pagamento,
     _criar_obrigacao_despesa_fixa_sem_commit,
     _registrar_pagamento_obrigacao_sem_commit,
 )
@@ -110,10 +111,18 @@ def helper_callable() -> str:
 
 def lock_pessimista_ativo() -> str:
     try:
-        source = py_inspect.getsource(_registrar_pagamento_obrigacao_sem_commit)
+        loader_source = py_inspect.getsource(_carregar_obrigacao_para_pagamento)
     except Exception:
-        source = ""
-    return "SIM" if "with_for_update" in source else "NAO"
+        loader_source = ""
+
+    try:
+        helper_source = py_inspect.getsource(_registrar_pagamento_obrigacao_sem_commit)
+    except Exception:
+        helper_source = ""
+
+    loader_tem_lock = "with_for_update" in loader_source
+    helper_chama_loader = "_carregar_obrigacao_para_pagamento" in helper_source
+    return "SIM" if loader_tem_lock and helper_chama_loader else "NAO"
 
 
 def avaliar_gate_postgresql(dialeto: str) -> tuple[bool, str | None]:
