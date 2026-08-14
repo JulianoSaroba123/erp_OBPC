@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import unittest
+import io
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import scripts.apply_d23d1_schema as exe
@@ -127,6 +129,8 @@ class TestApplyD23D1SchemaExecutor(unittest.TestCase):
             exe._aplicar_transacional("BIGINT")
 
         ddl = "\n".join(comandos).lower()
+        self.assertIn("set local lock_timeout", ddl)
+        self.assertIn("set local statement_timeout", ddl)
         self.assertIn("add column pagamento_obrigacao_id bigint", ddl)
         self.assertIn(f"add constraint {exe.UNIQUE_NAME}".lower(), ddl)
         self.assertIn(f"add constraint {exe.FK_NAME}".lower(), ddl)
@@ -205,6 +209,38 @@ class TestApplyD23D1SchemaExecutor(unittest.TestCase):
             rc = exe.executar_apply()
 
         self.assertEqual(rc, 0)
+        self.assertEqual(inspec_mock.call_count, 2)
+
+    def test_lock_timeout_abort_controlado(self):
+        status_seq = [
+            _status(estado=exe.ESTADO_A, apto=True),
+            _status(estado=exe.ESTADO_A, apto=True),
+        ]
+        buf = io.StringIO()
+        with patch.object(exe, "inspecionar_schema", side_effect=status_seq), \
+             patch.object(exe, "_snapshot", return_value=_snap()), \
+             patch.object(exe, "_print_status"), \
+             patch.object(exe, "_aplicar_transacional", side_effect=RuntimeError("canceling statement due to lock timeout")):
+            with redirect_stdout(buf):
+                rc = exe.executar_apply()
+
+        out = buf.getvalue()
+        self.assertEqual(rc, 1)
+        self.assertIn("LOCK_TIMEOUT_DETECTADO: SIM", out)
+        self.assertIn("RESULTADO_APLICACAO_SCHEMA: BLOQUEADO", out)
+
+    def test_sem_alteracao_parcial_apos_timeout(self):
+        status_seq = [
+            _status(estado=exe.ESTADO_A, apto=True),
+            _status(estado=exe.ESTADO_A, apto=True),
+        ]
+        with patch.object(exe, "inspecionar_schema", side_effect=status_seq) as inspec_mock, \
+             patch.object(exe, "_snapshot", return_value=_snap()), \
+             patch.object(exe, "_print_status"), \
+             patch.object(exe, "_aplicar_transacional", side_effect=RuntimeError("canceling statement due to lock timeout")):
+            rc = exe.executar_apply()
+
+        self.assertEqual(rc, 1)
         self.assertEqual(inspec_mock.call_count, 2)
 
 

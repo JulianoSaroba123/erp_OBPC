@@ -11,6 +11,8 @@ from app.extensoes import db
 
 FK_NAME = "fk_envios_sede_pagamento_obrigacao_id"
 UNIQUE_NAME = "uq_envios_sede_pagamento_obrigacao_id"
+LOCK_TIMEOUT = "5s"
+STATEMENT_TIMEOUT = "60s"
 
 ESTADO_A = "ESTADO_A_SCHEMA_AUSENTE_APTO"
 ESTADO_B = "ESTADO_B_SCHEMA_COMPLETO_JA_APLICADO"
@@ -281,9 +283,21 @@ def _aplicar_transacional(id_type_sql: str) -> None:
     )
 
     with db.engine.begin() as conn:
+        conn.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
+        conn.execute(text(f"SET LOCAL statement_timeout = '{STATEMENT_TIMEOUT}'"))
         conn.execute(text(sql_add))
         conn.execute(text(sql_unique))
         conn.execute(text(sql_fk))
+
+
+def _is_lock_timeout_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    if "lock timeout" in msg:
+        return True
+    orig = getattr(exc, "orig", None)
+    pgcode = getattr(orig, "pgcode", None)
+    # 55P03: lock_not_available (inclui timeout de lock em PostgreSQL)
+    return pgcode == "55P03"
 
 
 def executar_check() -> int:
@@ -329,6 +343,10 @@ def executar_apply() -> int:
     try:
         _aplicar_transacional(status_before.id_type_sql)
     except Exception as exc:
+        lock_timeout = _is_lock_timeout_error(exc)
+        print(f"LOCK_TIMEOUT_DETECTADO: {'SIM' if lock_timeout else 'NAO'}")
+        status_after_fail = inspecionar_schema()
+        print(f"ESTADO_POS_FALHA: {status_after_fail.estado_schema}")
         print(f"RESULTADO_APLICACAO_SCHEMA: BLOQUEADO")
         print(f"ERRO_APLICACAO: {exc}")
         return 1
