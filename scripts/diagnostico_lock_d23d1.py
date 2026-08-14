@@ -16,8 +16,15 @@ TARGET_TABLES = ("envios_sede", "pagamentos_obrigacao")
 @dataclass
 class LockSummary:
     tem_lock_conflitante_envio_sede: bool
+    locks_observados: int
+    locks_externos_conflitantes: int
     pid_bloqueador: str
     tipo_lock_bloqueador: str
+    state_bloqueador: str
+    xact_start_bloqueador: str
+    query_start_bloqueador: str
+    wait_event_type_bloqueador: str
+    wait_event_bloqueador: str
     origem_provavel: str
 
 
@@ -65,29 +72,65 @@ def _snapshot_counts() -> dict[str, int]:
     }
 
 
-def _detectar_lock_envio_sede(rows) -> LockSummary:
-    conflito = [
+def _query_pid_atual() -> int:
+    row = db.session.execute(text("select pg_backend_pid() as pid_atual")).mappings().first()
+    return int(row["pid_atual"])
+
+
+def _inferir_origem(application_name: str | None) -> str:
+    app_name = (application_name or "").lower()
+    if "gunicorn" in app_name:
+        return "gunicorn"
+    if "psql" in app_name or "shell" in app_name:
+        return "shell"
+    return "outra"
+
+
+def _locks_externos_conflitantes(rows, pid_atual: int):
+    return [
         r for r in rows
         if r.get("relation_name") == "envios_sede"
         and bool(r.get("granted"))
-        and str(r.get("state") or "").lower() != "idle"
+        and int(r.get("pid") or 0) != int(pid_atual)
     ]
-    if not conflito:
-        return LockSummary(False, "-", "-", "-")
 
-    primeiro = conflito[0]
-    app_name = (primeiro.get("application_name") or "").lower()
-    origem = "outra"
-    if "gunicorn" in app_name:
-        origem = "gunicorn"
-    elif "psql" in app_name or "shell" in app_name:
-        origem = "shell"
 
+def _metricas_transacoes_externas(activities, pid_atual: int):
+    externos = [r for r in activities if int(r.get("pid") or 0) != int(pid_atual)]
+    abertas = [r for r in externos if r.get("xact_start") is not None]
+    idle = [r for r in abertas if str(r.get("state") or "").lower() == "idle in transaction"]
+
+    mais_antiga = None
+    if abertas:
+        mais_antiga = min(abertas, key=lambda r: r.get("xact_start"))
+
+    return {
+        "transacoes_abertas": len(abertas),
+        "transacoes_idle": len(idle),
+        "mais_antiga": mais_antiga,
+    }
+
+
+def _detectar_lock_envio_sede(rows, pid_atual: int) -> LockSummary:
+    observados = [r for r in rows if r.get("relation_name") == "envios_sede"]
+    externos = _locks_externos_conflitantes(rows, pid_atual)
+
+    if not externos:
+        return LockSummary(False, len(observados), 0, "-", "-", "-", "-", "-", "-", "-", "-")
+
+    primeiro = externos[0]
     return LockSummary(
         tem_lock_conflitante_envio_sede=True,
+        locks_observados=len(observados),
+        locks_externos_conflitantes=len(externos),
         pid_bloqueador=str(primeiro.get("pid") or "-"),
         tipo_lock_bloqueador=str(primeiro.get("lock_mode") or "-"),
-        origem_provavel=origem,
+        state_bloqueador=str(primeiro.get("state") or "-"),
+        xact_start_bloqueador=str(primeiro.get("xact_start") or "-"),
+        query_start_bloqueador=str(primeiro.get("query_start") or "-"),
+        wait_event_type_bloqueador=str(primeiro.get("wait_event_type") or "-"),
+        wait_event_bloqueador=str(primeiro.get("wait_event") or "-"),
+        origem_provavel=_inferir_origem(primeiro.get("application_name")),
     )
 
 
@@ -123,6 +166,8 @@ def _query_locks_tables_alvo():
                 a.usename,
                 coalesce(a.application_name, '-') as application_name,
                 a.state,
+                a.xact_start,
+                a.query_start,
                 l.locktype,
                 l.mode as lock_mode,
                 l.granted,
@@ -150,6 +195,7 @@ def _query_locks_tables_alvo():
 
 
 def _query_blocking_pairs():
+    pid_atual = _query_pid_atual()
     return db.session.execute(
         text(
             """
@@ -165,47 +211,13 @@ def _query_blocking_pairs():
             join pg_stat_activity blocker
               on blocker.pid = bpid.blocker_pid
             where blocked.datname = current_database()
+              and blocked.pid <> :pid_atual
+              and blocker.pid <> :pid_atual
             order by blocked.query_start nulls last
             """
-        )
+        ),
+        {"pid_atual": pid_atual}
     ).mappings().all()
-
-
-def _query_transacoes_abertas():
-    row = db.session.execute(
-        text(
-            """
-            select
-                count(*) filter (where xact_start is not null) as transacoes_abertas,
-                count(*) filter (where state = 'idle in transaction') as transacoes_idle,
-                min(xact_start) as xact_mais_antiga
-            from pg_stat_activity
-            where datname = current_database()
-            """
-        )
-    ).mappings().first()
-    return row
-
-
-def _query_transacao_mais_antiga():
-    return db.session.execute(
-        text(
-            """
-            select
-                pid,
-                usename,
-                coalesce(application_name, '-') as application_name,
-                state,
-                xact_start,
-                age(clock_timestamp(), xact_start) as xact_age
-            from pg_stat_activity
-            where datname = current_database()
-              and xact_start is not null
-            order by xact_start asc
-            limit 1
-            """
-        )
-    ).mappings().first()
 
 
 def main() -> int:
@@ -225,12 +237,14 @@ def main() -> int:
                 return 1
 
             before = _snapshot_counts()
+            pid_atual = _query_pid_atual()
+            print(f"PID_ATUAL: {pid_atual}")
 
             activities = _query_pg_stat_activity()
             locks = _query_locks_tables_alvo()
             blockers = _query_blocking_pairs()
-            tx_info = _query_transacoes_abertas()
-            oldest = _query_transacao_mais_antiga()
+            tx_info = _metricas_transacoes_externas(activities, pid_atual)
+            oldest = tx_info["mais_antiga"]
 
             print("PG_STAT_ACTIVITY:")
             for row in activities:
@@ -273,14 +287,21 @@ def main() -> int:
             else:
                 print(
                     "TRANSACAO_MAIS_ANTIGA: "
-                    f"pid={oldest['pid']} age={_format_interval(oldest['xact_age'])} "
+                    f"pid={oldest['pid']} started_at={_format_interval(oldest['xact_start'])} "
                     f"state={oldest['state']} app={oldest['application_name']}"
                 )
 
-            lock_summary = _detectar_lock_envio_sede(locks)
+            lock_summary = _detectar_lock_envio_sede(locks, pid_atual)
+            print(f"LOCKS_OBSERVADOS: {lock_summary.locks_observados}")
+            print(f"LOCKS_EXTERNOS_CONFLITANTES: {lock_summary.locks_externos_conflitantes}")
             print(f"ENVIO_SEDE_TEM_LOCK_CONFLITANTE: {'SIM' if lock_summary.tem_lock_conflitante_envio_sede else 'NAO'}")
             print(f"PID_BLOQUEADOR: {lock_summary.pid_bloqueador}")
             print(f"TIPO_LOCK_BLOQUEADOR: {lock_summary.tipo_lock_bloqueador}")
+            print(f"STATE_BLOQUEADOR: {lock_summary.state_bloqueador}")
+            print(f"XACT_START_BLOQUEADOR: {lock_summary.xact_start_bloqueador}")
+            print(f"QUERY_START_BLOQUEADOR: {lock_summary.query_start_bloqueador}")
+            print(f"WAIT_EVENT_TYPE_BLOQUEADOR: {lock_summary.wait_event_type_bloqueador}")
+            print(f"WAIT_EVENT_BLOQUEADOR: {lock_summary.wait_event_bloqueador}")
             print(f"ORIGEM_PROVAVEL: {lock_summary.origem_provavel}")
 
             after = _snapshot_counts()
