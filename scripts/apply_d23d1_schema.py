@@ -100,7 +100,12 @@ def _inferir_tipo_id_sql(coluna_tipo: str) -> str:
 
 
 def _snapshot() -> Snapshot:
-    row = db.session.execute(
+    with db.engine.connect() as conn:
+        return _snapshot_conn(conn)
+
+
+def _snapshot_conn(conn) -> Snapshot:
+    row = conn.execute(
         text(
             """
             select
@@ -125,7 +130,12 @@ def _snapshot() -> Snapshot:
 
 
 def _contar_orfaos() -> int:
-    row = db.session.execute(
+    with db.engine.connect() as conn:
+        return _contar_orfaos_conn(conn)
+
+
+def _contar_orfaos_conn(conn) -> int:
+    row = conn.execute(
         text(
             """
             select count(*) as vinculos_orfaos
@@ -138,6 +148,11 @@ def _contar_orfaos() -> int:
         )
     ).mappings().first()
     return int(row["vinculos_orfaos"])
+
+
+def _pid_backend_conn(conn) -> int:
+    row = conn.execute(text("select pg_backend_pid() as pid")).mappings().first()
+    return int(row["pid"])
 
 
 def _classificar_estado(
@@ -173,8 +188,13 @@ def _classificar_estado(
 
 
 def inspecionar_schema() -> SchemaStatus:
-    inspector = inspect(db.engine)
-    dialeto = (db.engine.dialect.name or "").lower()
+    with db.engine.connect() as conn:
+        return inspecionar_schema_conn(conn)
+
+
+def inspecionar_schema_conn(conn) -> SchemaStatus:
+    inspector = inspect(conn)
+    dialeto = (conn.dialect.name or "").lower()
     postgresql_ok = dialeto == "postgresql"
 
     tabelas = set(inspector.get_table_names())
@@ -283,6 +303,8 @@ def _aplicar_transacional(id_type_sql: str) -> None:
     )
 
     with db.engine.begin() as conn:
+        pid_ddl = _pid_backend_conn(conn)
+        print(f"PID_DDL: {pid_ddl}")
         conn.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
         conn.execute(text(f"SET LOCAL statement_timeout = '{STATEMENT_TIMEOUT}'"))
         conn.execute(text(sql_add))
@@ -301,8 +323,12 @@ def _is_lock_timeout_error(exc: Exception) -> bool:
 
 
 def executar_check() -> int:
-    status = inspecionar_schema()
-    snap = _snapshot()
+    with db.engine.connect() as conn_check:
+        pid_check = _pid_backend_conn(conn_check)
+        status = inspecionar_schema_conn(conn_check)
+        snap = _snapshot_conn(conn_check)
+    print(f"PID_CHECK: {pid_check}")
+    print("TRANSACAO_CHECK_ABERTA: NAO")
     _print_status(status, snap)
 
     if not status.postgresql_ok:
@@ -322,8 +348,13 @@ def executar_check() -> int:
 
 
 def executar_apply() -> int:
-    status_before = inspecionar_schema()
-    snap_before = _snapshot()
+    with db.engine.connect() as conn_check:
+        pid_check = _pid_backend_conn(conn_check)
+        status_before = inspecionar_schema_conn(conn_check)
+        snap_before = _snapshot_conn(conn_check)
+
+    print(f"PID_CHECK: {pid_check}")
+    print("TRANSACAO_CHECK_ABERTA: NAO")
     _print_status(status_before, snap_before)
 
     if not status_before.postgresql_ok:
@@ -338,6 +369,16 @@ def executar_apply() -> int:
         print("RESULTADO_APLICACAO_SCHEMA: BLOQUEADO")
         return 1
 
+    # Defesa explícita: nenhuma sessão ORM pendente entre precheck e DDL.
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    try:
+        db.session.remove()
+    except Exception:
+        pass
+
     print("CONFIRME BACKUP/SNAPSHOT ANTES DE PROSSEGUIR")
 
     try:
@@ -345,17 +386,21 @@ def executar_apply() -> int:
     except Exception as exc:
         lock_timeout = _is_lock_timeout_error(exc)
         print(f"LOCK_TIMEOUT_DETECTADO: {'SIM' if lock_timeout else 'NAO'}")
-        status_after_fail = inspecionar_schema()
+        with db.engine.connect() as conn_fail:
+            status_after_fail = inspecionar_schema_conn(conn_fail)
         print(f"ESTADO_POS_FALHA: {status_after_fail.estado_schema}")
         print(f"RESULTADO_APLICACAO_SCHEMA: BLOQUEADO")
         print(f"ERRO_APLICACAO: {exc}")
         return 1
 
-    status_after = inspecionar_schema()
-    snap_after = _snapshot()
-    _print_status(status_after, snap_after)
+    with db.engine.connect() as conn_poscheck:
+        pid_poscheck = _pid_backend_conn(conn_poscheck)
+        status_after = inspecionar_schema_conn(conn_poscheck)
+        snap_after = _snapshot_conn(conn_poscheck)
+        orfaos = _contar_orfaos_conn(conn_poscheck)
 
-    orfaos = _contar_orfaos()
+    print(f"PID_POSCHECK: {pid_poscheck}")
+    _print_status(status_after, snap_after)
     print(f"VINCULOS_ORFAOS: {orfaos}")
 
     counts_inalteradas = (
