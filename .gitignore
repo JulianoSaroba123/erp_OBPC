@@ -83,6 +83,7 @@ static/uploads/
 # Debug/Test files temporários
 debug_*.py
 test_*.py
+!tests/test_bootstrap_historico_obrigacoes_d23d16_unittest.py
 testar_*.py
 verificar_*.py
 investigar_*.py
