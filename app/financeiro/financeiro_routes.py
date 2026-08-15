@@ -5200,17 +5200,17 @@ def gerenciar_despesas_fixas():
 
                 if resultado.get('status') == 'ja_existente':
                     flash('Este pagamento composto já foi registrado para a mesma alocação e competência.', 'info')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=competencia_mes_ref, ano=competencia_ano_ref))
                 if resultado.get('status') == 'erro' or resultado.get('erro'):
                     flash(f"Erro ao registrar pagamento composto: {resultado.get('erro') or 'falha ao processar o repasse.'}", 'danger')
-                    return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                    return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=competencia_mes_ref, ano=competencia_ano_ref))
 
                 if pagamento_historico_sem_movimentacao:
                     flash('Baixa histórica registrada com sucesso (sem movimentação no caixa/banco).', 'success')
                 else:
                     flash('Pagamento de repasse à sede registrado com sucesso!', 'success')
 
-                return redirect(url_for('financeiro.gerenciar_despesas_fixas'))
+                return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=competencia_mes_ref, ano=competencia_ano_ref))
 
             elif acao == 'editar_pagamento_sede':
                 pagamento_id = request.form.get('pagamento_id', type=int)
@@ -5306,9 +5306,13 @@ def gerenciar_despesas_fixas():
                 else:
                     flash('Pagamento de repasse à sede atualizado com sucesso!', 'success')
 
+                return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=competencia_mes_ref, ano=competencia_ano_ref))
+
             elif acao == 'excluir_pagamento_sede':
                 pagamento_id = request.form.get('pagamento_id', type=int)
                 pagamento = EnvioSede.query.get_or_404(pagamento_id)
+                mes_retorno = pagamento.competencia_mes_ref or request.args.get('mes', type=int)
+                ano_retorno = pagamento.competencia_ano_ref or request.args.get('ano', type=int)
 
                 try:
                     pagamento.validar_edicao_ou_exclusao_aceita()
@@ -5323,6 +5327,7 @@ def gerenciar_despesas_fixas():
                 db.session.delete(pagamento)
                 db.session.commit()
                 flash('Pagamento de repasse à sede excluído com sucesso!', 'success')
+                return redirect(url_for('financeiro.gerenciar_despesas_fixas', mes=mes_retorno, ano=ano_retorno))
 
             elif acao == 'salvar_observacao_repasse_sede':
                 mes_ref_post = request.form.get('mes_ref', type=int)
