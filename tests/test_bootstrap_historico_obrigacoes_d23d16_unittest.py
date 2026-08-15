@@ -290,6 +290,16 @@ class TestBootstrapHistoricoD23D16(unittest.TestCase):
         total_pago = sum((x["valor"] for x in exe.PAGAMENTOS_ALVO), Decimal("0.00"))
         self.assertEqual((total_devido - total_pago).quantize(Decimal("0.01")), Decimal("5883.26"))
 
+    def test_v_insert_cobre_not_null_obrigatorio(self):
+        ok, problemas = exe.validar_insert_not_null_obrigatorio()
+        self.assertTrue(ok, msg=" | ".join(problemas))
+        self.assertIn("created_at", exe.INSERT_COLUMNS_BY_TABLE["obrigacoes_financeiras"])
+        self.assertIn("updated_at", exe.INSERT_COLUMNS_BY_TABLE["obrigacoes_financeiras"])
+        self.assertIn("created_at", exe.INSERT_COLUMNS_BY_TABLE["pagamentos_obrigacao"])
+        self.assertIn("updated_at", exe.INSERT_COLUMNS_BY_TABLE["pagamentos_obrigacao"])
+        self.assertIn("created_at", exe.INSERT_COLUMNS_BY_TABLE["pagamentos_obrigacao_itens"])
+        self.assertIn("created_at", exe.INSERT_COLUMNS_BY_TABLE["obrigacao_eventos"])
+
 
 if __name__ == "__main__":
     unittest.main()

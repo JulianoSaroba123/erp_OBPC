@@ -13,7 +13,7 @@ import argparse
 import json
 import os
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
@@ -135,6 +135,86 @@ SCHEMA_REQUIRED_FKS = [
     ("pagamentos_obrigacao", "lancamento_financeiro_id", "lancamentos", "id"),
 ]
 
+# Campos que no model estao nullable=False e que o bootstrap deve garantir no INSERT,
+# para evitar dependencia de default de banco em ambientes heterogeneos.
+INSERT_NOT_NULL_REQUIRED_BY_TABLE: dict[str, set[str]] = {
+    "obrigacoes_financeiras": {
+        "tipo_obrigacao",
+        "origem_obrigacao",
+        "descricao",
+        "valor_devido",
+        "status",
+        "historico_sem_movimentacao",
+        "created_at",
+        "updated_at",
+    },
+    "pagamentos_obrigacao": {
+        "data_pagamento",
+        "valor_pago",
+        "tipo_pagamento",
+        "created_at",
+        "updated_at",
+    },
+    "pagamentos_obrigacao_itens": {
+        "pagamento_obrigacao_id",
+        "obrigacao_financeira_id",
+        "valor_alocado",
+        "created_at",
+    },
+    "obrigacao_eventos": {
+        "obrigacao_financeira_id",
+        "evento_tipo",
+        "created_at",
+    },
+}
+
+INSERT_COLUMNS_BY_TABLE: dict[str, set[str]] = {
+    "obrigacoes_financeiras": {
+        "tipo_obrigacao",
+        "origem_obrigacao",
+        "referencia_origem_tipo",
+        "referencia_origem_id",
+        "categoria",
+        "descricao",
+        "competencia_mes",
+        "competencia_ano",
+        "valor_devido",
+        "status",
+        "data_quitacao",
+        "historico_sem_movimentacao",
+        "observacao",
+        "created_at",
+        "updated_at",
+        "criado_por",
+        "atualizado_por",
+    },
+    "pagamentos_obrigacao": {
+        "data_pagamento",
+        "valor_pago",
+        "forma_pagamento",
+        "tipo_pagamento",
+        "observacao",
+        "lancamento_financeiro_id",
+        "created_at",
+        "updated_at",
+        "criado_por",
+        "atualizado_por",
+    },
+    "pagamentos_obrigacao_itens": {
+        "pagamento_obrigacao_id",
+        "obrigacao_financeira_id",
+        "valor_alocado",
+        "created_at",
+    },
+    "obrigacao_eventos": {
+        "obrigacao_financeira_id",
+        "evento_tipo",
+        "payload_json",
+        "usuario",
+        "created_at",
+    },
+}
+
 
 @dataclass
 class ResultadoExecucao:
@@ -142,6 +222,18 @@ class ResultadoExecucao:
     estado: str
     problemas: list[str]
     metricas: dict[str, Any]
+
+
+def validar_insert_not_null_obrigatorio() -> tuple[bool, list[str]]:
+    problemas: list[str] = []
+    for table_name, required_cols in INSERT_NOT_NULL_REQUIRED_BY_TABLE.items():
+        declared = INSERT_COLUMNS_BY_TABLE.get(table_name, set())
+        faltando = sorted(required_cols - declared)
+        if faltando:
+            problemas.append(
+                f"{table_name}: faltam campos NOT NULL obrigatorios no INSERT ({', '.join(faltando)})"
+            )
+    return len(problemas) == 0, problemas
 
 
 def d2(v: Any) -> Decimal:
@@ -641,6 +733,7 @@ def executar_em_transacao(engine, callback):
 
 def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etapa: str | None = None) -> dict[str, Any]:
     plan = build_apply_plan(envios_rows)
+    agora_utc = datetime.utcnow()
 
     snap_before = snapshot_totais(conn)
 
@@ -663,6 +756,8 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                     data_quitacao,
                     historico_sem_movimentacao,
                     observacao,
+                    created_at,
+                    updated_at,
                     criado_por,
                     atualizado_por
                 ) VALUES (
@@ -679,6 +774,8 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                     :data_quitacao,
                     false,
                     :observacao,
+                    :created_at,
+                    :updated_at,
                     'bootstrap_d23d16',
                     'bootstrap_d23d16'
                 )
@@ -694,6 +791,8 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                 "status": row["status"],
                 "data_quitacao": row["data_quitacao"],
                 "observacao": f"BOOTSTRAP_D23D16_OBRIGACAO_COMP_{row['mes']:02d}_{row['ano']}",
+                "created_at": agora_utc,
+                "updated_at": agora_utc,
             },
         )
         oid = int(result.scalar_one())
@@ -702,13 +801,14 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
         conn.execute(
             text(
                 """
-                INSERT INTO obrigacao_eventos (obrigacao_financeira_id, evento_tipo, payload_json, usuario)
-                VALUES (:obrigacao_financeira_id, 'CRIACAO', :payload_json, 'bootstrap_d23d16')
+                INSERT INTO obrigacao_eventos (obrigacao_financeira_id, evento_tipo, payload_json, usuario, created_at)
+                VALUES (:obrigacao_financeira_id, 'CRIACAO', :payload_json, 'bootstrap_d23d16', :created_at)
                 """
             ),
             {
                 "obrigacao_financeira_id": oid,
                 "payload_json": payload_criacao(row["mes"], row["ano"], row["valor_devido"]),
+                "created_at": agora_utc,
             },
         )
 
@@ -727,6 +827,8 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                     tipo_pagamento,
                     observacao,
                     lancamento_financeiro_id,
+                    created_at,
+                    updated_at,
                     criado_por,
                     atualizado_por
                 ) VALUES (
@@ -736,6 +838,8 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                     'HISTORICO_SEM_MOVIMENTACAO',
                     :observacao,
                     NULL,
+                    :created_at,
+                    :updated_at,
                     'bootstrap_d23d16',
                     'bootstrap_d23d16'
                 )
@@ -747,6 +851,8 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                 "valor_pago": row["valor_pago"],
                 "forma_pagamento": row["forma_pagamento"],
                 "observacao": row["observacao"],
+                "created_at": agora_utc,
+                "updated_at": agora_utc,
             },
         )
         pag_ids_por_comp[row["competencia"]] = int(result.scalar_one())
@@ -762,11 +868,13 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                 INSERT INTO pagamentos_obrigacao_itens (
                     pagamento_obrigacao_id,
                     obrigacao_financeira_id,
-                    valor_alocado
+                    valor_alocado,
+                    created_at
                 ) VALUES (
                     :pagamento_obrigacao_id,
                     :obrigacao_financeira_id,
-                    :valor_alocado
+                    :valor_alocado,
+                    :created_at
                 )
                 """
             ),
@@ -774,14 +882,15 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                 "pagamento_obrigacao_id": pag_ids_por_comp[comp],
                 "obrigacao_financeira_id": obrig_ids_por_comp[comp],
                 "valor_alocado": item["valor_alocado"],
+                "created_at": agora_utc,
             },
         )
 
         conn.execute(
             text(
                 """
-                INSERT INTO obrigacao_eventos (obrigacao_financeira_id, evento_tipo, payload_json, usuario)
-                VALUES (:obrigacao_financeira_id, 'PAGAMENTO', :payload_json, 'bootstrap_d23d16')
+                INSERT INTO obrigacao_eventos (obrigacao_financeira_id, evento_tipo, payload_json, usuario, created_at)
+                VALUES (:obrigacao_financeira_id, 'PAGAMENTO', :payload_json, 'bootstrap_d23d16', :created_at)
                 """
             ),
             {
@@ -791,6 +900,7 @@ def aplicar_bootstrap(conn, envios_rows: list[dict[str, Any]], forcar_falha_etap
                     item["valor_alocado"],
                     item["valor_alocado"],
                 ),
+                "created_at": agora_utc,
             },
         )
 
@@ -1106,6 +1216,12 @@ def main(argv: list[str] | None = None) -> int:
     print_kv("POSTGRESQL_OK", "SIM" if gate_ok else "NAO")
     if not gate_ok:
         print_kv("ABORTAR_MOTIVO", gate_motivo or "gate postgresql")
+        return 1
+
+    inserts_ok, inserts_problemas = validar_insert_not_null_obrigatorio()
+    print_kv("INSERT_NOT_NULL_AUDIT_OK", "SIM" if inserts_ok else "NAO")
+    if not inserts_ok:
+        print_kv("ABORTAR_MOTIVO", " | ".join(inserts_problemas))
         return 1
 
     if modo == "check":
