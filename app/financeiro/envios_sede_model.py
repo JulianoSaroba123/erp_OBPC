@@ -1,6 +1,18 @@
 from app.extensoes import db
 from datetime import datetime, date
+from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import extract, func, and_, or_
+
+
+MONEY_QUANTIZE = Decimal('0.01')
+
+
+def _decimal_monetario(valor):
+    if valor is None:
+        return Decimal('0')
+    if isinstance(valor, Decimal):
+        return valor
+    return Decimal(str(valor))
 
 
 class EnvioSede(db.Model):
@@ -71,17 +83,23 @@ class EnvioSede(db.Model):
 
     @classmethod
     def somar_pagamentos_mes(cls, mes, ano):
-        return db.session.query(func.sum(func.coalesce(cls.valor_total, cls.valor))).filter(
+        total = Decimal('0')
+        for valor in db.session.query(func.coalesce(cls.valor_total, cls.valor)).filter(
             extract('month', cls.data_pagamento) == mes,
             extract('year', cls.data_pagamento) == ano
-        ).scalar() or 0.0
+        ).all():
+            total += _decimal_monetario(valor[0])
+        return total
 
     @classmethod
     def somar_pagamentos_antes_do_mes(cls, mes, ano):
         data_inicio = date(ano, mes, 1)
-        return db.session.query(func.sum(func.coalesce(cls.valor_total, cls.valor))).filter(
+        total = Decimal('0')
+        for valor in db.session.query(func.coalesce(cls.valor_total, cls.valor)).filter(
             cls.data_pagamento < data_inicio
-        ).scalar() or 0.0
+        ).all():
+            total += _decimal_monetario(valor[0])
+        return total
 
     @classmethod
     def listar_pagamentos_mes(cls, mes, ano):
@@ -121,17 +139,17 @@ class EnvioSede(db.Model):
 
     @classmethod
     def somar_pagamentos_por_competencia_ate(cls, mes, ano):
-        return sum(float((pagamento.valor_total if pagamento.valor_total is not None else pagamento.valor) or 0) for pagamento in cls.listar_pagamentos_por_competencia_ate(mes, ano))
+        return sum(_decimal_monetario((pagamento.valor_total if pagamento.valor_total is not None else pagamento.valor) or 0) for pagamento in cls.listar_pagamentos_por_competencia_ate(mes, ano))
 
     @classmethod
     def somar_pagamentos_por_competencia_mes(cls, mes, ano):
         alvo = cls._competencia_ordem(mes, ano)
-        total = 0.0
+        total = Decimal('0')
 
         for pagamento in cls.query.order_by(cls.data_pagamento.asc(), cls.id.asc()).all():
             ordem = cls._ordem_competencia_registro(pagamento)
             if ordem == alvo:
-                total += float((pagamento.valor_total if pagamento.valor_total is not None else pagamento.valor) or 0)
+                total += _decimal_monetario((pagamento.valor_total if pagamento.valor_total is not None else pagamento.valor) or 0)
 
         return total
 
@@ -146,13 +164,13 @@ class EnvioSede(db.Model):
         """
         valor_admin = getattr(pagamento, 'valor_administrativo', None)
         if valor_admin is not None:
-            return float(valor_admin or 0)
+            return _decimal_monetario(valor_admin or 0)
 
-        valor_total = float((getattr(pagamento, 'valor_total', None) if getattr(pagamento, 'valor_total', None) is not None else getattr(pagamento, 'valor', 0)) or 0)
+        valor_total = _decimal_monetario((getattr(pagamento, 'valor_total', None) if getattr(pagamento, 'valor_total', None) is not None else getattr(pagamento, 'valor', 0)) or 0)
         valor_fixas = getattr(pagamento, 'valor_despesas_fixas', None)
 
         if valor_fixas is not None:
-            return max(valor_total - float(valor_fixas or 0), 0.0)
+            return max(valor_total - _decimal_monetario(valor_fixas or 0), Decimal('0'))
 
         return valor_total
 
@@ -166,7 +184,7 @@ class EnvioSede(db.Model):
     @classmethod
     def somar_pagamentos_administrativos_por_competencia_mes(cls, mes, ano):
         alvo = cls._competencia_ordem(mes, ano)
-        total = 0.0
+        total = Decimal('0')
 
         for pagamento in cls.query.order_by(cls.data_pagamento.asc(), cls.id.asc()).all():
             ordem = cls._ordem_competencia_registro(pagamento)

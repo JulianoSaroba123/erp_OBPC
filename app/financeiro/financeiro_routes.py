@@ -33,20 +33,33 @@ from pathlib import Path
 financeiro_bp = Blueprint('financeiro', __name__, template_folder='templates')
 
 _ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK = False
+_MONEY_QUANTIZE = Decimal('0.01')
+
+
+def _decimal_monetario(valor):
+    if valor is None:
+        return Decimal('0')
+    if isinstance(valor, Decimal):
+        return valor
+    return Decimal(str(valor))
+
+
+def _quantizar_monetario(valor):
+    return _decimal_monetario(valor).quantize(_MONEY_QUANTIZE, rounding=ROUND_HALF_UP)
 
 
 def _valor_total_pagamento_sede(pagamento):
-    return float((getattr(pagamento, 'valor_total', None) if getattr(pagamento, 'valor_total', None) is not None else getattr(pagamento, 'valor', 0)) or 0)
+    return _decimal_monetario(getattr(pagamento, 'valor_total', None) if getattr(pagamento, 'valor_total', None) is not None else getattr(pagamento, 'valor', 0))
 
 
 def _valor_administrativo_pagamento_sede(pagamento):
     if getattr(pagamento, 'valor_administrativo', None) is not None:
-        return float(pagamento.valor_administrativo or 0)
+        return _decimal_monetario(pagamento.valor_administrativo or 0)
     return _valor_total_pagamento_sede(pagamento)
 
 
 def _valor_despesas_fixas_pagamento_sede(pagamento):
-    return float((getattr(pagamento, 'valor_despesas_fixas', None) or 0) or 0)
+    return _decimal_monetario((getattr(pagamento, 'valor_despesas_fixas', None) or 0) or 0)
 
 
 def _competencia_ref_pagamento_sede(pagamento):
@@ -4730,24 +4743,24 @@ def relatorio_caixa():
 def _calcular_totais_relatorio_sede(lancamentos, percentual_conselho=30.0):
     """Calcula totais do relatório da sede com regras consistentes com o relatório de caixa."""
     totais = {
-        'dizimos': 0.0,
-        'ofertas_alcadas': 0.0,
-        'outras_ofertas': 0.0,
-        'oferta_omn': 0.0,
-        'outras_entradas': 0.0,
-        'total_geral': 0.0,
-        'despesas_financeiras': 0.0,
-        'saldo_mes': 0.0,
-        'valor_conselho': 0.0,
-        'total_dizimos_ofertas': 0.0,
-        'percentual_30': 0.0
+        'dizimos': Decimal('0'),
+        'ofertas_alcadas': Decimal('0'),
+        'outras_ofertas': Decimal('0'),
+        'oferta_omn': Decimal('0'),
+        'outras_entradas': Decimal('0'),
+        'total_geral': Decimal('0'),
+        'despesas_financeiras': Decimal('0'),
+        'saldo_mes': Decimal('0'),
+        'valor_conselho': Decimal('0'),
+        'total_dizimos_ofertas': Decimal('0'),
+        'percentual_30': Decimal('0')
     }
 
-    percentual = (percentual_conselho if percentual_conselho is not None else 30.0) / 100
+    percentual = _decimal_monetario(percentual_conselho if percentual_conselho is not None else 30).scaleb(-2)
 
     for lancamento in lancamentos:
         categoria = (lancamento.categoria or '').lower()
-        valor = float(lancamento.valor or 0)
+        valor = _decimal_monetario(lancamento.valor or 0)
 
         if lancamento.tipo == 'Entrada':
             totais['total_geral'] += valor
@@ -4799,14 +4812,14 @@ def _calcular_obrigacao_30_mes(mes, ano, percentual_conselho):
         extract('year', Lancamento.data) == ano
     ).all()
     totais = _calcular_totais_relatorio_sede(lancamentos_mes, percentual_conselho)
-    return float(totais.get('valor_conselho', 0.0) or 0.0)
+    return _quantizar_monetario(totais.get('valor_conselho', Decimal('0')))
 
 
 def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
     """Monta quadro de controle de repasse por competencia (geracao) e pagamento (liquidacao)."""
     obrigacao_mes = _calcular_obrigacao_30_mes(mes, ano, percentual_conselho)
 
-    obrigacoes_ate_anterior = 0.0
+    obrigacoes_ate_anterior = Decimal('0')
     for mes_item, ano_item in _iterar_meses_ate(mes, ano):
         if ano_item == ano and mes_item == mes:
             break
@@ -4816,27 +4829,27 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
 
     if schema_moderno:
         try:
-            pagos_ate_anterior = float(
+            pagos_ate_anterior = _decimal_monetario(
                 EnvioSede.somar_pagamentos_administrativos_por_competencia_ate(
                     mes - 1 if mes > 1 else 12,
                     ano if mes > 1 else ano - 1,
-                ) or 0.0
+                ) or 0
             )
         except (OperationalError, ProgrammingError, AttributeError):
             db.session.rollback()
-            pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
+            pagos_ate_anterior = _decimal_monetario(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0)
 
-        pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
+        pago_mes = _decimal_monetario(EnvioSede.somar_pagamentos_mes(mes, ano) or 0)
         try:
-            pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_administrativos_por_competencia_mes(mes, ano) or 0.0)
+            pagamentos_competencia_mes = _decimal_monetario(EnvioSede.somar_pagamentos_administrativos_por_competencia_mes(mes, ano) or 0)
         except (OperationalError, ProgrammingError, AttributeError):
             db.session.rollback()
-            pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
+            pagamentos_competencia_mes = _decimal_monetario(EnvioSede.somar_pagamentos_mes(mes, ano) or 0)
     else:
         # Em schema antigo, evita carregar entidade completa (que referencia colunas inexistentes).
-        pagos_ate_anterior = float(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0.0)
-        pago_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
-        pagamentos_competencia_mes = float(EnvioSede.somar_pagamentos_mes(mes, ano) or 0.0)
+        pagos_ate_anterior = _decimal_monetario(EnvioSede.somar_pagamentos_antes_do_mes(mes, ano) or 0)
+        pago_mes = _decimal_monetario(EnvioSede.somar_pagamentos_mes(mes, ano) or 0)
+        pagamentos_competencia_mes = _decimal_monetario(EnvioSede.somar_pagamentos_mes(mes, ano) or 0)
 
     saldo_pendente_anterior = obrigacoes_ate_anterior - pagos_ate_anterior
     total_devido = saldo_pendente_anterior + obrigacao_mes
@@ -4863,15 +4876,15 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
     total_pago_mes = sum(_valor_total_pagamento_sede(p) for p in pagamentos_mes)
 
     return {
-        'saldo_pendente_anterior': saldo_pendente_anterior,
-        'trinta_gerado_mes': obrigacao_mes,
-        'total_devido_mes': total_devido,
-        'valor_enviado_mes': pago_mes,
-        'saldo_pendente_atual': saldo_pendente_atual,
+        'saldo_pendente_anterior': _quantizar_monetario(saldo_pendente_anterior),
+        'trinta_gerado_mes': _quantizar_monetario(obrigacao_mes),
+        'total_devido_mes': _quantizar_monetario(total_devido),
+        'valor_enviado_mes': _quantizar_monetario(pago_mes),
+        'saldo_pendente_atual': _quantizar_monetario(saldo_pendente_atual),
         'pagamentos_mes': pagamentos_mes,
-        'total_administrativo_pago_mes': total_admin_mes,
-        'total_despesas_fixas_pago_mes': total_despesas_fixas_mes,
-        'total_pago_mes': total_pago_mes,
+        'total_administrativo_pago_mes': _quantizar_monetario(total_admin_mes),
+        'total_despesas_fixas_pago_mes': _quantizar_monetario(total_despesas_fixas_mes),
+        'total_pago_mes': _quantizar_monetario(total_pago_mes),
         'observacao_quitacao_competencia_anterior': observacao_quitacao_competencia_anterior,
     }
 
