@@ -1893,11 +1893,14 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
     try:
         despesas_fixas = DespesaFixaConselho.obter_despesas_ativas()
         for despesa in despesas_fixas:
-            despesas_fixas_lista.append({'nome': despesa.nome, 'valor': float(despesa.valor_padrao or 0)})
+            despesas_fixas_lista.append({'nome': despesa.nome, 'valor': _quantizar_monetario(despesa.valor_padrao or 0)})
     except Exception:
         despesas_fixas_lista = []
 
-    totais_gerencial['despesas_fixas_conselho'] = sum(item['valor'] for item in despesas_fixas_lista)
+    totais_gerencial['trinta_porcento_conselho'] = _quantizar_monetario(
+        _decimal_monetario(totais_gerencial['total_dizimos_ofertas']) * (_decimal_monetario(percentual_conselho) / Decimal('100'))
+    )
+    totais_gerencial['despesas_fixas_conselho'] = sum((item['valor'] for item in despesas_fixas_lista), Decimal('0.00'))
     totais_gerencial['total_envio_sede'] = totais_gerencial['trinta_porcento_conselho'] + totais_gerencial['despesas_fixas_conselho']
 
     envios = {

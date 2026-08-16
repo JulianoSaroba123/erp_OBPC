@@ -179,14 +179,14 @@
                 <p>Periodo {{ "%02d"|format(mes) }}/{{ ano }} | Emissao {{ data_geracao.strftime('%d/%m/%Y') }}</p>
             </header>
 
-            {% set valor_admin = totais_sede.valor_conselho|default(0) %}
-            {% set valor_contador = envios.contador_sede|default(0) %}
-            {% set valor_site = envios.site|default(0) %}
-            {% set valor_filipe = envios.projeto_filipe|default(0) %}
-            {% set valor_forca = envios.forca_para_viver|default(0) %}
-            {% set valor_conchas = envios.oferta_voluntaria_conchas|default(0) %}
-            {% set valor_omn = totais_sede.oferta_omn|default(0) %}
-            {% set base_fixas = totais_sede.despesas_fixas|default(0) %}
+            {% set valor_admin = totais_sede.valor_conselho|default(0)|float %}
+            {% set valor_contador = envios.contador_sede|default(0)|float %}
+            {% set valor_site = envios.site|default(0)|float %}
+            {% set valor_filipe = envios.projeto_filipe|default(0)|float %}
+            {% set valor_forca = envios.forca_para_viver|default(0)|float %}
+            {% set valor_conchas = envios.oferta_voluntaria_conchas|default(0)|float %}
+            {% set valor_omn = totais_sede.oferta_omn|default(0)|float %}
+            {% set base_fixas = totais_sede.despesas_fixas|default(0)|float %}
             {% set usadas_fixas = valor_contador + valor_site + valor_filipe + valor_forca + valor_conchas %}
             {% set outras_fixas = (base_fixas - usadas_fixas) if (base_fixas - usadas_fixas) > 0 else 0 %}
             {% set total_destinado_sede = valor_admin + valor_contador + valor_site + valor_filipe + valor_forca + valor_conchas + outras_fixas %}
