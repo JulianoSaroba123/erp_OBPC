@@ -12,6 +12,11 @@
             --surface: #ffffff;
             --surface-soft: #f4f7fb;
             --brand: #114b5f;
+            --brand-deep: #0f3d52;
+            --success: #15803d;
+            --danger: #b42318;
+            --warning: #9a6700;
+            --cyan: #0e7490;
             --accent: #2a7f62;
         }
         * { box-sizing: border-box; }
@@ -37,20 +42,20 @@
         .header p { color: var(--muted); margin-top: 8px; }
         .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
         .stat { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-soft); }
-        .stats .stat:nth-child(1) { border-top: 4px solid #2a7f62; }
-        .stats .stat:nth-child(2) { border-top: 4px solid #16a34a; }
-        .stats .stat:nth-child(3) { border-top: 4px solid #dc2626; }
-        .stats .stat:nth-child(4) { border-top: 4px solid #2563eb; }
+        .stats .stat:nth-child(1) { border-top: 4px solid var(--brand-deep); background: #f2f8fb; }
+        .stats .stat:nth-child(2) { border-top: 4px solid var(--success); background: #ecfdf3; }
+        .stats .stat:nth-child(3) { border-top: 4px solid var(--danger); background: #fff1f1; }
+        .stats .stat:nth-child(4) { border-top: 4px solid var(--cyan); background: #ecfeff; }
         .stat strong { display: block; font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; margin-bottom: 8px; }
         .stat span { font-size: 24px; font-weight: 700; }
         .section { margin-bottom: 22px; }
         .section h3 { margin: 0 0 12px; text-transform: uppercase; letter-spacing: .08em; font-size: 13px; color: var(--accent); }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th, td { border: 1px solid var(--line); padding: 10px 11px; font-size: 13px; vertical-align: top; }
-        th { background: #eaf2ff; color: #1e3a8a; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
+        th { background: linear-gradient(90deg, #114b5f 0%, #1d4f91 100%); color: #ffffff; text-transform: uppercase; letter-spacing: .08em; font-size: 10px; }
         .control-card, .note-card { border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
         .control-card { background: linear-gradient(180deg, #fffef4 0%, #ffffff 100%); border-color: #fde68a; }
-        .note-card { background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%); border-color: #bfdbfe; }
+        .note-card { background: linear-gradient(180deg, #f1fafe 0%, #ffffff 100%); border-color: #bae6fd; }
         .audit-table th, .audit-table td {
             font-size: 12px;
             word-wrap: break-word;
@@ -79,7 +84,7 @@
         }
         td.numeric, th.numeric { text-align: right; }
         td.center, th.center { text-align: center; }
-        tbody tr:nth-child(even) { background: #fbfdff; }
+        tbody tr:nth-child(even) { background: #f8fbff; }
         .linha-entrada { background-color: #eefaf1; }
         .linha-saida { background-color: #fff1f1; }
         .valor-entrada { color: #15803d; font-weight: bold; }

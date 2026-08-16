@@ -12,10 +12,17 @@
             --surface: #f4f7fb;
             --surface-strong: #ffffff;
             --brand: #114b5f;
+            --brand-deep: #0f3d52;
             --brand-soft: #d8edf0;
-            --accent: #2a7f62;
-            --danger: #c2410c;
+            --success: #15803d;
+            --success-soft: #ecfdf3;
+            --danger: #b42318;
+            --danger-soft: #fff1f1;
             --warning: #9a6700;
+            --warning-soft: #fff9e6;
+            --cyan: #0e7490;
+            --cyan-soft: #ecfeff;
+            --accent: #2a7f62;
         }
 
         * { box-sizing: border-box; }
@@ -93,12 +100,13 @@
             background: #0f172a; color: #fff; border-radius: 18px; padding: 20px;
         }
         .executive-box p { margin: 10px 0 0; color: rgba(255,255,255,.82); line-height: 1.6; }
-        .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; margin-bottom: 24px; }
         .card { padding: 20px; }
-        .cards .card:nth-child(1) { border-top: 5px solid #2a7f62; }
-        .cards .card:nth-child(2) { border-top: 5px solid #16a34a; }
-        .cards .card:nth-child(3) { border-top: 5px solid #dc2626; }
-        .cards .card:nth-child(4) { border-top: 5px solid #2563eb; }
+        .card.info { border-top: 5px solid var(--brand-deep); background: linear-gradient(180deg, #f2f8fb 0%, #ffffff 100%); }
+        .card.entrada { border-top: 5px solid var(--success); background: var(--success-soft); }
+        .card.saida { border-top: 5px solid var(--danger); background: var(--danger-soft); }
+        .card.saldo { border-top: 5px solid #0ea5a1; background: #f0fdfa; }
+        .card.pendencia { border-top: 5px solid #f59e0b; background: var(--warning-soft); }
         .card-label { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .08em; }
         .card-value { margin-top: 10px; font-size: 28px; font-weight: 700; }
         .card-note { margin-top: 8px; font-size: 13px; color: var(--muted); }
@@ -109,14 +117,17 @@
         .section-header p { margin: 0; color: var(--muted); }
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
-        th { text-align: left; color: #1e3a8a; text-transform: uppercase; font-size: 12px; letter-spacing: .08em; background: #eaf2ff; }
+        th { text-align: left; color: #ffffff; text-transform: uppercase; font-size: 12px; letter-spacing: .08em; background: linear-gradient(90deg, #114b5f 0%, #1d4f91 100%); }
         td.numeric, th.numeric { text-align: right; }
         td.center, th.center { text-align: center; }
-        tbody tr:nth-child(even) { background: #fafcff; }
+        tbody tr:nth-child(even) { background: #f8fbff; }
+        .row-entrada { background-color: #eefaf1; }
+        .row-saida { background-color: #fff1f1; }
+        .row-destinacao { background-color: #fff9e6; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-size: 12px; }
         .highlight-control { border: 2px solid #facc15; background: linear-gradient(180deg, #fffef4 0%, #ffffff 100%); }
         .highlight-note { border: 2px solid #bfdbfe; background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%); }
-        .text-success { color: var(--accent); }
+        .text-success { color: var(--success); }
         .text-danger { color: var(--danger); }
         .text-warning { color: var(--warning); }
         .signature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 34px; }
@@ -214,8 +225,13 @@
             .hero, .card, .panel, .table-card { box-shadow: none; break-inside: avoid; }
         }
 
+        @media (max-width: 1180px) {
+            .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+
         @media (max-width: 980px) {
-            .hero-grid, .cards, .grid-2, .signature-grid { grid-template-columns: 1fr; }
+            .hero-grid, .grid-2, .signature-grid { grid-template-columns: 1fr; }
+            .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
 
         @media (max-width: 575.98px) {
@@ -263,10 +279,11 @@
         </section>
 
         <section class="cards">
-            <article class="card"><div class="card-label">Saldo Inicial</div><div class="card-value">{{ totais_gerencial.saldo_anterior|valor_com_cor|safe }}</div><div class="card-note">Posição antes do período</div></article>
-            <article class="card"><div class="card-label">Entradas</div><div class="card-value text-success">{{ totais_gerencial.total_entradas|valor_com_cor|safe }}</div><div class="card-note">Movimento bruto de receitas</div></article>
-            <article class="card"><div class="card-label">Saídas</div><div class="card-value text-danger">{{ totais_gerencial.total_saidas|valor_com_cor|safe }}</div><div class="card-note">Despesas líquidas do caixa</div></article>
-            <article class="card"><div class="card-label">Saldo Final</div><div class="card-value {% if totais_gerencial.saldo_acumulado >= 0 %}text-success{% else %}text-danger{% endif %}">{{ totais_gerencial.saldo_acumulado|valor_com_cor|safe }}</div><div class="card-note">Saldo acumulado do período</div></article>
+            <article class="card entrada"><div class="card-label">Entradas</div><div class="card-value text-success">{{ totais_gerencial.total_entradas|valor_com_cor|safe }}</div><div class="card-note">Movimento bruto de receitas</div></article>
+            <article class="card saida"><div class="card-label">Saídas</div><div class="card-value text-danger">{{ totais_gerencial.total_saidas|valor_com_cor|safe }}</div><div class="card-note">Despesas líquidas do caixa</div></article>
+            <article class="card saldo"><div class="card-label">Saldo</div><div class="card-value {% if totais_gerencial.saldo_acumulado >= 0 %}text-success{% else %}text-danger{% endif %}">{{ totais_gerencial.saldo_acumulado|valor_com_cor|safe }}</div><div class="card-note">Saldo acumulado do período</div></article>
+            <article class="card info"><div class="card-label">Registros</div><div class="card-value" style="color: var(--cyan);">{{ total_comprovantes }}</div><div class="card-note">Comprovantes no período</div></article>
+            <article class="card pendencia"><div class="card-label">Pendências</div><div class="card-value text-warning">{{ controle_repasse_sede.saldo_pendente_atual|valor_com_cor|safe }}</div><div class="card-note">Saldo pendente com a sede</div></article>
         </section>
 
         <section class="grid-2">
