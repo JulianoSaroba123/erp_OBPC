@@ -14,9 +14,10 @@ from app.financeiro.obrigacoes_model import (
 )
 from app.financeiro.observacao_relatorio_model import ObservacaoRelatorio
 from app.financeiro.recibo_model import Recibo
+from app.financeiro.comprovante_model import Comprovante
 from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import extract, or_, and_, func, inspect, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from decimal import Decimal, ROUND_HALF_UP
@@ -2046,31 +2047,49 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
 @financeiro_bp.route('/financeiro/dashboard')
 @login_required
 def dashboard_moderno():
-    """Dashboard financeiro com visual moderno e métricas"""
     try:
-        # Obter mês e ano da URL ou usar atual
         hoje = datetime.now()
         mes_selecionado = request.args.get('mes', hoje.month, type=int)
         ano_selecionado = request.args.get('ano', hoje.year, type=int)
-        
-        # Calcular totais do mês selecionado
+
+        novas_queries_dashboard = []
+
+        data_inicio_mes = date(ano_selecionado, mes_selecionado, 1)
+        if mes_selecionado == 12:
+            data_fim_mes = date(ano_selecionado + 1, 1, 1) - timedelta(days=1)
+        else:
+            data_fim_mes = date(ano_selecionado, mes_selecionado + 1, 1) - timedelta(days=1)
+
+        def _tipo_normalizado(tipo):
+            return (tipo or '').strip().lower()
+
+        def _eh_saida(tipo):
+            return _tipo_normalizado(tipo) in {'saída', 'saida'}
+
+        def _eh_entrada(tipo):
+            return _tipo_normalizado(tipo) == 'entrada'
+
         lancamentos_mes = Lancamento.query.filter(
             extract('month', Lancamento.data) == mes_selecionado,
             extract('year', Lancamento.data) == ano_selecionado
         ).all()
-        
-        total_entradas = sum(l.valor for l in lancamentos_mes if l.tipo.lower() == 'entrada')
-        total_saidas = sum(l.valor for l in lancamentos_mes if l.tipo.lower() in ['saída', 'saida'])
+        novas_queries_dashboard.append('Q1_lancamentos_mes_base')
+
+        total_entradas = sum(float(l.valor or 0) for l in lancamentos_mes if _eh_entrada(l.tipo))
+        total_saidas = sum(float(l.valor or 0) for l in lancamentos_mes if _eh_saida(l.tipo))
+        saldo_mes = total_entradas - total_saidas
         total_nao_conciliados = len([l for l in lancamentos_mes if not l.conciliado])
-        
-        # Últimos 10 lançamentos
+
+        saldo_anterior = Lancamento.calcular_saldo_ate_mes_anterior(mes_selecionado, ano_selecionado)
+        saldo_acumulado = float(saldo_anterior or 0) + float(saldo_mes or 0)
+
         ultimos_lancamentos = Lancamento.query.order_by(
             Lancamento.criado_em.desc()
         ).limit(10).all()
-        
-        # Entradas por categoria (top 5)
-        categorias_entradas = db.session.query(
-            Lancamento.categoria,
+        novas_queries_dashboard.append('Q2_ultimos_lancamentos')
+
+        categorias_entradas_rows = db.session.query(
+            Lancamento.categoria.label('categoria'),
             func.sum(Lancamento.valor).label('total'),
             func.count(Lancamento.id).label('count')
         ).filter(
@@ -2080,99 +2099,328 @@ def dashboard_moderno():
         ).group_by(Lancamento.categoria).order_by(
             func.sum(Lancamento.valor).desc()
         ).limit(5).all()
-        
-        # ========================================
-        # INDICADORES DE DISTRIBUIÇÃO FINANCEIRA
-        # ========================================
+        novas_queries_dashboard.append('Q3_categorias_entrada_top5')
+
+        categorias_entradas = [
+            {
+                'categoria': row.categoria,
+                'total': float(row.total or 0),
+                'count': int(row.count or 0)
+            }
+            for row in categorias_entradas_rows
+        ]
+
+        data_inicio_6m = (data_inicio_mes - timedelta(days=1)).replace(day=1)
+        for _ in range(4):
+            data_inicio_6m = (data_inicio_6m - timedelta(days=1)).replace(day=1)
+
+        serie_6m_rows = db.session.query(
+            extract('year', Lancamento.data).label('ano'),
+            extract('month', Lancamento.data).label('mes'),
+            Lancamento.tipo.label('tipo'),
+            func.sum(Lancamento.valor).label('total')
+        ).filter(
+            Lancamento.data >= data_inicio_6m,
+            Lancamento.data <= data_fim_mes
+        ).group_by(
+            extract('year', Lancamento.data),
+            extract('month', Lancamento.data),
+            Lancamento.tipo
+        ).all()
+        novas_queries_dashboard.append('Q4_serie_6m_agrupada')
+
+        meses_serie = []
+        cursor = data_inicio_6m
+        while cursor <= data_inicio_mes:
+            meses_serie.append((cursor.year, cursor.month))
+            if cursor.month == 12:
+                cursor = date(cursor.year + 1, 1, 1)
+            else:
+                cursor = date(cursor.year, cursor.month + 1, 1)
+
+        serie_map = {(ano_item, mes_item): {'entradas': 0.0, 'saidas': 0.0} for ano_item, mes_item in meses_serie}
+        for row in serie_6m_rows:
+            ano_item = int(row.ano)
+            mes_item = int(row.mes)
+            if (ano_item, mes_item) not in serie_map:
+                continue
+            tipo_row = _tipo_normalizado(row.tipo)
+            if tipo_row == 'entrada':
+                serie_map[(ano_item, mes_item)]['entradas'] += float(row.total or 0)
+            elif tipo_row in {'saída', 'saida'}:
+                serie_map[(ano_item, mes_item)]['saidas'] += float(row.total or 0)
+
+        evolucao_6m = [
+            {
+                'ano': ano_item,
+                'mes': mes_item,
+                'entradas': serie_map[(ano_item, mes_item)]['entradas'],
+                'saidas': serie_map[(ano_item, mes_item)]['saidas'],
+                'saldo': serie_map[(ano_item, mes_item)]['entradas'] - serie_map[(ano_item, mes_item)]['saidas']
+            }
+            for ano_item, mes_item in meses_serie
+        ]
+
+        despesas_categoria_rows = db.session.query(
+            func.coalesce(Lancamento.categoria, 'Sem categoria').label('categoria'),
+            func.sum(Lancamento.valor).label('total')
+        ).filter(
+            extract('month', Lancamento.data) == mes_selecionado,
+            extract('year', Lancamento.data) == ano_selecionado,
+            func.lower(Lancamento.tipo).in_(['saída', 'saida'])
+        ).group_by(
+            func.coalesce(Lancamento.categoria, 'Sem categoria')
+        ).order_by(
+            func.sum(Lancamento.valor).desc()
+        ).all()
+        novas_queries_dashboard.append('Q5_despesas_por_categoria')
+
+        despesas_por_categoria = [
+            {
+                'categoria': row.categoria,
+                'total': float(row.total or 0)
+            }
+            for row in despesas_categoria_rows
+        ]
+
+        repasse_competencia_row = db.session.query(
+            ObrigacaoFinanceira.id.label('obrigacao_id'),
+            ObrigacaoFinanceira.valor_devido.label('valor_devido'),
+            ObrigacaoFinanceira.status.label('status'),
+            func.coalesce(func.sum(PagamentoObrigacaoItem.valor_alocado), 0).label('valor_pago')
+        ).outerjoin(
+            PagamentoObrigacaoItem,
+            PagamentoObrigacaoItem.obrigacao_financeira_id == ObrigacaoFinanceira.id
+        ).filter(
+            ObrigacaoFinanceira.tipo_obrigacao == 'ADMIN_SEDE_30',
+            ObrigacaoFinanceira.competencia_mes == mes_selecionado,
+            ObrigacaoFinanceira.competencia_ano == ano_selecionado
+        ).group_by(
+            ObrigacaoFinanceira.id,
+            ObrigacaoFinanceira.valor_devido,
+            ObrigacaoFinanceira.status
+        ).first()
+
+        repasse_saldo_pendente_total_row = db.session.query(
+            func.coalesce(func.sum(ObrigacaoFinanceira.valor_devido), 0).label('devido_total'),
+            func.coalesce(func.sum(PagamentoObrigacaoItem.valor_alocado), 0).label('pago_total')
+        ).outerjoin(
+            PagamentoObrigacaoItem,
+            PagamentoObrigacaoItem.obrigacao_financeira_id == ObrigacaoFinanceira.id
+        ).filter(
+            ObrigacaoFinanceira.tipo_obrigacao == 'ADMIN_SEDE_30'
+        ).first()
+        novas_queries_dashboard.append('Q6_repasse_motor_obrigacoes')
+
+        valor_devido_competencia = float(repasse_competencia_row.valor_devido or 0) if repasse_competencia_row else 0.0
+        valor_pago_competencia = float(repasse_competencia_row.valor_pago or 0) if repasse_competencia_row else 0.0
+        status_competencia = repasse_competencia_row.status if repasse_competencia_row else 'SEM_OBRIGACAO'
+
+        devido_total_repasse = float(repasse_saldo_pendente_total_row.devido_total or 0)
+        pago_total_repasse = float(repasse_saldo_pendente_total_row.pago_total or 0)
+        saldo_pendente_total_repasse = max(0.0, devido_total_repasse - pago_total_repasse)
+
+        resumo_repasse = {
+            'saldo_pendente_total': saldo_pendente_total_repasse,
+            'obrigacao_competencia': valor_devido_competencia,
+            'pago_competencia': valor_pago_competencia,
+            'status': status_competencia,
+            'motor': 'OBRIGACAO_FINANCEIRA'
+        }
+
+        despesas_fixas_row = db.session.query(
+            func.coalesce(func.sum(ObrigacaoFinanceira.valor_devido), 0).label('devido_total'),
+            func.coalesce(func.sum(PagamentoObrigacaoItem.valor_alocado), 0).label('pago_total')
+        ).outerjoin(
+            PagamentoObrigacaoItem,
+            PagamentoObrigacaoItem.obrigacao_financeira_id == ObrigacaoFinanceira.id
+        ).filter(
+            ObrigacaoFinanceira.tipo_obrigacao == 'DESPESA_FIXA',
+            ObrigacaoFinanceira.competencia_mes == mes_selecionado,
+            ObrigacaoFinanceira.competencia_ano == ano_selecionado
+        ).first()
+        novas_queries_dashboard.append('Q7_despesas_fixas_obrigacoes')
+
+        despesas_fixas_resumo = {
+            'obrigacao_competencia': float(despesas_fixas_row.devido_total or 0),
+            'pago_competencia': float(despesas_fixas_row.pago_total or 0),
+            'saldo_pendente': max(0.0, float(despesas_fixas_row.devido_total or 0) - float(despesas_fixas_row.pago_total or 0))
+        }
+
+        total_obrigacoes_pendentes = db.session.query(func.count(ObrigacaoFinanceira.id)).filter(
+            ObrigacaoFinanceira.status.in_(['PENDENTE', 'PARCIAL'])
+        ).scalar() or 0
+        novas_queries_dashboard.append('Q8_obrigacoes_pendentes_parciais')
+
+        existe_comprovante_relacionado = db.session.query(Comprovante.id).filter(
+            Comprovante.lancamento_id == Lancamento.id
+        ).exists()
+
+        lancamentos_sem_comprovante = db.session.query(func.count(Lancamento.id)).filter(
+            extract('month', Lancamento.data) == mes_selecionado,
+            extract('year', Lancamento.data) == ano_selecionado,
+            or_(Lancamento.comprovante.is_(None), func.trim(Lancamento.comprovante) == ''),
+            ~existe_comprovante_relacionado
+        ).scalar() or 0
+        novas_queries_dashboard.append('Q9_lancamentos_sem_comprovante')
+
+        ids_ultimos = [l.id for l in ultimos_lancamentos if l.id]
+        comprovantes_map = set()
+        if ids_ultimos:
+            comprovantes_ids_rows = db.session.query(Comprovante.lancamento_id).filter(
+                Comprovante.lancamento_id.in_(ids_ultimos)
+            ).distinct().all()
+            comprovantes_map = {item[0] for item in comprovantes_ids_rows if item and item[0] is not None}
+            novas_queries_dashboard.append('Q10_comprovantes_ultimos_lancamentos')
+
+        ultimas_movimentacoes = []
+        for lancamento in ultimos_lancamentos:
+            possui_legado = bool((lancamento.comprovante or '').strip())
+            possui_relacionado = lancamento.id in comprovantes_map
+            possui_comprovante = possui_legado or possui_relacionado
+            ultimas_movimentacoes.append({
+                'id': lancamento.id,
+                'data': lancamento.data,
+                'descricao': lancamento.descricao or '-',
+                'categoria': lancamento.categoria or 'Sem categoria',
+                'tipo': lancamento.tipo,
+                'valor': float(lancamento.valor or 0),
+                'conciliado': bool(lancamento.conciliado),
+                'sem_comprovante': not possui_comprovante
+            })
+
+        projetos_ativos = Projeto.query.filter_by(status='Ativo').count()
+        projetos_com_movimento = db.session.query(func.count(func.distinct(Lancamento.projeto_id))).filter(
+            extract('month', Lancamento.data) == mes_selecionado,
+            extract('year', Lancamento.data) == ano_selecionado,
+            Lancamento.projeto_id.isnot(None)
+        ).scalar() or 0
+        total_destinacoes = db.session.query(func.coalesce(func.sum(Lancamento.valor), 0)).filter(
+            extract('month', Lancamento.data) == mes_selecionado,
+            extract('year', Lancamento.data) == ano_selecionado,
+            func.lower(Lancamento.tipo).in_(['saída', 'saida']),
+            or_(
+                func.lower(Lancamento.categoria).like('%destinação%'),
+                func.lower(Lancamento.categoria).like('%destinacao%')
+            )
+        ).scalar() or 0
+        novas_queries_dashboard.append('Q11_projetos_destinacoes_resumo')
+
+        resumo_projetos = {
+            'projetos_ativos': int(projetos_ativos or 0),
+            'projetos_com_movimento': int(projetos_com_movimento or 0),
+            'total_destinacoes': float(total_destinacoes or 0)
+        }
+
+        alertas_objetivos = []
+        if total_obrigacoes_pendentes > 0:
+            alertas_objetivos.append({
+                'tipo': 'warning',
+                'titulo': 'Obrigações pendentes/parciais',
+                'valor': int(total_obrigacoes_pendentes),
+                'detalhe': 'Existem obrigações em aberto no motor financeiro.'
+            })
+        if total_nao_conciliados > 0:
+            alertas_objetivos.append({
+                'tipo': 'warning',
+                'titulo': 'Lançamentos não conciliados',
+                'valor': int(total_nao_conciliados),
+                'detalhe': 'Há lançamentos pendentes de conciliação no período.'
+            })
+        if lancamentos_sem_comprovante > 0:
+            alertas_objetivos.append({
+                'tipo': 'warning',
+                'titulo': 'Lançamentos sem comprovante',
+                'valor': int(lancamentos_sem_comprovante),
+                'detalhe': 'Existem lançamentos sem anexo legado e sem comprovante relacionado.'
+            })
+        if saldo_mes < 0:
+            alertas_objetivos.append({
+                'tipo': 'danger',
+                'titulo': 'Saldo do mês negativo',
+                'valor': float(saldo_mes),
+                'detalhe': 'As saídas superaram as entradas no período selecionado.'
+            })
+
         config = Configuracao.obter_configuracao()
         indicadores_distribuicao = None
-        
-        # Verificar se deve exibir indicadores (default True se campo não existir)
+
         exibir_indicadores = True
         if config:
             try:
                 exibir_indicadores = getattr(config, 'exibir_indicador_distribuicao', True)
-            except:
+            except Exception:
                 exibir_indicadores = True
-        
+
         if config and exibir_indicadores:
-            # Calcular total de Ofertas e Dízimos (entradas)
             total_ofertas_dizimos = sum(
-                l.valor for l in lancamentos_mes 
-                if l.tipo.lower() == 'entrada' and 
-                l.categoria and 
-                any(keyword in l.categoria.lower() for keyword in ['oferta', 'dízimo', 'dizimo'])
+                float(l.valor or 0)
+                for l in lancamentos_mes
+                if _eh_entrada(l.tipo)
+                and l.categoria
+                and any(keyword in l.categoria.lower() for keyword in ['oferta', 'dízimo', 'dizimo'])
             )
-            
-            # Calcular valores ideais baseados nos percentuais configurados
+
             valor_ideal_administrativo = total_ofertas_dizimos * (config.percentual_administrativo / 100)
             valor_ideal_prebenda = total_ofertas_dizimos * (config.percentual_prebenda / 100)
             valor_ideal_cuidados = total_ofertas_dizimos * (config.percentual_cuidados_igreja / 100)
-            
-            # Calcular valores reais das despesas por categoria
-            # Administrativo: despesas administrativas, sede, escritório, etc
+
             valor_real_administrativo = sum(
-                l.valor for l in lancamentos_mes 
-                if l.tipo.lower() in ['saída', 'saida'] and 
-                l.categoria and 
-                any(keyword in l.categoria.lower() for keyword in ['administrativo', 'sede', 'escritório', 'escritorio', 'material escritório', 'material escritorio'])
+                float(l.valor or 0)
+                for l in lancamentos_mes
+                if _eh_saida(l.tipo)
+                and l.categoria
+                and any(keyword in l.categoria.lower() for keyword in ['administrativo', 'sede', 'escritório', 'escritorio', 'material escritório', 'material escritorio'])
             )
-            
-            # Prebenda: salários pastorais, prebenda, honorários
+
             valor_real_prebenda = sum(
-                l.valor for l in lancamentos_mes 
-                if l.tipo.lower() in ['saída', 'saida'] and 
-                l.categoria and 
-                any(keyword in l.categoria.lower() for keyword in ['prebenda', 'salário', 'salario', 'honorário', 'honorario', 'pastoral'])
+                float(l.valor or 0)
+                for l in lancamentos_mes
+                if _eh_saida(l.tipo)
+                and l.categoria
+                and any(keyword in l.categoria.lower() for keyword in ['prebenda', 'salário', 'salario', 'honorário', 'honorario', 'pastoral'])
             )
-            
-            # Cuidados da Igreja: manutenção, contas, reformas, etc
+
             valor_real_cuidados = sum(
-                l.valor for l in lancamentos_mes 
-                if l.tipo.lower() in ['saída', 'saida'] and 
-                l.categoria and 
-                any(keyword in l.categoria.lower() for keyword in ['manutenção', 'manutencao', 'energia', 'água', 'agua', 'internet', 'telefone', 'limpeza', 'reforma', 'conservação', 'conservacao', 'aluguel'])
+                float(l.valor or 0)
+                for l in lancamentos_mes
+                if _eh_saida(l.tipo)
+                and l.categoria
+                and any(keyword in l.categoria.lower() for keyword in ['manutenção', 'manutencao', 'energia', 'água', 'agua', 'internet', 'telefone', 'limpeza', 'reforma', 'conservação', 'conservacao', 'aluguel'])
             )
-            
-            # Calcular percentuais reais
+
             percentual_real_administrativo = (valor_real_administrativo / total_ofertas_dizimos * 100) if total_ofertas_dizimos > 0 else 0
             percentual_real_prebenda = (valor_real_prebenda / total_ofertas_dizimos * 100) if total_ofertas_dizimos > 0 else 0
             percentual_real_cuidados = (valor_real_cuidados / total_ofertas_dizimos * 100) if total_ofertas_dizimos > 0 else 0
-            
-            # Calcular desvios
+
             desvio_administrativo = percentual_real_administrativo - config.percentual_administrativo
             desvio_prebenda = percentual_real_prebenda - config.percentual_prebenda
             desvio_cuidados = percentual_real_cuidados - config.percentual_cuidados_igreja
-            
-            # Determinar status de cada categoria
+
             def obter_status(desvio):
-                if abs(desvio) <= 5:  # Tolerância de 5%
+                if abs(desvio) <= 5:
                     return 'ok'
-                elif desvio > 5:
+                if desvio > 5:
                     return 'acima'
-                else:
-                    return 'abaixo'
-            
-            # Gerar alertas
+                return 'abaixo'
+
             alertas = []
             if abs(desvio_administrativo) > 5:
                 alertas.append({
                     'tipo': 'warning' if desvio_administrativo > 0 else 'info',
                     'mensagem': f'Despesas administrativas {"acima" if desvio_administrativo > 0 else "abaixo"} do ideal ({abs(desvio_administrativo):.1f}%)'
                 })
-            
             if abs(desvio_prebenda) > 5:
                 alertas.append({
                     'tipo': 'warning' if desvio_prebenda > 0 else 'info',
                     'mensagem': f'Prebenda pastoral {"acima" if desvio_prebenda > 0 else "abaixo"} do ideal ({abs(desvio_prebenda):.1f}%)'
                 })
-            
             if abs(desvio_cuidados) > 5:
                 alertas.append({
                     'tipo': 'warning' if desvio_cuidados > 0 else 'info',
                     'mensagem': f'Cuidados da igreja {"acima" if desvio_cuidados > 0 else "abaixo"} do ideal ({abs(desvio_cuidados):.1f}%)'
                 })
-            
+
             indicadores_distribuicao = {
                 'total_ofertas_dizimos': total_ofertas_dizimos,
                 'categorias': [
@@ -2212,23 +2460,54 @@ def dashboard_moderno():
                 'alertas': alertas,
                 'status_geral': 'ok' if len(alertas) == 0 else 'atencao' if len(alertas) <= 1 else 'critico'
             }
-            
-            # Log de debug
             current_app.logger.info(f'>>> INDICADORES: Total ofertas/dízimos = R$ {total_ofertas_dizimos:.2f}')
             current_app.logger.info(f'>>> INDICADORES: Exibir = {exibir_indicadores}, Status = {indicadores_distribuicao["status_geral"]}')
         else:
             current_app.logger.warning(f'>>> INDICADORES NÃO EXIBIDOS: config={config is not None}, exibir={exibir_indicadores}')
-        
-        return render_template('financeiro/dashboard_moderno.html',
-                             total_entradas=total_entradas,
-                             total_saidas=total_saidas,
-                             total_nao_conciliados=total_nao_conciliados,
-                             ultimos_lancamentos=ultimos_lancamentos,
-                             categorias_entradas=categorias_entradas,
-                             indicadores_distribuicao=indicadores_distribuicao,
-                             mes_selecionado=mes_selecionado,
-                             ano_selecionado=ano_selecionado)
-                             
+
+        metricas_dashboard = {
+            'entradas': total_entradas,
+            'saidas': total_saidas,
+            'saldo_mes': saldo_mes,
+            'saldo_acumulado': saldo_acumulado,
+            'pendencias': int(total_obrigacoes_pendentes),
+            'repasse_pendente': resumo_repasse['saldo_pendente_total'],
+            'despesas_fixas_pendentes': despesas_fixas_resumo['saldo_pendente'],
+            'nao_conciliados': int(total_nao_conciliados),
+            'sem_comprovante': int(lancamentos_sem_comprovante)
+        }
+
+        performance_dashboard = {
+            'total_novas_queries': len(novas_queries_dashboard),
+            'novas_queries': novas_queries_dashboard
+        }
+
+        current_app.logger.info(
+            'D23D28_DASHBOARD_NOVAS_QUERIES total=%s lista=%s',
+            performance_dashboard['total_novas_queries'],
+            ','.join(performance_dashboard['novas_queries'])
+        )
+
+        return render_template(
+            'financeiro/dashboard_moderno.html',
+            metricas=metricas_dashboard,
+            total_entradas=total_entradas,
+            total_saidas=total_saidas,
+            total_nao_conciliados=total_nao_conciliados,
+            categorias_entradas=categorias_entradas,
+            indicadores_distribuicao=indicadores_distribuicao,
+            mes_selecionado=mes_selecionado,
+            ano_selecionado=ano_selecionado,
+            resumo_repasse=resumo_repasse,
+            despesas_fixas_resumo=despesas_fixas_resumo,
+            resumo_projetos=resumo_projetos,
+            evolucao_6m=evolucao_6m,
+            despesas_por_categoria=despesas_por_categoria,
+            alertas_objetivos=alertas_objetivos,
+            ultimas_movimentacoes=ultimas_movimentacoes,
+            performance_dashboard=performance_dashboard
+        )
+
     except Exception as e:
         # Log detalhado do erro
         import traceback

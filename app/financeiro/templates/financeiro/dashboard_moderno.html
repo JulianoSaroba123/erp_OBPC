@@ -1,383 +1,942 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}Dashboard Financeiro - OBPC{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/financeiro-moderno.css') }}">
+<style>
+.dashboard-shell {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.hero-board {
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at top right, rgba(34, 211, 238, 0.28), transparent 28%),
+        linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #0ea5e9 100%);
+    border-radius: 1.25rem;
+    padding: 2rem;
+    color: #f8fafc;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+}
+
+.hero-board::after {
+    content: "";
+    position: absolute;
+    inset: auto -5% -30% auto;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.hero-overline {
+    font-size: 0.82rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    opacity: 0.78;
+    margin-bottom: 0.75rem;
+}
+
+.hero-title {
+    font-size: clamp(1.95rem, 3vw, 2.7rem);
+    font-weight: 800;
+    line-height: 1.05;
+    margin-bottom: 0.65rem;
+}
+
+.hero-subtitle {
+    max-width: 48rem;
+    color: rgba(248, 250, 252, 0.84);
+    margin-bottom: 0;
+}
+
+.hero-toolbar {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 1rem;
+    padding: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+.hero-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.hero-toolbar .form-select,
+.hero-toolbar .btn {
+    min-height: 42px;
+    border-radius: 0.8rem;
+}
+
+.action-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1rem;
+}
+
+.action-inline .btn {
+    border-radius: 999px;
+    padding-inline: 1rem;
+}
+
+.kpi-card,
+.ops-card,
+.section-card,
+.report-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1.15rem;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+.kpi-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 210px;
+    padding: 1.35rem;
+}
+
+.kpi-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 6px;
+    background: var(--kpi-color, #2563eb);
+}
+
+.kpi-card::after {
+    content: "";
+    position: absolute;
+    top: -42px;
+    right: -32px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--kpi-color, #2563eb) 15%, white 85%);
+}
+
+.kpi-head,
+.ops-head,
+.section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.kpi-head {
+    margin-bottom: 1.1rem;
+}
+
+.kpi-title,
+.ops-title {
+    margin: 0;
+    font-size: 0.82rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #64748b;
+    font-weight: 800;
+}
+
+.kpi-icon,
+.ops-icon,
+.section-icon {
+    width: 3rem;
+    height: 3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.95rem;
+    font-size: 1.15rem;
+    color: var(--kpi-color, #2563eb);
+    background: color-mix(in srgb, var(--kpi-color, #2563eb) 14%, white 86%);
+}
+
+.kpi-value {
+    position: relative;
+    z-index: 1;
+    font-size: clamp(1.7rem, 2.8vw, 2.4rem);
+    line-height: 1.05;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.45rem;
+}
+
+.kpi-helper,
+.ops-helper,
+.section-helper {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+
+.kpi-meta {
+    margin-top: 1rem;
+    padding-top: 0.95rem;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.84rem;
+    color: #475569;
+}
+
+.ops-card {
+    padding: 1rem 1.1rem;
+    min-height: 140px;
+}
+
+.ops-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #0f172a;
+    margin: 0.5rem 0 0.3rem;
+}
+
+.ops-foot {
+    margin-top: 0.7rem;
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.section-card {
+    padding: 1.35rem;
+    overflow: hidden;
+}
+
+.section-heading {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+}
+
+.section-head {
+    margin-bottom: 1.25rem;
+}
+
+.section-note {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.flow-chart {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.9rem;
+    align-items: end;
+    min-height: 290px;
+}
+
+.flow-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+}
+
+.flow-month {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.flow-bars {
+    height: 220px;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0 0.25rem;
+    background: linear-gradient(180deg, rgba(148, 163, 184, 0.06), rgba(148, 163, 184, 0));
+    border-radius: 1rem;
+}
+
+.flow-bar {
+    width: 34%;
+    min-height: 6px;
+    border-radius: 0.8rem 0.8rem 0.3rem 0.3rem;
+    position: relative;
+}
+
+.flow-bar.entrada {
+    background: linear-gradient(180deg, #34d399 0%, #16a34a 100%);
+}
+
+.flow-bar.saida {
+    background: linear-gradient(180deg, #fb7185 0%, #dc2626 100%);
+}
+
+.flow-bar-labels {
+    width: 100%;
+    display: grid;
+    gap: 0.2rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.saldo-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.expense-list {
+    display: grid;
+    gap: 0.95rem;
+}
+
+.expense-item {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.expense-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.expense-name {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.expense-value {
+    font-weight: 800;
+    color: #c2410c;
+}
+
+.expense-bar-track {
+    width: 100%;
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.expense-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #f59e0b 0%, #ea580c 100%);
+}
+
+.expense-meta {
+    font-size: 0.78rem;
+    color: #64748b;
+}
+
+.attention-panel {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.attention-item,
+.attention-ok {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+}
+
+.attention-item {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+}
+
+.attention-item.danger {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #b91c1c;
+}
+
+.attention-ok {
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+.attention-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    flex: 0 0 auto;
+}
+
+.attention-item .attention-icon {
+    background: rgba(249, 115, 22, 0.16);
+}
+
+.attention-item.danger .attention-icon {
+    background: rgba(220, 38, 38, 0.14);
+}
+
+.attention-ok .attention-icon {
+    background: rgba(22, 163, 74, 0.15);
+}
+
+.movement-wrapper {
+    overflow-x: auto;
+}
+
+.movement-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.movement-table thead th {
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748b;
+    background: #f8fafc;
+    padding: 0.9rem 0.8rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.movement-table tbody td {
+    padding: 0.95rem 0.8rem;
+    border-bottom: 1px solid #eef2f7;
+    vertical-align: middle;
+}
+
+.movement-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.movement-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.soft-badge,
+.type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.68rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.type-badge.entrada {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.type-badge.saida {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.soft-badge.conciliado {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.soft-badge.pendente {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.soft-badge.comprovante-ok {
+    background: #ecfeff;
+    color: #0f766e;
+}
+
+.soft-badge.comprovante-falta {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.status-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.action-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+    border: 1px solid #e2e8f0;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    color: #0f172a;
+    text-decoration: none;
+}
+
+.action-card:hover {
+    text-decoration: none;
+    color: #0f172a;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+}
+
+.action-card i {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    font-size: 1rem;
+}
+
+.action-card.primary i { background: #dbeafe; color: #1d4ed8; }
+.action-card.success i { background: #dcfce7; color: #166534; }
+.action-card.warning i { background: #fef3c7; color: #92400e; }
+.action-card.info i { background: #cffafe; color: #0f766e; }
+.action-card.dark i { background: #e2e8f0; color: #334155; }
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.report-card {
+    padding: 1.2rem;
+}
+
+.report-card i {
+    width: 3rem;
+    height: 3rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.95rem;
+    font-size: 1.15rem;
+    margin-bottom: 0.9rem;
+}
+
+.report-card.gerencial i { background: #dbeafe; color: #1d4ed8; }
+.report-card.sede i { background: #ecfccb; color: #4d7c0f; }
+.report-card.auditoria i { background: #cffafe; color: #0f766e; }
+
+.report-card h4 {
+    font-size: 1rem;
+    margin-bottom: 0.45rem;
+    color: #0f172a;
+}
+
+.report-card p {
+    color: #64748b;
+    font-size: 0.9rem;
+    min-height: 2.6rem;
+}
+
+.report-actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.report-actions .btn {
+    border-radius: 999px;
+}
+
+.footer-query-note {
+    text-align: right;
+    color: #64748b;
+    font-size: 0.76rem;
+}
+
+@media (max-width: 1199px) {
+    .actions-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 991px) {
+    .flow-chart {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        min-height: auto;
+    }
+
+    .actions-grid,
+    .report-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 767px) {
+    .hero-board {
+        padding: 1.35rem;
+    }
+
+    .hero-title {
+        font-size: 1.7rem;
+    }
+
+    .flow-chart,
+    .actions-grid,
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .kpi-card,
+    .ops-card,
+    .section-card {
+        min-height: auto;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
 {% set meses = {
+    1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr',
+    5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago',
+    9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'
+} %}
+{% set meses_extenso = {
     1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
     5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
     9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
 } %}
-<div class="container-fluid">
-    <!-- Header Dashboard -->
-    <div class="financial-dashboard fade-in-up">
-        <div class="row align-items-center">
-            <div class="col-md-8">
-                <h1 class="h2 mb-2">
-                    <i class="fas fa-chart-line me-3"></i>
-                    Dashboard Financeiro
-                </h1>
-                <p class="mb-0 opacity-75">
-                    Visão geral completa da movimentação financeira da igreja
-                </p>
-            </div>
-            <div class="col-md-4 text-end">
-                <div class="btn-group">
-                    <button class="btn btn-modern outline">
-                        <i class="fas fa-download me-2"></i>Exportar
-                    </button>
-                    <button class="btn btn-modern primary">
-                        <i class="fas fa-plus me-2"></i>Novo Lançamento
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+{% set max_serie = namespace(valor=0) %}
+{% for item in evolucao_6m %}
+    {% if item.entradas > max_serie.valor %}{% set max_serie.valor = item.entradas %}{% endif %}
+    {% if item.saidas > max_serie.valor %}{% set max_serie.valor = item.saidas %}{% endif %}
+{% endfor %}
+{% set total_despesas_categoria = despesas_por_categoria|sum(attribute='total') %}
+{% set pendencias_totais = (metricas.pendencias or 0) + (metricas.nao_conciliados or 0) + (metricas.sem_comprovante or 0) + (1 if (metricas.saldo_mes or 0) < 0 else 0) %}
+{% set tem_alertas = (resumo_repasse.saldo_pendente_total or 0) > 0 or (metricas.nao_conciliados or 0) > 0 or (metricas.sem_comprovante or 0) > 0 or (metricas.saldo_mes or 0) < 0 %}
 
-    <!-- Seletor de Período -->
-    <div class="card mb-4 shadow-sm fade-in-up">
-        <div class="card-body py-3">
-            <form method="GET" action="{{ url_for('financeiro.dashboard_moderno') }}" class="row align-items-center g-2">
-                <div class="col-auto">
-                    <label class="form-label mb-0 me-2">
-                        <i class="fas fa-calendar-alt me-1"></i>
-                        <strong>Período:</strong>
-                    </label>
-                </div>
-                <div class="col-auto">
-                    <select name="mes" class="form-select form-select-sm" style="min-width: 150px;">
-                        <option value="1" {% if mes_selecionado == 1 %}selected{% endif %}>Janeiro</option>
-                        <option value="2" {% if mes_selecionado == 2 %}selected{% endif %}>Fevereiro</option>
-                        <option value="3" {% if mes_selecionado == 3 %}selected{% endif %}>Março</option>
-                        <option value="4" {% if mes_selecionado == 4 %}selected{% endif %}>Abril</option>
-                        <option value="5" {% if mes_selecionado == 5 %}selected{% endif %}>Maio</option>
-                        <option value="6" {% if mes_selecionado == 6 %}selected{% endif %}>Junho</option>
-                        <option value="7" {% if mes_selecionado == 7 %}selected{% endif %}>Julho</option>
-                        <option value="8" {% if mes_selecionado == 8 %}selected{% endif %}>Agosto</option>
-                        <option value="9" {% if mes_selecionado == 9 %}selected{% endif %}>Setembro</option>
-                        <option value="10" {% if mes_selecionado == 10 %}selected{% endif %}>Outubro</option>
-                        <option value="11" {% if mes_selecionado == 11 %}selected{% endif %}>Novembro</option>
-                        <option value="12" {% if mes_selecionado == 12 %}selected{% endif %}>Dezembro</option>
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <select name="ano" class="form-select form-select-sm" style="min-width: 100px;">
-                        {% for ano in range(2020, 2031) %}
-                        <option value="{{ ano }}" {% if ano_selecionado == ano %}selected{% endif %}>{{ ano }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fas fa-search me-1"></i>Filtrar
-                    </button>
-                </div>
-                <div class="col-auto">
-                    <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-redo me-1"></i>Mês Atual
-                    </a>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Métricas Principais -->
-    <div class="row mb-4">
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card success fade-in-up">
-                <div class="metric-icon text-success-custom">
-                    <i class="fas fa-arrow-up"></i>
-                </div>
-                <div class="metric-value">R$ {{ '%.2f'|format(total_entradas or 0) }}</div>
-                <div class="metric-label">Total de Entradas</div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="fas fa-calendar me-1"></i>{{ meses[mes_selecionado] }}/{{ ano_selecionado }}
-                    </small>
+<div class="container-fluid dashboard-shell">
+    <section class="hero-board fade-in-up">
+        <div class="row align-items-end g-4">
+            <div class="col-xl-7">
+                <div class="hero-overline">Painel Financeiro Gerencial</div>
+                <h1 class="hero-title">VISÃO GERAL FINANCEIRA</h1>
+                <p class="hero-subtitle">Competência selecionada: {{ meses_extenso[mes_selecionado] }}/{{ ano_selecionado }}. O painel prioriza situação financeira, tendência, pendências objetivas e decisões operacionais do período.</p>
+                <div class="action-inline">
+                    <a class="btn btn-light btn-sm" href="{{ url_for('financeiro.novo_lancamento') }}"><i class="fas fa-plus me-1"></i>Novo Lançamento</a>
+                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('financeiro.importar_extrato') }}"><i class="fas fa-file-import me-1"></i>Importar Extrato</a>
+                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('financeiro.conciliacao') }}"><i class="fas fa-scale-balanced me-1"></i>Conciliação</a>
                 </div>
             </div>
-        </div>
-        
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card danger fade-in-up">
-                <div class="metric-icon text-danger-custom">
-                    <i class="fas fa-arrow-down"></i>
-                </div>
-                <div class="metric-value">R$ {{ '%.2f'|format(total_saidas or 0) }}</div>
-                <div class="metric-label">Total de Saídas</div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="fas fa-calendar me-1"></i>{{ meses[mes_selecionado] }}/{{ ano_selecionado }}
-                    </small>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card info fade-in-up">
-                <div class="metric-icon text-info">
-                    <i class="fas fa-balance-scale"></i>
-                </div>
-                <div class="metric-value text-{{ 'success-custom' if (total_entradas or 0) - (total_saidas or 0) >= 0 else 'danger-custom' }}">
-                    R$ {{ '%.2f'|format((total_entradas or 0) - (total_saidas or 0)) }}
-                </div>
-                <div class="metric-label">Saldo do Mês</div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <i class="fas fa-calculator me-1"></i>Entradas - Saídas
-                    </small>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-lg-3 col-md-6 mb-3">
-            <div class="metric-card warning fade-in-up">
-                <div class="metric-icon text-warning-custom">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="metric-value">{{ total_nao_conciliados or 0 }}</div>
-                <div class="metric-label">Não Conciliados</div>
-                <div class="mt-2">
-                    <small class="text-muted">
-                        <a href="{{ url_for('financeiro.conciliacao') }}" class="text-warning">
-                            <i class="fas fa-external-link-alt me-1"></i>Conciliar agora
-                        </a>
-                    </small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- DEBUG: Indicadores = {{ indicadores_distribuicao is not none }} -->
-    
-    <!-- Indicadores de Distribuição Financeira -->
-    {% if indicadores_distribuicao %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="financial-card fade-in-up">
-                <div class="financial-card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-chart-pie me-2"></i>
-                            Indicadores de Distribuição Financeira
-                        </h5>
-                        <span class="badge {{ 'bg-success' if indicadores_distribuicao.status_geral == 'ok' else 'bg-warning' if indicadores_distribuicao.status_geral == 'atencao' else 'bg-danger' }}">
-                            {{ 'Dentro do Planejado' if indicadores_distribuicao.status_geral == 'ok' else 'Atenção Necessária' if indicadores_distribuicao.status_geral == 'atencao' else 'Requer Ajustes' }}
-                        </span>
-                    </div>
-                </div>
-                <div class="financial-card-body">
-                    <!-- Total de Ofertas e Dízimos -->
-                    <div class="row mb-4">
+            <div class="col-xl-5">
+                <div class="hero-toolbar">
+                    <div class="row g-2 align-items-end">
                         <div class="col-12">
-                            <div class="alert alert-info mb-0">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="fas fa-hand-holding-usd me-2"></i>
-                                        <strong>Total de Ofertas e Dízimos do Mês:</strong>
-                                    </div>
-                                    <div class="h4 mb-0">
-                                        R$ {{ '%.2f'|format(indicadores_distribuicao.total_ofertas_dizimos) }}
-                                    </div>
-                                </div>
-                            </div>
+                            <span class="hero-label">Competência Selecionada</span>
+                        </div>
+                        <div class="col-sm-5">
+                            <select name="mes" form="dashboard-filter-form" class="form-select form-select-sm">
+                                {% for mes_num in range(1, 13) %}
+                                <option value="{{ mes_num }}" {% if mes_selecionado == mes_num %}selected{% endif %}>{{ meses_extenso[mes_num] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-sm-4">
+                            <select name="ano" form="dashboard-filter-form" class="form-select form-select-sm">
+                                {% for ano in range(2020, 2036) %}
+                                <option value="{{ ano }}" {% if ano_selecionado == ano %}selected{% endif %}>{{ ano }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-sm-3 d-grid">
+                            <button form="dashboard-filter-form" type="submit" class="btn btn-light btn-sm">Aplicar</button>
                         </div>
                     </div>
+                    <form id="dashboard-filter-form" method="GET" action="{{ url_for('financeiro.dashboard_moderno') }}"></form>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                    <!-- Alertas -->
-                    {% if indicadores_distribuicao.alertas %}
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            {% for alerta in indicadores_distribuicao.alertas %}
-                            <div class="alert alert-{{ alerta.tipo }} alert-dismissible fade show mb-2" role="alert">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                {{ alerta.mensagem }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                            {% endfor %}
+    <section>
+        <div class="row g-3">
+            <div class="col-xxl-2 col-xl-4 col-md-6">
+                <article class="kpi-card fade-in-up" style="--kpi-color: #16a34a;">
+                    <div class="kpi-head">
+                        <div>
+                            <p class="kpi-title">Entradas</p>
                         </div>
+                        <span class="kpi-icon"><i class="fas fa-arrow-trend-up"></i></span>
                     </div>
-                    {% endif %}
+                    <div class="kpi-value">R$ {{ '%.2f'|format(metricas.entradas or 0) }}</div>
+                    <p class="kpi-helper">Valor total das entradas da competência.</p>
+                    <div class="kpi-meta">Base mensal consolidada do dashboard.</div>
+                </article>
+            </div>
+            <div class="col-xxl-2 col-xl-4 col-md-6">
+                <article class="kpi-card fade-in-up" style="--kpi-color: #dc2626;">
+                    <div class="kpi-head">
+                        <p class="kpi-title">Saídas</p>
+                        <span class="kpi-icon"><i class="fas fa-arrow-trend-down"></i></span>
+                    </div>
+                    <div class="kpi-value">R$ {{ '%.2f'|format(metricas.saidas or 0) }}</div>
+                    <p class="kpi-helper">Saídas executadas na competência selecionada.</p>
+                    <div class="kpi-meta">Monitoramento direto do caixa do período.</div>
+                </article>
+            </div>
+            <div class="col-xxl-2 col-xl-4 col-md-6">
+                <article class="kpi-card fade-in-up" style="--kpi-color: {{ '#16a34a' if (metricas.saldo_mes or 0) >= 0 else '#dc2626' }};">
+                    <div class="kpi-head">
+                        <p class="kpi-title">Saldo do Mês</p>
+                        <span class="kpi-icon"><i class="fas fa-scale-balanced"></i></span>
+                    </div>
+                    <div class="kpi-value">R$ {{ '%.2f'|format(metricas.saldo_mes or 0) }}</div>
+                    <p class="kpi-helper">Entradas menos saídas da competência.</p>
+                    <div class="kpi-meta">{{ 'Resultado positivo do período.' if (metricas.saldo_mes or 0) >= 0 else 'Competência com saldo negativo.' }}</div>
+                </article>
+            </div>
+            <div class="col-xxl-2 col-xl-4 col-md-6">
+                <article class="kpi-card fade-in-up" style="--kpi-color: #2563eb;">
+                    <div class="kpi-head">
+                        <p class="kpi-title">Saldo Acumulado</p>
+                        <span class="kpi-icon"><i class="fas fa-wallet"></i></span>
+                    </div>
+                    <div class="kpi-value">R$ {{ '%.2f'|format(metricas.saldo_acumulado or 0) }}</div>
+                    <p class="kpi-helper">Saldo consolidado até a competência atual.</p>
+                    <div class="kpi-meta">Regra financeira consolidada do sistema.</div>
+                </article>
+            </div>
+            <div class="col-xxl-2 col-xl-4 col-md-6">
+                <article class="kpi-card fade-in-up" style="--kpi-color: #d97706;">
+                    <div class="kpi-head">
+                        <p class="kpi-title">Repasse à Sede</p>
+                        <span class="kpi-icon"><i class="fas fa-building-columns"></i></span>
+                    </div>
+                    <div class="kpi-value">R$ {{ '%.2f'|format(metricas.repasse_pendente or 0) }}</div>
+                    <p class="kpi-helper">Saldo pendente do motor de obrigações.</p>
+                    <div class="kpi-meta">
+                        Obrigação: R$ {{ '%.2f'|format(resumo_repasse.obrigacao_competencia or 0) }} | Pago: R$ {{ '%.2f'|format(resumo_repasse.pago_competencia or 0) }}<br>
+                        Status da competência: {{ (resumo_repasse.status or 'SEM_OBRIGACAO')|replace('_', ' ') }}
+                    </div>
+                </article>
+            </div>
+            <div class="col-xxl-2 col-xl-4 col-md-6">
+                <article class="kpi-card fade-in-up" style="--kpi-color: #0891b2;">
+                    <div class="kpi-head">
+                        <p class="kpi-title">Pendências</p>
+                        <span class="kpi-icon"><i class="fas fa-triangle-exclamation"></i></span>
+                    </div>
+                    <div class="kpi-value">{{ pendencias_totais }}</div>
+                    <p class="kpi-helper">Quantidade consolidada de itens que exigem atenção.</p>
+                    <div class="kpi-meta">Obrigações, conciliação, comprovantes e saldo crítico.</div>
+                </article>
+            </div>
+        </div>
+    </section>
 
-                    <!-- Categorias de Distribuição -->
-                    <div class="row">
-                        {% for categoria in indicadores_distribuicao.categorias %}
-                        <div class="col-lg-4 mb-4">
-                            <div class="card h-100 border-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }}">
-                                <div class="card-header bg-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }} bg-opacity-10">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0">
-                                            <i class="fas fa-{{ 'building' if 'Administrativo' in categoria.nome else 'user-tie' if 'Prebenda' in categoria.nome else 'church' }} me-2"></i>
-                                            {{ categoria.nome }}
-                                        </h6>
-                                        {% if categoria.fixo %}
-                                        <span class="badge bg-secondary" title="Percentual fixo">
-                                            <i class="fas fa-lock"></i>
-                                        </span>
-                                        {% else %}
-                                        <span class="badge bg-primary" title="Percentual ajustável entre {{ categoria.min }}% e {{ categoria.max }}%">
-                                            <i class="fas fa-sliders-h"></i> Ajustável
-                                        </span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <!-- Percentual Ideal vs Real -->
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-muted">Percentual Ideal:</small>
-                                            <strong class="text-primary">{{ '%.1f'|format(categoria.percentual_ideal) }}%</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-muted">Percentual Real:</small>
-                                            <strong class="text-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }}">
-                                                {{ '%.1f'|format(categoria.percentual_real) }}%
-                                            </strong>
-                                        </div>
-                                    </div>
+    <section>
+        <div class="row g-3">
+            <div class="col-xl-3 col-md-6">
+                <article class="ops-card fade-in-up">
+                    <div class="ops-head">
+                        <p class="ops-title">Despesas Fixas</p>
+                        <span class="ops-icon" style="color:#d97706;background:#fff7ed;"><i class="fas fa-file-invoice-dollar"></i></span>
+                    </div>
+                    <div class="ops-value">R$ {{ '%.2f'|format(despesas_fixas_resumo.obrigacao_competencia or 0) }}</div>
+                    <p class="ops-helper">Obrigação da competência.</p>
+                    <div class="ops-foot">Pago: R$ {{ '%.2f'|format(despesas_fixas_resumo.pago_competencia or 0) }} | Pendente: R$ {{ '%.2f'|format(despesas_fixas_resumo.saldo_pendente or 0) }}</div>
+                </article>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <article class="ops-card fade-in-up">
+                    <div class="ops-head">
+                        <p class="ops-title">Não Conciliados</p>
+                        <span class="ops-icon" style="color:#92400e;background:#fef3c7;"><i class="fas fa-scale-balanced"></i></span>
+                    </div>
+                    <div class="ops-value">{{ metricas.nao_conciliados or 0 }}</div>
+                    <p class="ops-helper">Movimentações aguardando conciliação.</p>
+                    <div class="ops-foot">Use este indicador como ponto de atenção operacional.</div>
+                </article>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <article class="ops-card fade-in-up">
+                    <div class="ops-head">
+                        <p class="ops-title">Sem Comprovante</p>
+                        <span class="ops-icon" style="color:#0f766e;background:#cffafe;"><i class="fas fa-paperclip"></i></span>
+                    </div>
+                    <div class="ops-value">{{ metricas.sem_comprovante or 0 }}</div>
+                    <p class="ops-helper">Contagem sem anexo legado e sem múltiplos.</p>
+                    <div class="ops-foot">Consulta reaproveita a validação D23D28 sem N+1.</div>
+                </article>
+            </div>
+            <div class="col-xl-3 col-md-6">
+                <article class="ops-card fade-in-up">
+                    <div class="ops-head">
+                        <p class="ops-title">Fundos / Projetos</p>
+                        <span class="ops-icon" style="color:#2563eb;background:#dbeafe;"><i class="fas fa-diagram-project"></i></span>
+                    </div>
+                    <div class="ops-value">{{ resumo_projetos.projetos_com_movimento or 0 }}</div>
+                    <p class="ops-helper">Projetos com movimentação na competência.</p>
+                    <div class="ops-foot">Ativos: {{ resumo_projetos.projetos_ativos or 0 }} | Destinações: R$ {{ '%.2f'|format(resumo_projetos.total_destinacoes or 0) }}</div>
+                </article>
+            </div>
+        </div>
+    </section>
 
-                                    <!-- Valores -->
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-muted">Valor Ideal:</small>
-                                            <strong>R$ {{ '%.2f'|format(categoria.valor_ideal) }}</strong>
-                                        </div>
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-muted">Valor Real Gasto:</small>
-                                            <strong class="text-{{ 'success' if categoria.status == 'ok' else 'warning' if categoria.status == 'acima' else 'info' }}">
-                                                R$ {{ '%.2f'|format(categoria.valor_real) }}
-                                            </strong>
-                                        </div>
-                                    </div>
-
-                                    <!-- Barra de Progresso -->
-                                    <div class="mb-2">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small class="text-muted">Utilização:</small>
-                                            <small class="text-muted">
-                                                {{ '%.1f'|format((categoria.valor_real / categoria.valor_ideal * 100) if categoria.valor_ideal > 0 else 0) }}%
-                                            </small>
-                                        </div>
-                                        <div class="progress" style="height: 8px;">
-                                            {% set utilizacao = (categoria.valor_real / categoria.valor_ideal * 100) if categoria.valor_ideal > 0 else 0 %}
-                                            <div class="progress-bar bg-{{ 'success' if utilizacao <= 105 else 'warning' if utilizacao <= 120 else 'danger' }}" 
-                                                 role="progressbar" 
-                                                 style="width: {{ utilizacao if utilizacao < 100 else 100 }}%"
-                                                 aria-valuenow="{{ utilizacao }}" 
-                                                 aria-valuemin="0" 
-                                                 aria-valuemax="100">
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Status -->
-                                    <div class="mt-3 pt-3 border-top">
-                                        {% if categoria.status == 'ok' %}
-                                        <div class="text-success text-center">
-                                            <i class="fas fa-check-circle fa-lg me-2"></i>
-                                            <small>Dentro do esperado</small>
-                                        </div>
-                                        {% elif categoria.status == 'acima' %}
-                                        <div class="text-warning text-center">
-                                            <i class="fas fa-exclamation-triangle fa-lg me-2"></i>
-                                            <small>{{ '%.1f'|format(categoria.desvio if categoria.desvio >= 0 else -categoria.desvio) }}% acima do ideal</small>
-                                        </div>
-                                        {% else %}
-                                        <div class="text-info text-center">
-                                            <i class="fas fa-info-circle fa-lg me-2"></i>
-                                            <small>{{ '%.1f'|format(categoria.desvio if categoria.desvio >= 0 else -categoria.desvio) }}% abaixo do ideal</small>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
+    <section>
+        <div class="row g-3 align-items-stretch">
+            <div class="col-xl-8">
+                <article class="section-card fade-in-up h-100">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-heading">Fluxo Financeiro</h2>
+                            <div class="section-note">Últimos 6 meses com comparação direta entre entradas, saídas e saldo mensal.</div>
+                        </div>
+                        <span class="section-icon" style="color:#2563eb;background:#dbeafe;"><i class="fas fa-chart-column"></i></span>
+                    </div>
+                    <div class="flow-chart">
+                        {% for item in evolucao_6m %}
+                        {% set base = max_serie.valor if max_serie.valor > 0 else 1 %}
+                        {% set entrada_altura = ((item.entradas / base) * 100) if base else 0 %}
+                        {% set saida_altura = ((item.saidas / base) * 100) if base else 0 %}
+                        <div class="flow-column">
+                            <div class="flow-month">{{ meses[item.mes] }}/{{ item.ano }}</div>
+                            <div class="flow-bars">
+                                <div class="flow-bar entrada" style="height: {{ entrada_altura if entrada_altura > 0 else 2 }}%;" title="Entradas R$ {{ '%.2f'|format(item.entradas) }}"></div>
+                                <div class="flow-bar saida" style="height: {{ saida_altura if saida_altura > 0 else 2 }}%;" title="Saídas R$ {{ '%.2f'|format(item.saidas) }}"></div>
+                            </div>
+                            <div class="flow-bar-labels">
+                                <span>E: R$ {{ '%.2f'|format(item.entradas) }}</span>
+                                <span>S: R$ {{ '%.2f'|format(item.saidas) }}</span>
+                                <span class="saldo-chip">Saldo R$ {{ '%.2f'|format(item.saldo) }}</span>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
+                </article>
+            </div>
+            <div class="col-xl-4">
+                <article class="section-card fade-in-up h-100">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-heading">Despesas por Categoria</h2>
+                            <div class="section-note">Para onde o dinheiro foi na competência selecionada.</div>
+                        </div>
+                        <span class="section-icon" style="color:#ea580c;background:#ffedd5;"><i class="fas fa-chart-pie"></i></span>
+                    </div>
+                    <div class="expense-list">
+                        {% for item in despesas_por_categoria %}
+                        {% set perc = ((item.total / total_despesas_categoria) * 100) if total_despesas_categoria else 0 %}
+                        <div class="expense-item">
+                            <div class="expense-row">
+                                <div class="expense-name">{{ item.categoria }}</div>
+                                <div class="expense-value">R$ {{ '%.2f'|format(item.total) }}</div>
+                            </div>
+                            <div class="expense-bar-track"><div class="expense-bar-fill" style="width: {{ perc }}%;"></div></div>
+                            <div class="expense-meta">{{ '%.1f'|format(perc) }}% do total de saídas do período</div>
+                        </div>
+                        {% else %}
+                        <p class="section-helper mb-0">Sem saídas registradas para compor o gráfico gerencial da competência.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
 
-                    <!-- Nota Explicativa -->
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="alert alert-light mb-0">
-                                <small class="text-muted">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Nota:</strong> Estes indicadores mostram como as ofertas e dízimos devem ser distribuídos. 
-                                    Os percentuais podem ser ajustados nas <a href="{{ url_for('configuracoes.configuracoes') }}">configurações do sistema</a>.
-                                    Tolerância de ±5% é considerada aceitável.
-                                </small>
+    <section>
+        <div class="row g-3 align-items-stretch">
+            <div class="col-xl-4">
+                <article class="section-card fade-in-up h-100">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-heading">Atenção Financeira</h2>
+                            <div class="section-note">Somente alertas objetivos da competência e do motor financeiro já existente.</div>
+                        </div>
+                        <span class="section-icon" style="color:#d97706;background:#fef3c7;"><i class="fas fa-bell"></i></span>
+                    </div>
+                    <div class="attention-panel">
+                        {% if (resumo_repasse.saldo_pendente_total or 0) > 0 %}
+                        <div class="attention-item">
+                            <span class="attention-icon">!</span>
+                            <div>
+                                <strong>Repasse à Sede pendente</strong>
+                                <div>Saldo pendente total de R$ {{ '%.2f'|format(resumo_repasse.saldo_pendente_total or 0) }} no motor de obrigações.</div>
                             </div>
                         </div>
+                        {% endif %}
+                        {% if (metricas.nao_conciliados or 0) > 0 %}
+                        <div class="attention-item">
+                            <span class="attention-icon">!</span>
+                            <div>
+                                <strong>{{ metricas.nao_conciliados }} lançamentos aguardando conciliação</strong>
+                                <div>Conciliação pendente na competência selecionada.</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if (metricas.sem_comprovante or 0) > 0 %}
+                        <div class="attention-item">
+                            <span class="attention-icon">!</span>
+                            <div>
+                                <strong>{{ metricas.sem_comprovante }} movimentações sem comprovante</strong>
+                                <div>Itens sem comprovante legado e sem comprovante múltiplo vinculado.</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if (metricas.saldo_mes or 0) < 0 %}
+                        <div class="attention-item danger">
+                            <span class="attention-icon">!</span>
+                            <div>
+                                <strong>Saldo do mês negativo</strong>
+                                <div>Resultado do período em R$ {{ '%.2f'|format(metricas.saldo_mes or 0) }}.</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if not tem_alertas %}
+                        <div class="attention-ok">
+                            <span class="attention-icon">&#10003;</span>
+                            <div><strong>Nenhuma pendência crítica nesta competência.</strong></div>
+                        </div>
+                        {% endif %}
                     </div>
-                </div>
+                </article>
             </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Ações Rápidas -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="financial-card fade-in-up">
-                <div class="financial-card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-bolt me-2"></i>
-                        Ações Rápidas
-                    </h5>
-                </div>
-                <div class="financial-card-body">
-                    <div class="row">
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('financeiro.novo_lancamento') }}" class="btn btn-modern primary w-100">
-                                <i class="fas fa-plus-circle me-2"></i>
-                                Novo Lançamento
-                            </a>
+            <div class="col-xl-8">
+                <article class="section-card fade-in-up h-100">
+                    <div class="section-head">
+                        <div>
+                            <h2 class="section-heading">Últimas Movimentações</h2>
+                            <div class="section-note">Leitura rápida das movimentações mais recentes com status operacional consolidado.</div>
                         </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('financeiro.importar_extrato') }}" class="btn btn-modern success w-100">
-                                <i class="fas fa-file-import me-2"></i>
-                                Importar Extrato
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('financeiro.conciliacao') }}" class="btn btn-modern warning w-100">
-                                <i class="fas fa-balance-scale me-2"></i>
-                                Conciliação
-                            </a>
-                        </div>
-                        <div class="col-md-3 mb-3">
-                            <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-modern outline w-100">
-                                <i class="fas fa-list me-2"></i>
-                                Ver Lançamentos
-                            </a>
-                        </div>
+                        <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-primary btn-sm">VER TODAS AS MOVIMENTAÇÕES</a>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Últimos Lançamentos -->
-    <div class="row mb-4">
-        <div class="col-lg-8">
-            <div class="financial-card fade-in-up">
-                <div class="financial-card-header">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">
-                            <i class="fas fa-list me-2"></i>
-                            Últimos Lançamentos
-                        </h5>
-                        <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-light btn-sm">
-                            Ver todos
-                        </a>
-                    </div>
-                </div>
-                <div class="financial-card-body p-0">
-                    <div class="modern-table-container">
-                        <table class="table modern-table">
+                    <div class="movement-wrapper">
+                        <table class="movement-table">
                             <thead>
                                 <tr>
                                     <th>Data</th>
@@ -389,165 +948,124 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for lancamento in ultimos_lancamentos %}
+                                {% for mov in ultimas_movimentacoes %}
                                 <tr>
-                                    <td>{{ lancamento.data.strftime('%d/%m') if lancamento.data else '-' }}</td>
+                                    <td>{{ mov.data.strftime('%d/%m/%Y') if mov.data else '-' }}</td>
+                                    <td>{{ mov.descricao }}</td>
+                                    <td>{{ mov.categoria }}</td>
                                     <td>
-                                        <div class="fw-bold">{{ lancamento.descricao[:30] }}...</div>
+                                        <span class="type-badge {{ 'entrada' if (mov.tipo or '').lower() == 'entrada' else 'saida' }}">{{ mov.tipo }}</span>
                                     </td>
+                                    <td class="fw-bold text-{{ 'success' if (mov.tipo or '').lower() == 'entrada' else 'danger' }}">R$ {{ '%.2f'|format(mov.valor) }}</td>
                                     <td>
-                                        <span class="badge bg-light text-dark">{{ lancamento.categoria or 'Sem categoria' }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="status-badge {{ 'entrada' if lancamento.tipo.lower() == 'entrada' else 'saida' }}">
-                                            {{ lancamento.tipo }}
-                                        </span>
-                                    </td>
-                                    <td class="fw-bold {{ 'text-success-custom' if lancamento.tipo.lower() == 'entrada' else 'text-danger-custom' }}">
-                                        R$ {{ '%.2f'|format(lancamento.valor) }}
-                                    </td>
-                                    <td>
-                                        <span class="status-badge {{ 'conciliado' if lancamento.conciliado else 'pendente' }}">
-                                            {{ 'Conciliado' if lancamento.conciliado else 'Pendente' }}
-                                        </span>
+                                        <div class="status-stack">
+                                            <span class="soft-badge {{ 'conciliado' if mov.conciliado else 'pendente' }}">{{ 'Conciliado' if mov.conciliado else 'Pendente' }}</span>
+                                            <span class="soft-badge {{ 'comprovante-falta' if mov.sem_comprovante else 'comprovante-ok' }}">{{ 'Sem comprovante' if mov.sem_comprovante else 'Com comprovante' }}</span>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center py-4">
-                                        <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
-                                        <div class="text-muted">Nenhum lançamento encontrado</div>
-                                    </td>
+                                    <td colspan="6" class="text-center text-muted py-4">Nenhuma movimentação encontrada para exibir.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                </div>
+                </article>
             </div>
         </div>
-        
-        <!-- Resumo por Categoria -->
-        <div class="col-lg-4">
-            <div class="financial-card fade-in-up">
-                <div class="financial-card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-chart-pie me-2"></i>
-                        Entradas por Categoria
-                    </h5>
-                </div>
-                <div class="financial-card-body">
-                    {% for categoria in categorias_entradas %}
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <div class="fw-bold">{{ categoria.categoria or 'Sem categoria' }}</div>
-                            <small class="text-muted">{{ categoria.count }} lançamento(s)</small>
-                        </div>
-                        <div class="text-end">
-                            <div class="fw-bold text-success-custom">R$ {{ '%.2f'|format(categoria.total) }}</div>
-                            <small class="text-muted">{{ '%.1f'|format((categoria.total / total_entradas * 100) if total_entradas else 0) }}%</small>
-                        </div>
-                    </div>
-                    <div class="progress mb-3" style="height: 6px;">
-                        <div class="progress-bar bg-success" style="width: {{ (categoria.total / total_entradas * 100) if total_entradas else 0 }}%"></div>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-3">
-                        <i class="fas fa-chart-pie fa-2x text-muted mb-2"></i>
-                        <div class="text-muted">Nenhuma entrada registrada</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </div>
+    </section>
 
-    <!-- Relatórios Rápidos -->
-    <div class="row">
-        <div class="col-12">
-            <div class="financial-card fade-in-up">
-                <div class="financial-card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-file-alt me-2"></i>
-                        Relatórios Disponíveis
-                    </h5>
+    <section>
+        <article class="section-card fade-in-up">
+            <div class="section-head">
+                <div>
+                    <h2 class="section-heading">Ações Rápidas</h2>
+                    <div class="section-note">Atalhos operacionais reposicionados para não competir com os indicadores financeiros.</div>
                 </div>
-                <div class="financial-card-body">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <div class="card border-success h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-cash-register fa-3x text-success mb-3"></i>
-                                    <h6>Relatório de Caixa</h6>
-                                    <p class="text-muted small">Movimentação financeira interna</p>
-                                    <div class="btn-group w-100">
-                                        <a href="{{ url_for('financeiro.relatorio_caixa') }}" class="btn btn-outline-success btn-sm">
-                                            <i class="fas fa-eye me-1"></i>Ver
-                                        </a>
-                                        <a href="{{ url_for('financeiro.relatorio_caixa_pdf') }}" class="btn btn-success btn-sm" target="_blank">
-                                            <i class="fas fa-file-pdf me-1"></i>PDF
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <div class="card border-primary h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-church fa-3x text-primary mb-3"></i>
-                                    <h6>Relatório da Sede</h6>
-                                    <p class="text-muted small">Prestação de contas oficial</p>
-                                    <div class="btn-group w-100">
-                                        <a href="{{ url_for('financeiro.relatorio_sede') }}" class="btn btn-outline-primary btn-sm">
-                                            <i class="fas fa-eye me-1"></i>Ver
-                                        </a>
-                                        <a href="{{ url_for('financeiro.relatorio_sede_pdf') }}" class="btn btn-primary btn-sm" target="_blank">
-                                            <i class="fas fa-file-pdf me-1"></i>PDF
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-4 mb-3">
-                            <div class="card border-info h-100">
-                                <div class="card-body text-center">
-                                    <i class="fas fa-list-alt fa-3x text-info mb-3"></i>
-                                    <h6>Relatório Geral</h6>
-                                    <p class="text-muted small">Todos os lançamentos</p>
-                                    <div class="btn-group w-100">
-                                        <a href="{{ url_for('financeiro.gerar_relatorio') }}" class="btn btn-outline-info btn-sm">
-                                            <i class="fas fa-eye me-1"></i>Ver
-                                        </a>
-                                        <a href="{{ url_for('financeiro.gerar_relatorio') }}?format=pdf" class="btn btn-info btn-sm" target="_blank">
-                                            <i class="fas fa-file-pdf me-1"></i>PDF
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                <span class="section-icon" style="color:#0891b2;background:#cffafe;"><i class="fas fa-bolt"></i></span>
+            </div>
+            <div class="actions-grid">
+                <a class="action-card primary" href="{{ url_for('financeiro.novo_lancamento') }}">
+                    <i class="fas fa-plus"></i>
+                    <div><strong>Novo Lançamento</strong><div class="section-note">Registrar movimentação</div></div>
+                </a>
+                <a class="action-card success" href="{{ url_for('financeiro.importar_extrato') }}">
+                    <i class="fas fa-file-import"></i>
+                    <div><strong>Importar Extrato</strong><div class="section-note">Trazer movimentos bancários</div></div>
+                </a>
+                <a class="action-card warning" href="{{ url_for('financeiro.conciliacao') }}">
+                    <i class="fas fa-scale-balanced"></i>
+                    <div><strong>Conciliação</strong><div class="section-note">Regularizar pendências</div></div>
+                </a>
+                <a class="action-card info" href="{{ url_for('financeiro.lista_lancamentos') }}">
+                    <i class="fas fa-list"></i>
+                    <div><strong>Ver Lançamentos</strong><div class="section-note">Abrir movimentações</div></div>
+                </a>
+                <a class="action-card dark" href="{{ url_for('financeiro.gerenciar_despesas_fixas') }}">
+                    <i class="fas fa-building-columns"></i>
+                    <div><strong>Repasse à Sede</strong><div class="section-note">Controle do repasse</div></div>
+                </a>
+                <a class="action-card primary" href="{{ url_for('financeiro.gerar_relatorio') }}">
+                    <i class="fas fa-file-lines"></i>
+                    <div><strong>Relatórios</strong><div class="section-note">Acessar visão documental</div></div>
+                </a>
+            </div>
+        </article>
+    </section>
+
+    <section>
+        <article class="section-card fade-in-up">
+            <div class="section-head">
+                <div>
+                    <h2 class="section-heading">Relatórios Disponíveis</h2>
+                    <div class="section-note">Bloco posicionado ao final para não competir com a leitura gerencial do dashboard.</div>
+                </div>
+                <span class="section-icon" style="color:#2563eb;background:#dbeafe;"><i class="fas fa-file-alt"></i></span>
+            </div>
+            <div class="report-grid">
+                <div class="report-card gerencial">
+                    <i class="fas fa-chart-line"></i>
+                    <h4>Gerencial</h4>
+                    <p>Resumo gerencial consolidado com visão do período e distribuição financeira.</p>
+                    <div class="report-actions">
+                        <a href="{{ url_for('financeiro.gerar_relatorio') }}?tipo_relatorio=gerencial" class="btn btn-outline-primary btn-sm">Abrir</a>
+                        <a href="{{ url_for('financeiro.relatorio_pdf') }}?tipo_relatorio=gerencial" class="btn btn-primary btn-sm" target="_blank">PDF</a>
+                    </div>
+                </div>
+                <div class="report-card sede">
+                    <i class="fas fa-church"></i>
+                    <h4>Sede</h4>
+                    <p>Prestação de contas oficial com foco nas obrigações e no repasse institucional.</p>
+                    <div class="report-actions">
+                        <a href="{{ url_for('financeiro.relatorio_sede') }}" class="btn btn-outline-success btn-sm">Abrir</a>
+                        <a href="{{ url_for('financeiro.relatorio_sede_pdf') }}" class="btn btn-success btn-sm" target="_blank">PDF</a>
+                    </div>
+                </div>
+                <div class="report-card auditoria">
+                    <i class="fas fa-shield-halved"></i>
+                    <h4>Auditoria</h4>
+                    <p>Visão técnica para conferência das movimentações e consistência operacional.</p>
+                    <div class="report-actions">
+                        <a href="{{ url_for('financeiro.relatorio_auditoria') }}" class="btn btn-outline-info btn-sm">Abrir</a>
+                        <a href="{{ url_for('financeiro.relatorio_pdf') }}?tipo_relatorio=auditoria" class="btn btn-info btn-sm" target="_blank">PDF</a>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
+        </article>
+    </section>
+
+    <div class="footer-query-note">D23D28 queries: {{ performance_dashboard.total_novas_queries }} ({{ performance_dashboard.novas_queries|join(', ') }})</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
 $(document).ready(function() {
-    // Animação dos cards com delay
     $('.fade-in-up').each(function(index) {
-        $(this).css('animation-delay', (index * 0.1) + 's');
+        $(this).css('animation-delay', (index * 0.06) + 's');
     });
-    
-    // Atualizar métricas a cada 30 segundos
-    setInterval(function() {
-        // Aqui você pode adicionar código para atualizar as métricas via AJAX
-        console.log('Atualizando métricas...');
-    }, 30000);
 });
 </script>
 {% endblock %}
