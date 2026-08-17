@@ -177,6 +177,36 @@
       transform: translateX(3px) !important;
     }
 
+    .submenu-item.active,
+    .sidebar .menu-toggle-button.active,
+    .sidebar .submenu-toggle-button.active {
+      background: linear-gradient(90deg, var(--yellow), #FF4500) !important;
+      border-left-color: var(--yellow) !important;
+      color: white !important;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    .sidebar .submenu .menu-group > .menu-toggle-button.submenu-toggle-button {
+      padding: 8px 15px !important;
+      font-size: 13px !important;
+      color: #bbb !important;
+      margin: 0 !important;
+      border-left: none !important;
+      background: transparent !important;
+      border-radius: 0 !important;
+      width: 100%;
+    }
+
+    .sidebar .submenu .menu-group > .menu-toggle-button.submenu-toggle-button:hover {
+      background: rgba(255, 107, 53, 0.15) !important;
+      color: var(--yellow) !important;
+      transform: translateX(3px) !important;
+    }
+
+    .sidebar .submenu .menu-group > .menu-toggle-button.submenu-toggle-button .submenu-arrow {
+      margin-left: auto !important;
+    }
+
     .sidebar.collapsed .submenu {
       display: none;
     }
@@ -546,45 +576,80 @@
       {% endif %}
       
       {% set caminho_atual = request.path if request else '' %}
+      {% set financeiro_aberto = caminho_atual.startswith('/financeiro') or caminho_atual.startswith('/debug/importacao') %}
+      {% set visao_geral_ativa = caminho_atual == '/financeiro/dashboard' %}
+      {% set movimentacoes_ativas = caminho_atual in ['/financeiro', '/financeiro/lancamentos', '/financeiro/novo', '/financeiro/lista-moderna'] or caminho_atual.startswith('/financeiro/editar/') or caminho_atual.startswith('/financeiro/excluir/') or caminho_atual.startswith('/financeiro/salvar') or caminho_atual.startswith('/financeiro/excluir-comprovante') or caminho_atual.startswith('/financeiro/upload-comprovantes') or caminho_atual.startswith('/financeiro/excluir-comprovante-multiplo') %}
+      {% set repasse_ativo = caminho_atual.startswith('/financeiro/despesas-fixas') or caminho_atual == '/financeiro/envio-sede' %}
+      {% set fundos_projetos_ativos = caminho_atual.startswith('/financeiro/caixa-destinacoes') or caminho_atual.startswith('/financeiro/projetos') %}
+      {% set conciliacao_ativa = caminho_atual.startswith('/financeiro/conciliacao') or caminho_atual == '/financeiro/importar' %}
+      {% set recibos_ativos = caminho_atual.startswith('/financeiro/recibos') or caminho_atual == '/financeiro/emitir-recibo' or caminho_atual == '/financeiro/recibos/novo' %}
+      {% set relatorios_ativos = caminho_atual.startswith('/financeiro/relatorio') %}
 
       <!-- Submenu Financeiro - Tesoureiros, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_financeiro() %}
       <div class="menu-group">
-        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if caminho_atual.startswith('/financeiro') else 'false' }}"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"{% if caminho_atual.startswith('/financeiro') %} style="transform: rotate(180deg);"{% endif %}></i></button>
-        <div class="submenu{% if caminho_atual.startswith('/financeiro') %} show{% endif %}">
-          <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="submenu-item">
-            <i class="fas fa-chart-pie"></i><span>Dashboard Financeiro</span>
+        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if financeiro_aberto else 'false' }}"><i class="fa-solid fa-coins"></i><span>Financeiro</span><i class="fas fa-chevron-down submenu-arrow"{% if financeiro_aberto %} style="transform: rotate(180deg);"{% endif %}></i></button>
+        <div class="submenu{% if financeiro_aberto %} show{% endif %}">
+          <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="submenu-item{% if visao_geral_ativa %} active{% endif %}">
+            <i class="fas fa-chart-pie"></i><span>Visão Geral</span>
           </a>
-          <a href="{{ url_for('financeiro.relatorio_caixa') }}" class="submenu-item">
-            <i class="fas fa-cash-register"></i><span>Relatório de Caixa</span>
+          <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="submenu-item{% if movimentacoes_ativas %} active{% endif %}">
+            <i class="fas fa-list"></i><span>Movimentações</span>
           </a>
-          <a href="{{ url_for('financeiro.relatorio_sede') }}" class="submenu-item">
-            <i class="fas fa-file-invoice"></i><span>Relatório Sede</span>
+          <a href="{{ url_for('financeiro.gerenciar_despesas_fixas') }}" class="submenu-item{% if repasse_ativo %} active{% endif %}">
+            <i class="fas fa-building-columns"></i><span>Repasse à Sede</span>
           </a>
-          <a href="{{ url_for('financeiro.caixa_destinacoes') }}" class="submenu-item" id="link-caixa-destinacoes">
-            <i class="fas fa-box-open"></i><span>Caixa de Destinações</span>
-          </a>
-          <a href="{{ url_for('financeiro.lista_projetos') }}" class="submenu-item" id="link-gerenciar-projetos">
-            <i class="fas fa-project-diagram"></i><span>Gerenciar Projetos</span>
-          </a>
-          <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="submenu-item">
-            <i class="fas fa-list"></i><span>Lista de Lançamentos</span>
-          </a>
-          <a href="{{ url_for('financeiro.emitir_recibo') }}" class="submenu-item">
-            <i class="fas fa-receipt"></i><span>Emitir Recibo</span>
-          </a>
-          <a href="{{ url_for('financeiro.lista_recibos') }}" class="submenu-item">
-            <i class="fas fa-file-invoice"></i><span>Gerenciar Recibos</span>
-          </a>
-          <a href="{{ url_for('financeiro.gerenciar_despesas_fixas') }}" class="submenu-item">
-            <i class="fas fa-money-check-alt"></i><span>Despesas Fixas</span>
-          </a>
-          <a href="{{ url_for('conciliacao.dashboard_conciliacao') }}" class="submenu-item">
-            <i class="fas fa-chart-line"></i><span>Dashboard Conciliação</span>
-          </a>
-          <a href="{{ url_for('financeiro.importar_extrato') }}" class="submenu-item">
-            <i class="fas fa-upload"></i><span>Importar Extrato</span>
-          </a>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if fundos_projetos_ativos %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if fundos_projetos_ativos else 'false' }}"><i class="fas fa-box-open"></i><span>Fundos e Projetos</span><i class="fas fa-chevron-down submenu-arrow"{% if fundos_projetos_ativos %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if fundos_projetos_ativos %} show{% endif %}">
+              <a href="{{ url_for('financeiro.caixa_destinacoes') }}" class="submenu-item{% if caminho_atual.startswith('/financeiro/caixa-destinacoes') %} active{% endif %}" id="link-caixa-destinacoes">
+                <i class="fas fa-box-open"></i><span>Caixa de Destinações</span>
+              </a>
+              <a href="{{ url_for('financeiro.lista_projetos') }}" class="submenu-item{% if caminho_atual.startswith('/financeiro/projetos') %} active{% endif %}" id="link-gerenciar-projetos">
+                <i class="fas fa-project-diagram"></i><span>Projetos</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if conciliacao_ativa %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if conciliacao_ativa else 'false' }}"><i class="fas fa-sync-alt"></i><span>Conciliação Bancária</span><i class="fas fa-chevron-down submenu-arrow"{% if conciliacao_ativa %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if conciliacao_ativa %} show{% endif %}">
+              <a href="{{ url_for('conciliacao.dashboard_conciliacao') }}" class="submenu-item{% if caminho_atual.startswith('/financeiro/conciliacao/dashboard') %} active{% endif %}">
+                <i class="fas fa-chart-line"></i><span>Resumo</span>
+              </a>
+              <a href="{{ url_for('financeiro.importar_extrato') }}" class="submenu-item{% if caminho_atual == '/financeiro/importar' %} active{% endif %}">
+                <i class="fas fa-upload"></i><span>Importar Extrato</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if recibos_ativos %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if recibos_ativos else 'false' }}"><i class="fas fa-receipt"></i><span>Recibos</span><i class="fas fa-chevron-down submenu-arrow"{% if recibos_ativos %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if recibos_ativos %} show{% endif %}">
+              <a href="{{ url_for('financeiro.lista_recibos') }}" class="submenu-item{% if caminho_atual.startswith('/financeiro/recibos') %} active{% endif %}">
+                <i class="fas fa-file-invoice"></i><span>Histórico</span>
+              </a>
+              <a href="{{ url_for('financeiro.emitir_recibo') }}" class="submenu-item{% if caminho_atual == '/financeiro/emitir-recibo' %} active{% endif %}">
+                <i class="fas fa-circle-plus"></i><span>Novo Recibo</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if relatorios_ativos %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if relatorios_ativos else 'false' }}"><i class="fas fa-chart-bar"></i><span>Relatórios</span><i class="fas fa-chevron-down submenu-arrow"{% if relatorios_ativos %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if relatorios_ativos %} show{% endif %}">
+              <a href="{{ url_for('financeiro.gerar_relatorio', tipo_relatorio='gerencial') }}" class="submenu-item{% if caminho_atual == '/financeiro/relatorio' and request.args.get('tipo_relatorio', 'gerencial') == 'gerencial' %} active{% endif %}">
+                <i class="fas fa-chart-pie"></i><span>Gerencial</span>
+              </a>
+              <a href="{{ url_for('financeiro.gerar_relatorio', tipo_relatorio='sede') }}" class="submenu-item{% if caminho_atual == '/financeiro/relatorio' and request.args.get('tipo_relatorio') == 'sede' %} active{% endif %}">
+                <i class="fas fa-landmark"></i><span>Sede</span>
+              </a>
+              <a href="{{ url_for('financeiro.gerar_relatorio', tipo_relatorio='auditoria') }}" class="submenu-item{% if caminho_atual == '/financeiro/relatorio' and request.args.get('tipo_relatorio') == 'auditoria' %} active{% endif %}">
+                <i class="fas fa-user-shield"></i><span>Auditoria</span>
+              </a>
+            </div>
+          </div>
         </div>
       </div>
       {% endif %}
@@ -677,20 +742,52 @@
       }
       
       const menuGroup = element.closest('.menu-group');
-      const submenu = menuGroup.querySelector('.submenu');
+      const submenu = menuGroup ? menuGroup.querySelector(':scope > .submenu') : null;
       const arrow = element.querySelector('.submenu-arrow');
+
+      if (!submenu) {
+        return;
+      }
+
+      const closeSiblingSubmenus = function(container, currentSubmenu) {
+        if (!container) {
+          return;
+        }
+
+        Array.from(container.children).forEach(function(child) {
+          if (!child.classList || !child.classList.contains('menu-group')) {
+            return;
+          }
+
+          const childSubmenu = child.querySelector(':scope > .submenu');
+          const childArrow = child.querySelector(':scope > .menu-toggle-button .submenu-arrow');
+
+          if (childSubmenu && childSubmenu !== currentSubmenu && childSubmenu.classList.contains('show')) {
+            childSubmenu.classList.remove('show');
+            if (childArrow) childArrow.style.transform = 'rotate(0deg)';
+          }
+        });
+      };
+
+      const closeDescendantSubmenus = function(container) {
+        if (!container) {
+          return;
+        }
+
+        container.querySelectorAll('.submenu.show').forEach(function(childSubmenu) {
+          childSubmenu.classList.remove('show');
+          const childArrow = childSubmenu.parentElement ? childSubmenu.parentElement.querySelector(':scope > .menu-toggle-button .submenu-arrow') : null;
+          if (childArrow) childArrow.style.transform = 'rotate(0deg)';
+        });
+      };
 
       // Toggle submenu visibility
       if (submenu.classList.contains('show')) {
         submenu.classList.remove('show');
+        closeDescendantSubmenus(submenu);
         if (arrow) arrow.style.transform = 'rotate(0deg)';
       } else {
-        // Fechar outros submenus primeiro
-        document.querySelectorAll('.submenu.show').forEach(s => {
-          s.classList.remove('show');
-          const otherArrow = s.parentElement.querySelector('.submenu-arrow');
-          if (otherArrow) otherArrow.style.transform = 'rotate(0deg)';
-        });
+        closeSiblingSubmenus(menuGroup ? menuGroup.parentElement : null, submenu);
         
         submenu.classList.add('show');
         if (arrow) arrow.style.transform = 'rotate(180deg)';
