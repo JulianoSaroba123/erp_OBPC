@@ -10,6 +10,64 @@
     gap: 1.5rem;
 }
 
+.fin-dashboard {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.fin-kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.95rem;
+}
+
+.fin-operational-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.95rem;
+}
+
+.fin-chart-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 0.95rem;
+}
+
+.fin-focus-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: 0.95rem;
+}
+
+.fin-actions-grid {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.fin-report-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.fin-kpi-grid.row,
+.fin-operational-grid.row,
+.fin-chart-grid.row,
+.fin-focus-grid.row {
+    margin: 0;
+}
+
+.fin-kpi-grid > [class*="col-"],
+.fin-operational-grid > [class*="col-"],
+.fin-chart-grid > [class*="col-"],
+.fin-focus-grid > [class*="col-"] {
+    width: auto !important;
+    max-width: none !important;
+    flex: initial !important;
+    padding: 0 !important;
+}
+
 .hero-board {
     position: relative;
     overflow: hidden;
@@ -190,6 +248,15 @@
     color: #475569;
 }
 
+.kpi-meta-strong {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px dashed #e2e8f0;
+    font-size: 0.8rem;
+    color: #334155;
+    font-weight: 700;
+}
+
 .ops-card {
     padding: 1rem 1.1rem;
     min-height: 140px;
@@ -230,74 +297,67 @@
     font-size: 0.9rem;
 }
 
-.flow-chart {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 0.9rem;
-    align-items: end;
-    min-height: 290px;
-}
-
-.flow-column {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.7rem;
-    min-width: 0;
-}
-
-.flow-month {
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #475569;
-}
-
-.flow-bars {
-    height: 220px;
-    width: 100%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 0.35rem;
-    padding: 0 0.25rem;
-    background: linear-gradient(180deg, rgba(148, 163, 184, 0.06), rgba(148, 163, 184, 0));
-    border-radius: 1rem;
-}
-
-.flow-bar {
-    width: 34%;
-    min-height: 6px;
-    border-radius: 0.8rem 0.8rem 0.3rem 0.3rem;
+.chart-shell {
     position: relative;
-}
-
-.flow-bar.entrada {
-    background: linear-gradient(180deg, #34d399 0%, #16a34a 100%);
-}
-
-.flow-bar.saida {
-    background: linear-gradient(180deg, #fb7185 0%, #dc2626 100%);
-}
-
-.flow-bar-labels {
     width: 100%;
-    display: grid;
-    gap: 0.2rem;
-    text-align: center;
-    font-size: 0.75rem;
-    color: #64748b;
+    min-height: 320px;
 }
 
-.saldo-chip {
-    display: inline-flex;
+.chart-shell.compact {
+    min-height: 260px;
+}
+
+.chart-shell canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.empty-state {
+    min-height: 220px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    padding: 0.2rem 0.65rem;
-    border-radius: 999px;
-    font-size: 0.76rem;
+    text-align: center;
+    border: 1px dashed #cbd5e1;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #64748b;
+    padding: 1rem;
+}
+
+.category-breakdown {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.category-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.55rem;
+    align-items: center;
+    font-size: 0.84rem;
+    color: #334155;
+}
+
+.category-item .label {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.category-item .value {
     font-weight: 700;
-    background: #eff6ff;
-    color: #1d4ed8;
+    color: #0f172a;
+}
+
+.category-item .pct {
+    border-radius: 999px;
+    padding: 0.18rem 0.55rem;
+    background: #fff7ed;
+    color: #9a3412;
+    font-weight: 700;
 }
 
 .expense-list {
@@ -484,6 +544,15 @@
     gap: 0.4rem;
 }
 
+.desc-truncate {
+    display: inline-block;
+    max-width: 280px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+
 .actions-grid {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -579,20 +648,41 @@
 }
 
 @media (max-width: 1199px) {
+    .fin-kpi-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .fin-actions-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
     .actions-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
 @media (max-width: 991px) {
-    .flow-chart {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        min-height: auto;
+    .fin-operational-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .fin-chart-grid,
+    .fin-focus-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .fin-actions-grid,
+    .fin-report-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .actions-grid,
     .report-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .desc-truncate {
+        max-width: 180px;
     }
 }
 
@@ -605,7 +695,13 @@
         font-size: 1.7rem;
     }
 
-    .flow-chart,
+    .fin-kpi-grid,
+    .fin-operational-grid,
+    .fin-actions-grid,
+    .fin-report-grid {
+        grid-template-columns: 1fr;
+    }
+
     .actions-grid,
     .report-grid {
         grid-template-columns: 1fr;
@@ -615,6 +711,14 @@
     .ops-card,
     .section-card {
         min-height: auto;
+    }
+
+    .chart-shell {
+        min-height: 260px;
+    }
+
+    .desc-truncate {
+        max-width: 140px;
     }
 }
 </style>
@@ -631,22 +735,18 @@
     5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
     9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
 } %}
-{% set max_serie = namespace(valor=0) %}
-{% for item in evolucao_6m %}
-    {% if item.entradas > max_serie.valor %}{% set max_serie.valor = item.entradas %}{% endif %}
-    {% if item.saidas > max_serie.valor %}{% set max_serie.valor = item.saidas %}{% endif %}
-{% endfor %}
 {% set total_despesas_categoria = despesas_por_categoria|sum(attribute='total') %}
 {% set pendencias_totais = (metricas.pendencias or 0) + (metricas.nao_conciliados or 0) + (metricas.sem_comprovante or 0) + (1 if (metricas.saldo_mes or 0) < 0 else 0) %}
 {% set tem_alertas = (resumo_repasse.saldo_pendente_total or 0) > 0 or (metricas.nao_conciliados or 0) > 0 or (metricas.sem_comprovante or 0) > 0 or (metricas.saldo_mes or 0) < 0 %}
+{% set pendencia_color = '#dc2626' if pendencias_totais >= 5 else '#d97706' %}
 
-<div class="container-fluid dashboard-shell">
+<div class="container-fluid dashboard-shell fin-dashboard">
     <section class="hero-board fade-in-up">
         <div class="row align-items-end g-4">
             <div class="col-xl-7">
                 <div class="hero-overline">Painel Financeiro Gerencial</div>
                 <h1 class="hero-title">VISÃO GERAL FINANCEIRA</h1>
-                <p class="hero-subtitle">Competência selecionada: {{ meses_extenso[mes_selecionado] }}/{{ ano_selecionado }}. O painel prioriza situação financeira, tendência, pendências objetivas e decisões operacionais do período.</p>
+                <p class="hero-subtitle">Competência {{ meses_extenso[mes_selecionado] }}/{{ ano_selecionado }} com foco em caixa, alertas e decisões rápidas.</p>
                 <div class="action-inline">
                     <a class="btn btn-light btn-sm" href="{{ url_for('financeiro.novo_lancamento') }}"><i class="fas fa-plus me-1"></i>Novo Lançamento</a>
                     <a class="btn btn-outline-light btn-sm" href="{{ url_for('financeiro.importar_extrato') }}"><i class="fas fa-file-import me-1"></i>Importar Extrato</a>
@@ -684,8 +784,8 @@
     </section>
 
     <section>
-        <div class="row g-3">
-            <div class="col-xxl-2 col-xl-4 col-md-6">
+        <div class="row g-3 fin-kpi-grid">
+            <div class="col-xl-2 col-lg-4 col-sm-6">
                 <article class="kpi-card fade-in-up" style="--kpi-color: #16a34a;">
                     <div class="kpi-head">
                         <div>
@@ -694,73 +794,73 @@
                         <span class="kpi-icon"><i class="fas fa-arrow-trend-up"></i></span>
                     </div>
                     <div class="kpi-value">R$ {{ '%.2f'|format(metricas.entradas or 0) }}</div>
-                    <p class="kpi-helper">Valor total das entradas da competência.</p>
-                    <div class="kpi-meta">Base mensal consolidada do dashboard.</div>
+                    <p class="kpi-helper">Total recebido na competência.</p>
+                    <div class="kpi-meta">Caixa de entrada do período.</div>
                 </article>
             </div>
-            <div class="col-xxl-2 col-xl-4 col-md-6">
+            <div class="col-xl-2 col-lg-4 col-sm-6">
                 <article class="kpi-card fade-in-up" style="--kpi-color: #dc2626;">
                     <div class="kpi-head">
                         <p class="kpi-title">Saídas</p>
                         <span class="kpi-icon"><i class="fas fa-arrow-trend-down"></i></span>
                     </div>
                     <div class="kpi-value">R$ {{ '%.2f'|format(metricas.saidas or 0) }}</div>
-                    <p class="kpi-helper">Saídas executadas na competência selecionada.</p>
-                    <div class="kpi-meta">Monitoramento direto do caixa do período.</div>
+                    <p class="kpi-helper">Total pago na competência.</p>
+                    <div class="kpi-meta">Pressão de despesas do período.</div>
                 </article>
             </div>
-            <div class="col-xxl-2 col-xl-4 col-md-6">
+            <div class="col-xl-2 col-lg-4 col-sm-6">
                 <article class="kpi-card fade-in-up" style="--kpi-color: {{ '#16a34a' if (metricas.saldo_mes or 0) >= 0 else '#dc2626' }};">
                     <div class="kpi-head">
                         <p class="kpi-title">Saldo do Mês</p>
                         <span class="kpi-icon"><i class="fas fa-scale-balanced"></i></span>
                     </div>
                     <div class="kpi-value">R$ {{ '%.2f'|format(metricas.saldo_mes or 0) }}</div>
-                    <p class="kpi-helper">Entradas menos saídas da competência.</p>
-                    <div class="kpi-meta">{{ 'Resultado positivo do período.' if (metricas.saldo_mes or 0) >= 0 else 'Competência com saldo negativo.' }}</div>
+                    <p class="kpi-helper">Resultado líquido da competência.</p>
+                    <div class="kpi-meta">{{ 'Operação mensal positiva.' if (metricas.saldo_mes or 0) >= 0 else 'Atenção: resultado mensal negativo.' }}</div>
                 </article>
             </div>
-            <div class="col-xxl-2 col-xl-4 col-md-6">
+            <div class="col-xl-2 col-lg-4 col-sm-6">
                 <article class="kpi-card fade-in-up" style="--kpi-color: #2563eb;">
                     <div class="kpi-head">
                         <p class="kpi-title">Saldo Acumulado</p>
                         <span class="kpi-icon"><i class="fas fa-wallet"></i></span>
                     </div>
                     <div class="kpi-value">R$ {{ '%.2f'|format(metricas.saldo_acumulado or 0) }}</div>
-                    <p class="kpi-helper">Saldo consolidado até a competência atual.</p>
-                    <div class="kpi-meta">Regra financeira consolidada do sistema.</div>
+                    <p class="kpi-helper">Posição acumulada até agora.</p>
+                    <div class="kpi-meta">Reserva financeira total.</div>
                 </article>
             </div>
-            <div class="col-xxl-2 col-xl-4 col-md-6">
+            <div class="col-xl-2 col-lg-4 col-sm-6">
                 <article class="kpi-card fade-in-up" style="--kpi-color: #d97706;">
                     <div class="kpi-head">
                         <p class="kpi-title">Repasse à Sede</p>
                         <span class="kpi-icon"><i class="fas fa-building-columns"></i></span>
                     </div>
                     <div class="kpi-value">R$ {{ '%.2f'|format(metricas.repasse_pendente or 0) }}</div>
-                    <p class="kpi-helper">Saldo pendente do motor de obrigações.</p>
-                    <div class="kpi-meta">
-                        Obrigação: R$ {{ '%.2f'|format(resumo_repasse.obrigacao_competencia or 0) }} | Pago: R$ {{ '%.2f'|format(resumo_repasse.pago_competencia or 0) }}<br>
-                        Status da competência: {{ (resumo_repasse.status or 'SEM_OBRIGACAO')|replace('_', ' ') }}
+                    <p class="kpi-helper">Saldo pendente de repasse.</p>
+                    <div class="kpi-meta-strong">
+                        Obrigação R$ {{ '%.2f'|format(resumo_repasse.obrigacao_competencia or 0) }} | Pago R$ {{ '%.2f'|format(resumo_repasse.pago_competencia or 0) }}<br>
+                        Status {{ (resumo_repasse.status or 'SEM_OBRIGACAO')|replace('_', ' ') }}
                     </div>
                 </article>
             </div>
-            <div class="col-xxl-2 col-xl-4 col-md-6">
-                <article class="kpi-card fade-in-up" style="--kpi-color: #0891b2;">
+            <div class="col-xl-2 col-lg-4 col-sm-6">
+                <article class="kpi-card fade-in-up" style="--kpi-color: {{ pendencia_color }};">
                     <div class="kpi-head">
                         <p class="kpi-title">Pendências</p>
                         <span class="kpi-icon"><i class="fas fa-triangle-exclamation"></i></span>
                     </div>
                     <div class="kpi-value">{{ pendencias_totais }}</div>
-                    <p class="kpi-helper">Quantidade consolidada de itens que exigem atenção.</p>
-                    <div class="kpi-meta">Obrigações, conciliação, comprovantes e saldo crítico.</div>
+                    <p class="kpi-helper">Itens com ação necessária.</p>
+                    <div class="kpi-meta">{{ 'Nível elevado de pendências.' if pendencias_totais >= 5 else 'Nível de pendência controlável.' }}</div>
                 </article>
             </div>
         </div>
     </section>
 
     <section>
-        <div class="row g-3">
+        <div class="row g-3 fin-operational-grid">
             <div class="col-xl-3 col-md-6">
                 <article class="ops-card fade-in-up">
                     <div class="ops-head">
@@ -768,7 +868,7 @@
                         <span class="ops-icon" style="color:#d97706;background:#fff7ed;"><i class="fas fa-file-invoice-dollar"></i></span>
                     </div>
                     <div class="ops-value">R$ {{ '%.2f'|format(despesas_fixas_resumo.obrigacao_competencia or 0) }}</div>
-                    <p class="ops-helper">Obrigação da competência.</p>
+                    <p class="ops-helper">Competência atual.</p>
                     <div class="ops-foot">Pago: R$ {{ '%.2f'|format(despesas_fixas_resumo.pago_competencia or 0) }} | Pendente: R$ {{ '%.2f'|format(despesas_fixas_resumo.saldo_pendente or 0) }}</div>
                 </article>
             </div>
@@ -779,8 +879,8 @@
                         <span class="ops-icon" style="color:#92400e;background:#fef3c7;"><i class="fas fa-scale-balanced"></i></span>
                     </div>
                     <div class="ops-value">{{ metricas.nao_conciliados or 0 }}</div>
-                    <p class="ops-helper">Movimentações aguardando conciliação.</p>
-                    <div class="ops-foot">Use este indicador como ponto de atenção operacional.</div>
+                    <p class="ops-helper">Aguardando conciliação.</p>
+                    <div class="ops-foot">Regularize os itens pendentes.</div>
                 </article>
             </div>
             <div class="col-xl-3 col-md-6">
@@ -790,8 +890,8 @@
                         <span class="ops-icon" style="color:#0f766e;background:#cffafe;"><i class="fas fa-paperclip"></i></span>
                     </div>
                     <div class="ops-value">{{ metricas.sem_comprovante or 0 }}</div>
-                    <p class="ops-helper">Contagem sem anexo legado e sem múltiplos.</p>
-                    <div class="ops-foot">Consulta reaproveita a validação D23D28 sem N+1.</div>
+                    <p class="ops-helper">Sem anexo válido.</p>
+                    <div class="ops-foot">Priorize regularização documental.</div>
                 </article>
             </div>
             <div class="col-xl-3 col-md-6">
@@ -801,7 +901,7 @@
                         <span class="ops-icon" style="color:#2563eb;background:#dbeafe;"><i class="fas fa-diagram-project"></i></span>
                     </div>
                     <div class="ops-value">{{ resumo_projetos.projetos_com_movimento or 0 }}</div>
-                    <p class="ops-helper">Projetos com movimentação na competência.</p>
+                    <p class="ops-helper">Com movimentação no mês.</p>
                     <div class="ops-foot">Ativos: {{ resumo_projetos.projetos_ativos or 0 }} | Destinações: R$ {{ '%.2f'|format(resumo_projetos.total_destinacoes or 0) }}</div>
                 </article>
             </div>
@@ -809,33 +909,22 @@
     </section>
 
     <section>
-        <div class="row g-3 align-items-stretch">
+        <div class="row g-3 align-items-stretch fin-chart-grid">
             <div class="col-xl-8">
                 <article class="section-card fade-in-up h-100">
                     <div class="section-head">
                         <div>
                             <h2 class="section-heading">Fluxo Financeiro</h2>
-                            <div class="section-note">Últimos 6 meses com comparação direta entre entradas, saídas e saldo mensal.</div>
+                            <div class="section-note">Últimos 6 meses: entradas, saídas e saldo.</div>
                         </div>
                         <span class="section-icon" style="color:#2563eb;background:#dbeafe;"><i class="fas fa-chart-column"></i></span>
                     </div>
-                    <div class="flow-chart">
+                    <div class="chart-shell">
+                        <canvas id="chartFluxo6Meses" aria-label="Gráfico de fluxo financeiro dos últimos 6 meses"></canvas>
+                    </div>
+                    <div class="visually-hidden" aria-hidden="true">
                         {% for item in evolucao_6m %}
-                        {% set base = max_serie.valor if max_serie.valor > 0 else 1 %}
-                        {% set entrada_altura = ((item.entradas / base) * 100) if base else 0 %}
-                        {% set saida_altura = ((item.saidas / base) * 100) if base else 0 %}
-                        <div class="flow-column">
-                            <div class="flow-month">{{ meses[item.mes] }}/{{ item.ano }}</div>
-                            <div class="flow-bars">
-                                <div class="flow-bar entrada" style="height: {{ entrada_altura if entrada_altura > 0 else 2 }}%;" title="Entradas R$ {{ '%.2f'|format(item.entradas) }}"></div>
-                                <div class="flow-bar saida" style="height: {{ saida_altura if saida_altura > 0 else 2 }}%;" title="Saídas R$ {{ '%.2f'|format(item.saidas) }}"></div>
-                            </div>
-                            <div class="flow-bar-labels">
-                                <span>E: R$ {{ '%.2f'|format(item.entradas) }}</span>
-                                <span>S: R$ {{ '%.2f'|format(item.saidas) }}</span>
-                                <span class="saldo-chip">Saldo R$ {{ '%.2f'|format(item.saldo) }}</span>
-                            </div>
-                        </div>
+                        {{ meses[item.mes] }}/{{ item.ano }}
                         {% endfor %}
                     </div>
                 </article>
@@ -845,38 +934,45 @@
                     <div class="section-head">
                         <div>
                             <h2 class="section-heading">Despesas por Categoria</h2>
-                            <div class="section-note">Para onde o dinheiro foi na competência selecionada.</div>
+                            <div class="section-note">Distribuição visual das saídas na competência.</div>
                         </div>
                         <span class="section-icon" style="color:#ea580c;background:#ffedd5;"><i class="fas fa-chart-pie"></i></span>
                     </div>
-                    <div class="expense-list">
+                    {% if despesas_por_categoria %}
+                    <div class="chart-shell compact">
+                        <canvas id="chartDespesasCategoria" aria-label="Gráfico de despesas por categoria"></canvas>
+                    </div>
+                    <div class="category-breakdown">
                         {% for item in despesas_por_categoria %}
                         {% set perc = ((item.total / total_despesas_categoria) * 100) if total_despesas_categoria else 0 %}
-                        <div class="expense-item">
-                            <div class="expense-row">
-                                <div class="expense-name">{{ item.categoria }}</div>
-                                <div class="expense-value">R$ {{ '%.2f'|format(item.total) }}</div>
-                            </div>
-                            <div class="expense-bar-track"><div class="expense-bar-fill" style="width: {{ perc }}%;"></div></div>
-                            <div class="expense-meta">{{ '%.1f'|format(perc) }}% do total de saídas do período</div>
+                        <div class="category-item">
+                            <span class="label" title="{{ item.categoria }}">{{ item.categoria }}</span>
+                            <span class="value">R$ {{ '%.2f'|format(item.total) }}</span>
+                            <span class="pct">{{ '%.1f'|format(perc) }}%</span>
                         </div>
-                        {% else %}
-                        <p class="section-helper mb-0">Sem saídas registradas para compor o gráfico gerencial da competência.</p>
                         {% endfor %}
                     </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <div>
+                            <strong>Sem despesas registradas</strong>
+                            <div>Não há dados para montar o gráfico desta competência.</div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </article>
             </div>
         </div>
     </section>
 
     <section>
-        <div class="row g-3 align-items-stretch">
+        <div class="row g-3 align-items-stretch fin-focus-grid">
             <div class="col-xl-4">
                 <article class="section-card fade-in-up h-100">
                     <div class="section-head">
                         <div>
                             <h2 class="section-heading">Atenção Financeira</h2>
-                            <div class="section-note">Somente alertas objetivos da competência e do motor financeiro já existente.</div>
+                            <div class="section-note">Alertas prioritários do momento.</div>
                         </div>
                         <span class="section-icon" style="color:#d97706;background:#fef3c7;"><i class="fas fa-bell"></i></span>
                     </div>
@@ -885,8 +981,8 @@
                         <div class="attention-item">
                             <span class="attention-icon">!</span>
                             <div>
-                                <strong>Repasse à Sede pendente</strong>
-                                <div>Saldo pendente total de R$ {{ '%.2f'|format(resumo_repasse.saldo_pendente_total or 0) }} no motor de obrigações.</div>
+                                <strong>Repasse pendente</strong>
+                                <div>R$ {{ '%.2f'|format(resumo_repasse.saldo_pendente_total or 0) }} em aberto.</div>
                             </div>
                         </div>
                         {% endif %}
@@ -894,8 +990,8 @@
                         <div class="attention-item">
                             <span class="attention-icon">!</span>
                             <div>
-                                <strong>{{ metricas.nao_conciliados }} lançamentos aguardando conciliação</strong>
-                                <div>Conciliação pendente na competência selecionada.</div>
+                                <strong>Lançamentos não conciliados</strong>
+                                <div>{{ metricas.nao_conciliados }} item(ns) aguardando ação.</div>
                             </div>
                         </div>
                         {% endif %}
@@ -903,8 +999,8 @@
                         <div class="attention-item">
                             <span class="attention-icon">!</span>
                             <div>
-                                <strong>{{ metricas.sem_comprovante }} movimentações sem comprovante</strong>
-                                <div>Itens sem comprovante legado e sem comprovante múltiplo vinculado.</div>
+                                <strong>Sem comprovante</strong>
+                                <div>{{ metricas.sem_comprovante }} item(ns) sem documentação.</div>
                             </div>
                         </div>
                         {% endif %}
@@ -913,14 +1009,14 @@
                             <span class="attention-icon">!</span>
                             <div>
                                 <strong>Saldo do mês negativo</strong>
-                                <div>Resultado do período em R$ {{ '%.2f'|format(metricas.saldo_mes or 0) }}.</div>
+                                <div>Resultado atual: R$ {{ '%.2f'|format(metricas.saldo_mes or 0) }}.</div>
                             </div>
                         </div>
                         {% endif %}
                         {% if not tem_alertas %}
                         <div class="attention-ok">
                             <span class="attention-icon">&#10003;</span>
-                            <div><strong>Nenhuma pendência crítica nesta competência.</strong></div>
+                            <div><strong>Nenhum alerta crítico na competência.</strong></div>
                         </div>
                         {% endif %}
                     </div>
@@ -931,9 +1027,9 @@
                     <div class="section-head">
                         <div>
                             <h2 class="section-heading">Últimas Movimentações</h2>
-                            <div class="section-note">Leitura rápida das movimentações mais recentes com status operacional consolidado.</div>
+                            <div class="section-note">Movimentações recentes da competência.</div>
                         </div>
-                        <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-primary btn-sm">VER TODAS AS MOVIMENTAÇÕES</a>
+                        <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-outline-primary btn-sm">Ver todas</a>
                     </div>
                     <div class="movement-wrapper">
                         <table class="movement-table">
@@ -951,7 +1047,7 @@
                                 {% for mov in ultimas_movimentacoes %}
                                 <tr>
                                     <td>{{ mov.data.strftime('%d/%m/%Y') if mov.data else '-' }}</td>
-                                    <td>{{ mov.descricao }}</td>
+                                    <td><span class="desc-truncate" title="{{ mov.descricao }}">{{ mov.descricao }}</span></td>
                                     <td>{{ mov.categoria }}</td>
                                     <td>
                                         <span class="type-badge {{ 'entrada' if (mov.tipo or '').lower() == 'entrada' else 'saida' }}">{{ mov.tipo }}</span>
@@ -982,11 +1078,11 @@
             <div class="section-head">
                 <div>
                     <h2 class="section-heading">Ações Rápidas</h2>
-                    <div class="section-note">Atalhos operacionais reposicionados para não competir com os indicadores financeiros.</div>
+                    <div class="section-note">Atalhos operacionais.</div>
                 </div>
                 <span class="section-icon" style="color:#0891b2;background:#cffafe;"><i class="fas fa-bolt"></i></span>
             </div>
-            <div class="actions-grid">
+            <div class="actions-grid fin-actions-grid">
                 <a class="action-card primary" href="{{ url_for('financeiro.novo_lancamento') }}">
                     <i class="fas fa-plus"></i>
                     <div><strong>Novo Lançamento</strong><div class="section-note">Registrar movimentação</div></div>
@@ -1020,11 +1116,11 @@
             <div class="section-head">
                 <div>
                     <h2 class="section-heading">Relatórios Disponíveis</h2>
-                    <div class="section-note">Bloco posicionado ao final para não competir com a leitura gerencial do dashboard.</div>
+                    <div class="section-note">Acesso rápido aos relatórios.</div>
                 </div>
                 <span class="section-icon" style="color:#2563eb;background:#dbeafe;"><i class="fas fa-file-alt"></i></span>
             </div>
-            <div class="report-grid">
+            <div class="report-grid fin-report-grid">
                 <div class="report-card gerencial">
                     <i class="fas fa-chart-line"></i>
                     <h4>Gerencial</h4>
@@ -1056,16 +1152,119 @@
         </article>
     </section>
 
-    <div class="footer-query-note">D23D28 queries: {{ performance_dashboard.total_novas_queries }} ({{ performance_dashboard.novas_queries|join(', ') }})</div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script>
-$(document).ready(function() {
-    $('.fade-in-up').each(function(index) {
-        $(this).css('animation-delay', (index * 0.06) + 's');
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.fade-in-up').forEach(function(el, index) {
+        el.style.animationDelay = (index * 0.06) + 's';
     });
+
+    const fluxo = {{ evolucao_6m|tojson }};
+    const labelsFluxo = fluxo.map(item => `${item.mes.toString().padStart(2, '0')}/${item.ano}`);
+    const entradasFluxo = fluxo.map(item => Number(item.entradas || 0));
+    const saidasFluxo = fluxo.map(item => Number(item.saidas || 0));
+    const saldoFluxo = fluxo.map(item => Number(item.saldo || 0));
+
+    const fluxoCanvas = document.getElementById('chartFluxo6Meses');
+    if (fluxoCanvas && fluxo.length) {
+        new Chart(fluxoCanvas, {
+            type: 'bar',
+            data: {
+                labels: labelsFluxo,
+                datasets: [
+                    {
+                        label: 'Entradas',
+                        data: entradasFluxo,
+                        backgroundColor: 'rgba(22, 163, 74, 0.75)',
+                        borderColor: '#16a34a',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Saídas',
+                        data: saidasFluxo,
+                        backgroundColor: 'rgba(220, 38, 38, 0.75)',
+                        borderColor: '#dc2626',
+                        borderWidth: 1,
+                        borderRadius: 6
+                    },
+                    {
+                        label: 'Saldo',
+                        data: saldoFluxo,
+                        type: 'line',
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.15)',
+                        pointBackgroundColor: '#2563eb',
+                        pointRadius: 3,
+                        tension: 0.35,
+                        yAxisID: 'y'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return `R$ ${Number(value).toLocaleString('pt-BR')}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const despesas = {{ despesas_por_categoria|tojson }};
+    const despesasCanvas = document.getElementById('chartDespesasCategoria');
+    if (despesasCanvas && despesas.length) {
+        const labelsDespesa = despesas.map(item => item.categoria || 'Sem categoria');
+        const valoresDespesa = despesas.map(item => Number(item.total || 0));
+        const cores = ['#f59e0b', '#ea580c', '#fb7185', '#f43f5e', '#c2410c', '#f97316', '#fb923c', '#fdba74'];
+        new Chart(despesasCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: labelsDespesa,
+                datasets: [{
+                    data: valoresDespesa,
+                    backgroundColor: labelsDespesa.map((_, i) => cores[i % cores.length]),
+                    borderWidth: 1,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '58%',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
