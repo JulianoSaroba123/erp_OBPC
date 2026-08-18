@@ -315,7 +315,7 @@ def editar_membro(id):
         flash(f'Erro ao carregar dados do membro: {str(e)}', 'danger')
         return redirect(url_for('membros.lista_membros'))
 
-@membros_bp.route('/membros/excluir/<int:id>')
+@membros_bp.route('/membros/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_membro(id):
     """Exclui um membro"""

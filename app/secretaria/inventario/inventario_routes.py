@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, make_response, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, make_response, send_file, abort
 from flask_login import login_required
 from app.extensoes import db
 from .inventario_model import ItemInventario
@@ -24,10 +24,23 @@ from io import BytesIO
 
 inventario_bp = Blueprint('inventario', __name__, template_folder='templates')
 
+
+def _rotas_teste_habilitadas():
+    """Permite rotas de teste apenas em ambiente de desenvolvimento explícito."""
+    flag = current_app.config.get('ALLOW_DEV_SEED_ROUTES')
+    if flag is not None:
+        return bool(flag)
+
+    env = (os.environ.get('FLASK_ENV') or os.environ.get('APP_ENV') or '').strip().lower()
+    return current_app.debug or env in {'development', 'dev', 'local'}
+
 @inventario_bp.route('/inventario-teste')
 @login_required
 def lista_itens_teste():
     """ROTA DE TESTE - Lista itens do inventário"""
+    if not _rotas_teste_habilitadas():
+        abort(404)
+
     print("🔥🔥🔥 ROTA TESTE CHAMADA! 🔥🔥🔥")
     
     # Query direta sem filtros

@@ -3,7 +3,7 @@ Rotas do Módulo Mídia - Sistema OBPC
 Unifica todas as rotas: Agenda, Certificados e Carteiras
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, current_app, abort
 from app import db
 from flask_login import login_required
 from .midia_model import AgendaSemanal, Certificado, CarteiraMembro
@@ -13,6 +13,16 @@ import os
 from werkzeug.utils import secure_filename
 
 midia_bp = Blueprint('midia', __name__, url_prefix='/midia', template_folder='templates')
+
+
+def _rotas_seed_habilitadas():
+    """Habilita rotas de seed apenas em ambiente de desenvolvimento explícito."""
+    flag = current_app.config.get('ALLOW_DEV_SEED_ROUTES')
+    if flag is not None:
+        return bool(flag)
+
+    env = (os.environ.get('FLASK_ENV') or os.environ.get('APP_ENV') or '').strip().lower()
+    return current_app.debug or env in {'development', 'dev', 'local'}
 
 # ============================================================================
 # ROTAS DOS CERTIFICADOS MODERNOS
@@ -334,6 +344,9 @@ def listar_certificados():
 @login_required
 def criar_exemplos():
     """Cria certificados de exemplo para teste"""
+    if not _rotas_seed_habilitadas():
+        abort(404)
+
     try:
         from datetime import date
         
@@ -783,6 +796,9 @@ def api_membros():
 @login_required
 def criar_certificados_exemplo():
     """Rota especial para criar certificados de exemplo"""
+    if not _rotas_seed_habilitadas():
+        abort(404)
+
     try:
         from datetime import date
         

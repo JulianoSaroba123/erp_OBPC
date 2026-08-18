@@ -98,7 +98,7 @@ def editar_obreiro(id):
         flash(f'Erro ao carregar dados do obreiro: {str(e)}', 'danger')
         return redirect(url_for('obreiros.lista_obreiros'))
 
-@obreiros_bp.route('/obreiros/excluir/<int:id>')
+@obreiros_bp.route('/obreiros/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_obreiro(id):
     """Exclui um obreiro"""

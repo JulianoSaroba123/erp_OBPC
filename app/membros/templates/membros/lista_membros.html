@@ -309,10 +309,12 @@
                     <i class="fas fa-times me-2"></i>
                     Cancelar
                 </button>
-                <a href="#" id="linkExcluir" class="btn btn-danger">
-                    <i class="fas fa-trash me-2"></i>
-                    Confirmar Exclusão
-                </a>
+                <form id="formExcluir" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>
+                        Confirmar Exclusão
+                    </button>
+                </form>
             </div>
         </div>
     </div>
@@ -351,7 +353,7 @@
 <script>
 function confirmarExclusao(id, nome) {
     document.getElementById('nomeMembroExcluir').textContent = nome;
-    document.getElementById('linkExcluir').href = `/membros/excluir/${id}`;
+    document.getElementById('formExcluir').action = `/membros/excluir/${id}`;
     
     const modal = new bootstrap.Modal(document.getElementById('modalExcluir'));
     modal.show();

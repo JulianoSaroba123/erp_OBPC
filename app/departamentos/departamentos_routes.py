@@ -227,7 +227,7 @@ def editar_departamento(id):
         flash(f'Erro ao carregar dados do departamento: {str(e)}', 'danger')
         return redirect(url_for('departamentos.lista_departamentos'))
 
-@departamentos_bp.route('/departamentos/excluir/<int:id>')
+@departamentos_bp.route('/departamentos/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_departamento(id):
     """Exclui um departamento"""

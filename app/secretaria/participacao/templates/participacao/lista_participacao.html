@@ -192,12 +192,16 @@
                                        title="Editar participação">
                                         <i class="fa-solid fa-edit"></i>
                                     </a>
-                                    <a href="{{ url_for('participacao.excluir_participacao', id=p.id) }}" 
-                                       class="btn btn-sm btn-outline-danger"
-                                       title="Excluir participação"
-                                       onclick="return confirm('Tem certeza que deseja excluir esta participação?')">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </a>
+                                    <form method="POST"
+                                          action="{{ url_for('participacao.excluir_participacao', id=p.id) }}"
+                                          class="d-inline"
+                                          onsubmit="return confirm('Tem certeza que deseja excluir esta participação?')">
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-danger"
+                                                title="Excluir participação">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>

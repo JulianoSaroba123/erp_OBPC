@@ -232,7 +232,7 @@ def editar_participacao(id):
         flash(f'Erro ao editar participação: {str(e)}', 'danger')
         return redirect(url_for('participacao.listar_participacoes'))
 
-@participacao_bp.route('/excluir/<int:id>')
+@participacao_bp.route('/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_participacao(id):
     """Exclui uma participação"""
