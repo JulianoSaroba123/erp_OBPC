@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Secretaria - Visão Geral{% endblock %}
+
+{% block content %}
+<div class="obpc-page">
+  <header class="obpc-page-header obpc-page-header--hero">
+    <div>
+      <h1 class="obpc-page-title"><i class="fas fa-building"></i> SECRETARIA</h1>
+      <p class="obpc-page-subtitle">Gestão administrativa e documental da igreja</p>
+    </div>
+    <div class="obpc-page-actions">
+      <a href="{{ url_for('membros.novo_membro') }}" class="obpc-btn obpc-btn-primary"><i class="fas fa-user-plus"></i> Novo Membro</a>
+      <a href="{{ url_for('oficios.novo_oficio') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-file-signature"></i> Novo Ofício</a>
+    </div>
+  </header>
+
+  <section class="obpc-section">
+    <div class="obpc-section-header">
+      <div>
+        <h2 class="obpc-section-title">KPIs Principais</h2>
+        <p class="obpc-section-subtitle">Panorama de pessoas e credenciais</p>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="obpc-kpi obpc-kpi--primary">
+          <div class="obpc-kpi__head"><p class="obpc-kpi__label">Membros</p><span class="obpc-kpi__icon"><i class="fas fa-users"></i></span></div>
+          <p class="obpc-kpi__value">{{ kpis.membros_total }}</p>
+          <p class="obpc-kpi__description">Total cadastrado</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="obpc-kpi obpc-kpi--success">
+          <div class="obpc-kpi__head"><p class="obpc-kpi__label">Membros Ativos</p><span class="obpc-kpi__icon"><i class="fas fa-user-check"></i></span></div>
+          <p class="obpc-kpi__value">{{ kpis.membros_ativos }}</p>
+          <p class="obpc-kpi__description">Com status ativo</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="obpc-kpi obpc-kpi--warning">
+          <div class="obpc-kpi__head"><p class="obpc-kpi__label">Lideranças</p><span class="obpc-kpi__icon"><i class="fas fa-crown"></i></span></div>
+          <p class="obpc-kpi__value">{{ kpis.liderancas }}</p>
+          <p class="obpc-kpi__description">Líderes identificados</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="obpc-kpi obpc-kpi--info">
+          <div class="obpc-kpi__head"><p class="obpc-kpi__label">Obreiros</p><span class="obpc-kpi__icon"><i class="fas fa-user-tie"></i></span></div>
+          <p class="obpc-kpi__value">{{ kpis.obreiros }}</p>
+          <p class="obpc-kpi__description">Cadastros de obreiros</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="obpc-kpi obpc-kpi--neutral">
+          <div class="obpc-kpi__head"><p class="obpc-kpi__label">Carteiras</p><span class="obpc-kpi__icon"><i class="fas fa-id-card"></i></span></div>
+          <p class="obpc-kpi__value">{{ kpis.carteiras }}</p>
+          <p class="obpc-kpi__description">Carteiras ativas</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-4">
+        <article class="obpc-kpi obpc-kpi--danger">
+          <div class="obpc-kpi__head"><p class="obpc-kpi__label">Certificados</p><span class="obpc-kpi__icon"><i class="fas fa-certificate"></i></span></div>
+          <p class="obpc-kpi__value">{{ kpis.certificados }}</p>
+          <p class="obpc-kpi__description">Emitidos no módulo</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-section-header">
+      <div>
+        <h2 class="obpc-section-title">Indicadores Operacionais</h2>
+        <p class="obpc-section-subtitle">Visão rápida de documentos e patrimônio</p>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><div class="obpc-ops__head"><p class="obpc-ops__label">Atas</p><span class="obpc-ops__icon"><i class="fas fa-file-alt"></i></span></div><p class="obpc-ops__value">{{ indicadores.atas }}</p><p class="obpc-ops__description">Registros cadastrados</p></article></div>
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><div class="obpc-ops__head"><p class="obpc-ops__label">Ofícios</p><span class="obpc-ops__icon"><i class="fas fa-file-signature"></i></span></div><p class="obpc-ops__value">{{ indicadores.oficios }}</p><p class="obpc-ops__description">Fluxo documental</p></article></div>
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><div class="obpc-ops__head"><p class="obpc-ops__label">Inventário</p><span class="obpc-ops__icon"><i class="fas fa-boxes"></i></span></div><p class="obpc-ops__value">{{ indicadores.inventario }}</p><p class="obpc-ops__description">Itens patrimoniais</p></article></div>
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><div class="obpc-ops__head"><p class="obpc-ops__label">Participações</p><span class="obpc-ops__icon"><i class="fas fa-handshake"></i></span></div><p class="obpc-ops__value">{{ indicadores.participacoes }}</p><p class="obpc-ops__description">Registros de obreiros</p></article></div>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header">
+        <div>
+          <h3 class="obpc-section-title">Atenção da Secretaria</h3>
+          <p class="obpc-section-subtitle">Pendências objetivamente detectadas</p>
+        </div>
+      </div>
+      <div class="obpc-card-body">
+        {% if pendencias %}
+          <div class="d-grid gap-2">
+            {% for p in pendencias %}
+              <div class="obpc-alert obpc-alert-{{ p.tipo }}">
+                <i class="fas fa-circle-exclamation"></i>
+                <div><strong>{{ p.titulo }}</strong><div>{{ p.descricao }}</div></div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="obpc-alert obpc-alert-success">
+            <i class="fas fa-circle-check"></i>
+            <div><strong>Nenhuma pendência administrativa identificada.</strong></div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header">
+        <div>
+          <h3 class="obpc-section-title">Atividade Recente</h3>
+          <p class="obpc-section-subtitle">Últimos cadastros por área</p>
+        </div>
+      </div>
+      <div class="obpc-card-body">
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <h4 class="obpc-section-title">Membros recentes</h4>
+            <ul class="list-group list-group-flush">
+              {% for m in atividade.membros %}
+                <li class="list-group-item d-flex justify-content-between align-items-center"><span>{{ m.nome }}</span><small class="text-muted">{{ m.data_cadastro.strftime('%d/%m/%Y') if m.data_cadastro else '-' }}</small></li>
+              {% else %}
+                <li class="list-group-item text-muted">Sem registros recentes.</li>
+              {% endfor %}
+            </ul>
+          </div>
+          <div class="col-12 col-lg-6">
+            <h4 class="obpc-section-title">Documentos recentes</h4>
+            <ul class="list-group list-group-flush">
+              {% for a in atividade.atas %}
+                <li class="list-group-item d-flex justify-content-between align-items-center"><span>Ata: {{ a.titulo }}</span><small class="text-muted">{{ a.criado_em.strftime('%d/%m/%Y') if a.criado_em else '-' }}</small></li>
+              {% endfor %}
+              {% for o in atividade.oficios %}
+                <li class="list-group-item d-flex justify-content-between align-items-center"><span>Ofício: {{ o.numero }}</span><small class="text-muted">{{ o.criado_em.strftime('%d/%m/%Y') if o.criado_em else '-' }}</small></li>
+              {% endfor %}
+              {% if not atividade.atas and not atividade.oficios %}
+                <li class="list-group-item text-muted">Sem registros recentes.</li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-section-header">
+      <div>
+        <h2 class="obpc-section-title">Ações Rápidas</h2>
+        <p class="obpc-section-subtitle">Atalhos para operações frequentes</p>
+      </div>
+    </div>
+    <div class="obpc-quick-actions">
+      <a class="obpc-quick-action" href="{{ url_for('membros.novo_membro') }}"><span class="obpc-quick-action__icon"><i class="fas fa-user-plus"></i></span><span>Novo Membro</span></a>
+      <a class="obpc-quick-action" href="{{ url_for('atas.nova_ata') }}"><span class="obpc-quick-action__icon"><i class="fas fa-file-circle-plus"></i></span><span>Nova Ata</span></a>
+      <a class="obpc-quick-action" href="{{ url_for('oficios.novo_oficio') }}"><span class="obpc-quick-action__icon"><i class="fas fa-file-signature"></i></span><span>Novo Ofício</span></a>
+      <a class="obpc-quick-action" href="{{ url_for('inventario.lista_itens') }}"><span class="obpc-quick-action__icon"><i class="fas fa-boxes"></i></span><span>Inventário</span></a>
+      <a class="obpc-quick-action" href="{{ url_for('midia.listar_carteiras') }}"><span class="obpc-quick-action__icon"><i class="fas fa-id-card"></i></span><span>Carteiras</span></a>
+      <a class="obpc-quick-action" href="{{ url_for('midia.listar_certificados') }}"><span class="obpc-quick-action__icon"><i class="fas fa-certificate"></i></span><span>Certificados</span></a>
+      <a class="obpc-quick-action" href="{{ url_for('participacao.listar_participacoes') }}"><span class="obpc-quick-action__icon"><i class="fas fa-handshake"></i></span><span>Participação</span></a>
+    </div>
+  </section>
+</div>
+{% endblock %}

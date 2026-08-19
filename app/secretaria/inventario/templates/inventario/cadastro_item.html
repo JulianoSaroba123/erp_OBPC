@@ -1,7 +1,7 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block title %}
-    {% if item %}Editar Item{% else %}Novo Item{% endif %} - Inventário OBPC
+    {% if item %}Editar Item{% else %}Novo Item{% endif %} - InventÃ¡rio OBPC
 {% endblock %}
 
 {% block content %}
@@ -12,35 +12,35 @@
                 <div class="card-header bg-success text-white">
                     <h4 class="mb-0">
                         <i class="fas fa-box me-2"></i>
-                        {% if item %}Editar Item do Inventário{% else %}Novo Item do Inventário{% endif %}
+                        {% if item %}Editar Item do InventÃ¡rio{% else %}Novo Item do InventÃ¡rio{% endif %}
                     </h4>
                 </div>
-                
+
                 <div class="card-body p-4">
-                    <form method="POST" action="{{ url_for('inventario.cadastrar_item') }}">
+                    <form method="POST" action="{{ url_for('inventario.cadastrar_item') }}" class="obpc-form">
                         {% if item %}
                             <input type="hidden" name="item_id" value="{{ item.id }}">
                         {% endif %}
-                        
-                        <!-- Informações Básicas -->
+
+                        <!-- InformaÃ§Ãµes BÃ¡sicas -->
                         <div class="row mb-4">
                             <div class="col-12">
                                 <h5 class="text-success border-bottom pb-2">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    Informações Básicas
+                                    InformaÃ§Ãµes BÃ¡sicas
                                 </h5>
                             </div>
                         </div>
 
                         <div class="row">
-                            <!-- Código -->
+                            <!-- CÃ³digo -->
                             <div class="col-md-4 mb-3">
                                 <label for="codigo" class="form-label fw-bold">
                                     <i class="fas fa-barcode me-1"></i>
-                                    Código do Item *
+                                    CÃ³digo do Item *
                                 </label>
-                                <input type="text" class="form-control" id="codigo" name="codigo" value="{{ proximo_codigo }}" readonly required>
-                                <div class="form-text">Código único para identificação</div>
+                                <input type="text" class="form-control obpc-input" id="codigo" name="codigo" value="{{ proximo_codigo }}" readonly required>
+                                <div class="form-text">CÃ³digo Ãºnico para identificaÃ§Ã£o</div>
                             </div>
 
                             <!-- Nome -->
@@ -49,12 +49,12 @@
                                     <i class="fas fa-box me-1"></i>
                                     Nome do Item *
                                 </label>
-                                <input type="text" 
-                                       class="form-control form-control-lg" 
-                                       id="nome" 
-                                       name="nome" 
-                                       placeholder="Ex: Mesa de escritório, Notebook Dell..."
-                                       value="{{ item.nome if item else '' }}" 
+                                <input type="text"
+                                       class="form-control form-control-lg obpc-input"
+                                       id="nome"
+                                       name="nome"
+                                       placeholder="Ex: Mesa de escritÃ³rio, Notebook Dell..."
+                                       value="{{ item.nome if item else '' }}"
                                        autocomplete="off"
                                        required>
                                 <div class="form-text">Nome descritivo do item</div>
@@ -68,28 +68,28 @@
                                     <i class="fas fa-tag me-1"></i>
                                     Categoria *
                                 </label>
-                                <select class="form-select" id="categoria" name="categoria" required>
+                                <select class="form-select obpc-select" id="categoria" name="categoria" required>
                                     <option value="">Selecione uma categoria</option>
                                     {% for cat in categorias %}
                                         <option value="{{ cat }}">{{ cat }}</option>
                                     {% endfor %}
                                 </select>
-                                <div class="form-text">Categoria do patrimônio</div>
+                                <div class="form-text">Categoria do patrimÃ´nio</div>
                             </div>
 
-                            <!-- Estado de Conservação -->
+                            <!-- Estado de ConservaÃ§Ã£o -->
                             <div class="col-md-6 mb-3">
                                 <label for="estado_conservacao" class="form-label fw-bold">
                                     <i class="fas fa-star me-1"></i>
-                                    Estado de Conservação
+                                    Estado de ConservaÃ§Ã£o
                                 </label>
-                                <select class="form-select" id="estado_conservacao" name="estado_conservacao" required>
+                                <select class="form-select obpc-select" id="estado_conservacao" name="estado_conservacao" required>
                                     <option value="">Selecione o estado</option>
                                     {% for est in estados %}
                                         <option value="{{ est }}">{{ est }}</option>
                                     {% endfor %}
                                 </select>
-                                <div class="form-text">Condição atual do item</div>
+                                <div class="form-text">CondiÃ§Ã£o atual do item</div>
                             </div>
                         </div>
 
@@ -98,117 +98,117 @@
                             <div class="col-12">
                                 <h5 class="text-success border-bottom pb-2">
                                     <i class="fas fa-dollar-sign me-2"></i>
-                                    Informações Financeiras
+                                    InformaÃ§Ãµes Financeiras
                                 </h5>
                             </div>
                         </div>
 
                         <div class="row">
-                            <!-- Valor de Aquisição -->
+                            <!-- Valor de AquisiÃ§Ã£o -->
                             <div class="col-md-6 mb-3">
                                 <label for="valor_aquisicao" class="form-label fw-bold">
                                     <i class="fas fa-dollar-sign me-1"></i>
-                                    Valor de Aquisição
+                                    Valor de AquisiÃ§Ã£o
                                 </label>
                                 <div class="input-group">
                                     <span class="input-group-text">R$</span>
-                                    <input type="number" 
-                                           class="form-control" 
-                                           id="valor_aquisicao" 
-                                           name="valor_aquisicao" 
+                                    <input type="number"
+                                           class="form-control obpc-input"
+                                           id="valor_aquisicao"
+                                           name="valor_aquisicao"
                                            step="0.01"
                                            placeholder="0,00"
                                            value="{{ item.valor_aquisicao if item and item.valor_aquisicao else '' }}">
                                 </div>
-                                <div class="form-text">Valor pago na aquisição do item</div>
+                                <div class="form-text">Valor pago na aquisiÃ§Ã£o do item</div>
                             </div>
 
-                            <!-- Data de Aquisição -->
+                            <!-- Data de AquisiÃ§Ã£o -->
                             <div class="col-md-6 mb-3">
                                 <label for="data_aquisicao" class="form-label fw-bold">
                                     <i class="fas fa-calendar me-1"></i>
-                                    Data de Aquisição
+                                    Data de AquisiÃ§Ã£o
                                 </label>
-                                <input type="date" 
-                                       class="form-control" 
-                                       id="data_aquisicao" 
-                                       name="data_aquisicao" 
+                                <input type="date"
+                                       class="form-control obpc-input"
+                                       id="data_aquisicao"
+                                       name="data_aquisicao"
                                        value="{{ item.data_aquisicao.strftime('%Y-%m-%d') if item and item.data_aquisicao else '' }}">
-                                <div class="form-text">Data de compra ou doação</div>
+                                <div class="form-text">Data de compra ou doaÃ§Ã£o</div>
                             </div>
                         </div>
 
-                        <!-- Localização e Responsável -->
+                        <!-- LocalizaÃ§Ã£o e ResponsÃ¡vel -->
                         <div class="row mb-4">
                             <div class="col-12">
                                 <h5 class="text-success border-bottom pb-2">
                                     <i class="fas fa-map-marker-alt me-2"></i>
-                                    Localização e Responsabilidade
+                                    LocalizaÃ§Ã£o e Responsabilidade
                                 </h5>
                             </div>
                         </div>
 
                         <div class="row">
-                            <!-- Localização -->
+                            <!-- LocalizaÃ§Ã£o -->
                             <div class="col-md-6 mb-3">
                                 <label for="localizacao" class="form-label fw-bold">
                                     <i class="fas fa-map-marker-alt me-1"></i>
-                                    Localização Atual
+                                    LocalizaÃ§Ã£o Atual
                                 </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="localizacao" 
-                                       name="localizacao" 
-                                       placeholder="Ex: Secretaria, Salão Principal, Sala 1..."
+                                <input type="text"
+                                       class="form-control obpc-input"
+                                       id="localizacao"
+                                       name="localizacao"
+                                       placeholder="Ex: Secretaria, SalÃ£o Principal, Sala 1..."
                                        value="{{ item.localizacao if item else '' }}">
-                                <div class="form-text">Onde o item está localizado</div>
+                                <div class="form-text">Onde o item estÃ¡ localizado</div>
                             </div>
 
-                            <!-- Responsável -->
+                            <!-- ResponsÃ¡vel -->
                             <div class="col-md-6 mb-3">
                                 <label for="responsavel" class="form-label fw-bold">
                                     <i class="fas fa-user me-1"></i>
-                                    Responsável pelo Item
+                                    ResponsÃ¡vel pelo Item
                                 </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="responsavel" 
-                                       name="responsavel" 
-                                       placeholder="Ex: João Silva, Secretaria..."
+                                <input type="text"
+                                       class="form-control obpc-input"
+                                       id="responsavel"
+                                       name="responsavel"
+                                       placeholder="Ex: JoÃ£o Silva, Secretaria..."
                                        value="{{ item.responsavel if item else '' }}">
-                                <div class="form-text">Pessoa responsável pela conservação</div>
+                                <div class="form-text">Pessoa responsÃ¡vel pela conservaÃ§Ã£o</div>
                             </div>
                         </div>
 
-                        <!-- Descrição -->
+                        <!-- DescriÃ§Ã£o -->
                         <div class="row">
                             <div class="col-12 mb-3">
                                 <label for="descricao" class="form-label fw-bold">
                                     <i class="fas fa-file-text me-1"></i>
-                                    Descrição Detalhada
+                                    DescriÃ§Ã£o Detalhada
                                 </label>
-                                <textarea class="form-control" 
-                                          id="descricao" 
-                                          name="descricao" 
-                                          rows="4" 
-                                          placeholder="Descreva características específicas, modelo, marca, número de série, etc...">{{ item.descricao if item else '' }}</textarea>
-                                <div class="form-text">Informações detalhadas sobre o item</div>
+                                <textarea class="form-control obpc-input"
+                                          id="descricao"
+                                          name="descricao"
+                                          rows="4"
+                                          placeholder="Descreva caracterÃ­sticas especÃ­ficas, modelo, marca, nÃºmero de sÃ©rie, etc...">{{ item.descricao if item else '' }}</textarea>
+                                <div class="form-text">InformaÃ§Ãµes detalhadas sobre o item</div>
                             </div>
                         </div>
 
-                        <!-- Observações -->
+                        <!-- ObservaÃ§Ãµes -->
                         <div class="row">
                             <div class="col-12 mb-3">
                                 <label for="observacoes" class="form-label fw-bold">
                                     <i class="fas fa-comment me-1"></i>
-                                    Observações Gerais
+                                    ObservaÃ§Ãµes Gerais
                                 </label>
-                                <textarea class="form-control" 
-                                          id="observacoes" 
-                                          name="observacoes" 
-                                          rows="3" 
-                                          placeholder="Observações adicionais, histórico de reparos, etc...">{{ item.observacoes if item else '' }}</textarea>
-                                <div class="form-text">Informações complementares</div>
+                                <textarea class="form-control obpc-input"
+                                          id="observacoes"
+                                          name="observacoes"
+                                          rows="3"
+                                          placeholder="ObservaÃ§Ãµes adicionais, histÃ³rico de reparos, etc...">{{ item.observacoes if item else '' }}</textarea>
+                                <div class="form-text">InformaÃ§Ãµes complementares</div>
                             </div>
                         </div>
 
@@ -216,30 +216,30 @@
                         <div class="row">
                             <div class="col-12 mb-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" 
-                                           type="checkbox" 
-                                           id="ativo" 
-                                           name="ativo" 
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           id="ativo"
+                                           name="ativo"
                                            {% if not item or item.ativo %}checked{% endif %}>
                                     <label class="form-check-label fw-bold" for="ativo">
                                         <i class="fas fa-toggle-on me-1"></i>
-                                        Item Ativo no Inventário
+                                        Item Ativo no InventÃ¡rio
                                     </label>
-                                    <div class="form-text">Desmarque para inativar o item sem excluí-lo</div>
+                                    <div class="form-text">Desmarque para inativar o item sem excluÃ­-lo</div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Botões de Ação -->
+                        <!-- BotÃµes de AÃ§Ã£o -->
                         <div class="row">
                             <div class="col-12">
                                 <div class="d-flex justify-content-between">
-                                    <a href="{{ url_for('inventario.lista_itens') }}" class="btn btn-secondary btn-lg">
+                                    <a href="{{ url_for('inventario.lista_itens') }}" class="obpc-btn obpc-btn-secondary obpc-btn--lg">
                                         <i class="fas fa-times me-2"></i>
                                         Cancelar
                                     </a>
-                                    
-                                    <button type="submit" class="btn btn-success btn-lg">
+
+                                    <button type="submit" class="obpc-btn obpc-btn-success obpc-btn--lg">
                                         <i class="fas fa-save me-2"></i>
                                         {% if item %}Atualizar Item{% else %}Cadastrar Item{% endif %}
                                     </button>
@@ -309,26 +309,26 @@ h5.border-bottom {
 </style>
 
 <script>
-// Validação do formulário
+// ValidaÃ§Ã£o do formulÃ¡rio
 document.querySelector('form').addEventListener('submit', function(e) {
     const codigo = document.getElementById('codigo').value.trim();
     const nome = document.getElementById('nome').value.trim();
     const categoria = document.getElementById('categoria').value;
-    
+
     if (!codigo) {
         e.preventDefault();
-        alert('Por favor, preencha o código do item.');
+        alert('Por favor, preencha o cÃ³digo do item.');
         document.getElementById('codigo').focus();
         return;
     }
-    
+
     if (!nome) {
         e.preventDefault();
         alert('Por favor, preencha o nome do item.');
         document.getElementById('nome').focus();
         return;
     }
-    
+
     if (!categoria) {
         e.preventDefault();
         alert('Por favor, selecione uma categoria.');
@@ -337,7 +337,7 @@ document.querySelector('form').addEventListener('submit', function(e) {
     }
 });
 
-// Formatação automática do código (maiúsculo)
+// FormataÃ§Ã£o automÃ¡tica do cÃ³digo (maiÃºsculo)
 document.getElementById('codigo').addEventListener('input', function(e) {
     e.target.value = e.target.value.toUpperCase();
 });

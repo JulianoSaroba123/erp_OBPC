@@ -538,36 +538,72 @@
       <a href="{{ url_for('usuario.lista_usuarios') }}"><i class="fa-solid fa-users-gear"></i><span>Gerenciar Usuários</span></a>
       {% endif %}
       
+      {% set caminho_atual = request.path if request else '' %}
+      {% set endpoint_atual = request.endpoint if request else '' %}
+
+      {% set sec_visao_geral_ativa = endpoint_atual == 'secretaria.visao_geral' %}
+      {% set sec_pessoas_ativas = endpoint_atual.startswith('membros.') or endpoint_atual.startswith('obreiros.') %}
+      {% set sec_documentos_ativos = endpoint_atual.startswith('atas.') or endpoint_atual.startswith('oficios.') %}
+      {% set sec_credenciais_ativas = caminho_atual.startswith('/midia/carteiras') or caminho_atual.startswith('/midia/certificados') %}
+      {% set sec_patrimonio_ativo = endpoint_atual.startswith('inventario.') %}
+      {% set sec_relatorios_ativo = endpoint_atual.startswith('participacao.') %}
+      {% set secretaria_aberta = sec_visao_geral_ativa or sec_pessoas_ativas or sec_documentos_ativos or sec_credenciais_ativas or sec_patrimonio_ativo or sec_relatorios_ativo %}
+
       <!-- Submenu Secretaria - Secretários, Admins e Master -->
       {% if current_user.is_authenticated and current_user.tem_acesso_secretaria() %}
       <div class="menu-group">
-        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)"><i class="fa-solid fa-building"></i><span>Secretaria</span><i class="fas fa-chevron-down submenu-arrow"></i></button>
-        <div class="submenu">
-          {% if current_user.tem_acesso_membros() %}
-          <a href="{{ url_for('membros.lista_membros') }}" class="submenu-item">
-            <i class="fas fa-users"></i><span>Membros</span>
+        <button type="button" class="menu-toggle-button" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if secretaria_aberta else 'false' }}"><i class="fa-solid fa-building"></i><span>Secretaria</span><i class="fas fa-chevron-down submenu-arrow"{% if secretaria_aberta %} style="transform: rotate(180deg);"{% endif %}></i></button>
+        <div class="submenu{% if secretaria_aberta %} show{% endif %}">
+          <a href="{{ url_for('secretaria.visao_geral') }}" class="submenu-item{% if sec_visao_geral_ativa %} active{% endif %}">
+            <i class="fas fa-chart-line"></i><span>Visão Geral</span>
           </a>
-          <a href="{{ url_for('membros.lista_lideres') }}" class="submenu-item">
-            <i class="fas fa-crown"></i><span>Líderes</span>
-          </a>
-          {% endif %}
-          <a href="{{ url_for('atas.lista_atas') }}" class="submenu-item">
-            <i class="fas fa-file-alt"></i><span>Atas de Reunião</span>
-          </a>
-          <a href="{{ url_for('inventario.lista_itens') }}" class="submenu-item">
-            <i class="fas fa-boxes"></i><span>Inventário</span>
-          </a>
-          <a href="{{ url_for('oficios.lista_oficios') }}" class="submenu-item">
-            <i class="fas fa-file-signature"></i><span>Ofícios de Solicitação</span>
-          </a>
-          <a href="{{ url_for('midia.listar_carteiras') }}" class="submenu-item">
-            <i class="fas fa-id-card"></i><span>Carteira de Membro</span>
-          </a>
-          {% if current_user.tem_acesso_obreiros() %}
-          <a href="{{ url_for('participacao.listar_participacoes') }}" class="submenu-item">
-            <i class="fa-solid fa-handshake"></i><span>Participação de Obreiros</span>
-          </a>
-          {% endif %}
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if sec_pessoas_ativas %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if sec_pessoas_ativas else 'false' }}"><i class="fas fa-users"></i><span>Pessoas</span><i class="fas fa-chevron-down submenu-arrow"{% if sec_pessoas_ativas %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if sec_pessoas_ativas %} show{% endif %}">
+              {% if current_user.tem_acesso_membros() %}
+              <a href="{{ url_for('membros.lista_membros') }}" class="submenu-item{% if endpoint_atual == 'membros.lista_membros' %} active{% endif %}"><i class="fas fa-users"></i><span>Membros</span></a>
+              <a href="{{ url_for('membros.lista_lideres') }}" class="submenu-item{% if endpoint_atual == 'membros.lista_lideres' %} active{% endif %}"><i class="fas fa-crown"></i><span>Lideranças</span></a>
+              {% endif %}
+              {% if current_user.tem_acesso_obreiros() %}
+              <a href="{{ url_for('obreiros.lista_obreiros') }}" class="submenu-item{% if endpoint_atual.startswith('obreiros.') %} active{% endif %}"><i class="fas fa-user-tie"></i><span>Obreiros</span></a>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if sec_documentos_ativos %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if sec_documentos_ativos else 'false' }}"><i class="fas fa-folder-open"></i><span>Documentos</span><i class="fas fa-chevron-down submenu-arrow"{% if sec_documentos_ativos %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if sec_documentos_ativos %} show{% endif %}">
+              <a href="{{ url_for('atas.lista_atas') }}" class="submenu-item{% if endpoint_atual.startswith('atas.') %} active{% endif %}"><i class="fas fa-file-alt"></i><span>Atas</span></a>
+              <a href="{{ url_for('oficios.lista_oficios') }}" class="submenu-item{% if endpoint_atual.startswith('oficios.') %} active{% endif %}"><i class="fas fa-file-signature"></i><span>Ofícios</span></a>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if sec_credenciais_ativas %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if sec_credenciais_ativas else 'false' }}"><i class="fas fa-id-card"></i><span>Credenciais</span><i class="fas fa-chevron-down submenu-arrow"{% if sec_credenciais_ativas %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if sec_credenciais_ativas %} show{% endif %}">
+              <a href="{{ url_for('midia.listar_carteiras') }}" class="submenu-item{% if caminho_atual.startswith('/midia/carteiras') %} active{% endif %}"><i class="fas fa-id-card"></i><span>Carteiras</span></a>
+              {% if current_user.tem_acesso_midia() %}
+              <a href="{{ url_for('midia.listar_certificados') }}" class="submenu-item{% if caminho_atual.startswith('/midia/certificados') %} active{% endif %}"><i class="fas fa-certificate"></i><span>Certificados</span></a>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if sec_patrimonio_ativo %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if sec_patrimonio_ativo else 'false' }}"><i class="fas fa-boxes"></i><span>Patrimônio</span><i class="fas fa-chevron-down submenu-arrow"{% if sec_patrimonio_ativo %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if sec_patrimonio_ativo %} show{% endif %}">
+              <a href="{{ url_for('inventario.lista_itens') }}" class="submenu-item{% if endpoint_atual.startswith('inventario.') %} active{% endif %}"><i class="fas fa-boxes"></i><span>Inventário</span></a>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button type="button" class="menu-toggle-button submenu-toggle-button{% if sec_relatorios_ativo %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if sec_relatorios_ativo else 'false' }}"><i class="fas fa-chart-column"></i><span>Relatórios</span><i class="fas fa-chevron-down submenu-arrow"{% if sec_relatorios_ativo %} style="transform: rotate(180deg);"{% endif %}></i></button>
+            <div class="submenu{% if sec_relatorios_ativo %} show{% endif %}">
+              {% if current_user.tem_acesso_obreiros() %}
+              <a href="{{ url_for('participacao.listar_participacoes') }}" class="submenu-item{% if endpoint_atual.startswith('participacao.') %} active{% endif %}"><i class="fa-solid fa-handshake"></i><span>Participação de Obreiros</span></a>
+              {% endif %}
+            </div>
+          </div>
         </div>
       </div>
       {% endif %}
@@ -577,7 +613,6 @@
       <a href="{{ url_for('departamentos.lista_departamentos') }}"><i class="fa-solid fa-church"></i><span>Departamentos</span></a>
       {% endif %}
       
-      {% set caminho_atual = request.path if request else '' %}
       {% set financeiro_aberto = caminho_atual.startswith('/financeiro') or caminho_atual.startswith('/debug/importacao') %}
       {% set visao_geral_ativa = caminho_atual == '/financeiro/dashboard' %}
       {% set movimentacoes_ativas = caminho_atual in ['/financeiro', '/financeiro/lancamentos', '/financeiro/novo', '/financeiro/lista-moderna'] or caminho_atual.startswith('/financeiro/editar/') or caminho_atual.startswith('/financeiro/excluir/') or caminho_atual.startswith('/financeiro/salvar') or caminho_atual.startswith('/financeiro/excluir-comprovante') or caminho_atual.startswith('/financeiro/upload-comprovantes') or caminho_atual.startswith('/financeiro/excluir-comprovante-multiplo') %}

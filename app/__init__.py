@@ -13,6 +13,7 @@ from app.secretaria.atas.atas_routes import atas_bp
 from app.secretaria.inventario.inventario_routes import inventario_bp
 from app.secretaria.oficios.oficios_routes import oficios_bp
 from app.secretaria.participacao.participacao_routes import participacao_bp
+from app.secretaria.dashboard_routes import secretaria_bp
 from app.midia.midia_routes import midia_bp
 from app.escala_ministerial.escala_routes import escala_ministerial_bp
 from app.financeiro.routes_conciliacao import conciliacao_bp
@@ -162,6 +163,7 @@ def create_app():
     app.register_blueprint(inventario_bp)
     app.register_blueprint(oficios_bp)
     app.register_blueprint(participacao_bp)
+    app.register_blueprint(secretaria_bp)
     app.register_blueprint(midia_bp)
     app.register_blueprint(escala_ministerial_bp)
     app.register_blueprint(conciliacao_bp)
