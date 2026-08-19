@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Design System OBPC{% endblock %}
+
+{% block content %}
+<div class="obpc-page">
+  <section class="obpc-page-header obpc-page-header--hero">
+    <div>
+      <h1 class="obpc-page-title">
+        <i class="fa-solid fa-layer-group"></i>
+        Design System OBPC
+      </h1>
+      <p class="obpc-page-subtitle">Showcase interno para validar tokens, componentes e responsividade.</p>
+    </div>
+    <div class="obpc-page-actions">
+      <a href="#" class="obpc-btn obpc-btn-secondary obpc-btn--sm">Ação secundária</a>
+      <a href="#" class="obpc-btn obpc-btn-primary">Ação principal</a>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-section-header">
+      <div>
+        <h2 class="obpc-section-title">KPIs e Cards</h2>
+        <p class="obpc-section-subtitle">Validação visual do vocabulário do sistema.</p>
+      </div>
+    </div>
+    <div class="obpc-kpi-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0.95rem;">
+      <article class="obpc-kpi obpc-kpi--primary">
+        <div class="obpc-kpi__head">
+          <div>
+            <p class="obpc-kpi__label">Total</p>
+            <h3 class="obpc-kpi__value">128</h3>
+          </div>
+          <span class="obpc-kpi__icon"><i class="fa-solid fa-chart-pie"></i></span>
+        </div>
+        <p class="obpc-kpi__description">Valor principal com identidade executiva.</p>
+      </article>
+      <article class="obpc-kpi obpc-kpi--success">
+        <div class="obpc-kpi__head">
+          <div>
+            <p class="obpc-kpi__label">Aprovados</p>
+            <h3 class="obpc-kpi__value">87</h3>
+          </div>
+          <span class="obpc-kpi__icon"><i class="fa-solid fa-circle-check"></i></span>
+        </div>
+        <p class="obpc-kpi__description">Estado positivo em verde sem saturação excessiva.</p>
+      </article>
+      <article class="obpc-kpi obpc-kpi--warning">
+        <div class="obpc-kpi__head">
+          <div>
+            <p class="obpc-kpi__label">Pendentes</p>
+            <h3 class="obpc-kpi__value">14</h3>
+          </div>
+          <span class="obpc-kpi__icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+        </div>
+        <p class="obpc-kpi__description">Alerta visual consistente com o dashboard financeiro.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-section-header">
+      <div>
+        <h2 class="obpc-section-title">Tabela e Filtros</h2>
+        <p class="obpc-section-subtitle">Componentes reutilizáveis para listas de módulos.</p>
+      </div>
+      <div class="obpc-section-actions">
+        <button class="obpc-btn obpc-btn-secondary obpc-btn--sm">Limpar</button>
+        <button class="obpc-btn obpc-btn-primary obpc-btn--sm">Filtrar</button>
+      </div>
+    </div>
+    <div class="obpc-filter-bar">
+      <div class="obpc-field" style="min-width:220px;flex:1;">
+        <label class="obpc-label">Busca</label>
+        <input class="obpc-input" placeholder="Digite para buscar">
+      </div>
+      <div class="obpc-field" style="min-width:180px;">
+        <label class="obpc-label">Status</label>
+        <select class="obpc-select"><option>Todos</option></select>
+      </div>
+      <div class="obpc-field" style="min-width:180px;">
+        <label class="obpc-label">Período</label>
+        <input class="obpc-input" type="month">
+      </div>
+    </div>
+    <div class="obpc-card">
+      <div class="obpc-card-body">
+        <div class="obpc-table-wrap">
+          <table class="obpc-table">
+            <thead>
+              <tr><th>Nome</th><th>Status</th><th>Valor</th><th class="text-end">Ações</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Registro de Exemplo</td>
+                <td><span class="obpc-badge obpc-badge--success">Ativo</span></td>
+                <td><span class="obpc-money">R$ 1.250,00</span></td>
+                <td><div class="obpc-table-actions justify-content-end"><a class="obpc-btn obpc-btn-ghost obpc-btn--sm" href="#">Ver</a></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-section-header">
+      <div>
+        <h2 class="obpc-section-title">Alertas e Empty States</h2>
+        <p class="obpc-section-subtitle">Mensagens de estado e ausência de dados.</p>
+      </div>
+    </div>
+    <div class="obpc-alert obpc-alert-warning">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <div>
+        <strong>Há itens pendentes</strong>
+        <div class="obpc-text-muted">Mensagem informativa com ação opcional.</div>
+      </div>
+    </div>
+    <div class="obpc-empty">
+      <div class="obpc-empty-icon"><i class="fa-solid fa-inbox"></i></div>
+      <h3 class="obpc-empty-title">Nenhum registro encontrado</h3>
+      <p class="obpc-empty-description">Use filtros ou crie um novo item para começar.</p>
+      <a href="#" class="obpc-btn obpc-btn-primary obpc-btn--sm obpc-empty-action">Nova ação</a>
+    </div>
+  </section>
+</div>
+{% endblock %}
