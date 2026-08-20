@@ -135,6 +135,9 @@ ERP_OBPC/
 
 ## 📊 Módulos do Sistema
 
+### 📚 Homologação Financeira
+- [Homologação Financeira D23D44B](docs/FINANCEIRO_HOMOLOGACAO_D23D44B.md)
+
 ### 👥 Gestão de Membros
 - Cadastro completo de membros
 - Busca automática de endereço por CEP
