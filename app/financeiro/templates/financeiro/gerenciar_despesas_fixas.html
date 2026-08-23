@@ -98,25 +98,6 @@
                             <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Regularização Inicial / Registro de Repasse</h5>
                         </div>
                         <div class="card-body">
-                            <form method="GET" action="{{ url_for('financeiro.gerenciar_despesas_fixas') }}" class="row g-2 align-items-end mb-3">
-                                <div class="col-md-3">
-                                    <label class="form-label">Competência da tela - Mês</label>
-                                    <select class="form-select" name="mes">
-                                        {% for m in range(1, 13) %}
-                                        <option value="{{ m }}" {% if m == mes_ref %}selected{% endif %}>{{ "%02d"|format(m) }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Competência da tela - Ano</label>
-                                    <input type="number" class="form-control" name="ano" value="{{ ano_ref }}" min="2020" max="2035">
-                                </div>
-                                <div class="col-md-3">
-                                    <button type="submit" class="btn btn-outline-success w-100">
-                                        <i class="fas fa-sync-alt me-1"></i>Carregar competência
-                                    </button>
-                                </div>
-                            </form>
                             <div class="alert alert-info py-2">
                                 <small>
                                     Use <strong>pagamento histórico sem movimentação bancária</strong> para baixar competências antigas sem gerar saída no caixa/banco.
@@ -130,7 +111,7 @@
                                         <select class="form-select" name="competencia_mes_ref" id="create_competencia_mes_ref" required>
                                             <option value="">-</option>
                                             {% for m in range(1, 13) %}
-                                            <option value="{{ m }}" {% if m == mes_ref %}selected{% endif %}>{{ "%02d"|format(m) }}</option>
+                                            <option value="{{ m }}">{{ "%02d"|format(m) }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
@@ -161,7 +142,7 @@
                                     </div>
                                     <div class="col-md-8">
                                         <label class="form-label">Competência (texto livre)</label>
-                                        <input type="text" class="form-control" id="create_competencia" name="competencia" value="{{ "%02d"|format(mes_ref) }}/{{ ano_ref }}" placeholder="Ex: Abril/2026" required>
+                                        <input type="text" class="form-control" id="create_competencia" name="competencia" placeholder="Ex: Abril/2026" required>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label">Data pagamento</label>
@@ -213,13 +194,16 @@
                                                                     <td class="text-end">{{ "R$ %.2f"|format(obrigacao.valor_pendente)|replace(".", ",") }}</td>
                                                                     <td style="min-width: 140px;">
                                                                         <input type="hidden" name="alocacao_obrigacao_id[]" value="{{ obrigacao.id }}">
-                                                                        <input type="number" class="form-control form-control-sm alocacao-valor" name="alocacao_valor[]" min="0" step="0.01" value="0" data-obrigacao-id="{{ obrigacao.id }}" data-tipo="{{ obrigacao.tipo_obrigacao }}">
+                                                                        <input type="number" class="form-control form-control-sm alocacao-valor" name="alocacao_valor[]" min="0" max="{{ '%.2f'|format(obrigacao.valor_pendente) }}" step="0.01" value="{{ '%.2f'|format(obrigacao.valor_pendente) }}" data-obrigacao-id="{{ obrigacao.id }}" data-tipo="{{ obrigacao.tipo_obrigacao }}" data-valor-pendente="{{ '%.2f'|format(obrigacao.valor_pendente) }}">
                                                                     </td>
                                                                 </tr>
                                                                 {% endfor %}
                                                             </tbody>
                                                         </table>
                                                     </div>
+                                                    {% if not (obrigacoes_disponiveis|selectattr('tipo_obrigacao', 'equalto', 'DESPESA_FIXA')|list) %}
+                                                    <div class="alert alert-warning mt-2 mb-0">Não há obrigação de despesas fixas materializada para esta competência. Gere a obrigação antes de registrar esse componente.</div>
+                                                    {% endif %}
                                                 {% else %}
                                                     <div class="alert alert-warning mb-0">Nenhuma obrigação automática foi gerada para a competência selecionada.</div>
                                                 {% endif %}
@@ -901,9 +885,40 @@ function recalcularValoresVisuaisAlocacoes() {
     if (campoTotal) campoTotal.value = total.toFixed(2);
 }
 
-document.querySelectorAll('.alocacao-valor').forEach(function (campo) {
-    campo.addEventListener('input', recalcularValoresVisuaisAlocacoes);
-});
+function valorPendenteDaAlocacao(campo) {
+    const valorData = parseFloat(campo.dataset.valorPendente || '');
+    const valorMaximo = parseFloat(campo.max || '');
+    return Number.isFinite(valorData) ? valorData : (Number.isFinite(valorMaximo) ? valorMaximo : 0);
+}
+
+function preencherAlocacoesComPendentes() {
+    document.querySelectorAll('.alocacao-valor').forEach(function (campo) {
+        campo.value = valorPendenteDaAlocacao(campo).toFixed(2);
+    });
+}
+
+function limitarAlocacaoAoPendente(campo) {
+    const pendente = valorPendenteDaAlocacao(campo);
+    const valor = parseFloat(campo.value || '0') || 0;
+    campo.value = Math.min(Math.max(valor, 0), pendente).toFixed(2);
+}
+
+function inicializarAutopreenchimentoAlocacoes() {
+    preencherAlocacoesComPendentes();
+
+    document.querySelectorAll('.alocacao-valor').forEach(function (campo) {
+        campo.addEventListener('input', function () {
+            limitarAlocacaoAoPendente(campo);
+            recalcularValoresVisuaisAlocacoes();
+        });
+        campo.addEventListener('change', function () {
+            limitarAlocacaoAoPendente(campo);
+            recalcularValoresVisuaisAlocacoes();
+        });
+    });
+
+    recalcularValoresVisuaisAlocacoes();
+}
 
 document.getElementById('form_pagamento_composto')?.addEventListener('submit', function (event) {
     const botao = document.getElementById('btn_registrar_pagamento_composto');
@@ -918,6 +933,10 @@ document.getElementById('form_pagamento_composto')?.addEventListener('submit', f
 
 atualizarObrigatoriedadeDataHistorico('create_');
 recalcularTotal('create_');
-recalcularValoresVisuaisAlocacoes();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarAutopreenchimentoAlocacoes, { once: true });
+} else {
+    inicializarAutopreenchimentoAlocacoes();
+}
 </script>
 {% endblock %}
