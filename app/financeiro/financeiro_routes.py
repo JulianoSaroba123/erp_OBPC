@@ -336,7 +336,11 @@ def gerar_obrigacoes_despesas_fixas(mes=None, ano=None):
         'erros': [],
     }
 
-    despesas_ativas = DespesaFixaConselho.obter_despesas_ativas()
+    despesas_ativas = [
+        despesa
+        for despesa in DespesaFixaConselho.obter_despesas_ativas()
+        if 'conchas' not in (despesa.nome or '').strip().lower()
+    ]
     if not despesas_ativas:
         return resultado
 
