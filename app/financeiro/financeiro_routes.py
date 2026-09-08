@@ -3526,41 +3526,45 @@ def conciliacao():
 @financeiro_bp.route('/financeiro/conciliacao/auto', methods=['POST'])
 @login_required
 def conciliacao_auto():
-    """Executa conciliação automática: casa importados com manuais por data e valor exato"""
+    """Executa conciliação segura: Repasse N:1 e demais lan?amentos somente 1:1 exato."""
     try:
-        conciliados = 0
-        # Buscar importados pendentes
-        importados = Lancamento.query.filter_by(origem='importado', conciliado=False).all()
-        for imp in importados:
-            # tentar encontrar manual correspondente
-            match = Lancamento.query.filter_by(origem='manual', conciliado=False, data=imp.data, valor=imp.valor, tipo=imp.tipo).first()
-            if match:
-                imp.conciliado = True
-                match.conciliado = True
-                conciliados += 1
-                db.session.add(imp)
-                db.session.add(match)
-
-        db.session.commit()
-
-        # Registrar histórico
         from flask_login import current_user
-        usuario_nome = str(getattr(current_user, 'username', 'system'))
-        total_pendentes = Lancamento.query.filter_by(origem='importado', conciliado=False).count()
-        historico = ConciliacaoHistorico(
-            data_conciliacao=datetime.now(),
-            usuario=usuario_nome,
-            total_conciliados=conciliados,
-            total_pendentes=total_pendentes,
-            observacao=f'Conciliação automática: {conciliados} conciliados'
-        )
-        db.session.add(historico)
-        db.session.commit()
+        from app.financeiro.utils.conciliacao_avancada import ConciliadorAvancado
 
-        flash(f'Conciliação automática concluída: {conciliados} conciliados.', 'success')
+        usuario_nome = (
+            getattr(current_user, 'nome', None)
+            or getattr(current_user, 'username', None)
+            or 'system'
+        )
+
+        resultado = ConciliadorAvancado().conciliar_automatico(
+            str(usuario_nome),
+            somente_exato_1_para_1=True,
+        )
+
+        if 'erro' in resultado:
+            flash(f"Erro na conciliação automática: {resultado['erro']}", 'danger')
+            return redirect(url_for('financeiro.conciliacao'))
+
+        conciliados = int(resultado.get('conciliados', 0) or 0)
+        grupos = int(resultado.get('grupos_compostos', 0) or 0)
+
+        if conciliados:
+            complemento = (
+                f" Inclui {grupos} grupo(s) de Repasse composto."
+                if grupos else ""
+            )
+            flash(
+                f"Conciliação automática conclu?da: {conciliados} vínculo(s).{complemento}",
+                'success',
+            )
+        else:
+            flash('Nenhum par seguro para conciliação automática encontrado.', 'info')
+
         return redirect(url_for('financeiro.conciliacao'))
     except Exception as e:
         db.session.rollback()
+        current_app.logger.exception(f"Erro na conciliação automática: {e}")
         flash(f'Erro na conciliação automática: {str(e)}', 'danger')
         return redirect(url_for('financeiro.conciliacao'))
 

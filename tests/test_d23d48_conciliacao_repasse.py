@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 import unittest
 
 from flask import Flask
@@ -11,6 +12,11 @@ from app.financeiro.financeiro_model import (
 )
 from app.financeiro.projeto_model import Projeto
 from app.financeiro.comprovante_model import Comprovante
+from app.financeiro.obrigacoes_model import (
+    ObrigacaoFinanceira,
+    PagamentoObrigacao,
+    PagamentoObrigacaoItem,
+)
 from app.financeiro.utils.conciliacao_avancada import ConciliadorAvancado
 
 
@@ -40,6 +46,9 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
         db.session.query(ConciliacaoPar).delete()
         db.session.query(ConciliacaoHistorico).delete()
         db.session.query(Comprovante).delete()
+        db.session.query(PagamentoObrigacaoItem).delete()
+        db.session.query(PagamentoObrigacao).delete()
+        db.session.query(ObrigacaoFinanceira).delete()
         db.session.query(Lancamento).delete()
         db.session.query(Projeto).delete()
         db.session.commit()
@@ -49,7 +58,12 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
         db.session.remove()
         self.ctx.pop()
 
-    def _manual_repasse(self, valor, descricao='Pagamento composto de 5 obrigação(ões)'):
+    def _manual_repasse(
+        self,
+        valor,
+        descricao='Pagamento composto de 5 obrigação(ões)',
+        componentes=None,
+    ):
         lancamento = Lancamento(
             data=date(2026, 8, 28),
             tipo='Saída',
@@ -62,6 +76,48 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
         )
         db.session.add(lancamento)
         db.session.flush()
+
+        if componentes:
+            pagamento = PagamentoObrigacao(
+                data_pagamento=date(2026, 8, 28),
+                valor_pago=Decimal(str(valor)),
+                forma_pagamento='PIX',
+                tipo_pagamento='PAGAMENTO_BANCARIO',
+                lancamento_financeiro_id=lancamento.id,
+            )
+            db.session.add(pagamento)
+            db.session.flush()
+
+            for idx, componente in enumerate(componentes, start=1):
+                obrigacao = ObrigacaoFinanceira(
+                    tipo_obrigacao='ADMIN_SEDE_30' if idx == 1 else 'DESPESA_FIXA',
+                    origem_obrigacao='automatico',
+                    referencia_origem_tipo=(
+                        'FECHAMENTO_MENSAL'
+                        if idx == 1
+                        else 'DESPESA_FIXA_CONSELHO'
+                    ),
+                    referencia_origem_id=202607 if idx == 1 else 100 + idx,
+                    categoria='CONTRIB. SEDE' if idx == 1 else 'DESP. FIXAS',
+                    descricao=f'Componente {idx}',
+                    competencia_mes=7,
+                    competencia_ano=2026,
+                    valor_devido=Decimal(str(componente)),
+                    status='PAGO',
+                )
+                db.session.add(obrigacao)
+                db.session.flush()
+
+                db.session.add(
+                    PagamentoObrigacaoItem(
+                        pagamento_obrigacao_id=pagamento.id,
+                        obrigacao_financeira_id=obrigacao.id,
+                        valor_alocado=Decimal(str(componente)),
+                    )
+                )
+
+            db.session.flush()
+
         return lancamento
 
     def _importado(self, valor, descricao):
@@ -81,7 +137,10 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
         return lancamento
 
     def test_repasse_1302_56_concilia_cinco_linhas_sem_duplicar_saida(self):
-        manual = self._manual_repasse(1302.56)
+        manual = self._manual_repasse(
+            1302.56,
+            componentes=[1122.56, 100.00, 50.00, 10.00, 20.00],
+        )
         importados = [
             self._importado(1122.56, 'PIX 30% ADMINISTRATIVO'),
             self._importado(100.00, 'PIX CONTADOR'),
@@ -129,10 +188,13 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
             {par.lancamento_importado_id for par in pares},
             {item.id for item in importados},
         )
-        self.assertTrue(all(par.regra_aplicada == 'composto_n_1_soma_exata' for par in pares))
+        self.assertTrue(all(par.regra_aplicada == 'composto_n_1_componentes_pagamento' for par in pares))
 
     def test_importado_nao_conciliado_continua_impactando_financeiro(self):
-        manual = self._manual_repasse(1302.56)
+        manual = self._manual_repasse(
+            1302.56,
+            componentes=[1122.56, 100.00, 50.00, 10.00, 20.00],
+        )
         for valor, descricao in [
             (1122.56, 'ADMIN'),
             (100.00, 'CONTADOR'),
@@ -155,12 +217,14 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
         self.assertAlmostEqual(Lancamento.calcular_totais()['saidas'], 1377.56, places=2)
 
     def test_combinacao_ambigua_nao_e_conciliada_automaticamente(self):
-        manual = self._manual_repasse(100.00)
+        manual = self._manual_repasse(
+            100.00,
+            componentes=[60.00, 40.00],
+        )
         importados = [
             self._importado(60.00, 'ALFA'),
+            self._importado(60.00, 'OUTRA SAIDA DE MESMO VALOR'),
             self._importado(40.00, 'BETA'),
-            self._importado(70.00, 'GAMA'),
-            self._importado(30.00, 'DELTA'),
         ]
         db.session.commit()
 
@@ -176,7 +240,10 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
         self.assertTrue(all(not Lancamento.query.get(item.id).conciliado for item in importados))
 
     def test_desfazer_um_par_de_grupo_n_1_preserva_demais_vinculos(self):
-        manual = self._manual_repasse(1302.56)
+        manual = self._manual_repasse(
+            1302.56,
+            componentes=[1122.56, 100.00, 50.00, 10.00, 20.00],
+        )
         importados = [
             self._importado(1122.56, 'ADMIN'),
             self._importado(100.00, 'CONTADOR'),
@@ -238,6 +305,38 @@ class TestD23D48ConciliacaoRepasse(unittest.TestCase):
         self.assertEqual(importado_db.tipo, 'Evidência')
         self.assertEqual(importado_db.tipo_bancario, 'Saída')
         self.assertAlmostEqual(Lancamento.calcular_totais()['saidas'], 500.00, places=2)
+
+    def test_modo_seguro_nao_concilia_match_aproximado(self):
+        manual = self._manual_repasse(
+            500.00,
+            descricao='PIX ENERGIA ELETRICA',
+        )
+
+        importado = self._importado(
+            500.00,
+            'PIX ENERGIA ELETRICA',
+        )
+
+        importado.data = date(2026, 8, 29)
+        db.session.commit()
+
+        resultado = ConciliadorAvancado().conciliar_automatico(
+            'teste-d23d48',
+            somente_exato_1_para_1=True,
+        )
+
+        self.assertNotIn('erro', resultado)
+        self.assertEqual(resultado['grupos_compostos'], 0)
+        self.assertEqual(resultado['conciliados'], 0)
+
+        db.session.expire_all()
+
+        self.assertFalse(Lancamento.query.get(manual.id).conciliado)
+        self.assertFalse(Lancamento.query.get(importado.id).conciliado)
+        self.assertEqual(
+            ConciliacaoPar.query.filter_by(ativo=True).count(),
+            0,
+        )
 
 
 if __name__ == '__main__':

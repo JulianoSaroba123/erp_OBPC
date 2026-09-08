@@ -62,16 +62,18 @@ class ConciliadorAvancado:
 
     def _buscar_grupo_composto_unico(self, manual: Lancamento, importados: List[Lancamento]):
         """
-        Procura um único subconjunto de linhas bancárias cuja soma seja exatamente igual
-        ao lançamento interno de repasse.
+        Localiza as linhas bancárias de um Repasse composto usando os valores
+        persistidos nos itens do PagamentoObrigacao que gerou o lançamento.
 
-        Regras de segurança:
+        Segurança:
         - somente Repasse à Sede;
-        - mesma data;
-        - mesmo tipo bancário/econômico;
-        - valores em centavos, sem tolerância;
-        - exige ao menos 2 linhas importadas;
-        - se houver mais de uma combinação possível, não concilia automaticamente.
+        - exige vínculo PagamentoObrigacao -> Lancamento;
+        - usa exatamente os valor_alocado dos itens do pagamento;
+        - mesma data e mesmo tipo;
+        - comparação em centavos;
+        - quantidade exata por valor;
+        - valor repetido com candidatos excedentes é ambíguo e não concilia;
+        - não faz caça-subconjunto por mera coincidência matemática.
         """
         if not self._eh_repasse_sede(manual):
             return None, 'fora_escopo_repasse'
@@ -80,7 +82,31 @@ class ConciliadorAvancado:
         if alvo <= 0:
             return None, 'valor_invalido'
 
-        candidatos = []
+        from collections import Counter
+        from app.financeiro.obrigacoes_model import PagamentoObrigacao
+
+        pagamento = PagamentoObrigacao.query.filter_by(
+            lancamento_financeiro_id=manual.id
+        ).first()
+
+        if pagamento is None:
+            return None, 'sem_pagamento_vinculado'
+
+        componentes = [
+            self._centavos(item.valor_alocado)
+            for item in (pagamento.itens or [])
+            if self._centavos(item.valor_alocado) > 0
+        ]
+
+        if len(componentes) < 2:
+            return None, 'pagamento_nao_composto'
+
+        if sum(componentes) != alvo:
+            return None, 'componentes_inconsistentes'
+
+        necessarios = Counter(componentes)
+        candidatos_por_valor = {}
+
         for importado in importados:
             if importado.conciliado:
                 continue
@@ -88,58 +114,38 @@ class ConciliadorAvancado:
                 continue
             if importado.tipo != manual.tipo:
                 continue
-            centavos = self._centavos(importado.valor)
-            if centavos <= 0 or centavos >= alvo:
+
+            valor_centavos = self._centavos(importado.valor)
+            if valor_centavos not in necessarios:
                 continue
-            candidatos.append((importado, centavos))
 
-        if len(candidatos) < 2:
-            return None, 'candidatos_insuficientes'
+            candidatos_por_valor.setdefault(valor_centavos, []).append(importado)
 
-        # states[soma] = (quantidade_de_formas_capada_em_2, subconjunto_exemplo)
-        # Manter a contagem capada em 2 é suficiente: 1 = único; 2 = ambíguo.
-        states = {0: (1, tuple())}
+        grupo = []
+        for valor_centavos, quantidade_necessaria in necessarios.items():
+            disponiveis = candidatos_por_valor.get(valor_centavos, [])
 
-        for importado, valor_centavos in candidatos:
-            snapshot = list(states.items())
-            additions = {}
+            if len(disponiveis) < quantidade_necessaria:
+                return None, 'componentes_insuficientes'
 
-            for soma, (quantidade, subconjunto) in snapshot:
-                nova_soma = soma + valor_centavos
-                if nova_soma > alvo:
-                    continue
+            if len(disponiveis) > quantidade_necessaria:
+                return None, 'ambiguo'
 
-                novo_subconjunto = subconjunto + (importado,)
-                if nova_soma not in additions:
-                    additions[nova_soma] = (min(2, quantidade), novo_subconjunto)
-                else:
-                    qtd_existente, exemplo_existente = additions[nova_soma]
-                    additions[nova_soma] = (
-                        min(2, qtd_existente + quantidade),
-                        exemplo_existente,
-                    )
+            grupo.extend(sorted(disponiveis, key=lambda item: item.id))
 
-            for soma, (quantidade_nova, exemplo_novo) in additions.items():
-                if soma in states:
-                    quantidade_antiga, exemplo_antigo = states[soma]
-                    states[soma] = (
-                        min(2, quantidade_antiga + quantidade_nova),
-                        exemplo_antigo,
-                    )
-                else:
-                    states[soma] = (quantidade_nova, exemplo_novo)
+        if len(grupo) != len(componentes):
+            return None, 'componentes_incompletos'
 
-            if len(states) > self.max_estados_compostos:
-                return None, 'limite_seguranca_combinatoria'
+        if sum(self._centavos(item.valor) for item in grupo) != alvo:
+            return None, 'soma_inconsistente'
 
-        quantidade, subconjunto = states.get(alvo, (0, tuple()))
-        if quantidade == 1 and len(subconjunto) >= 2:
-            return list(subconjunto), 'unico'
-        if quantidade > 1:
-            return None, 'ambiguo'
-        return None, 'sem_soma_exata'
-    
-    def conciliar_automatico(self, usuario: str = "Sistema") -> Dict:
+        return grupo, 'componentes_pagamento'
+
+    def conciliar_automatico(
+        self,
+        usuario: str = "Sistema",
+        somente_exato_1_para_1: bool = False,
+    ) -> Dict:
         """
         Executa conciliação automática entre lançamentos manuais e importados.
 
@@ -194,7 +200,7 @@ class ConciliadorAvancado:
                         manual,
                         importado,
                         1.0,
-                        'composto_n_1_soma_exata',
+                        'composto_n_1_componentes_pagamento',
                         usuario,
                         historico.id,
                     )
@@ -203,15 +209,21 @@ class ConciliadorAvancado:
                     ids_importados.append(importado.id)
 
                 resultado['grupos_compostos'] += 1
-                resultado['regras_aplicadas']['composto_n_1_soma_exata'] = (
-                    resultado['regras_aplicadas'].get('composto_n_1_soma_exata', 0) + len(grupo)
+                resultado['regras_aplicadas']['composto_n_1_componentes_pagamento'] = (
+                    resultado['regras_aplicadas'].get('composto_n_1_componentes_pagamento', 0) + len(grupo)
                 )
                 resultado['log'].append(
                     f"Conciliação composta: Manual {manual.id} <-> Importados {ids_importados} "
-                    f"(soma exata R$ {manual.valor:.2f})"
+                    f"(componentes do pagamento, total R$ {manual.valor:.2f})"
                 )
             
             # Aplicar regras históricas de conciliação 1:1 aos lançamentos restantes.
+            regras_1_para_1 = (
+                [self._regra_exata]
+                if somente_exato_1_para_1
+                else self.regras_conciliacao
+            )
+
             for manual in manuais:
                 if manual.conciliado:
                     continue
@@ -225,7 +237,7 @@ class ConciliadorAvancado:
                         continue
                     
                     # Aplicar todas as regras
-                    for regra in self.regras_conciliacao:
+                    for regra in regras_1_para_1:
                         score, regra_nome = regra(manual, importado)
                         
                         if score > melhor_score and score >= self.scores_minimos.get(regra_nome, 0.7):

@@ -42,8 +42,12 @@ class Lancamento(db.Model):
 
     @property
     def eh_evidencia_bancaria(self):
-        """Indica se a linha importada já foi conciliada com o fato econômico interno."""
-        return (self.origem or '').strip().lower() == 'importado' and bool(self.conciliado)
+        """Indica se a linha importada possui conciliação explícita com o fato econômico interno."""
+        return (
+            (self.origem or '').strip().lower() == 'importado'
+            and bool(self.conciliado)
+            and self.par_conciliacao_id is not None
+        )
 
     @property
     def impacta_financeiro(self):
@@ -80,6 +84,7 @@ class Lancamento(db.Model):
                 and_(
                     func.lower(func.coalesce(cls.origem, '')) == 'importado',
                     cls.conciliado.is_(True),
+                    cls.par_conciliacao_id.isnot(None),
                 ),
                 'Evidência',
             ),
