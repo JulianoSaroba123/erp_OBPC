@@ -203,23 +203,46 @@ def _titulo(texto):
 
 
 def _logo(config):
-    caminho = str(getattr(config, "logo", "") or "").strip()
-    if not caminho:
-        return None
+    caminho_config = str(getattr(config, "logo", "") or "").replace("\\", "/").strip()
     try:
         from flask import current_app
-        if caminho.startswith("static/"):
-            return os.path.join(current_app.static_folder, caminho[7:])
-        return caminho if os.path.isabs(caminho) else os.path.join(current_app.root_path, "..", caminho)
+
+        candidatos = []
+        if caminho_config:
+            if os.path.isabs(caminho_config):
+                candidatos.append(caminho_config)
+            else:
+                normalizado = caminho_config.lstrip("/")
+                if normalizado.startswith("static/"):
+                    normalizado = normalizado[7:]
+                elif "/static/" in normalizado:
+                    normalizado = normalizado.split("/static/", 1)[1]
+
+                # A configuração da igreja é usada pelo url_for('static', filename=config.logo),
+                # portanto caminhos relativos pertencem prioritariamente ao static_folder.
+                candidatos.append(os.path.join(current_app.static_folder, normalizado))
+                candidatos.append(os.path.join(current_app.root_path, "..", caminho_config))
+
+        # O PDF oficial nunca deve perder a identidade visual se a configuração estiver
+        # vazia ou apontar para um arquivo legado que já não exista.
+        for fallback in ("logo_obpc_novo.jpg", "Logo_OBPC.jpg", "logo_igreja_20251025_164525.jpg"):
+            candidatos.append(os.path.join(current_app.static_folder, fallback))
+
+        for candidato in candidatos:
+            if candidato and os.path.isfile(candidato):
+                return candidato
     except Exception:
-        return caminho if os.path.isabs(caminho) else None
+        if caminho_config and os.path.isabs(caminho_config) and os.path.isfile(caminho_config):
+            return caminho_config
+
+    return None
 
 
 def _cabecalho(relatorio, mes, ano):
     c, elementos = relatorio.config, []
     logo = _logo(c)
     if logo and os.path.exists(logo):
-        imagem = Image(logo, width=34 * mm, height=23 * mm); imagem.hAlign = "CENTER"; elementos += [imagem, Spacer(1, 2 * mm)]
+        imagem = Image(logo, width=38 * mm, height=19 * mm); imagem.hAlign = "CENTER"; elementos += [imagem, Spacer(1, 2 * mm)]
     nome = str(getattr(c, "nome_igreja", "") or "Igreja não informada")
     cidade, bairro = str(getattr(c, "cidade", "") or "Não informada"), str(getattr(c, "bairro", "") or "Não informado")
     dirigente = str(getattr(c, "presidente", "") or getattr(c, "dirigente", "") or "Não informado")
