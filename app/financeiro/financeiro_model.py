@@ -1,14 +1,16 @@
 from app.extensoes import db
 from datetime import datetime
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, or_, case
+from sqlalchemy.ext.hybrid import hybrid_property
 import hashlib
+
 
 class Lancamento(db.Model):
     __tablename__ = 'lancamentos'
     
     id = db.Column(db.Integer, primary_key=True)
     data = db.Column(db.Date, default=datetime.utcnow().date)
-    tipo = db.Column(db.String(20), nullable=False)  # "Entrada" ou "Saída"
+    _tipo = db.Column('tipo', db.String(20), nullable=False)  # Tipo bancário/econômico persistido
     categoria = db.Column(db.String(100))
     descricao = db.Column(db.String(200))
     valor = db.Column(db.Float, nullable=False)
@@ -37,6 +39,57 @@ class Lancamento(db.Model):
                                    foreign_keys='Comprovante.lancamento_id',
                                    cascade='all, delete-orphan',
                                    lazy='dynamic')
+
+    @property
+    def eh_evidencia_bancaria(self):
+        """Indica se a linha importada possui conciliação explícita com o fato econômico interno."""
+        return (
+            (self.origem or '').strip().lower() == 'importado'
+            and bool(self.conciliado)
+            and self.par_conciliacao_id is not None
+        )
+
+    @property
+    def impacta_financeiro(self):
+        """Uma evidência bancária conciliada não deve gerar segundo impacto econômico."""
+        return not self.eh_evidencia_bancaria
+
+    @property
+    def tipo_bancario(self):
+        """Tipo originalmente persistido no extrato, preservado para auditoria."""
+        return self._tipo
+
+    @hybrid_property
+    def tipo(self):
+        """
+        Tipo econômico do lançamento.
+
+        Linhas importadas e já conciliadas continuam armazenadas integralmente no banco,
+        mas passam a ser tratadas como evidência bancária. Dessa forma deixam de entrar
+        novamente em somatórios que selecionam Entrada/Saída, sem apagar o movimento real
+        do extrato nem alterar o valor originalmente importado.
+        """
+        if self.eh_evidencia_bancaria:
+            return 'Evidência'
+        return self._tipo
+
+    @tipo.setter
+    def tipo(self, valor):
+        self._tipo = valor
+
+    @tipo.expression
+    def tipo(cls):
+        return case(
+            (
+                and_(
+                    func.lower(func.coalesce(cls.origem, '')) == 'importado',
+                    cls.conciliado.is_(True),
+                    cls.par_conciliacao_id.isnot(None),
+                ),
+                'Evidência',
+            ),
+            else_=cls._tipo,
+        )
     
     def __repr__(self):
         return f'<Lancamento {self.tipo}: R$ {self.valor:.2f} - {self.descricao}>'
@@ -67,6 +120,7 @@ class Lancamento(db.Model):
             'id': self.id,
             'data': self.data.strftime('%Y-%m-%d') if self.data else None,
             'tipo': self.tipo,
+            'tipo_bancario': self.tipo_bancario,
             'categoria': self.categoria,
             'descricao': self.descricao,
             'valor': self.valor,
@@ -76,6 +130,7 @@ class Lancamento(db.Model):
             'criado_em': self.criado_em.strftime('%Y-%m-%d %H:%M:%S') if self.criado_em else None,
             'origem': self.origem,
             'conciliado': self.conciliado,
+            'impacta_financeiro': self.impacta_financeiro,
             'banco_origem': self.banco_origem,
             'documento_ref': self.documento_ref,
             'conciliado_em': self.conciliado_em.strftime('%Y-%m-%d %H:%M:%S') if self.conciliado_em else None,
@@ -128,10 +183,11 @@ class Lancamento(db.Model):
     @property
     def tipo_icon(self):
         """Retorna o ícone baseado no tipo"""
+        if self.eh_evidencia_bancaria:
+            return 'fas fa-university text-info'
         if self.tipo == 'Entrada':
             return 'fas fa-arrow-up text-success'
-        else:
-            return 'fas fa-arrow-down text-danger'
+        return 'fas fa-arrow-down text-danger'
     
     @property
     def conta_icon(self):
@@ -175,7 +231,7 @@ class Lancamento(db.Model):
     
     @staticmethod
     def calcular_totais():
-        """Calcula totais de entradas, saídas e saldo"""
+        """Calcula totais de entradas, saídas e saldo econômico."""
         entradas = db.session.query(func.sum(Lancamento.valor))\
                     .filter(Lancamento.tipo == 'Entrada').scalar() or 0
         
@@ -193,20 +249,11 @@ class Lancamento(db.Model):
     @staticmethod
     def calcular_saldo_ate_mes_anterior(mes, ano):
         """Calcula o saldo acumulado até o mês anterior ao especificado, incluindo saldo inicial"""
-        from sqlalchemy import extract
         from app.configuracoes.configuracoes_model import Configuracao
         
         # Buscar saldo inicial das configurações
         config = Configuracao.query.first()
         saldo_inicial = config.saldo_inicial if config else 0.0
-        
-        # Se for janeiro, pegar saldo de dezembro do ano anterior
-        if mes == 1:
-            mes_anterior = 12
-            ano_anterior = ano - 1
-        else:
-            mes_anterior = mes - 1
-            ano_anterior = ano
         
         # Calcular entradas até o mês anterior (inclusive)
         entradas = db.session.query(func.sum(Lancamento.valor))\
@@ -319,18 +366,39 @@ class ConciliacaoPar(db.Model):
         }
     
     def desfazer(self):
-        """Desfaz a conciliação deste par"""
-        if self.lancamento_manual:
+        """
+        Desfaz este vínculo sem quebrar uma conciliação composta N:1.
+
+        O lançamento manual só volta a pendente quando não restar nenhum outro par
+        ativo ligado a ele. O mesmo princípio vale para o importado.
+        """
+        if not self.ativo:
+            return
+
+        self.ativo = False
+        db.session.flush()
+
+        outros_manual = ConciliacaoPar.query.filter(
+            ConciliacaoPar.id != self.id,
+            ConciliacaoPar.lancamento_manual_id == self.lancamento_manual_id,
+            ConciliacaoPar.ativo.is_(True),
+        ).first()
+        outros_importado = ConciliacaoPar.query.filter(
+            ConciliacaoPar.id != self.id,
+            ConciliacaoPar.lancamento_importado_id == self.lancamento_importado_id,
+            ConciliacaoPar.ativo.is_(True),
+        ).first()
+
+        if self.lancamento_manual and outros_manual is None:
             self.lancamento_manual.conciliado = False
             self.lancamento_manual.conciliado_em = None
             self.lancamento_manual.conciliado_por = None
             
-        if self.lancamento_importado:
+        if self.lancamento_importado and outros_importado is None:
             self.lancamento_importado.conciliado = False
             self.lancamento_importado.conciliado_em = None
             self.lancamento_importado.conciliado_por = None
             
-        self.ativo = False
         db.session.commit()
 
 

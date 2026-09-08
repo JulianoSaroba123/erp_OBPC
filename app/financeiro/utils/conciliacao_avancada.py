@@ -10,6 +10,7 @@ except Exception:
     pd = None
     np = None
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 import re
 import difflib
 import hashlib
@@ -22,7 +23,7 @@ from app.extensoes import db
 
 
 class ConciliadorAvancado:
-    """Classe principal para conciliação bancária inteligente"""
+    """Classe principal para conciliação bancária inteligente."""
     
     def __init__(self):
         self.regras_conciliacao = [
@@ -40,14 +41,121 @@ class ConciliadorAvancado:
             'valor_proxima_data': 0.80,
             'descricao_fuzzy': 0.75
         }
-    
-    def conciliar_automatico(self, usuario: str = "Sistema") -> Dict:
+
+        # Limite defensivo para evitar explosão combinatória no casamento N:1.
+        self.max_estados_compostos = 20000
+
+    @staticmethod
+    def _centavos(valor) -> int:
+        quantizado = Decimal(str(valor or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return int(quantizado * 100)
+
+    @staticmethod
+    def _eh_repasse_sede(manual: Lancamento) -> bool:
+        """Restringe a conciliação composta automática ao domínio do Repasse à Sede."""
+        categoria = (manual.categoria or '').strip().upper()
+        descricao = (manual.descricao or '').strip().lower()
+        return (
+            categoria in {'CONTRIB. SEDE', 'REPASSE À SEDE', 'REPASSE A SEDE'}
+            or descricao.startswith('30% administrativo - conselho sede')
+        )
+
+    def _buscar_grupo_composto_unico(self, manual: Lancamento, importados: List[Lancamento]):
         """
-        Executa conciliação automática entre lançamentos manuais e importados
+        Localiza as linhas bancárias de um Repasse composto usando os valores
+        persistidos nos itens do PagamentoObrigacao que gerou o lançamento.
+
+        Segurança:
+        - somente Repasse à Sede;
+        - exige vínculo PagamentoObrigacao -> Lancamento;
+        - usa exatamente os valor_alocado dos itens do pagamento;
+        - mesma data e mesmo tipo;
+        - comparação em centavos;
+        - quantidade exata por valor;
+        - valor repetido com candidatos excedentes é ambíguo e não concilia;
+        - não faz caça-subconjunto por mera coincidência matemática.
+        """
+        if not self._eh_repasse_sede(manual):
+            return None, 'fora_escopo_repasse'
+
+        alvo = self._centavos(manual.valor)
+        if alvo <= 0:
+            return None, 'valor_invalido'
+
+        from collections import Counter
+        from app.financeiro.obrigacoes_model import PagamentoObrigacao
+
+        pagamento = PagamentoObrigacao.query.filter_by(
+            lancamento_financeiro_id=manual.id
+        ).first()
+
+        if pagamento is None:
+            return None, 'sem_pagamento_vinculado'
+
+        componentes = [
+            self._centavos(item.valor_alocado)
+            for item in (pagamento.itens or [])
+            if self._centavos(item.valor_alocado) > 0
+        ]
+
+        if len(componentes) < 2:
+            return None, 'pagamento_nao_composto'
+
+        if sum(componentes) != alvo:
+            return None, 'componentes_inconsistentes'
+
+        necessarios = Counter(componentes)
+        candidatos_por_valor = {}
+
+        for importado in importados:
+            if importado.conciliado:
+                continue
+            if importado.data != manual.data:
+                continue
+            if importado.tipo != manual.tipo:
+                continue
+
+            valor_centavos = self._centavos(importado.valor)
+            if valor_centavos not in necessarios:
+                continue
+
+            candidatos_por_valor.setdefault(valor_centavos, []).append(importado)
+
+        grupo = []
+        for valor_centavos, quantidade_necessaria in necessarios.items():
+            disponiveis = candidatos_por_valor.get(valor_centavos, [])
+
+            if len(disponiveis) < quantidade_necessaria:
+                return None, 'componentes_insuficientes'
+
+            if len(disponiveis) > quantidade_necessaria:
+                return None, 'ambiguo'
+
+            grupo.extend(sorted(disponiveis, key=lambda item: item.id))
+
+        if len(grupo) != len(componentes):
+            return None, 'componentes_incompletos'
+
+        if sum(self._centavos(item.valor) for item in grupo) != alvo:
+            return None, 'soma_inconsistente'
+
+        return grupo, 'componentes_pagamento'
+
+    def conciliar_automatico(
+        self,
+        usuario: str = "Sistema",
+        somente_exato_1_para_1: bool = False,
+    ) -> Dict:
+        """
+        Executa conciliação automática entre lançamentos manuais e importados.
+
+        Primeiro tenta grupos N:1 seguros para Repasse à Sede. Depois mantém as regras
+        históricas de conciliação 1:1 para os demais lançamentos.
         """
         inicio = datetime.now()
         resultado = {
             'conciliados': 0,
+            'grupos_compostos': 0,
             'pares_criados': [],
             'tempo_execucao': 0,
             'regras_aplicadas': {},
@@ -71,8 +179,51 @@ class ConciliadorAvancado:
             )
             db.session.add(historico)
             db.session.flush()
+
+            # D23D48: conciliação composta N:1 para Repasse à Sede.
+            for manual in manuais:
+                if manual.conciliado or not self._eh_repasse_sede(manual):
+                    continue
+
+                grupo, motivo = self._buscar_grupo_composto_unico(manual, importados)
+                if not grupo:
+                    if motivo == 'ambiguo':
+                        resultado['log'].append(
+                            f"Repasse manual {manual.id}: mais de uma combinação bancária possível; "
+                            "conciliação automática recusada por segurança"
+                        )
+                    continue
+
+                ids_importados = []
+                for importado in grupo:
+                    par = self._criar_par_conciliacao(
+                        manual,
+                        importado,
+                        1.0,
+                        'composto_n_1_componentes_pagamento',
+                        usuario,
+                        historico.id,
+                    )
+                    resultado['pares_criados'].append(par.to_dict())
+                    resultado['conciliados'] += 1
+                    ids_importados.append(importado.id)
+
+                resultado['grupos_compostos'] += 1
+                resultado['regras_aplicadas']['composto_n_1_componentes_pagamento'] = (
+                    resultado['regras_aplicadas'].get('composto_n_1_componentes_pagamento', 0) + len(grupo)
+                )
+                resultado['log'].append(
+                    f"Conciliação composta: Manual {manual.id} <-> Importados {ids_importados} "
+                    f"(componentes do pagamento, total R$ {manual.valor:.2f})"
+                )
             
-            # Aplicar regras de conciliação
+            # Aplicar regras históricas de conciliação 1:1 aos lançamentos restantes.
+            regras_1_para_1 = (
+                [self._regra_exata]
+                if somente_exato_1_para_1
+                else self.regras_conciliacao
+            )
+
             for manual in manuais:
                 if manual.conciliado:
                     continue
@@ -86,7 +237,7 @@ class ConciliadorAvancado:
                         continue
                     
                     # Aplicar todas as regras
-                    for regra in self.regras_conciliacao:
+                    for regra in regras_1_para_1:
                         score, regra_nome = regra(manual, importado)
                         
                         if score > melhor_score and score >= self.scores_minimos.get(regra_nome, 0.7):
@@ -116,8 +267,16 @@ class ConciliadorAvancado:
             
             # Finalizar histórico
             historico.total_conciliados = resultado['conciliados']
+            historico.total_pendentes = (
+                Lancamento.query.filter_by(origem='manual', conciliado=False).count()
+                + Lancamento.query.filter_by(origem='importado', conciliado=False).count()
+            )
             historico.tempo_execucao = (datetime.now() - inicio).total_seconds()
             historico.regras_aplicadas = str(resultado['regras_aplicadas'])
+            historico.observacao = (
+                f"Conciliação automática: {resultado['conciliados']} pares; "
+                f"{resultado['grupos_compostos']} grupo(s) composto(s) N:1"
+            )
             
             db.session.commit()
             
@@ -133,15 +292,16 @@ class ConciliadorAvancado:
     
     def _criar_par_conciliacao(self, manual: Lancamento, importado: Lancamento, 
                               score: float, regra: str, usuario: str, historico_id: int) -> ConciliacaoPar:
-        """Cria par de conciliação e atualiza status dos lançamentos"""
+        """Cria par de conciliação e atualiza status dos lançamentos."""
+        momento = datetime.now()
         
         # Marcar como conciliados
         manual.conciliado = True
-        manual.conciliado_em = datetime.now()
+        manual.conciliado_em = momento
         manual.conciliado_por = usuario
         
         importado.conciliado = True
-        importado.conciliado_em = datetime.now()
+        importado.conciliado_em = momento
         importado.conciliado_por = usuario
         
         # Criar par
@@ -156,6 +316,8 @@ class ConciliadorAvancado:
         )
         
         db.session.add(par)
+        db.session.flush()
+        importado.par_conciliacao_id = par.id
         return par
     
     def _regra_exata(self, manual: Lancamento, importado: Lancamento) -> Tuple[float, str]:
