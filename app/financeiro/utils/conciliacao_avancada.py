@@ -10,6 +10,7 @@ except Exception:
     pd = None
     np = None
 from datetime import datetime, timedelta
+from decimal import Decimal, ROUND_HALF_UP
 import re
 import difflib
 import hashlib
@@ -22,7 +23,7 @@ from app.extensoes import db
 
 
 class ConciliadorAvancado:
-    """Classe principal para conciliação bancária inteligente"""
+    """Classe principal para conciliação bancária inteligente."""
     
     def __init__(self):
         self.regras_conciliacao = [
@@ -40,14 +41,115 @@ class ConciliadorAvancado:
             'valor_proxima_data': 0.80,
             'descricao_fuzzy': 0.75
         }
+
+        # Limite defensivo para evitar explosão combinatória no casamento N:1.
+        self.max_estados_compostos = 20000
+
+    @staticmethod
+    def _centavos(valor) -> int:
+        quantizado = Decimal(str(valor or 0)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        return int(quantizado * 100)
+
+    @staticmethod
+    def _eh_repasse_sede(manual: Lancamento) -> bool:
+        """Restringe a conciliação composta automática ao domínio do Repasse à Sede."""
+        categoria = (manual.categoria or '').strip().upper()
+        descricao = (manual.descricao or '').strip().lower()
+        return (
+            categoria in {'CONTRIB. SEDE', 'REPASSE À SEDE', 'REPASSE A SEDE'}
+            or descricao.startswith('30% administrativo - conselho sede')
+        )
+
+    def _buscar_grupo_composto_unico(self, manual: Lancamento, importados: List[Lancamento]):
+        """
+        Procura um único subconjunto de linhas bancárias cuja soma seja exatamente igual
+        ao lançamento interno de repasse.
+
+        Regras de segurança:
+        - somente Repasse à Sede;
+        - mesma data;
+        - mesmo tipo bancário/econômico;
+        - valores em centavos, sem tolerância;
+        - exige ao menos 2 linhas importadas;
+        - se houver mais de uma combinação possível, não concilia automaticamente.
+        """
+        if not self._eh_repasse_sede(manual):
+            return None, 'fora_escopo_repasse'
+
+        alvo = self._centavos(manual.valor)
+        if alvo <= 0:
+            return None, 'valor_invalido'
+
+        candidatos = []
+        for importado in importados:
+            if importado.conciliado:
+                continue
+            if importado.data != manual.data:
+                continue
+            if importado.tipo != manual.tipo:
+                continue
+            centavos = self._centavos(importado.valor)
+            if centavos <= 0 or centavos >= alvo:
+                continue
+            candidatos.append((importado, centavos))
+
+        if len(candidatos) < 2:
+            return None, 'candidatos_insuficientes'
+
+        # states[soma] = (quantidade_de_formas_capada_em_2, subconjunto_exemplo)
+        # Manter a contagem capada em 2 é suficiente: 1 = único; 2 = ambíguo.
+        states = {0: (1, tuple())}
+
+        for importado, valor_centavos in candidatos:
+            snapshot = list(states.items())
+            additions = {}
+
+            for soma, (quantidade, subconjunto) in snapshot:
+                nova_soma = soma + valor_centavos
+                if nova_soma > alvo:
+                    continue
+
+                novo_subconjunto = subconjunto + (importado,)
+                if nova_soma not in additions:
+                    additions[nova_soma] = (min(2, quantidade), novo_subconjunto)
+                else:
+                    qtd_existente, exemplo_existente = additions[nova_soma]
+                    additions[nova_soma] = (
+                        min(2, qtd_existente + quantidade),
+                        exemplo_existente,
+                    )
+
+            for soma, (quantidade_nova, exemplo_novo) in additions.items():
+                if soma in states:
+                    quantidade_antiga, exemplo_antigo = states[soma]
+                    states[soma] = (
+                        min(2, quantidade_antiga + quantidade_nova),
+                        exemplo_antigo,
+                    )
+                else:
+                    states[soma] = (quantidade_nova, exemplo_novo)
+
+            if len(states) > self.max_estados_compostos:
+                return None, 'limite_seguranca_combinatoria'
+
+        quantidade, subconjunto = states.get(alvo, (0, tuple()))
+        if quantidade == 1 and len(subconjunto) >= 2:
+            return list(subconjunto), 'unico'
+        if quantidade > 1:
+            return None, 'ambiguo'
+        return None, 'sem_soma_exata'
     
     def conciliar_automatico(self, usuario: str = "Sistema") -> Dict:
         """
-        Executa conciliação automática entre lançamentos manuais e importados
+        Executa conciliação automática entre lançamentos manuais e importados.
+
+        Primeiro tenta grupos N:1 seguros para Repasse à Sede. Depois mantém as regras
+        históricas de conciliação 1:1 para os demais lançamentos.
         """
         inicio = datetime.now()
         resultado = {
             'conciliados': 0,
+            'grupos_compostos': 0,
             'pares_criados': [],
             'tempo_execucao': 0,
             'regras_aplicadas': {},
@@ -71,8 +173,45 @@ class ConciliadorAvancado:
             )
             db.session.add(historico)
             db.session.flush()
+
+            # D23D48: conciliação composta N:1 para Repasse à Sede.
+            for manual in manuais:
+                if manual.conciliado or not self._eh_repasse_sede(manual):
+                    continue
+
+                grupo, motivo = self._buscar_grupo_composto_unico(manual, importados)
+                if not grupo:
+                    if motivo == 'ambiguo':
+                        resultado['log'].append(
+                            f"Repasse manual {manual.id}: mais de uma combinação bancária possível; "
+                            "conciliação automática recusada por segurança"
+                        )
+                    continue
+
+                ids_importados = []
+                for importado in grupo:
+                    par = self._criar_par_conciliacao(
+                        manual,
+                        importado,
+                        1.0,
+                        'composto_n_1_soma_exata',
+                        usuario,
+                        historico.id,
+                    )
+                    resultado['pares_criados'].append(par.to_dict())
+                    resultado['conciliados'] += 1
+                    ids_importados.append(importado.id)
+
+                resultado['grupos_compostos'] += 1
+                resultado['regras_aplicadas']['composto_n_1_soma_exata'] = (
+                    resultado['regras_aplicadas'].get('composto_n_1_soma_exata', 0) + len(grupo)
+                )
+                resultado['log'].append(
+                    f"Conciliação composta: Manual {manual.id} <-> Importados {ids_importados} "
+                    f"(soma exata R$ {manual.valor:.2f})"
+                )
             
-            # Aplicar regras de conciliação
+            # Aplicar regras históricas de conciliação 1:1 aos lançamentos restantes.
             for manual in manuais:
                 if manual.conciliado:
                     continue
@@ -116,8 +255,16 @@ class ConciliadorAvancado:
             
             # Finalizar histórico
             historico.total_conciliados = resultado['conciliados']
+            historico.total_pendentes = (
+                Lancamento.query.filter_by(origem='manual', conciliado=False).count()
+                + Lancamento.query.filter_by(origem='importado', conciliado=False).count()
+            )
             historico.tempo_execucao = (datetime.now() - inicio).total_seconds()
             historico.regras_aplicadas = str(resultado['regras_aplicadas'])
+            historico.observacao = (
+                f"Conciliação automática: {resultado['conciliados']} pares; "
+                f"{resultado['grupos_compostos']} grupo(s) composto(s) N:1"
+            )
             
             db.session.commit()
             
@@ -133,15 +280,16 @@ class ConciliadorAvancado:
     
     def _criar_par_conciliacao(self, manual: Lancamento, importado: Lancamento, 
                               score: float, regra: str, usuario: str, historico_id: int) -> ConciliacaoPar:
-        """Cria par de conciliação e atualiza status dos lançamentos"""
+        """Cria par de conciliação e atualiza status dos lançamentos."""
+        momento = datetime.now()
         
         # Marcar como conciliados
         manual.conciliado = True
-        manual.conciliado_em = datetime.now()
+        manual.conciliado_em = momento
         manual.conciliado_por = usuario
         
         importado.conciliado = True
-        importado.conciliado_em = datetime.now()
+        importado.conciliado_em = momento
         importado.conciliado_por = usuario
         
         # Criar par
@@ -156,6 +304,8 @@ class ConciliadorAvancado:
         )
         
         db.session.add(par)
+        db.session.flush()
+        importado.par_conciliacao_id = par.id
         return par
     
     def _regra_exata(self, manual: Lancamento, importado: Lancamento) -> Tuple[float, str]:
