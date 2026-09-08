@@ -33,8 +33,8 @@ jobs:
       - name: Teste D23D48
         run: python tests/test_d23d48_conciliacao_repasse.py
 
-  regressao-repasse-python313:
-    name: Regressao Repasse Python 3.13
+  regressao-repasse-python312:
+    name: Regressao Repasse Python 3.12
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -44,10 +44,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Python 3.13
+      - name: Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Instalar dependencias
