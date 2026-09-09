@@ -67,8 +67,8 @@
     </form>
 
     <div class="report-quick-actions">
+        <span class="report-quick-actions__note"><i class="fas fa-circle-info"></i> O PDF mantém o layout oficial e os dados da competência selecionada.</span>
         <button type="button" class="report-btn report-btn--dark" onclick="window.print()"><i class="fas fa-print"></i> Imprimir tela</button>
-        <span class="report-quick-actions__note"><i class="fas fa-circle-info"></i> O PDF é gerado com o layout oficial, sem os controles desta tela.</span>
     </div>
 
     <section class="justificativa-card report-note-card">
@@ -90,43 +90,44 @@
             <input type="hidden" name="tipo_relatorio" value="{{ tipo_relatorio }}">
             <input type="hidden" name="mes" value="{{ mes }}">
             <input type="hidden" name="ano" value="{{ ano }}">
-
-            <textarea
-                name="observacao_repasse_sede"
-                class="justificativa-textarea"
-                rows="4"
-                placeholder="Digite a justificativa contábil dos repasses à Sede"
-            >{{ observacao_repasse_sede }}</textarea>
-
+            <textarea name="observacao_repasse_sede" class="justificativa-textarea" rows="4" placeholder="Digite a justificativa contábil dos repasses à Sede">{{ observacao_repasse_sede }}</textarea>
             <div class="report-note-card__actions">
                 <button type="submit" name="acao" value="salvar" class="report-btn report-btn--primary"><i class="fas fa-save"></i> Salvar justificativa</button>
                 <button type="submit" name="acao" value="restaurar" class="report-btn report-btn--secondary"><i class="fas fa-rotate-left"></i> Restaurar automático</button>
             </div>
-
-            <small class="report-workspace__subtitle">A justificativa é armazenada por mês, ano e tipo de relatório. O PDF usa o texto correspondente à competência selecionada.</small>
+            <small class="report-workspace__subtitle">A justificativa é armazenada por mês, ano e tipo de relatório.</small>
         </form>
     </section>
 </div>
 
 <style>
+    /* D23D56: somente apresentação. O fluxo e as rotas do relatório permanecem originais. */
+    body > .page {
+        max-width: 1480px !important;
+        width: 100%;
+        padding: 18px 24px 36px !important;
+    }
+
     .report-workspace {
-        width: min(1160px, calc(100vw - 36px));
-        position: relative;
-        left: 50%;
-        transform: translateX(-50%);
+        width: 100%;
+        max-width: none;
+        position: static;
+        left: auto;
+        transform: none;
         padding: 0;
-        margin-bottom: 22px;
-        overflow: hidden;
+        margin: 0 0 22px;
+        overflow: visible;
         border: 1px solid #dbe5f1;
         border-radius: 18px;
-        background: #ffffff;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+        background: #fff;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, .07);
     }
 
     .report-workspace::before {
         content: "";
         display: block;
-        height: 4px;
+        height: 3px;
+        border-radius: 18px 18px 0 0;
         background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 58%, #16a34a 100%);
     }
 
@@ -135,22 +136,23 @@
         align-items: center;
         justify-content: space-between;
         gap: 18px;
-        padding: 22px 24px 18px;
+        padding: 20px 22px 16px;
         border-bottom: 1px solid #e7edf5;
+        background: #fff;
     }
 
     .report-workspace__heading {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 13px;
         min-width: 0;
     }
 
     .report-workspace__icon,
     .report-note-card__icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 13px;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -164,7 +166,7 @@
     .report-label {
         margin: 0 0 4px;
         color: #64748b;
-        font-size: 11px;
+        font-size: 10px;
         line-height: 1.2;
         letter-spacing: .09em;
         text-transform: uppercase;
@@ -174,15 +176,15 @@
     .report-workspace__header h1 {
         margin: 0;
         color: #0f172a;
-        font-size: clamp(22px, 2.2vw, 30px);
+        font-size: clamp(22px, 2vw, 28px);
         line-height: 1.12;
         letter-spacing: -.02em;
     }
 
     .report-workspace__subtitle {
-        margin: 5px 0 0;
+        margin: 4px 0 0;
         color: #64748b;
-        font-size: 13px;
+        font-size: 12px;
     }
 
     .report-workspace__top-actions,
@@ -190,7 +192,7 @@
     .report-quick-actions {
         display: flex;
         align-items: center;
-        gap: 9px;
+        gap: 8px;
         flex-wrap: wrap;
     }
 
@@ -204,7 +206,7 @@
         justify-content: center;
         gap: 7px;
         font: inherit;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 700;
         text-decoration: none;
         cursor: pointer;
@@ -212,22 +214,22 @@
     }
 
     .report-btn:hover { transform: translateY(-1px); }
-    .report-btn--primary { background: #2554db; border-color: #2554db; color: #fff; box-shadow: 0 7px 16px rgba(37, 84, 219, .18); }
+    .report-btn--primary { background: #2554db; border-color: #2554db; color: #fff; box-shadow: 0 6px 14px rgba(37,84,219,.17); }
     .report-btn--secondary { background: #fff; border-color: #cbd5e1; color: #334155; }
     .report-btn--dark { background: #172033; border-color: #172033; color: #fff; }
 
     .report-controls {
         display: grid;
-        grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr);
+        grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr);
         gap: 14px;
-        padding: 18px 24px;
+        padding: 16px 22px;
         background: #f8fbff;
         border-bottom: 1px solid #e7edf5;
     }
 
     .report-controls__block {
         min-width: 0;
-        padding: 14px;
+        padding: 13px;
         border: 1px solid #dbe5f1;
         border-radius: 14px;
         background: #fff;
@@ -237,13 +239,13 @@
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 9px;
-        margin-top: 9px;
+        margin-top: 8px;
     }
 
     .report-type-card {
         position: relative;
-        min-height: 76px;
-        padding: 11px 12px;
+        min-height: 72px;
+        padding: 10px 12px;
         border: 1px solid #d9e2ee;
         border-radius: 12px;
         background: #fff;
@@ -251,158 +253,84 @@
         align-items: center;
         gap: 9px;
         cursor: pointer;
-        transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
     }
 
-    .report-type-card input {
-        position: absolute;
-        inset: 0;
-        opacity: 0;
-        cursor: pointer;
-    }
-
-    .report-type-card:has(input:checked) {
-        border-color: #7da3ff;
-        background: #eef4ff;
-        box-shadow: inset 0 0 0 1px #bfdbfe;
-    }
-
-    .report-type-card__icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 9px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 auto;
-        background: #f1f5f9;
-        color: #475569;
-    }
-
+    .report-type-card input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .report-type-card:has(input:checked) { border-color: #7da3ff; background: #eef4ff; box-shadow: inset 0 0 0 1px #bfdbfe; }
+    .report-type-card__icon { width: 32px; height: 32px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: #f1f5f9; color: #475569; }
     .report-type-card:has(input:checked) .report-type-card__icon { background: #2554db; color: #fff; }
-    .report-type-card strong { display: block; color: #0f172a; font-size: 13px; }
+    .report-type-card strong { display: block; color: #0f172a; font-size: 12px; }
     .report-type-card small { display: block; margin-top: 2px; color: #64748b; font-size: 10px; line-height: 1.25; }
 
-    .report-period-grid {
-        display: grid;
-        grid-template-columns: minmax(150px, 1fr) 100px auto;
-        gap: 9px;
-        align-items: end;
-        margin-top: 9px;
-    }
-
+    .report-period-grid { display: grid; grid-template-columns: minmax(150px, 1fr) 100px auto; gap: 9px; align-items: end; margin-top: 8px; }
     .report-field { display: grid; gap: 5px; }
-    .report-field > span { color: #475569; font-size: 11px; font-weight: 700; }
-    .report-field select {
-        width: 100%;
-        min-height: 40px;
-        padding: 0 11px;
-        border: 1px solid #cbd5e1;
-        border-radius: 10px;
-        background: #fff;
-        color: #0f172a;
-        font: inherit;
-    }
-    .report-field select:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37, 84, 219, .1); }
+    .report-field > span { color: #475569; font-size: 10px; font-weight: 700; }
+    .report-field select { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a; font: inherit; }
+    .report-field select:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37,84,219,.1); }
     .report-btn--apply { min-height: 40px; }
-
-    .report-period-hint {
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px solid #edf1f6;
-        color: #64748b;
-        font-size: 11px;
-    }
+    .report-period-hint { margin-top: 9px; padding-top: 9px; border-top: 1px solid #edf1f6; color: #64748b; font-size: 10px; }
 
     .report-quick-actions {
         justify-content: flex-end;
-        padding: 12px 24px;
+        padding: 11px 22px;
         border-bottom: 1px solid #e7edf5;
         background: #fff;
     }
-
-    .report-quick-actions__note {
-        margin-right: auto;
-        color: #64748b;
-        font-size: 11px;
-    }
+    .report-quick-actions__note { margin-right: auto; color: #64748b; font-size: 10px; }
 
     .report-note-card {
-        margin: 18px 24px 24px;
-        padding: 16px;
+        margin: 16px 22px 22px;
+        padding: 15px;
         border: 1px solid #dbe5f1;
         border-radius: 14px;
         background: #fff;
         display: grid;
-        gap: 12px;
-    }
-
-    .justificativa-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
-    }
-
-    .report-note-card__title {
-        display: flex;
-        align-items: flex-start;
         gap: 11px;
     }
 
-    .report-note-card__title h3 {
-        margin: 2px 0 3px;
-        color: #0f172a;
-        font-size: 15px;
-    }
-
-    .report-note-card__title p:not(.report-label) {
-        margin: 0;
-        color: #64748b;
-        font-size: 11px;
-    }
-
-    .status-pill {
-        padding: 6px 10px;
-        border-radius: 999px;
-        font-size: 10px;
-        font-weight: 800;
-        border: 1px solid transparent;
-        white-space: nowrap;
-    }
-
+    .justificativa-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .report-note-card__title { display: flex; align-items: flex-start; gap: 11px; }
+    .report-note-card__title h3 { margin: 2px 0 3px; color: #0f172a; font-size: 14px; }
+    .report-note-card__title p:not(.report-label) { margin: 0; color: #64748b; font-size: 10px; }
+    .status-pill { padding: 6px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; border: 1px solid transparent; white-space: nowrap; }
     .status-salva { background: #ecfdf3; color: #166534; border-color: #bbf7d0; }
     .status-auto { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+    .justificativa-form { display: grid; gap: 9px; }
+    .justificativa-textarea { width: 100%; min-height: 90px; border: 1px solid #cbd5e1; border-radius: 11px; padding: 11px 12px; font: inherit; color: #0f172a; background: #fff; resize: vertical; }
+    .justificativa-textarea:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37,84,219,.1); }
 
-    .justificativa-form { display: grid; gap: 10px; }
-    .justificativa-textarea {
-        width: 100%;
-        min-height: 92px;
-        border: 1px solid #cbd5e1;
-        border-radius: 11px;
-        padding: 11px 12px;
-        font: inherit;
-        color: #0f172a;
-        background: #fff;
-        resize: vertical;
+    /* Documento continua sendo o documento original, apenas com melhor encaixe na tela. */
+    body > .page > .document,
+    body > .page > .signature-block,
+    body > .page > .signature-card {
+        max-width: 1240px;
+        margin-left: auto;
+        margin-right: auto;
     }
-    .justificativa-textarea:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37, 84, 219, .1); }
 
     @media (max-width: 980px) {
+        body > .page { padding: 12px 14px 28px !important; }
         .report-controls { grid-template-columns: 1fr; }
         .report-workspace__header { align-items: flex-start; flex-direction: column; }
         .report-workspace__top-actions { width: 100%; }
     }
 
     @media (max-width: 720px) {
-        .report-workspace { width: calc(100vw - 20px); }
-        .report-workspace__header, .report-controls, .report-quick-actions { padding-left: 14px; padding-right: 14px; }
+        .report-workspace__header, .report-controls, .report-quick-actions { padding-left: 13px; padding-right: 13px; }
         .report-type-grid { grid-template-columns: 1fr; }
         .report-period-grid { grid-template-columns: 1fr 1fr; }
         .report-btn--apply { grid-column: 1 / -1; }
-        .report-note-card { margin-left: 14px; margin-right: 14px; }
+        .report-note-card { margin-left: 13px; margin-right: 13px; }
         .justificativa-header { flex-direction: column; }
         .report-workspace__top-actions .report-btn { flex: 1; }
+    }
+
+    @media print {
+        body > .page { max-width: none !important; width: auto !important; padding: 0 !important; }
+        .report-workspace { display: none !important; }
+        body > .page > .document,
+        body > .page > .signature-block,
+        body > .page > .signature-card { max-width: none !important; margin: 0 !important; }
     }
 </style>
 {% endif %}
