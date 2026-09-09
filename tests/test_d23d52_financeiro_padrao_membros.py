@@ -13,6 +13,9 @@ FILES = {
     "conciliacao_moderno": TEMPLATES / "conciliacao_moderno.html",
     "repasse": TEMPLATES / "gerenciar_despesas_fixas.html",
     "recibos": TEMPLATES / "lista_recibos.html",
+    "importar_extrato": TEMPLATES / "importar_extrato.html",
+    "import_preview": TEMPLATES / "import_preview.html",
+    "relatorio_geral": TEMPLATES / "relatorio.html",
 }
 AUXILIARY = {
     "form_lancamento": TEMPLATES / "cadastro_lancamento.html",
@@ -33,12 +36,16 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         for name, src in {**self.src, **self.aux}.items():
             with self.subTest(name=name):
                 self.assertIn('class="obpc-page"', src)
-                self.assertIn('class="obpc-page-header"', src)
+                self.assertIn('class="obpc-page-header', src)
                 self.assertIn('obpc-page-title', src)
                 self.assertIn('obpc-page-subtitle', src)
 
     def test_kpis_usam_mesmo_componente_de_membros(self):
-        for name in FILES:
+        for name in (
+            "movimentacoes", "movimentacoes_moderno", "projetos", "destinacoes",
+            "conciliacao", "conciliacao_moderno", "repasse", "recibos",
+            "import_preview", "relatorio_geral",
+        ):
             self.assertIn("obpc-ops", self.src[name])
             self.assertIn("obpc-ops__label", self.src[name])
             self.assertIn("obpc-ops__value", self.src[name])
@@ -48,11 +55,17 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         for name, src in {**self.src, **self.aux}.items():
             with self.subTest(name=name):
                 self.assertIn("obpc-card", src)
-        for name in ("movimentacoes", "movimentacoes_moderno", "destinacoes", "conciliacao", "conciliacao_moderno", "repasse", "recibos"):
+        for name in (
+            "movimentacoes", "movimentacoes_moderno", "destinacoes", "conciliacao",
+            "conciliacao_moderno", "repasse", "recibos", "import_preview", "relatorio_geral",
+        ):
             self.assertIn("obpc-table", self.src[name])
 
     def test_filtros_usam_filter_bar_quando_aplicavel(self):
-        for name in ("movimentacoes", "movimentacoes_moderno", "destinacoes", "conciliacao", "recibos"):
+        for name in (
+            "movimentacoes", "movimentacoes_moderno", "destinacoes", "conciliacao",
+            "recibos", "importar_extrato", "import_preview",
+        ):
             self.assertIn("obpc-filter-bar", self.src[name])
 
     def test_form_lancamento_preserva_campos_e_fluxos(self):
@@ -66,6 +79,17 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
             self.assertIn(token, src)
         for component in ("obpc-input", "obpc-select", "obpc-textarea", "btn-submit-lancamento"):
             self.assertIn(component, src)
+
+    def test_importacao_preserva_fluxo(self):
+        importar = self.src["importar_extrato"]
+        preview = self.src["import_preview"]
+        for token in (
+            "financeiro.importar_extrato", 'name="arquivo"', 'name="tipo_arquivo"',
+            'name="mes_referencia"', 'name="ignorar_duplicatas"', 'name="categorizar_automatico"', 'name="backup_antes"',
+        ):
+            self.assertIn(token, importar)
+        for token in ("financeiro.importar_extrato_confirmar", 'name="registros"', 'name="ignorar_duplicatas"'):
+            self.assertIn(token, preview)
 
     def test_form_projeto_preserva_campos(self):
         src = self.aux["form_projeto"]
@@ -81,6 +105,14 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
             self.assertIn(token, editar)
         for token in ("financeiro.gerar_pdf_recibo", "financeiro.editar_recibo", "financeiro.excluir_recibo", "financeiro.lista_recibos"):
             self.assertIn(token, visualizar)
+
+    def test_relatorio_geral_preserva_dados_e_acoes(self):
+        src = self.src["relatorio_geral"]
+        for token in (
+            "totais.entradas", "totais.saidas", "totais.saldo", "lancamentos",
+            "observacao_repasse_sede", "financeiro.lista_lancamentos", "window.print()",
+        ):
+            self.assertIn(token, src)
 
     def test_acoes_criticas_foram_preservadas(self):
         for name in ("movimentacoes", "movimentacoes_moderno"):
