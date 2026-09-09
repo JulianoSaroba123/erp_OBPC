@@ -1,0 +1,114 @@
+/* D23D52 — Compatibilidade para componentes Bootstrap legados do ERP */
+
+.content .card.bg-primary,
+.content .card.text-bg-primary {
+  border-color: rgba(29,78,216,.30) !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 64%, #0ea5e9 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgba(29,78,216,.16) !important;
+}
+
+.content .card.bg-success,
+.content .card.text-bg-success {
+  border-color: rgba(22,163,74,.28) !important;
+  background: linear-gradient(135deg, #15803d 0%, #16a34a 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgba(22,163,74,.14) !important;
+}
+
+.content .card.bg-danger,
+.content .card.text-bg-danger {
+  border-color: rgba(220,38,38,.26) !important;
+  background: linear-gradient(135deg, #dc2626 0%, #e43d55 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgba(220,38,38,.14) !important;
+}
+
+.content .card.bg-warning,
+.content .card.text-bg-warning {
+  border-color: rgba(245,158,11,.35) !important;
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%) !important;
+  color: #172033 !important;
+  box-shadow: 0 12px 26px rgba(245,158,11,.16) !important;
+}
+
+.content .card.bg-info,
+.content .card.text-bg-info {
+  border-color: rgba(14,165,233,.30) !important;
+  background: linear-gradient(135deg, #0891b2 0%, #0ea5e9 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgba(14,165,233,.15) !important;
+}
+
+.content .card.bg-secondary,
+.content .card.text-bg-secondary {
+  border-color: rgba(71,85,105,.30) !important;
+  background: linear-gradient(135deg, #475569 0%, #64748b 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 26px rgba(71,85,105,.14) !important;
+}
+
+.content .card.bg-primary h1,
+.content .card.bg-primary h2,
+.content .card.bg-primary h3,
+.content .card.bg-primary h4,
+.content .card.bg-primary h5,
+.content .card.bg-primary h6,
+.content .card.bg-success h1,
+.content .card.bg-success h2,
+.content .card.bg-success h3,
+.content .card.bg-success h4,
+.content .card.bg-success h5,
+.content .card.bg-success h6,
+.content .card.bg-danger h1,
+.content .card.bg-danger h2,
+.content .card.bg-danger h3,
+.content .card.bg-danger h4,
+.content .card.bg-danger h5,
+.content .card.bg-danger h6,
+.content .card.bg-info h1,
+.content .card.bg-info h2,
+.content .card.bg-info h3,
+.content .card.bg-info h4,
+.content .card.bg-info h5,
+.content .card.bg-info h6,
+.content .card.bg-secondary h1,
+.content .card.bg-secondary h2,
+.content .card.bg-secondary h3,
+.content .card.bg-secondary h4,
+.content .card.bg-secondary h5,
+.content .card.bg-secondary h6 {
+  color: #fff !important;
+}
+
+.content .card.bg-warning h1,
+.content .card.bg-warning h2,
+.content .card.bg-warning h3,
+.content .card.bg-warning h4,
+.content .card.bg-warning h5,
+.content .card.bg-warning h6 {
+  color: #172033 !important;
+}
+
+.content .card[class*="bg-"] .card-body {
+  position: relative;
+  z-index: 1;
+}
+
+.content .card[class*="bg-"] .card-body::after {
+  content: "";
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  right: -28px;
+  top: -34px;
+  z-index: -1;
+  border-radius: 50%;
+  background: rgba(255,255,255,.12);
+}
+
+.content .card[class*="bg-"] small,
+.content .card[class*="bg-"] .text-muted {
+  color: inherit !important;
+  opacity: .78;
+}

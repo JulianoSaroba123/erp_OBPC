@@ -1,3 +1,5 @@
 /* OBPC Design System — agregador estável */
 @import url("./obpc-design-system-core.css");
 @import url("./obpc-sidebar-dashboard.css");
+@import url("./obpc-app-theme.css");
+@import url("./obpc-app-legacy.css");

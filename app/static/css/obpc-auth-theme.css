@@ -1,0 +1,164 @@
+/* D23D52 — Tema de autenticação alinhado ao ERP OBPC */
+:root {
+  --obpc-auth-navy: #0f172a;
+  --obpc-auth-blue: #1d4ed8;
+  --obpc-auth-cyan: #0ea5e9;
+  --obpc-auth-green: #16a34a;
+  --obpc-auth-orange: #ff6b35;
+}
+
+html,
+body {
+  background: #0f172a !important;
+}
+
+.login-container,
+.cadastro-container {
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(22,163,74,.20), transparent 26%),
+    radial-gradient(circle at 86% 22%, rgba(14,165,233,.28), transparent 34%),
+    linear-gradient(135deg, #0f172a 0%, #173b8f 52%, #0e7490 100%) !important;
+}
+
+.login-container::before,
+.cadastro-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,.05), transparent 28% 74%, rgba(14,165,233,.08)),
+    repeating-linear-gradient(180deg, transparent 0 56px, rgba(255,255,255,.018) 57px 58px);
+}
+
+.login-card,
+.cadastro-card {
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 20px !important;
+  background: rgba(255,255,255,.98) !important;
+  box-shadow: 0 30px 70px rgba(2,8,23,.34) !important;
+}
+
+.login-header,
+.cadastro-header {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 60%, #0ea5e9 100%) !important;
+  color: #fff !important;
+}
+
+.login-header::after,
+.cadastro-header::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 0;
+  height: 4px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, var(--obpc-auth-green), var(--obpc-auth-cyan));
+}
+
+.login-header::before,
+.cadastro-header::before {
+  content: "";
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  right: -62px;
+  top: -76px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.08);
+}
+
+.logo-container img {
+  border-radius: 14px !important;
+  border: 1px solid rgba(255,255,255,.58) !important;
+  background: rgba(255,255,255,.95) !important;
+  padding: 4px !important;
+  box-shadow: 0 10px 28px rgba(2,8,23,.28) !important;
+}
+
+.login-body,
+.cadastro-body {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+.login-card .access-title,
+.cadastro-card h4 {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+.login-card .form-label,
+.cadastro-card label {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+.login-card .form-control,
+.cadastro-card .form-control,
+.cadastro-card .form-select {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 11px !important;
+  background: #fff !important;
+  color: #0f172a !important;
+  box-shadow: inset 0 1px 2px rgba(15,23,42,.03) !important;
+}
+
+.login-card .form-control:focus,
+.cadastro-card .form-control:focus,
+.cadastro-card .form-select:focus {
+  border-color: var(--obpc-auth-blue) !important;
+  box-shadow: 0 0 0 .2rem rgba(29,78,216,.13) !important;
+}
+
+.login-card .btn-primary,
+.cadastro-card .btn-primary {
+  border: 0 !important;
+  border-radius: 11px !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 62%, #0ea5e9 100%) !important;
+  box-shadow: 0 10px 24px rgba(29,78,216,.18) !important;
+}
+
+.login-card .btn-primary:hover,
+.cadastro-card .btn-primary:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 14px 28px rgba(29,78,216,.24) !important;
+}
+
+.login-card .register-link,
+.cadastro-card a {
+  color: var(--obpc-auth-blue) !important;
+  font-weight: 700;
+}
+
+.login-card .register-link:hover,
+.cadastro-card a:hover {
+  color: var(--obpc-auth-cyan) !important;
+}
+
+body > .alert {
+  border-radius: 13px !important;
+  border: 1px solid rgba(255,255,255,.22) !important;
+  box-shadow: 0 16px 38px rgba(2,8,23,.20) !important;
+}
+
+@media (max-width: 576px) {
+  .login-container,
+  .cadastro-container {
+    padding: 14px !important;
+  }
+
+  .login-card,
+  .cadastro-card {
+    border-radius: 17px !important;
+  }
+
+  .cadastro-body {
+    padding: 24px !important;
+  }
+}
