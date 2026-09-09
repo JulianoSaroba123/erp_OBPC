@@ -13,15 +13,17 @@ FILES = {
     "repasse": TEMPLATES / "gerenciar_despesas_fixas.html",
     "recibos": TEMPLATES / "lista_recibos.html",
 }
+FORM_LANCAMENTO = TEMPLATES / "cadastro_lancamento.html"
 
 
 class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.src = {name: path.read_text(encoding="utf-8") for name, path in FILES.items()}
+        cls.form_lancamento = FORM_LANCAMENTO.read_text(encoding="utf-8")
 
     def test_telas_financeiras_usam_obpc_page(self):
-        for name, src in self.src.items():
+        for name, src in {**self.src, "form_lancamento": self.form_lancamento}.items():
             with self.subTest(name=name):
                 self.assertIn('class="obpc-page"', src)
                 self.assertIn('class="obpc-page-header"', src)
@@ -38,12 +40,40 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         for name, src in self.src.items():
             with self.subTest(name=name):
                 self.assertIn("obpc-card", src)
+        self.assertIn("obpc-card", self.form_lancamento)
         for name in ("movimentacoes", "destinacoes", "conciliacao", "conciliacao_moderno", "repasse", "recibos"):
             self.assertIn("obpc-table", self.src[name])
 
     def test_filtros_usam_filter_bar_quando_aplicavel(self):
         for name in ("movimentacoes", "destinacoes", "conciliacao", "recibos"):
             self.assertIn("obpc-filter-bar", self.src[name])
+
+    def test_form_lancamento_preserva_campos_e_fluxos(self):
+        for token in (
+            'id="form-lancamento"',
+            "financeiro.salvar_lancamento",
+            'name="data"',
+            'name="tipo"',
+            'name="categoria"',
+            'name="projeto_id"',
+            'name="valor"',
+            'name="conta"',
+            'name="descricao"',
+            'name="observacoes"',
+            'name="comprovante"',
+            "financeiro.excluir_comprovante",
+            "financeiro.excluir_comprovante_multiplo",
+            "financeiro.upload_comprovantes",
+            'name="comprovantes[]"',
+            "OUTRAS OFERTAS",
+            "DESTINAÇÃO",
+            "GASTO PROJETO",
+        ):
+            self.assertIn(token, self.form_lancamento)
+        self.assertIn("obpc-input", self.form_lancamento)
+        self.assertIn("obpc-select", self.form_lancamento)
+        self.assertIn("obpc-textarea", self.form_lancamento)
+        self.assertIn("btn-submit-lancamento", self.form_lancamento)
 
     def test_acoes_criticas_foram_preservadas(self):
         movimentacoes = self.src["movimentacoes"]
@@ -97,7 +127,8 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
 
     def test_templates_nao_contem_mutacao_de_banco(self):
         forbidden = ("db.session", "UPDATE ", "INSERT ", "DELETE FROM", "ALTER TABLE")
-        for name, src in self.src.items():
+        all_sources = {**self.src, "form_lancamento": self.form_lancamento}
+        for name, src in all_sources.items():
             for token in forbidden:
                 with self.subTest(name=name, token=token):
                     self.assertNotIn(token, src)
