@@ -97,21 +97,31 @@ def _itens_fallback_contexto(contexto: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def corrigir_contexto_relatorio_sede_d23d53(contexto: dict[str, Any]) -> dict[str, Any]:
-    """Corrige apenas o detalhamento nominal das despesas fixas do relatório oficial."""
+    """Corrige o detalhamento e o total histórico das despesas fixas do relatório oficial."""
     mes = int(contexto.get("mes"))
     ano = int(contexto.get("ano"))
 
-    itens = _itens_obrigacoes_competencia(mes, ano)
-    if not itens:
-        itens = _itens_fallback_contexto(contexto)
-
+    itens_competencia = _itens_obrigacoes_competencia(mes, ano)
+    itens = itens_competencia or _itens_fallback_contexto(contexto)
     fixas = classificar_despesas_fixas_d23d53(itens)
+    total_fixas = sum(float(item.get("valor") or 0) for item in itens)
+
     envios = contexto.get("envios")
     if isinstance(envios, dict):
         for chave, valor in fixas.items():
             envios[chave] = valor
     else:
         contexto["envios"] = fixas
+
+    # Quando a competência possui obrigações, elas são o retrato histórico oficial.
+    # Isso evita que uma futura alteração em valor_padrao reescreva relatórios antigos.
+    if itens_competencia:
+        totais_sede = contexto.get("totais_sede")
+        if isinstance(totais_sede, dict):
+            totais_sede["despesas_fixas"] = total_fixas
+            valor_admin = float(totais_sede.get("valor_conselho") or 0)
+            totais_sede["total_envio_sede"] = valor_admin + total_fixas
+        contexto["despesas_fixas_lista"] = itens_competencia
 
     contexto["despesas_fixas_sede_detalhadas"] = itens
     return contexto
