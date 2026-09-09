@@ -3,549 +3,265 @@
 {% block title %}{% if lancamento %}Editar{% else %}Novo{% endif %} Lançamento - OBPC{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-lg-8 mx-auto">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-{% if lancamento %}edit{% else %}plus{% endif %} me-2"></i>
-                        {% if lancamento %}Editar{% else %}Novo{% endif %} Lançamento
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <form id="form-lancamento" method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}" enctype="multipart/form-data">
-                        {% if lancamento %}
-                        <input type="hidden" name="id" value="{{ lancamento.id }}">
-                        {% endif %}
-                        
-                        <!-- Campos hidden para manter os filtros ativos -->
-                        {% if filtros_ativos %}
-                            {% for campo, valor in filtros_ativos.items() %}
-                            <input type="hidden" name="filtro_{{ campo }}" value="{{ valor }}">
-                            {% endfor %}
-                        {% endif %}
-                        
-                        <div class="row">
-                            <!-- Data do Lançamento -->
-                            <div class="col-md-6 mb-3">
-                                <label for="data" class="form-label">Data do Lançamento *</label>
-                                <input type="date" 
-                                       class="form-control" 
-                                       id="data" 
-                                       name="data" 
-                                       value="{% if lancamento %}{{ lancamento.data.strftime('%Y-%m-%d') }}{% else %}{{ today.strftime('%Y-%m-%d') if today else '' }}{% endif %}"
-                                       required>
-                            </div>
-
-                            <!-- Tipo -->
-                            <div class="col-md-6 mb-3">
-                                <label for="tipo" class="form-label">Tipo *</label>
-                                <select class="form-select" id="tipo" name="tipo" required>
-                                    <option value="">Selecione o tipo</option>
-                                    <option value="Entrada" {% if lancamento and lancamento.tipo == 'Entrada' %}selected{% endif %}>
-                                        <i class="fas fa-arrow-up"></i> Entrada
-                                    </option>
-                                    <option value="Saída" {% if lancamento and lancamento.tipo == 'Saída' %}selected{% endif %}>
-                                        <i class="fas fa-arrow-down"></i> Saída
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <!-- Categoria -->
-                            <div class="col-md-6 mb-3">
-                                <label for="categoria" class="form-label">Categoria *</label>
-                                <select class="form-select" id="categoria" name="categoria" required>
-                                    <option value="">Selecione a categoria</option>
-                                    
-                                    <!-- Entradas -->
-                                    <optgroup label="💰 ENTRADAS">
-                                        <option value="DÍZIMO" {% if lancamento and lancamento.categoria == 'DÍZIMO' %}selected{% endif %}>DÍZIMO</option>
-                                        <option value="OFERTA" {% if lancamento and lancamento.categoria == 'OFERTA' %}selected{% endif %}>OFERTA</option>
-                                        <option value="OFERTA OMN" {% if lancamento and lancamento.categoria == 'OFERTA OMN' %}selected{% endif %}>OFERTA OMN</option>
-                                        <option value="OUTRAS OFERTAS" {% if lancamento and lancamento.categoria == 'OUTRAS OFERTAS' %}selected{% endif %}>OUTRAS OFERTAS</option>
-                                        <option value="RENDIMENTOS" {% if lancamento and lancamento.categoria == 'RENDIMENTOS' %}selected{% endif %}>RENDIMENTOS</option>
-                                    </optgroup>
-                                    
-                                    <!-- Saídas -->
-                                    <optgroup label="SAÍDAS">
-                                        <option value="CONTRIB. SEDE" {% if lancamento and lancamento.categoria == 'CONTRIB. SEDE' %}selected{% endif %}>CONTRIB. SEDE</option>
-                                        <option value="DESP. FIXAS" {% if lancamento and lancamento.categoria == 'DESP. FIXAS' %}selected{% endif %}>DESP. FIXAS</option>
-                                        <option value="DESP. VARIAVEIS" {% if lancamento and lancamento.categoria == 'DESP. VARIAVEIS' %}selected{% endif %}>DESP. VARIAVEIS</option>
-                                        <option value="PREBENDA" {% if lancamento and lancamento.categoria == 'PREBENDA' %}selected{% endif %}>PREBENDA</option>
-                                        <option value="COMBUSTÍVEL" {% if lancamento and lancamento.categoria == 'COMBUSTÍVEL' %}selected{% endif %}>COMBUSTÍVEL</option>
-                                        <option value="REND.CONTA" {% if lancamento and lancamento.categoria == 'REND.CONTA' %}selected{% endif %}>REND.CONTA</option>
-                                        <option value="AJUDA CUSTO" {% if lancamento and lancamento.categoria == 'AJUDA CUSTO' %}selected{% endif %}>AJUDA CUSTO</option>
-                                        <option value="TRANSP VIEX" {% if lancamento and lancamento.categoria == 'TRANSP VIEX' %}selected{% endif %}>TRANSP VIEX</option>
-                                        <option value="CONTAS" {% if lancamento and lancamento.categoria == 'CONTAS' %}selected{% endif %}>CONTAS</option>
-                                        <option value="CRÉDITO CARTÃO" {% if lancamento and lancamento.categoria == 'CRÉDITO CARTÃO' %}selected{% endif %}>CRÉDITO CARTÃO</option>
-                                        <option value="DESC.CONTA" {% if lancamento and lancamento.categoria == 'DESC.CONTA' %}selected{% endif %}>DESC.CONTA</option>
-                                        <option value="DESTINAÇÃO" {% if lancamento and lancamento.categoria == 'DESTINAÇÃO' %}selected{% endif %}>DESTINAÇÃO</option>
-                                        <option value="GASTO PROJETO" {% if lancamento and lancamento.categoria == 'GASTO PROJETO' %}selected{% endif %}>GASTO PROJETO</option>
-                                    </optgroup>
-                                </select>
-                                <div class="form-text">Selecione a categoria apropriada para o lançamento</div>
-                            </div>
-
-                            <!-- Projeto (aparece apenas para OUTRAS OFERTAS e DESTINAÇÃO) -->
-                            <div class="col-md-6 mb-3" id="campo-projeto" style="display: none;">
-                                <label for="projeto_id" class="form-label">Projeto <span id="projeto-label-extra"></span></label>
-                                <select class="form-select" id="projeto_id" name="projeto_id">
-                                    <option value="">Nenhum projeto</option>
-                                    {% for projeto in projetos %}
-                                    <option value="{{ projeto.id }}" 
-                                            {% if lancamento and lancamento.projeto_id == projeto.id %}selected{% endif %}
-                                            data-saldo="{{ projeto.calcular_totais()['saldo'] }}">
-                                        {{ projeto.nome }} 
-                                        {% if projeto.status != 'Ativo' %}({{ projeto.status }}){% endif %}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <div class="form-text" id="projeto-help-text">Vincule este lançamento a um projeto específico</div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <!-- Valor -->
-                            <div class="col-md-6 mb-3">
-                                <label for="valor" class="form-label">Valor *</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">R$</span>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           id="valor" 
-                                           name="valor" 
-                                           value="{% if lancamento %}{{ '%.2f'|format(lancamento.valor)|replace('.', ',') }}{% endif %}"
-                                           placeholder="0,00"
-                                           required>
-                                </div>
-                                <div class="form-text">Use vírgula para separar os centavos (ex: 1.500,50)</div>
-                            </div>
-
-                            <!-- Conta -->
-                            <div class="col-md-6 mb-3">
-                                <label for="conta" class="form-label">Conta *</label>
-                                <select class="form-select" id="conta" name="conta" required>
-                                    <option value="">Selecione a conta</option>
-                                    <option value="Dinheiro" {% if lancamento and lancamento.conta == 'Dinheiro' %}selected{% endif %}>
-                                        💰 Dinheiro
-                                    </option>
-                                    <option value="Banco" {% if lancamento and lancamento.conta == 'Banco' %}selected{% endif %}>
-                                        🏦 Banco
-                                    </option>
-                                    <option value="Poupança" {% if lancamento and lancamento.conta == 'Poupança' %}selected{% endif %}>
-                                        💳 Poupança
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <!-- Descrição -->
-                            <div class="col-md-6 mb-3">
-                                <label for="descricao" class="form-label">Descrição</label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="descricao" 
-                                       name="descricao" 
-                                       value="{{ lancamento.descricao if lancamento else '' }}"
-                                       placeholder="Breve descrição do lançamento">
-                            </div>
-                        </div>
-
-                        <!-- Observações -->
-                        <div class="mb-3">
-                            <label for="observacoes" class="form-label">Observações</label>
-                            <textarea class="form-control" 
-                                      id="observacoes" 
-                                      name="observacoes" 
-                                      rows="3" 
-                                      placeholder="Informações adicionais sobre o lançamento (opcional)">{% if lancamento and lancamento.observacoes and lancamento.observacoes != 'None' %}{{ lancamento.observacoes }}{% endif %}</textarea>
-                        </div>
-
-                        <!-- Comprovantes -->
-                        <div class="mb-3">
-                            <label for="comprovante" class="form-label">
-                                <i class="fas fa-paperclip me-1"></i> Comprovantes
-                            </label>
-                            <input type="file" 
-                                   class="form-control" 
-                                   id="comprovante" 
-                                   name="comprovante"
-                                   accept=".jpg,.jpeg,.png,.pdf">
-                            <div class="form-text">
-                                <i class="fas fa-info-circle"></i> 
-                                Formatos aceitos: JPG, PNG, PDF (máx. 5MB por arquivo)
-                                {% if not lancamento %}
-                                    <br><strong>O comprovante será salvo junto com o lançamento</strong>
-                                {% endif %}
-                            </div>
-                            
-                            {% if lancamento %}
-                                <!-- Comprovante Legado (se existir) -->
-                                {% if lancamento.comprovante and lancamento.comprovante.strip() %}
-                                <div class="mt-3">
-                                    <h6 class="text-muted"><i class="fas fa-file-alt me-1"></i> Comprovante Principal:</h6>
-                                    <div class="alert alert-info d-flex align-items-center justify-content-between">
-                                        <div class="d-flex align-items-center">
-                                            <div>
-                                                <a href="{{ lancamento.comprovante }}" target="_blank" class="alert-link">
-                                                    {{ lancamento.nome_arquivo_comprovante() }}
-                                                </a>
-                                                {% if lancamento.is_comprovante_imagem() %}
-                                                    <i class="fas fa-image text-primary ms-1"></i>
-                                                {% elif lancamento.is_comprovante_pdf() %}
-                                                    <i class="fas fa-file-pdf text-danger ms-1"></i>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                        <form method="POST" action="{{ url_for('financeiro.excluir_comprovante', id=lancamento.id) }}" 
-                                              onsubmit="return confirm('Tem certeza que deseja excluir este comprovante?');" 
-                                              class="mb-0">
-                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                                {% endif %}
-                                
-                                <!-- Lista de Comprovantes Adicionais -->
-                                {% if lancamento.comprovantes and lancamento.comprovantes.count() > 0 %}
-                                <div class="mt-3">
-                                    <h6 class="text-muted">
-                                        <i class="fas fa-files me-1"></i> 
-                                        Comprovantes Adicionais ({{ lancamento.comprovantes.count() }}):
-                                    </h6>
-                                    <div class="list-group">
-                                        {% for comp in lancamento.comprovantes.all() %}
-                                        <div class="list-group-item d-flex align-items-center justify-content-between">
-                                            <div class="d-flex align-items-center flex-grow-1">
-                                                {% if comp.is_imagem() %}
-                                                    <i class="fas fa-image text-primary me-2" style="font-size: 1.5rem;"></i>
-                                                {% elif comp.is_pdf() %}
-                                                    <i class="fas fa-file-pdf text-danger me-2" style="font-size: 1.5rem;"></i>
-                                                {% else %}
-                                                    <i class="fas fa-file text-secondary me-2" style="font-size: 1.5rem;"></i>
-                                                {% endif %}
-                                                <div>
-                                                    <a href="{{ comp.arquivo }}" target="_blank" class="text-decoration-none">
-                                                        <strong>{{ comp.nome_original }}</strong>
-                                                    </a>
-                                                    <br>
-                                                    <small class="text-muted">
-                                                        <i class="fas fa-hdd me-1"></i> {{ comp.tamanho_formatado() }}
-                                                        <i class="fas fa-calendar ms-2 me-1"></i> {{ comp.criado_em.strftime('%d/%m/%Y %H:%M') if comp.criado_em else 'N/A' }}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                            <form method="POST" action="{{ url_for('financeiro.excluir_comprovante_multiplo', comprovante_id=comp.id) }}" 
-                                                  onsubmit="return confirm('Tem certeza que deseja excluir este comprovante?');" 
-                                                  class="mb-0">
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% endif %}
-                                
-                                <!-- Formulário para adicionar múltiplos comprovantes -->
-                                <div class="mt-3">
-                                    <form method="POST" 
-                                          action="{{ url_for('financeiro.upload_comprovantes', id=lancamento.id) }}" 
-                                          enctype="multipart/form-data" 
-                                          id="formUploadComprovantes">
-                                        <div class="input-group">
-                                            <input type="file" 
-                                                   class="form-control" 
-                                                   id="comprovantes_multiplos" 
-                                                   name="comprovantes[]"
-                                                   accept=".jpg,.jpeg,.png,.pdf"
-                                                   multiple>
-                                            <button type="submit" class="btn btn-primary">
-                                                <i class="fas fa-upload me-1"></i> Adicionar Comprovantes
-                                            </button>
-                                        </div>
-                                        <small class="form-text text-muted">
-                                            <i class="fas fa-info-circle"></i> Você pode selecionar múltiplos arquivos de uma vez (Ctrl+Click ou Shift+Click)
-                                        </small>
-                                    </form>
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <!-- Botões -->
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('financeiro.lista_lancamentos', **filtros_ativos) if filtros_ativos else url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left"></i> Voltar
-                            </a>
-                            <button id="btn-submit-lancamento" type="submit" class="btn btn-success">
-                                <i class="fas fa-save"></i> 
-                                {% if lancamento %}Atualizar{% else %}Salvar{% endif %} Lançamento
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Card de Ajuda -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Dicas de Preenchimento</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6 class="text-success"><i class="fas fa-arrow-up"></i> Entradas</h6>
-                            <ul class="small text-muted">
-                                <li>Dízimos e Ofertas</li>
-                                <li>Doações</li>
-                                <li>Eventos e Campanhas</li>
-                                <li>Rendimentos</li>
-                            </ul>
-                        </div>
-                        <div class="col-md-6">
-                            <h6 class="text-danger"><i class="fas fa-arrow-down"></i> Saídas</h6>
-                            <ul class="small text-muted">
-                                <li>Despesas Operacionais</li>
-                                <li>Manutenção e Reformas</li>
-                                <li>Pagamentos a Fornecedores</li>
-                                <li>Combustível e Transporte</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div class="obpc-page">
+  <header class="obpc-page-header">
+    <div>
+      <h1 class="obpc-page-title"><i class="fas fa-{% if lancamento %}edit{% else %}plus{% endif %}"></i> {% if lancamento %}Editar{% else %}Novo{% endif %} Lançamento</h1>
+      <p class="obpc-page-subtitle">Registre entradas e saídas com categoria, conta, projeto e comprovantes.</p>
     </div>
+    <div class="obpc-page-actions">
+      <a href="{{ url_for('financeiro.lista_lancamentos', **filtros_ativos) if filtros_ativos else url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-arrow-left"></i> Movimentações</a>
+    </div>
+  </header>
+
+  <section class="obpc-section">
+    <div class="row g-3">
+      <div class="col-12 col-xl-9">
+        <div class="obpc-card">
+          <div class="obpc-card-header">
+            <div>
+              <h2 class="obpc-section-title">Dados do Lançamento</h2>
+              <p class="obpc-text-muted mb-0">Campos com * são obrigatórios.</p>
+            </div>
+            {% if lancamento %}<span class="obpc-badge obpc-badge--info">ID #{{ lancamento.id }}</span>{% else %}<span class="obpc-badge obpc-badge--primary">Novo registro</span>{% endif %}
+          </div>
+          <div class="obpc-card-body">
+            <form id="form-lancamento" method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}" enctype="multipart/form-data">
+              {% if lancamento %}<input type="hidden" name="id" value="{{ lancamento.id }}">{% endif %}
+              {% if filtros_ativos %}{% for campo, valor in filtros_ativos.items() %}<input type="hidden" name="filtro_{{ campo }}" value="{{ valor }}">{% endfor %}{% endif %}
+
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label for="data" class="obpc-label">Data do Lançamento *</label>
+                  <input type="date" class="obpc-input" id="data" name="data" value="{% if lancamento %}{{ lancamento.data.strftime('%Y-%m-%d') }}{% else %}{{ today.strftime('%Y-%m-%d') if today else '' }}{% endif %}" required>
+                </div>
+                <div class="col-12 col-md-6">
+                  <label for="tipo" class="obpc-label">Tipo *</label>
+                  <select class="obpc-select" id="tipo" name="tipo" required>
+                    <option value="">Selecione o tipo</option>
+                    <option value="Entrada" {% if lancamento and lancamento.tipo == 'Entrada' %}selected{% endif %}>Entrada</option>
+                    <option value="Saída" {% if lancamento and lancamento.tipo == 'Saída' %}selected{% endif %}>Saída</option>
+                  </select>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label for="categoria" class="obpc-label">Categoria *</label>
+                  <select class="obpc-select" id="categoria" name="categoria" required>
+                    <option value="">Selecione a categoria</option>
+                    <optgroup label="ENTRADAS">
+                      <option value="DÍZIMO" {% if lancamento and lancamento.categoria == 'DÍZIMO' %}selected{% endif %}>DÍZIMO</option>
+                      <option value="OFERTA" {% if lancamento and lancamento.categoria == 'OFERTA' %}selected{% endif %}>OFERTA</option>
+                      <option value="OFERTA OMN" {% if lancamento and lancamento.categoria == 'OFERTA OMN' %}selected{% endif %}>OFERTA OMN</option>
+                      <option value="OUTRAS OFERTAS" {% if lancamento and lancamento.categoria == 'OUTRAS OFERTAS' %}selected{% endif %}>OUTRAS OFERTAS</option>
+                      <option value="RENDIMENTOS" {% if lancamento and lancamento.categoria == 'RENDIMENTOS' %}selected{% endif %}>RENDIMENTOS</option>
+                    </optgroup>
+                    <optgroup label="SAÍDAS">
+                      <option value="CONTRIB. SEDE" {% if lancamento and lancamento.categoria == 'CONTRIB. SEDE' %}selected{% endif %}>CONTRIB. SEDE</option>
+                      <option value="DESP. FIXAS" {% if lancamento and lancamento.categoria == 'DESP. FIXAS' %}selected{% endif %}>DESP. FIXAS</option>
+                      <option value="DESP. VARIAVEIS" {% if lancamento and lancamento.categoria == 'DESP. VARIAVEIS' %}selected{% endif %}>DESP. VARIAVEIS</option>
+                      <option value="PREBENDA" {% if lancamento and lancamento.categoria == 'PREBENDA' %}selected{% endif %}>PREBENDA</option>
+                      <option value="COMBUSTÍVEL" {% if lancamento and lancamento.categoria == 'COMBUSTÍVEL' %}selected{% endif %}>COMBUSTÍVEL</option>
+                      <option value="REND.CONTA" {% if lancamento and lancamento.categoria == 'REND.CONTA' %}selected{% endif %}>REND.CONTA</option>
+                      <option value="AJUDA CUSTO" {% if lancamento and lancamento.categoria == 'AJUDA CUSTO' %}selected{% endif %}>AJUDA CUSTO</option>
+                      <option value="TRANSP VIEX" {% if lancamento and lancamento.categoria == 'TRANSP VIEX' %}selected{% endif %}>TRANSP VIEX</option>
+                      <option value="CONTAS" {% if lancamento and lancamento.categoria == 'CONTAS' %}selected{% endif %}>CONTAS</option>
+                      <option value="CRÉDITO CARTÃO" {% if lancamento and lancamento.categoria == 'CRÉDITO CARTÃO' %}selected{% endif %}>CRÉDITO CARTÃO</option>
+                      <option value="DESC.CONTA" {% if lancamento and lancamento.categoria == 'DESC.CONTA' %}selected{% endif %}>DESC.CONTA</option>
+                      <option value="DESTINAÇÃO" {% if lancamento and lancamento.categoria == 'DESTINAÇÃO' %}selected{% endif %}>DESTINAÇÃO</option>
+                      <option value="GASTO PROJETO" {% if lancamento and lancamento.categoria == 'GASTO PROJETO' %}selected{% endif %}>GASTO PROJETO</option>
+                    </optgroup>
+                  </select>
+                  <span class="obpc-help">A lista é filtrada automaticamente conforme o tipo escolhido.</span>
+                </div>
+
+                <div class="col-12 col-md-6" id="campo-projeto" style="display:none;">
+                  <label for="projeto_id" class="obpc-label">Projeto <span id="projeto-label-extra"></span></label>
+                  <select class="obpc-select" id="projeto_id" name="projeto_id">
+                    <option value="">Nenhum projeto</option>
+                    {% for projeto in projetos %}<option value="{{ projeto.id }}" {% if lancamento and lancamento.projeto_id == projeto.id %}selected{% endif %} data-saldo="{{ projeto.calcular_totais()['saldo'] }}">{{ projeto.nome }}{% if projeto.status != 'Ativo' %} ({{ projeto.status }}){% endif %}</option>{% endfor %}
+                  </select>
+                  <span class="obpc-help" id="projeto-help-text">Vincule este lançamento a um projeto específico.</span>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label for="valor" class="obpc-label">Valor *</label>
+                  <div class="input-group"><span class="input-group-text">R$</span><input type="text" class="form-control" id="valor" name="valor" value="{% if lancamento %}{{ '%.2f'|format(lancamento.valor)|replace('.', ',') }}{% endif %}" placeholder="0,00" required></div>
+                  <span class="obpc-help">Use vírgula para separar os centavos.</span>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label for="conta" class="obpc-label">Conta *</label>
+                  <select class="obpc-select" id="conta" name="conta" required>
+                    <option value="">Selecione a conta</option>
+                    <option value="Dinheiro" {% if lancamento and lancamento.conta == 'Dinheiro' %}selected{% endif %}>Dinheiro</option>
+                    <option value="Banco" {% if lancamento and lancamento.conta == 'Banco' %}selected{% endif %}>Banco</option>
+                    <option value="Poupança" {% if lancamento and lancamento.conta == 'Poupança' %}selected{% endif %}>Poupança</option>
+                  </select>
+                </div>
+
+                <div class="col-12">
+                  <label for="descricao" class="obpc-label">Descrição</label>
+                  <input type="text" class="obpc-input" id="descricao" name="descricao" value="{{ lancamento.descricao if lancamento else '' }}" placeholder="Breve descrição do lançamento">
+                </div>
+                <div class="col-12">
+                  <label for="observacoes" class="obpc-label">Observações</label>
+                  <textarea class="obpc-textarea" id="observacoes" name="observacoes" rows="3" placeholder="Informações adicionais sobre o lançamento (opcional)">{% if lancamento and lancamento.observacoes and lancamento.observacoes != 'None' %}{{ lancamento.observacoes }}{% endif %}</textarea>
+                </div>
+              </div>
+
+              <div class="obpc-card mt-3">
+                <div class="obpc-card-header"><div><h3 class="obpc-section-title">Comprovantes</h3><p class="obpc-text-muted mb-0">JPG, PNG ou PDF, até 5 MB por arquivo.</p></div><i class="fas fa-paperclip obpc-text-muted"></i></div>
+                <div class="obpc-card-body">
+                  <label for="comprovante" class="obpc-label">Novo comprovante</label>
+                  <input type="file" class="form-control" id="comprovante" name="comprovante" accept=".jpg,.jpeg,.png,.pdf">
+
+                  {% if lancamento %}
+                    {% if lancamento.comprovante and lancamento.comprovante.strip() %}
+                    <div class="obpc-alert obpc-alert-info mt-3">
+                      <div class="flex-grow-1"><strong>Comprovante principal:</strong> <a href="{{ lancamento.comprovante }}" target="_blank">{{ lancamento.nome_arquivo_comprovante() }}</a></div>
+                      <button type="submit" class="obpc-btn obpc-btn-danger obpc-btn--sm" formaction="{{ url_for('financeiro.excluir_comprovante', id=lancamento.id) }}" formmethod="POST" onclick="return confirm('Tem certeza que deseja excluir este comprovante?');"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    {% endif %}
+
+                    {% if lancamento.comprovantes and lancamento.comprovantes.count() > 0 %}
+                    <div class="obpc-card mt-3">
+                      <div class="obpc-card-header"><h4 class="obpc-section-title">Comprovantes Adicionais</h4><span class="obpc-badge obpc-badge--info">{{ lancamento.comprovantes.count() }}</span></div>
+                      <div class="obpc-card-body">
+                        {% for comp in lancamento.comprovantes.all() %}
+                        <div class="d-flex align-items-center justify-content-between gap-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
+                          <div class="d-flex align-items-center gap-2"><i class="fas {% if comp.is_imagem() %}fa-image{% elif comp.is_pdf() %}fa-file-pdf{% else %}fa-file{% endif %} obpc-text-muted"></i><div><a href="{{ comp.arquivo }}" target="_blank"><strong>{{ comp.nome_original }}</strong></a><div class="obpc-text-muted small">{{ comp.tamanho_formatado() }} · {{ comp.criado_em.strftime('%d/%m/%Y %H:%M') if comp.criado_em else 'N/A' }}</div></div></div>
+                          <button type="submit" class="obpc-btn obpc-btn-danger obpc-btn--sm" formaction="{{ url_for('financeiro.excluir_comprovante_multiplo', comprovante_id=comp.id) }}" formmethod="POST" onclick="return confirm('Tem certeza que deseja excluir este comprovante?');"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                    {% endif %}
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="obpc-table-actions justify-content-end mt-3">
+                <a href="{{ url_for('financeiro.lista_lancamentos', **filtros_ativos) if filtros_ativos else url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary">Cancelar</a>
+                <button id="btn-submit-lancamento" type="submit" class="obpc-btn obpc-btn-primary"><i class="fas fa-save"></i> {% if lancamento %}Atualizar{% else %}Salvar{% endif %} Lançamento</button>
+              </div>
+            </form>
+
+            {% if lancamento %}
+            <div class="obpc-card mt-3">
+              <div class="obpc-card-header"><h3 class="obpc-section-title">Adicionar Múltiplos Comprovantes</h3></div>
+              <div class="obpc-card-body">
+                <form method="POST" action="{{ url_for('financeiro.upload_comprovantes', id=lancamento.id) }}" enctype="multipart/form-data" id="formUploadComprovantes">
+                  <div class="input-group"><input type="file" class="form-control" id="comprovantes_multiplos" name="comprovantes[]" accept=".jpg,.jpeg,.png,.pdf" multiple><button type="submit" class="obpc-btn obpc-btn-secondary"><i class="fas fa-upload"></i> Adicionar</button></div>
+                  <span class="obpc-help">Você pode selecionar vários arquivos de uma vez.</span>
+                </form>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-3">
+        <div class="obpc-card h-100">
+          <div class="obpc-card-header"><h2 class="obpc-section-title">Dicas de Preenchimento</h2></div>
+          <div class="obpc-card-body">
+            <div class="mb-4"><span class="obpc-badge obpc-badge--success mb-2">Entradas</span><ul class="small obpc-text-muted ps-3 mb-0"><li>Dízimos e ofertas</li><li>Ofertas destinadas</li><li>Rendimentos</li></ul></div>
+            <div class="mb-4"><span class="obpc-badge obpc-badge--warning mb-2">Saídas</span><ul class="small obpc-text-muted ps-3 mb-0"><li>Despesas operacionais</li><li>Contas e combustível</li><li>Gastos de projetos</li></ul></div>
+            <div class="obpc-alert obpc-alert-info"><i class="fas fa-circle-info"></i><div class="small">Para <strong>DESTINAÇÃO</strong> e <strong>GASTO PROJETO</strong>, o projeto é obrigatório.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado - iniciando scripts');
-    
-    // Se estiver editando, configurar data padrão para hoje
-    {% if not lancamento %}
-    const dataInput = document.getElementById('data');
-    if (!dataInput.value) {
-        const hoje = new Date().toISOString().split('T')[0];
-        dataInput.value = hoje;
-    }
-    {% endif %}
+  {% if not lancamento %}
+  const dataInput = document.getElementById('data');
+  if (dataInput && !dataInput.value) dataInput.value = new Date().toISOString().split('T')[0];
+  {% endif %}
 
-    // Mudança de cor do tipo e sugestão de categorias
-    const tipoSelect = document.getElementById('tipo');
-    const categoriaSelect = document.getElementById('categoria');
-    
-    // === CONTROLE DO CAMPO PROJETO (INÍCIO) ===
-    const campoProjetoDiv = document.getElementById('campo-projeto');
-    const projetoSelect = document.getElementById('projeto_id');
-    const projetoLabelExtra = document.getElementById('projeto-label-extra');
-    
-    console.log('Elementos encontrados:', {
-        campoProjetoDiv: !!campoProjetoDiv,
-        categoriaSelect: !!categoriaSelect,
-        projetoSelect: !!projetoSelect
-    });
-    
-    function atualizarCampoProjeto() {
-        if (!categoriaSelect || !campoProjetoDiv) {
-            console.error('Elementos não encontrados!');
-            return;
-        }
-        
-        const categoriaSelecionada = categoriaSelect.value;
-        const categoriasComProjeto = ['OUTRAS OFERTAS', 'DESTINAÇÃO', 'GASTO PROJETO'];
-        
-        console.log('Atualizando campo projeto. Categoria:', categoriaSelecionada);
-        
-        if (categoriasComProjeto.includes(categoriaSelecionada)) {
-            console.log('✅ Mostrando campo de projeto');
-            campoProjetoDiv.style.display = 'block';
-            
-            if (categoriaSelecionada === 'OUTRAS OFERTAS') {
-                projetoLabelExtra.textContent = '(Opcional)';
-                projetoSelect.removeAttribute('required');
-            } else if (categoriaSelecionada === 'DESTINAÇÃO' || categoriaSelecionada === 'GASTO PROJETO') {
-                projetoLabelExtra.textContent = '*';
-                projetoSelect.setAttribute('required', 'required');
-            }
-        } else {
-            console.log('❌ Ocultando campo de projeto');
-            campoProjetoDiv.style.display = 'none';
-            projetoSelect.removeAttribute('required');
-            projetoSelect.value = '';
-        }
-    }
-    
-    // Aplicar ao carregar
-    if (categoriaSelect) {
-        atualizarCampoProjeto();
-        categoriaSelect.addEventListener('change', atualizarCampoProjeto);
-        console.log('Event listener adicionado à categoria');
-    }
-    // === CONTROLE DO CAMPO PROJETO (FIM) ===
-    
-    tipoSelect.addEventListener('change', function() {
-        const card = this.closest('.card');
-        if (this.value === 'Entrada') {
-            card.querySelector('.card-header').className = 'card-header bg-success text-white';
-            // Sugerir categorias de entrada
-            mostrarCategoriasEntrada();
-        } else if (this.value === 'Saída') {
-            card.querySelector('.card-header').className = 'card-header bg-danger text-white';
-            // Sugerir categorias de saída
-            mostrarCategoriasSaida();
-        } else {
-            card.querySelector('.card-header').className = 'card-header';
-            mostrarTodasCategorias();
-        }
-    });
-    
-    function mostrarCategoriasEntrada() {
-        // Mostrar apenas categorias de entrada
-        const optgroups = categoriaSelect.querySelectorAll('optgroup');
-        optgroups.forEach(group => {
-            const label = group.getAttribute('label');
-            if (label.includes('ENTRADAS')) {
-                group.style.display = 'block';
-            } else {
-                group.style.display = 'none';
-            }
-        });
-    }
-    
-    function mostrarCategoriasSaida() {
-        // Mostrar apenas categorias de saída
-        const optgroups = categoriaSelect.querySelectorAll('optgroup');
-        optgroups.forEach(group => {
-            const label = group.getAttribute('label');
-            if (label.includes('SAÍDAS')) {
-                group.style.display = 'block';
-            } else {
-                group.style.display = 'none';
-            }
-        });
-    }
-    
-    function mostrarTodasCategorias() {
-        // Mostrar todos os optgroups
-        const optgroups = categoriaSelect.querySelectorAll('optgroup');
-        optgroups.forEach(group => {
-            group.style.display = 'block';
-        });
-    }
+  const tipoSelect = document.getElementById('tipo');
+  const categoriaSelect = document.getElementById('categoria');
+  const campoProjetoDiv = document.getElementById('campo-projeto');
+  const projetoSelect = document.getElementById('projeto_id');
+  const projetoLabelExtra = document.getElementById('projeto-label-extra');
 
-    // NÃO aplicar filtro automático quando estiver editando (categoria já selecionada)
-    // Apenas aplicar quando for novo lançamento
-    {% if not lancamento %}
-    if (tipoSelect.value) {
-        tipoSelect.dispatchEvent(new Event('change'));
+  function atualizarCampoProjeto() {
+    if (!categoriaSelect || !campoProjetoDiv || !projetoSelect) return;
+    const categoriaSelecionada = categoriaSelect.value;
+    const categoriasComProjeto = ['OUTRAS OFERTAS', 'DESTINAÇÃO', 'GASTO PROJETO'];
+    if (categoriasComProjeto.includes(categoriaSelecionada)) {
+      campoProjetoDiv.style.display = 'block';
+      if (categoriaSelecionada === 'OUTRAS OFERTAS') {
+        if (projetoLabelExtra) projetoLabelExtra.textContent = '(Opcional)';
+        projetoSelect.removeAttribute('required');
+      } else {
+        if (projetoLabelExtra) projetoLabelExtra.textContent = '*';
+        projetoSelect.setAttribute('required', 'required');
+      }
+    } else {
+      campoProjetoDiv.style.display = 'none';
+      projetoSelect.removeAttribute('required');
+      projetoSelect.value = '';
     }
-    {% endif %}
-    
-    // Máscara de moeda brasileira para o campo valor
-    const valorInput = document.getElementById('valor');
-    
-    function formatarMoeda(valor) {
-        // Remove tudo que não é dígito
-        valor = valor.replace(/\D/g, '');
-        
-        // Se não tem nada, retorna vazio
-        if (valor === '') return '';
-        
-        // Converte para centavos
-        valor = parseInt(valor);
-        
-        // Converte para formato decimal
-        valor = (valor / 100).toFixed(2);
-        
-        // Adiciona separadores de milhares e vírgula decimal
-        valor = valor.replace('.', ',');
-        valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-        
-        return valor;
-    }
-    
-    function aplicarMascaraMoeda(input) {
-        const valorOriginal = input.value;
-        const valorFormatado = formatarMoeda(valorOriginal);
-        
-        if (valorOriginal !== valorFormatado) {
-            const posicaoAtual = input.selectionStart;
-            const diferencaTamanho = valorFormatado.length - valorOriginal.length;
-            
-            input.value = valorFormatado;
-            
-            // Ajusta a posição do cursor
-            const novaPosicao = posicaoAtual + diferencaTamanho;
-            input.setSelectionRange(novaPosicao, novaPosicao);
-        }
-    }
-    
-    // Aplicar máscara em tempo real
-    valorInput.addEventListener('input', function(e) {
-        aplicarMascaraMoeda(this);
+  }
+
+  function filtrarCategorias(tipo) {
+    if (!categoriaSelect) return;
+    categoriaSelect.querySelectorAll('optgroup').forEach(group => {
+      const label = group.getAttribute('label') || '';
+      group.style.display = (!tipo || label === (tipo === 'Entrada' ? 'ENTRADAS' : 'SAÍDAS')) ? 'block' : 'none';
     });
-    
-    // Aplicar máscara quando o campo perde o foco
-    valorInput.addEventListener('blur', function(e) {
-        aplicarMascaraMoeda(this);
-        
-        // Se o campo está vazio, coloca 0,00
-        if (this.value === '') {
-            this.value = '0,00';
-        }
-    });
-    
-    // Aplicar máscara quando o campo ganha foco
-    valorInput.addEventListener('focus', function(e) {
-        // Se o valor é 0,00, limpa o campo
-        if (this.value === '0,00') {
-            this.value = '';
-        }
-    });
-    
-    // Aplicar máscara no valor inicial se existir
-    if (valorInput.value) {
-        aplicarMascaraMoeda(valorInput);
+  }
+
+  if (categoriaSelect) {
+    atualizarCampoProjeto();
+    categoriaSelect.addEventListener('change', atualizarCampoProjeto);
+  }
+  if (tipoSelect) {
+    tipoSelect.addEventListener('change', function(){ filtrarCategorias(this.value); });
+    {% if not lancamento %}if (tipoSelect.value) filtrarCategorias(tipoSelect.value);{% endif %}
+  }
+
+  const valorInput = document.getElementById('valor');
+  function formatarMoeda(valor) {
+    valor = valor.replace(/\D/g, '');
+    if (valor === '') return '';
+    valor = (parseInt(valor) / 100).toFixed(2).replace('.', ',');
+    return valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+  }
+  function aplicarMascaraMoeda(input) {
+    const original = input.value;
+    const formatado = formatarMoeda(original);
+    if (original !== formatado) {
+      const posicao = input.selectionStart || 0;
+      input.value = formatado;
+      const nova = Math.max(0, posicao + formatado.length - original.length);
+      try { input.setSelectionRange(nova, nova); } catch (e) {}
     }
-    
-    // Melhorar experiência para lançamentos múltiplos
-    // Se existe mensagem de sucesso, focar no campo de data para próximo lançamento
-    setTimeout(function() {
-        const successAlert = document.querySelector('.alert-success');
-        if (successAlert) {
-            const dataInput = document.getElementById('data');
-            if (dataInput && !dataInput.disabled) {
-                dataInput.focus();
-            }
-        }
-    }, 800);
-});
-</script>
-<script>
-// Garantir que o botão dispare o submit mesmo se algum script externo falhar
-document.addEventListener('DOMContentLoaded', function() {
-    const btn = document.getElementById('btn-submit-lancamento');
-    const form = document.getElementById('form-lancamento');
-    if (btn && form) {
-        btn.addEventListener('click', function(e) {
-            // Se o navegador suportar, usar requestSubmit para respeitar validações HTML5
-            if (typeof form.requestSubmit === 'function') {
-                e.preventDefault();
-                form.requestSubmit();
-            } else {
-                // Fallback
-                form.submit();
-            }
-        });
-    }
+  }
+  if (valorInput) {
+    valorInput.addEventListener('input', function(){ aplicarMascaraMoeda(this); });
+    valorInput.addEventListener('blur', function(){ aplicarMascaraMoeda(this); if (this.value === '') this.value = '0,00'; });
+    valorInput.addEventListener('focus', function(){ if (this.value === '0,00') this.value = ''; });
+    if (valorInput.value) aplicarMascaraMoeda(valorInput);
+  }
+
+  setTimeout(function() {
+    const successAlert = document.querySelector('.alert-success');
+    const data = document.getElementById('data');
+    if (successAlert && data && !data.disabled) data.focus();
+  }, 800);
+
+  const btn = document.getElementById('btn-submit-lancamento');
+  const form = document.getElementById('form-lancamento');
+  if (btn && form) {
+    btn.addEventListener('click', function(e) {
+      if (typeof form.requestSubmit === 'function') { e.preventDefault(); form.requestSubmit(); }
+    });
+  }
 });
 </script>
 {% endblock %}
