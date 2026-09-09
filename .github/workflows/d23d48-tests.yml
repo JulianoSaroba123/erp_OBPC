@@ -1,4 +1,4 @@
-name: D23D48 + D23D52 + D23D53 Financeiro Tests
+name: D23D48 + D23D52 + D23D53 + D23D54 Financeiro Tests
 
 on:
   pull_request:
@@ -15,6 +15,7 @@ on:
       - 'tests/test_d23d52_global_theme.py'
       - 'tests/test_d23d52_template_syntax.py'
       - 'tests/test_d23d53_relatorio_sede.py'
+      - 'tests/test_d23d54_relatorio_workspace.py'
       - '.github/workflows/d23d48-tests.yml'
   workflow_dispatch:
 
@@ -85,3 +86,6 @@ jobs:
 
       - name: D23D53 relatorio da sede
         run: python tests/test_d23d53_relatorio_sede.py
+
+      - name: D23D54 workspace de relatorios
+        run: python tests/test_d23d54_relatorio_workspace.py
