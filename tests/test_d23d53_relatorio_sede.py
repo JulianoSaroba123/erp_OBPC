@@ -102,7 +102,9 @@ class D23D53RelatorioSedeTest(unittest.TestCase):
             "Movimentações",
         ):
             self.assertIn(token, src)
-        self.assertIn("width: min(1160px", src)
+        self.assertIn("max-width: 1480px", src)
+        self.assertIn("overflow: visible", src)
+        self.assertNotIn("width: min(1160px", src)
 
     def test_toolbar_nao_aparece_no_pdf(self):
         src = TOOLBAR.read_text(encoding="utf-8")
