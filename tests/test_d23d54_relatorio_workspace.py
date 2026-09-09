@@ -33,11 +33,13 @@ class D23D54RelatorioWorkspaceTest(unittest.TestCase):
         self.assertIn("Relatório Oficial para a Sede", src)
         self.assertIn("Relatório de Auditoria", src)
 
-    def test_workspace_preview_usa_pdf_oficial_existente(self):
+    def test_workspace_abre_documento_sem_embutir_outro_shell(self):
         src = WORKSPACE.read_text(encoding="utf-8")
-        self.assertIn("financeiro.relatorio_pdf", src)
-        self.assertIn('class="report-preview-frame"', src)
-        self.assertIn("Pré-visualização do documento", src)
+        self.assertIn("financeiro.relatorio_sede_pdf", src)
+        self.assertIn("financeiro.relatorio_caixa_pdf", src)
+        self.assertIn("Abrir documento", src)
+        self.assertNotIn("<iframe", src)
+        self.assertNotIn("Pré-visualização do documento", src)
 
     def test_justificativa_sede_permanece_disponivel(self):
         src = WORKSPACE.read_text(encoding="utf-8")
