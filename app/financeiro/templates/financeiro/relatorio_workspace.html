@@ -10,6 +10,13 @@
 } %}
 {% set titulo_atual = titulos.get(tipo_relatorio, titulos['gerencial']) %}
 {% set meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'] %}
+{% if tipo_relatorio == 'sede' %}
+  {% set pdf_url = url_for('financeiro.relatorio_sede_pdf', mes=mes, ano=ano) %}
+{% elif tipo_relatorio == 'gerencial' %}
+  {% set pdf_url = url_for('financeiro.relatorio_caixa_pdf', mes=mes, ano=ano) %}
+{% else %}
+  {% set pdf_url = url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) %}
+{% endif %}
 
 <div class="obpc-page report-page-d23d54">
   <header class="obpc-page-header">
@@ -21,7 +28,7 @@
       <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary">
         <i class="fas fa-list"></i> Movimentações
       </a>
-      <a href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener" class="obpc-btn obpc-btn-primary">
+      <a href="{{ pdf_url }}" target="_blank" rel="noopener" class="obpc-btn obpc-btn-primary">
         <i class="fas fa-file-pdf"></i> Abrir PDF
       </a>
     </div>
@@ -120,23 +127,18 @@
   {% endif %}
 
   <section class="obpc-section">
-    <div class="obpc-card report-preview-card">
-      <div class="obpc-card-header">
-        <div>
-          <h2 class="obpc-section-title"><i class="fas fa-eye"></i> Pré-visualização do documento</h2>
-          <p class="obpc-text-muted mb-0">O quadro abaixo mostra o PDF oficial gerado com os dados da competência selecionada.</p>
+    <div class="obpc-card report-document-card">
+      <div class="obpc-card-body report-document-body">
+        <div class="report-document-icon"><i class="fas fa-file-pdf"></i></div>
+        <div class="report-document-copy">
+          <h2 class="obpc-section-title">Documento da competência {{ '%02d'|format(mes) }}/{{ ano }}</h2>
+          <p class="obpc-text-muted mb-0">Abra o documento em uma nova aba para consultar, imprimir ou salvar. A tela do ERP permanece limpa e sem navegação duplicada.</p>
         </div>
-        <a href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener" class="obpc-btn obpc-btn-secondary obpc-btn--sm">
-          <i class="fas fa-up-right-from-square"></i> Tela cheia
-        </a>
-      </div>
-      <div class="report-preview-frame-wrap">
-        <iframe
-          class="report-preview-frame"
-          src="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}"
-          title="Pré-visualização do {{ titulo_atual[0] }}"
-          loading="lazy"
-        ></iframe>
+        <div class="report-document-actions">
+          <a href="{{ pdf_url }}" target="_blank" rel="noopener" class="obpc-btn obpc-btn-primary">
+            <i class="fas fa-up-right-from-square"></i> Abrir documento
+          </a>
+        </div>
       </div>
     </div>
   </section>
@@ -191,27 +193,38 @@
   .report-note-textarea { width: 100%; min-height: 118px; resize: vertical; line-height: 1.5; }
   .report-note-actions { justify-content: flex-start; margin-top: 12px; }
   .report-note-help { margin: 10px 0 0; font-size: 12px; }
-  .report-preview-card { overflow: hidden; }
-  .report-preview-frame-wrap { background: #eef4fa; border-top: 1px solid #dbe3ec; padding: 14px; }
-  .report-preview-frame {
-    display: block;
-    width: 100%;
-    height: 860px;
-    border: 1px solid #cbd5e1;
-    border-radius: 12px;
-    background: #fff;
+  .report-document-card { border-top: 3px solid #2563eb; }
+  .report-document-body {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 16px;
+    align-items: center;
   }
+  .report-document-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 20px;
+  }
+  .report-document-actions { display: flex; justify-content: flex-end; }
   @media (max-width: 980px) {
     .report-type-grid { grid-template-columns: 1fr; }
     .report-period-bar { grid-template-columns: 1fr 1fr; }
     .report-period-action { grid-column: 1 / -1; }
     .report-period-action .obpc-btn { width: 100%; }
-    .report-preview-frame { height: 720px; }
+    .report-document-body { grid-template-columns: auto 1fr; }
+    .report-document-actions { grid-column: 1 / -1; justify-content: stretch; }
+    .report-document-actions .obpc-btn { width: 100%; }
   }
   @media (max-width: 640px) {
     .report-period-bar { grid-template-columns: 1fr; }
-    .report-preview-frame-wrap { padding: 8px; }
-    .report-preview-frame { height: 620px; }
+    .report-document-body { grid-template-columns: 1fr; }
+    .report-document-icon { margin-bottom: 2px; }
   }
 </style>
 {% endblock %}
