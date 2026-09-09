@@ -2,6 +2,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from jinja2 import Environment, TemplateSyntaxError
+
 from app.financeiro.relatorio_sede_d23d53 import (
     RELATORIO_SEDE_TEMPLATE,
     classificar_despesas_fixas_d23d53,
@@ -10,7 +12,9 @@ from app.financeiro.relatorio_sede_d23d53 import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TOOLBAR = ROOT / "app" / "financeiro" / "templates" / "financeiro" / "_relatorio_toolbar.html"
+TEMPLATES = ROOT / "app" / "financeiro" / "templates" / "financeiro"
+TOOLBAR = TEMPLATES / "_relatorio_toolbar.html"
+RELATORIO_SEDE = TEMPLATES / "relatorio_sede.html"
 ADAPTER = ROOT / "app" / "financeiro" / "relatorio_sede_d23d53.py"
 
 
@@ -96,6 +100,16 @@ class D23D53RelatorioSedeTest(unittest.TestCase):
         src = TOOLBAR.read_text(encoding="utf-8")
         self.assertTrue(src.lstrip().startswith("{% if not modo_pdf %}"))
         self.assertTrue(src.rstrip().endswith("{% endif %}"))
+
+    def test_templates_relatorio_parseiam(self):
+        env = Environment()
+        failures = []
+        for path in (TOOLBAR, RELATORIO_SEDE):
+            try:
+                env.parse(path.read_text(encoding="utf-8-sig"))
+            except TemplateSyntaxError as exc:
+                failures.append(f"{path.name}:{exc.lineno}: {exc.message}")
+        self.assertEqual([], failures, "\n".join(failures))
 
 
 if __name__ == "__main__":
