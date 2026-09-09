@@ -9,6 +9,8 @@ FILES = {
     "projetos": TEMPLATES / "lista_projetos.html",
     "destinacoes": TEMPLATES / "caixa_destinacoes.html",
     "conciliacao": TEMPLATES / "conciliacao.html",
+    "conciliacao_moderno": TEMPLATES / "conciliacao_moderno.html",
+    "repasse": TEMPLATES / "gerenciar_despesas_fixas.html",
     "recibos": TEMPLATES / "lista_recibos.html",
 }
 
@@ -27,7 +29,7 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
                 self.assertIn('obpc-page-subtitle', src)
 
     def test_kpis_usam_mesmo_componente_de_membros(self):
-        for name in ("movimentacoes", "projetos", "destinacoes", "conciliacao", "recibos"):
+        for name in FILES:
             self.assertIn("obpc-ops", self.src[name])
             self.assertIn("obpc-ops__label", self.src[name])
             self.assertIn("obpc-ops__value", self.src[name])
@@ -36,7 +38,7 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         for name, src in self.src.items():
             with self.subTest(name=name):
                 self.assertIn("obpc-card", src)
-        for name in ("movimentacoes", "destinacoes", "conciliacao", "recibos"):
+        for name in ("movimentacoes", "destinacoes", "conciliacao", "conciliacao_moderno", "repasse", "recibos"):
             self.assertIn("obpc-table", self.src[name])
 
     def test_filtros_usam_filter_bar_quando_aplicavel(self):
@@ -58,16 +60,30 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         for token in ("financeiro.novo_projeto", "financeiro.editar_projeto", "financeiro.excluir_projeto"):
             self.assertIn(token, projetos)
 
-        conciliacao = self.src["conciliacao"]
+        for name in ("conciliacao", "conciliacao_moderno"):
+            conciliacao = self.src[name]
+            for token in (
+                "financeiro.conciliacao_auto",
+                "financeiro.conciliacao_sugerir",
+                "financeiro.conciliacao_aceitar",
+                "financeiro.conciliacao_aceitar_todos",
+                "financeiro.conciliacao_export_pairs",
+                "financeiro.conciliacao_undo",
+            ):
+                self.assertIn(token, conciliacao)
+
+        repasse = self.src["repasse"]
         for token in (
-            "financeiro.conciliacao_auto",
-            "financeiro.conciliacao_sugerir",
-            "financeiro.conciliacao_aceitar",
-            "financeiro.conciliacao_aceitar_todos",
-            "financeiro.conciliacao_export_pairs",
-            "financeiro.conciliacao_undo",
+            "financeiro.envio_sede",
+            "financeiro.gerenciar_despesas_fixas",
+            "financeiro.gerar_lancamentos_despesas_fixas",
+            "financeiro.gerar_lancamento_administrativo",
+            "financeiro.toggle_despesa_fixa",
+            "form_pagamento_composto",
+            "alocacao_obrigacao_id[]",
+            "pagamento_historico_sem_movimentacao",
         ):
-            self.assertIn(token, conciliacao)
+            self.assertIn(token, repasse)
 
         recibos = self.src["recibos"]
         for token in (
