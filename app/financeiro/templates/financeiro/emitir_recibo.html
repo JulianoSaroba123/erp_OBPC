@@ -1,283 +1,74 @@
 {% extends "base.html" %}
 
-{% block title %}Emitir Recibo - Sistema Financeiro{% endblock %}
+{% block title %}Emitir Recibo - OBPC{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">
-                        <i class="fas fa-receipt me-2"></i>
-                        Emitir Recibo de Pagamento
-                    </h4>
-                </div>
-                <div class="card-body">
-                    <form method="POST" id="formRecibo">
-                        <div class="row">
-                            <!-- Dados do Doador -->
-                            <div class="col-md-12">
-                                <h5 class="text-primary mb-3">
-                                    <i class="fas fa-user me-2"></i>
-                                    Dados do Recebedor
-                                </h5>
-                            </div>
-                            
-                            <div class="col-md-8 mb-3">
-                                <label for="nome_doador" class="form-label">
-                                    Nome Completo <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="nome_doador" 
-                                       name="nome_doador" 
-                                       value="{{ dados.nome_doador or '' }}"
-                                       required>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="cpf_cnpj" class="form-label">
-                                    CPF/CNPJ
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="cpf_cnpj" 
-                                       name="cpf_cnpj" 
-                                       value="{{ dados.cpf_cnpj or '' }}"
-                                       placeholder="000.000.000-00">
-                            </div>
-                        </div>
-                        
-                        <!-- Dados do Pagamento -->
-                        <div class="row mt-3">
-                            <div class="col-md-12">
-                                <h5 class="text-primary mb-3">
-                                    <i class="fas fa-hand-holding-usd me-2"></i>
-                                    Dados do Pagamento
-                                </h5>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="numero_recibo" class="form-label">
-                                    Número do Recibo
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="numero_recibo" 
-                                       name="numero_recibo" 
-                                       value="{{ dados.numero_recibo or '' }}"
-                                       placeholder="Gerado automaticamente">
-                                <small class="text-muted">Deixe em branco para gerar automaticamente</small>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="valor" class="form-label">
-                                    Valor (R$) <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="valor" 
-                                       name="valor" 
-                                       value="{{ dados.valor or '' }}"
-                                       placeholder="0,00"
-                                       required>
-                            </div>
-                            
-                            <div class="col-md-4 mb-3">
-                                <label for="data_doacao" class="form-label">
-                                    Data da Doação <span class="text-danger">*</span>
-                                </label>
-                                <input type="date" 
-                                       class="form-control" 
-                                       id="data_doacao" 
-                                       name="data_doacao" 
-                                       value="{{ dados.data_doacao or '' }}"
-                                       required>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="tipo_doacao" class="form-label">
-                                    Referente a <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="tipo_doacao" 
-                                       name="tipo_doacao" 
-                                       value="{{ dados.tipo_doacao or 'Oferta' }}"
-                                       list="lista_tipos_doacao"
-                                       placeholder="Digite ou selecione"
-                                       required>
-                                <datalist id="lista_tipos_doacao">
-                                    <option value="Oferta">
-                                    <option value="Dízimo">
-                                    <option value="Oferta Missionária">
-                                    <option value="Doação para Projeto">
-                                    <option value="Contribuição">
-                                    <option value="Outros">
-                                </datalist>
-                                <small class="text-muted">Digite livremente ou selecione da lista</small>
-                            </div>
-                            
-                            <div class="col-md-6 mb-3">
-                                <label for="forma_pagamento" class="form-label">
-                                    Forma de Pagamento <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="forma_pagamento" 
-                                       name="forma_pagamento" 
-                                       value="{{ dados.forma_pagamento or 'Dinheiro' }}"
-                                       list="lista_formas_pagamento"
-                                       placeholder="Digite ou selecione"
-                                       required>
-                                <datalist id="lista_formas_pagamento">
-                                    <option value="Dinheiro">
-                                    <option value="PIX">
-                                    <option value="Transferência Bancária">
-                                    <option value="Cartão de Débito">
-                                    <option value="Cartão de Crédito">
-                                    <option value="Cheque">
-                                </datalist>
-                                <small class="text-muted">Digite livremente ou selecione da lista</small>
-                            </div>
-                            
-                            <div class="col-md-12 mb-3">
-                                <label for="observacoes" class="form-label">
-                                    Observações
-                                </label>
-                                <textarea class="form-control" 
-                                          id="observacoes" 
-                                          name="observacoes" 
-                                          rows="3"
-                                          placeholder="Informações adicionais sobre o pagamento">{{ dados.observacoes or '' }}</textarea>
-                            </div>
-                        </div>
-                        
-                        <!-- Botões de Ação -->
-                        <div class="row mt-4">
-                            <div class="col-md-12">
-                                <hr>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">
-                                        <i class="fas fa-arrow-left me-2"></i>
-                                        Voltar
-                                    </a>
-                                    <a href="{{ url_for('financeiro.lista_recibos') }}" class="btn btn-info">
-                                        <i class="fas fa-list me-2"></i>
-                                        Ver Recibos Emitidos
-                                    </a>
-                                    <button type="submit" class="btn btn-primary btn-lg">
-                                        <i class="fas fa-file-pdf me-2"></i>
-                                        Gerar Recibo (PDF)
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-            
-            <!-- Card Informativo -->
-            <div class="card shadow-sm mt-3">
-                <div class="card-body">
-                    <h6 class="text-primary">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Informações
-                    </h6>
-                    <ul class="mb-0">
-                        <li>O recibo será gerado em formato PDF pronto para impressão</li>
-                        <li>Campos marcados com <span class="text-danger">*</span> são obrigatórios</li>
-                        <li>O número do recibo será gerado automaticamente se não informado</li>
-                        <li>O recibo contém as informações da igreja cadastradas no sistema</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
+<div class="obpc-page">
+  <header class="obpc-page-header">
+    <div>
+      <h1 class="obpc-page-title"><i class="fas fa-receipt"></i> Emitir Recibo</h1>
+      <p class="obpc-page-subtitle">Gere um recibo de pagamento em PDF com os dados da igreja.</p>
     </div>
+    <div class="obpc-page-actions">
+      <a href="{{ url_for('financeiro.lista_recibos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-list"></i> Recibos Emitidos</a>
+      <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-arrow-left"></i> Movimentações</a>
+    </div>
+  </header>
+
+  <section class="obpc-section">
+    <div class="row g-3">
+      <div class="col-12 col-xl-9">
+        <div class="obpc-card">
+          <div class="obpc-card-header"><div><h2 class="obpc-section-title">Dados do Recibo</h2><p class="obpc-text-muted mb-0">Preencha os dados do recebedor e do pagamento.</p></div><span class="obpc-badge obpc-badge--primary">PDF</span></div>
+          <div class="obpc-card-body">
+            <form method="POST" id="formRecibo" class="obpc-form">
+              <div class="obpc-card mb-3">
+                <div class="obpc-card-header"><h3 class="obpc-section-title"><i class="fas fa-user"></i> Dados do Recebedor</h3></div>
+                <div class="obpc-card-body"><div class="row g-3">
+                  <div class="col-12 col-md-8"><label for="nome_doador" class="obpc-label">Nome Completo *</label><input type="text" class="obpc-input" id="nome_doador" name="nome_doador" value="{{ dados.nome_doador or '' }}" required></div>
+                  <div class="col-12 col-md-4"><label for="cpf_cnpj" class="obpc-label">CPF/CNPJ</label><input type="text" class="obpc-input" id="cpf_cnpj" name="cpf_cnpj" value="{{ dados.cpf_cnpj or '' }}" placeholder="000.000.000-00"></div>
+                </div></div>
+              </div>
+
+              <div class="obpc-card">
+                <div class="obpc-card-header"><h3 class="obpc-section-title"><i class="fas fa-hand-holding-dollar"></i> Dados do Pagamento</h3></div>
+                <div class="obpc-card-body"><div class="row g-3">
+                  <div class="col-12 col-md-4"><label for="numero_recibo" class="obpc-label">Número do Recibo</label><input type="text" class="obpc-input" id="numero_recibo" name="numero_recibo" value="{{ dados.numero_recibo or '' }}" placeholder="Gerado automaticamente"><span class="obpc-help">Deixe em branco para gerar automaticamente.</span></div>
+                  <div class="col-12 col-md-4"><label for="valor" class="obpc-label">Valor (R$) *</label><input type="text" class="obpc-input" id="valor" name="valor" value="{{ dados.valor or '' }}" placeholder="0,00" required></div>
+                  <div class="col-12 col-md-4"><label for="data_doacao" class="obpc-label">Data da Doação *</label><input type="date" class="obpc-input" id="data_doacao" name="data_doacao" value="{{ dados.data_doacao or '' }}" required></div>
+                  <div class="col-12 col-md-6"><label for="tipo_doacao" class="obpc-label">Referente a *</label><input type="text" class="obpc-input" id="tipo_doacao" name="tipo_doacao" value="{{ dados.tipo_doacao or 'Oferta' }}" list="lista_tipos_doacao" placeholder="Digite ou selecione" required><datalist id="lista_tipos_doacao"><option value="Oferta"><option value="Dízimo"><option value="Oferta Missionária"><option value="Doação para Projeto"><option value="Contribuição"><option value="Outros"></datalist></div>
+                  <div class="col-12 col-md-6"><label for="forma_pagamento" class="obpc-label">Forma de Pagamento *</label><input type="text" class="obpc-input" id="forma_pagamento" name="forma_pagamento" value="{{ dados.forma_pagamento or 'Dinheiro' }}" list="lista_formas_pagamento" placeholder="Digite ou selecione" required><datalist id="lista_formas_pagamento"><option value="Dinheiro"><option value="PIX"><option value="Transferência Bancária"><option value="Cartão de Débito"><option value="Cartão de Crédito"><option value="Cheque"></datalist></div>
+                  <div class="col-12"><label for="observacoes" class="obpc-label">Observações</label><textarea class="obpc-textarea" id="observacoes" name="observacoes" rows="3" placeholder="Informações adicionais sobre o pagamento">{{ dados.observacoes or '' }}</textarea></div>
+                </div></div>
+              </div>
+
+              <div class="obpc-table-actions justify-content-end mt-3"><a href="{{ url_for('financeiro.lista_recibos') }}" class="obpc-btn obpc-btn-secondary">Cancelar</a><button type="submit" class="obpc-btn obpc-btn-primary"><i class="fas fa-file-pdf"></i> Gerar Recibo PDF</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-3">
+        <div class="obpc-card h-100">
+          <div class="obpc-card-header"><h2 class="obpc-section-title">Informações</h2></div>
+          <div class="obpc-card-body">
+            <div class="obpc-alert obpc-alert-info mb-3"><i class="fas fa-circle-info"></i><div class="small">O recibo será gerado em PDF pronto para impressão.</div></div>
+            <ul class="small obpc-text-muted ps-3 mb-0"><li>Campos com * são obrigatórios.</li><li>O número pode ser gerado automaticamente.</li><li>Os dados da igreja vêm do cadastro do sistema.</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 
-<!-- Script para formatação de valores -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Formatação de valor monetário
-    const valorInput = document.getElementById('valor');
-    
-    valorInput.addEventListener('input', function(e) {
-        let value = e.target.value;
-        value = value.replace(/\D/g, '');
-        value = (value / 100).toFixed(2);
-        value = value.replace('.', ',');
-        e.target.value = value;
-    });
-    
-    // Máscara para CPF/CNPJ
-    const cpfCnpjInput = document.getElementById('cpf_cnpj');
-    
-    cpfCnpjInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        
-        if (value.length <= 11) {
-            // CPF: 000.000.000-00
-            value = value.replace(/(\d{3})(\d)/, '$1.$2');
-            value = value.replace(/(\d{3})(\d)/, '$1.$2');
-            value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        } else {
-            // CNPJ: 00.000.000/0000-00
-            value = value.replace(/^(\d{2})(\d)/, '$1.$2');
-            value = value.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
-            value = value.replace(/\.(\d{3})(\d)/, '.$1/$2');
-            value = value.replace(/(\d{4})(\d)/, '$1-$2');
-        }
-        
-        e.target.value = value;
-    });
-    
-    // Validação do formulário
-    const form = document.getElementById('formRecibo');
-    
-    form.addEventListener('submit', function(e) {
-        const valor = parseFloat(valorInput.value.replace(',', '.'));
-        
-        if (isNaN(valor) || valor <= 0) {
-            e.preventDefault();
-            alert('Por favor, informe um valor válido maior que zero.');
-            valorInput.focus();
-            return false;
-        }
-    });
+  const valorInput = document.getElementById('valor');
+  if (valorInput) valorInput.addEventListener('input', function(e){ let value=e.target.value.replace(/\D/g,''); value=(value/100).toFixed(2).replace('.',','); e.target.value=value; });
+  const cpfCnpjInput = document.getElementById('cpf_cnpj');
+  if (cpfCnpjInput) cpfCnpjInput.addEventListener('input', function(e){ let value=e.target.value.replace(/\D/g,''); if(value.length<=11){ value=value.replace(/(\d{3})(\d)/,'$1.$2'); value=value.replace(/(\d{3})(\d)/,'$1.$2'); value=value.replace(/(\d{3})(\d{1,2})$/,'$1-$2'); } else { value=value.replace(/^(\d{2})(\d)/,'$1.$2'); value=value.replace(/^(\d{2})\.(\d{3})(\d)/,'$1.$2.$3'); value=value.replace(/\.(\d{3})(\d)/,'.$1/$2'); value=value.replace(/(\d{4})(\d)/,'$1-$2'); } e.target.value=value; });
+  const form=document.getElementById('formRecibo');
+  if(form && valorInput) form.addEventListener('submit', function(e){ const valor=parseFloat(valorInput.value.replace(',','.')); if(isNaN(valor)||valor<=0){e.preventDefault();alert('Por favor, informe um valor válido maior que zero.');valorInput.focus();return false;} });
 });
 </script>
-
-<style>
-.card {
-    border-radius: 10px;
-    border: none;
-}
-
-.card-header {
-    border-radius: 10px 10px 0 0 !important;
-}
-
-.form-label {
-    font-weight: 500;
-    color: #495057;
-}
-
-.form-control:focus,
-.form-select:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
-}
-
-.btn {
-    padding: 10px 20px;
-    font-weight: 500;
-    border-radius: 5px;
-}
-
-.text-danger {
-    color: #dc3545 !important;
-}
-</style>
 {% endblock %}

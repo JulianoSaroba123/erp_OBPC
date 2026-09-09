@@ -3,279 +3,173 @@
 {% block title %}Relatório Financeiro - OBPC{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Cabeçalho para impressão -->
-    <div class="d-print-block text-center mb-4">
-        <h2>OBPC - Tietê/SP</h2>
-        <h4>Relatório Financeiro</h4>
-        <p class="text-muted">Gerado em: {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
-    </div>
+<div class="obpc-page">
+  <div class="d-print-block text-center mb-4">
+    <h2>OBPC - Tietê/SP</h2>
+    <h4>Relatório Financeiro</h4>
+    <p class="text-muted">Gerado em: {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
+  </div>
 
-    <!-- Controles (não imprime) -->
-    <div class="d-print-none mb-4">
-        <div class="d-flex justify-content-between align-items-center">
-            <h2><i class="fas fa-file-pdf text-primary me-2"></i>Relatório Financeiro</h2>
-            <div>
-                <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary me-2">
-                    <i class="fas fa-arrow-left"></i> Voltar
-                </a>
-                <button onclick="window.print()" class="btn btn-primary">
-                    <i class="fas fa-print"></i> Imprimir / Salvar PDF
-                </button>
-            </div>
-        </div>
+  <header class="obpc-page-header d-print-none">
+    <div>
+      <h1 class="obpc-page-title"><i class="fas fa-file-alt"></i> Relatório Financeiro</h1>
+      <p class="obpc-page-subtitle">Resumo, detalhamento e distribuição por categoria dos lançamentos financeiros.</p>
     </div>
+    <div class="obpc-page-actions">
+      <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+      <button type="button" onclick="window.print()" class="obpc-btn obpc-btn-primary"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>
+    </div>
+  </header>
 
-    <!-- Resumo Financeiro -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card border-success">
-                <div class="card-body text-center">
-                    <h5 class="text-success">Total de Entradas</h5>
-                    <h3 class="text-success">R$ {{ "%.2f"|format(totais.entradas)|replace(".", ",") }}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-danger">
-                <div class="card-body text-center">
-                    <h5 class="text-danger">Total de Saídas</h5>
-                    <h3 class="text-danger">R$ {{ "%.2f"|format(totais.saidas)|replace(".", ",") }}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %}">
-                <div class="card-body text-center">
-                    <h5 class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %}">Saldo Atual</h5>
-                    <h3 class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %}">R$ {{ "%.2f"|format(totais.saldo)|replace(".", ",") }}</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card border-info">
-                <div class="card-body text-center">
-                    <h5 class="text-info">Total de Registros</h5>
-                    <h3 class="text-info">{{ lancamentos|length }}</h3>
-                </div>
-            </div>
-        </div>
+  <section class="obpc-section">
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-3">
+        <article class="obpc-ops">
+          <div class="obpc-ops__head"><p class="obpc-ops__label">Entradas</p><span class="obpc-badge obpc-badge--success"><i class="fas fa-arrow-up"></i></span></div>
+          <p class="obpc-ops__value">R$ {{ "%.2f"|format(totais.entradas)|replace(".", ",") }}</p>
+          <p class="obpc-ops__description">Total de receitas do relatório.</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <article class="obpc-ops">
+          <div class="obpc-ops__head"><p class="obpc-ops__label">Saídas</p><span class="obpc-badge obpc-badge--danger"><i class="fas fa-arrow-down"></i></span></div>
+          <p class="obpc-ops__value">R$ {{ "%.2f"|format(totais.saidas)|replace(".", ",") }}</p>
+          <p class="obpc-ops__description">Total de despesas do relatório.</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <article class="obpc-ops">
+          <div class="obpc-ops__head"><p class="obpc-ops__label">Saldo</p><span class="obpc-badge {% if totais.saldo >= 0 %}obpc-badge--success{% else %}obpc-badge--warning{% endif %}"><i class="fas fa-wallet"></i></span></div>
+          <p class="obpc-ops__value">R$ {{ "%.2f"|format(totais.saldo)|replace(".", ",") }}</p>
+          <p class="obpc-ops__description">Entradas menos saídas.</p>
+        </article>
+      </div>
+      <div class="col-12 col-md-6 col-xl-3">
+        <article class="obpc-ops">
+          <div class="obpc-ops__head"><p class="obpc-ops__label">Registros</p><span class="obpc-badge obpc-badge--info"><i class="fas fa-list"></i></span></div>
+          <p class="obpc-ops__value">{{ lancamentos|length }}</p>
+          <p class="obpc-ops__description">Lançamentos considerados.</p>
+        </article>
+      </div>
     </div>
+  </section>
 
-    <!-- Detalhamento dos Lançamentos -->
-    {% if lancamentos %}
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-list-ul text-info me-2"></i>
-                Detalhamento dos Lançamentos
-            </h5>
+  {% if lancamentos %}
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header">
+        <div>
+          <h2 class="obpc-section-title"><i class="fas fa-list-ul me-2"></i>Detalhamento dos Lançamentos</h2>
+          <p class="obpc-section-subtitle">Movimentações que compõem os totais acima.</p>
         </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped table-bordered">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Data</th>
-                            <th>Tipo</th>
-                            <th>Categoria</th>
-                            <th>Descrição</th>
-                            <th>Valor</th>
-                            <th>Conta</th>
-                            <th>Observações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for lancamento in lancamentos %}
-                        <tr>
-                            <td>{{ lancamento.data.strftime('%d/%m/%Y') }}</td>
-                            <td class="text-{% if lancamento.tipo == 'Entrada' %}success{% else %}danger{% endif %}">
-                                {{ lancamento.tipo }}
-                            </td>
-                            <td>{{ lancamento.categoria or '-' }}</td>
-                            <td>{{ lancamento.descricao or '-' }}</td>
-                            <td class="text-{% if lancamento.tipo == 'Entrada' %}success{% else %}danger{% endif %} fw-bold text-end">
-                                {{ lancamento.valor_formatado }}
-                            </td>
-                            <td>{{ lancamento.conta }}</td>
-                            <td>
-                                {% if lancamento.observacoes and lancamento.observacoes != 'None' and lancamento.observacoes.strip() %}
-                                    {{ lancamento.observacoes }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                    <tfoot class="table-light">
-                        <tr>
-                            <td colspan="7" class="p-3">
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <div class="card border-success h-100">
-                                            <div class="card-body text-center py-2">
-                                                <small class="text-muted d-block">Entradas</small>
-                                                <h5 class="text-success mb-0">R$ {{ "%.2f"|format(totais.entradas)|replace(".", ",") }}</h5>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="card border-danger h-100">
-                                            <div class="card-body text-center py-2">
-                                                <small class="text-muted d-block">Saídas</small>
-                                                <h5 class="text-danger mb-0">R$ {{ "%.2f"|format(totais.saidas)|replace(".", ",") }}</h5>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="card border-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %} h-100">
-                                            <div class="card-body text-center py-2">
-                                                <small class="text-muted d-block">Saldo</small>
-                                                <h5 class="text-{% if totais.saldo >= 0 %}success{% else %}warning{% endif %} mb-0">
-                                                    R$ {{ "%.2f"|format(totais.saldo)|replace(".", ",") }}
-                                                </h5>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+      </div>
+      <div class="obpc-card-body">
+        <div class="obpc-table-wrap">
+          <table class="obpc-table">
+            <thead class="obpc-table-header">
+              <tr>
+                <th>Data</th><th>Tipo</th><th>Categoria</th><th>Descrição</th><th class="text-end">Valor</th><th>Conta</th><th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for lancamento in lancamentos %}
+              <tr>
+                <td>{{ lancamento.data.strftime('%d/%m/%Y') }}</td>
+                <td><span class="obpc-badge {% if lancamento.tipo == 'Entrada' %}obpc-badge--success{% else %}obpc-badge--danger{% endif %}">{{ lancamento.tipo }}</span></td>
+                <td>{{ lancamento.categoria or '-' }}</td>
+                <td>{{ lancamento.descricao or '-' }}</td>
+                <td class="text-end {% if lancamento.tipo == 'Entrada' %}obpc-text-success{% else %}obpc-text-danger{% endif %}"><strong>{{ lancamento.valor_formatado }}</strong></td>
+                <td>{{ lancamento.conta }}</td>
+                <td>{% if lancamento.observacoes and lancamento.observacoes != 'None' and lancamento.observacoes.strip() %}{{ lancamento.observacoes }}{% else %}-{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
+      </div>
     </div>
+  </section>
 
-    <!-- Resumo por Categoria -->
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-success text-white">
-                    <h6 class="mb-0">Entradas por Categoria</h6>
-                </div>
-                <div class="card-body">
-                    {% set entradas_por_categoria = {} %}
-                    {% for lancamento in lancamentos %}
-                        {% if lancamento.tipo == 'Entrada' %}
-                            {% set categoria = lancamento.categoria or 'Sem Categoria' %}
-                            {% if categoria in entradas_por_categoria %}
-                                {% set _ = entradas_por_categoria.update({categoria: entradas_por_categoria[categoria] + lancamento.valor}) %}
-                            {% else %}
-                                {% set _ = entradas_por_categoria.update({categoria: lancamento.valor}) %}
-                            {% endif %}
-                        {% endif %}
-                    {% endfor %}
-                    
-                    {% if entradas_por_categoria %}
-                        <table class="table table-sm">
-                            {% for categoria, valor in entradas_por_categoria.items() %}
-                            <tr>
-                                <td>{{ categoria }}</td>
-                                <td class="text-end text-success fw-bold">R$ {{ "%.2f"|format(valor)|replace(".", ",") }}</td>
-                            </tr>
-                            {% endfor %}
-                        </table>
-                    {% else %}
-                        <p class="text-muted">Nenhuma entrada registrada</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-danger text-white">
-                    <h6 class="mb-0">Saídas por Categoria</h6>
-                </div>
-                <div class="card-body">
-                    {% set saidas_por_categoria = {} %}
-                    {% for lancamento in lancamentos %}
-                        {% if lancamento.tipo == 'Saída' %}
-                            {% set categoria = lancamento.categoria or 'Sem Categoria' %}
-                            {% if categoria in saidas_por_categoria %}
-                                {% set _ = saidas_por_categoria.update({categoria: saidas_por_categoria[categoria] + lancamento.valor}) %}
-                            {% else %}
-                                {% set _ = saidas_por_categoria.update({categoria: lancamento.valor}) %}
-                            {% endif %}
-                        {% endif %}
-                    {% endfor %}
-                    
-                    {% if saidas_por_categoria %}
-                        <table class="table table-sm">
-                            {% for categoria, valor in saidas_por_categoria.items() %}
-                            <tr>
-                                <td>{{ categoria }}</td>
-                                <td class="text-end text-danger fw-bold">R$ {{ "%.2f"|format(valor)|replace(".", ",") }}</td>
-                            </tr>
-                            {% endfor %}
-                        </table>
-                    {% else %}
-                        <p class="text-muted">Nenhuma saída registrada</p>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <div class="card">
-        <div class="card-body text-center py-5">
-            <i class="fas fa-exclamation-triangle fa-4x text-warning mb-3"></i>
-            <h4 class="text-muted">Nenhum lançamento encontrado</h4>
-            <p class="text-muted">Não há dados para gerar o relatório.</p>
-        </div>
-    </div>
+  {% set entradas_por_categoria = {} %}
+  {% set saidas_por_categoria = {} %}
+  {% for lancamento in lancamentos %}
+    {% set categoria = lancamento.categoria or 'Sem Categoria' %}
+    {% if lancamento.tipo == 'Entrada' %}
+      {% if categoria in entradas_por_categoria %}
+        {% set _ = entradas_por_categoria.update({categoria: entradas_por_categoria[categoria] + lancamento.valor}) %}
+      {% else %}
+        {% set _ = entradas_por_categoria.update({categoria: lancamento.valor}) %}
+      {% endif %}
+    {% elif lancamento.tipo == 'Saída' %}
+      {% if categoria in saidas_por_categoria %}
+        {% set _ = saidas_por_categoria.update({categoria: saidas_por_categoria[categoria] + lancamento.valor}) %}
+      {% else %}
+        {% set _ = saidas_por_categoria.update({categoria: lancamento.valor}) %}
+      {% endif %}
     {% endif %}
+  {% endfor %}
 
-    <div class="card mt-4">
-        <div class="card-header bg-light">
-            <h6 class="mb-0">JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE</h6>
+  <section class="obpc-section">
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="obpc-card h-100">
+          <div class="obpc-card-header"><div><h2 class="obpc-section-title"><i class="fas fa-arrow-up me-2"></i>Entradas por Categoria</h2></div></div>
+          <div class="obpc-card-body">
+            {% if entradas_por_categoria %}
+            <div class="obpc-table-wrap"><table class="obpc-table" style="min-width:0"><tbody>
+              {% for categoria, valor in entradas_por_categoria.items() %}
+              <tr><td>{{ categoria }}</td><td class="text-end obpc-text-success"><strong>R$ {{ "%.2f"|format(valor)|replace(".", ",") }}</strong></td></tr>
+              {% endfor %}
+            </tbody></table></div>
+            {% else %}<div class="obpc-empty"><p class="obpc-empty-description">Nenhuma entrada registrada.</p></div>{% endif %}
+          </div>
         </div>
-        <div class="card-body">
-            <div style="white-space: pre-line;">{{ observacao_repasse_sede or '-' }}</div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="obpc-card h-100">
+          <div class="obpc-card-header"><div><h2 class="obpc-section-title"><i class="fas fa-arrow-down me-2"></i>Saídas por Categoria</h2></div></div>
+          <div class="obpc-card-body">
+            {% if saidas_por_categoria %}
+            <div class="obpc-table-wrap"><table class="obpc-table" style="min-width:0"><tbody>
+              {% for categoria, valor in saidas_por_categoria.items() %}
+              <tr><td>{{ categoria }}</td><td class="text-end obpc-text-danger"><strong>R$ {{ "%.2f"|format(valor)|replace(".", ",") }}</strong></td></tr>
+              {% endfor %}
+            </tbody></table></div>
+            {% else %}<div class="obpc-empty"><p class="obpc-empty-description">Nenhuma saída registrada.</p></div>{% endif %}
+          </div>
         </div>
+      </div>
     </div>
+  </section>
+  {% else %}
+  <section class="obpc-section">
+    <div class="obpc-card"><div class="obpc-card-body"><div class="obpc-empty"><i class="fas fa-inbox obpc-empty-icon"></i><h2 class="obpc-empty-title">Nenhum lançamento encontrado</h2><p class="obpc-empty-description">Não há dados para gerar o relatório.</p></div></div></div>
+  </section>
+  {% endif %}
 
-    <!-- Rodapé para impressão -->
-    <div class="d-print-block mt-5 text-center">
-        <hr>
-        <p class="text-muted small">
-            Relatório gerado pelo Sistema OBPC - {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}<br>
-            <strong>OBPC - O Brasil para Cristo - Tietê/SP</strong>
-        </p>
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header"><div><h2 class="obpc-section-title"><i class="fas fa-pen-to-square me-2"></i>Justificativa Contábil dos Repasses à Sede</h2></div></div>
+      <div class="obpc-card-body"><div style="white-space: pre-line;">{{ observacao_repasse_sede or '-' }}</div></div>
     </div>
+  </section>
+
+  <div class="d-print-block mt-5 text-center">
+    <hr>
+    <p class="text-muted small">Relatório gerado pelo Sistema OBPC - {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}<br><strong>OBPC - O Brasil para Cristo - Tietê/SP</strong></p>
+  </div>
 </div>
 
 <style>
 @media print {
-    .d-print-none {
-        display: none !important;
-    }
-    
-    .d-print-block {
-        display: block !important;
-    }
-    
-    .card {
-        border: 1px solid #000 !important;
-        break-inside: avoid;
-    }
-    
-    .table {
-        break-inside: avoid;
-    }
-    
-    body {
-        font-size: 12px;
-    }
-    
-    h2, h3, h4, h5, h6 {
-        color: #000 !important;
-    }
-    
-    .text-success, .text-danger, .text-warning, .text-info {
-        color: #000 !important;
-    }
+  .d-print-none { display: none !important; }
+  .d-print-block { display: block !important; }
+  .obpc-page { display: block !important; }
+  .obpc-section { margin-bottom: 16px; }
+  .obpc-card, .obpc-ops { box-shadow: none !important; border: 1px solid #000 !important; break-inside: avoid; }
+  .obpc-table { min-width: 0 !important; }
+  .obpc-table-wrap { overflow: visible !important; }
+  body { font-size: 12px; }
 }
 </style>
 {% endblock %}
