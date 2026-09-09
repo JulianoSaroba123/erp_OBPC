@@ -1,6 +1,6 @@
 """Inicialização do módulo de notificações.
 
-D23D50 instala o corretor read-only do dashboard somente quando o módulo
+D23D50 e D23D53 instalam adaptadores read-only somente quando o módulo
 financeiro já foi carregado pela aplicação, evitando import circular.
 """
 
@@ -8,7 +8,7 @@ import logging
 import sys
 
 
-def _instalar_d23d50_se_disponivel():
+def _instalar_adaptadores_financeiros_se_disponiveis():
     if "app.financeiro.financeiro_routes" not in sys.modules:
         return
 
@@ -19,5 +19,12 @@ def _instalar_d23d50_se_disponivel():
     except Exception:
         logging.getLogger(__name__).exception("D23D50: falha ao instalar correção do dashboard financeiro")
 
+    try:
+        from app.financeiro.relatorio_sede_d23d53 import instalar_correcao_relatorio_sede_d23d53
 
-_instalar_d23d50_se_disponivel()
+        instalar_correcao_relatorio_sede_d23d53()
+    except Exception:
+        logging.getLogger(__name__).exception("D23D53: falha ao instalar correção do relatório da Sede")
+
+
+_instalar_adaptadores_financeiros_se_disponiveis()
