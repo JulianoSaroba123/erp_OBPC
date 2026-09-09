@@ -1,205 +1,154 @@
 {% extends "base.html" %}
 
-{% block title %}Conciliação - Financeiro{% endblock %}
+{% block title %}Conciliação Bancária - OBPC{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0"><i class="fas fa-balance-scale me-2"></i>Conciliação de Extratos</h4>
-        </div>
-        <div class="card-body">
-            <p>Esta tela mostra lançamentos importados (origem='importado') e lançamentos do sistema (origem='manual') que ainda não foram conciliados.</p>
-
-            <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}">
-                <button class="btn btn-success me-2" type="submit">Conciliar Automaticamente</button>
-                <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="btn btn-secondary">Voltar</a>
-            </form>
-
-            <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}" class="mt-3">
-                <div class="row g-2 align-items-end">
-                    <div class="col-auto">
-                        <label class="form-label">Dias janela</label>
-                        <input type="number" name="days_window" value="{{ params.days_window if params else 2 }}" class="form-control form-control-sm" />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">Tolerância valor (%)</label>
-                        <input type="number" step="0.01" name="value_tol_pct" value="{{ params.value_tol_pct if params else 0.02 }}" class="form-control form-control-sm" />
-                    </div>
-                    <div class="col-auto">
-                        <label class="form-label">Descrição limiar</label>
-                        <input type="number" step="0.01" name="desc_thresh" value="{{ params.desc_thresh if params else 0.35 }}" class="form-control form-control-sm" />
-                    </div>
-                    <div class="col-auto">
-                        <button class="btn btn-primary btn-sm">Gerar Sugestões</button>
-                    </div>
-                </div>
-            </form>
-
-            <hr>
-            {% if historicos %}
-            <div class="mb-3">
-                <h5>Histórico de conciliações</h5>
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead><tr><th>ID</th><th>Data</th><th>Usuário</th><th>Conciliados</th><th>Pendentes</th><th>Observação</th><th></th></tr></thead>
-                        <tbody>
-                            {% for h in historicos %}
-                            <tr>
-                                <td>{{ h.id }}</td>
-                                <td>{{ h.data_conciliacao.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>{{ h.usuario }}</td>
-                                <td>{{ h.total_conciliados }}</td>
-                                <td>{{ h.total_pendentes }}</td>
-                                <td>{{ h.observacao }}</td>
-                                <td>
-                                    <form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" onsubmit="return confirm('Deseja realmente desfazer a conciliação #{{ h.id }}?')">
-                                        <button class="btn btn-sm btn-warning">Desfazer</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
-            <h5>Importados pendentes</h5>
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr><th>ID</th><th>Data</th><th>Descrição</th><th>Valor</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for l in importados %}
-                        <tr>
-                            <td>{{ l.id }}</td>
-                            <td>{{ l.data or '-' }}</td>
-                            <td>{{ l.descricao }}</td>
-                            <td>R$ {{ '%.2f'|format(l.valor) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            {% if sugestoes %}
-            <hr />
-            <h5>Sugestões de Conciliação</h5>
-            <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}">
-                <input type="hidden" name="pairs" id="pairs-field" />
-            </form>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                    <thead>
-                        <tr><th></th><th>Score</th><th>Imp ID</th><th>Man ID</th><th>Data Imp</th><th>Data Man</th><th>Valor Imp</th><th>Valor Man</th><th>Desc Imp</th><th>Desc Man</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                        {% for s in sugestoes %}
-                        <tr>
-                            <td><input type="checkbox" class="pair-checkbox" data-imp="{{ s.imp_id }}" data-man="{{ s.man_id }}" /></td>
-                            <td>{{ s.score }}</td>
-                            <td>{{ s.imp_id }}</td>
-                            <td>{{ s.man_id }}</td>
-                            <td>{{ s.imp.data or '-' }}</td>
-                            <td>{{ s.man.data or '-' }}</td>
-                            <td>R$ {{ '%.2f'|format(s.imp.valor) }}</td>
-                            <td>R$ {{ '%.2f'|format(s.man.valor) }}</td>
-                            <td>{{ s.imp.descricao }}</td>
-                            <td>{{ s.man.descricao }}</td>
-                            <td>
-                                <form method="post" action="{{ url_for('financeiro.conciliacao_aceitar') }}">
-                                    <input type="hidden" name="imp_id" value="{{ s.imp_id }}" />
-                                    <input type="hidden" name="man_id" value="{{ s.man_id }}" />
-                                    <button class="btn btn-sm btn-success">Aceitar</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-2">
-                <button id="aceitar-selecionados" class="btn btn-primary btn-sm">Aceitar selecionados</button>
-                <button id="exportar-selecionados" class="btn btn-outline-secondary btn-sm ms-2">Exportar selecionados (CSV)</button>
-            </div>
-                {% endif %}
-                <script>
-                    document.addEventListener('DOMContentLoaded', function(){
-                        const btn = document.getElementById('aceitar-selecionados');
-                        if(!btn) return;
-                        btn.addEventListener('click', function(e){
-                            e.preventDefault();
-                            const checkboxes = document.querySelectorAll('.pair-checkbox');
-                            const pairs = [];
-                            checkboxes.forEach(cb => {
-                                if(cb.checked){
-                                    pairs.push({imp_id: parseInt(cb.getAttribute('data-imp')), man_id: parseInt(cb.getAttribute('data-man'))});
-                                }
-                            });
-                            if(pairs.length === 0){
-                                alert('Selecione ao menos um par.');
-                                return;
-                            }
-                            // preencher campo hidden e submeter
-                            const field = document.getElementById('pairs-field');
-                            field.value = JSON.stringify(pairs);
-                            document.getElementById('aceitar-todos-form').submit();
-                        });
-                        // exportar selecionados
-                        const btnExport = document.getElementById('exportar-selecionados');
-                        if(btnExport){
-                            btnExport.addEventListener('click', function(e){
-                                e.preventDefault();
-                                const checkboxes = document.querySelectorAll('.pair-checkbox');
-                                const pairs = [];
-                                checkboxes.forEach(cb => {
-                                    if(cb.checked){
-                                        pairs.push({imp_id: parseInt(cb.getAttribute('data-imp')), man_id: parseInt(cb.getAttribute('data-man')), score: cb.closest('tr').querySelectorAll('td')[1].innerText});
-                                    }
-                                });
-                                if(pairs.length === 0){
-                                    alert('Selecione ao menos um par para exportar.');
-                                    return;
-                                }
-                                // criar form temporário para enviar e baixar CSV
-                                const form = document.createElement('form');
-                                form.method = 'post';
-                                form.action = "{{ url_for('financeiro.conciliacao_export_pairs') }}";
-                                form.style.display = 'none';
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = 'pairs';
-                                input.value = JSON.stringify(pairs);
-                                form.appendChild(input);
-                                document.body.appendChild(form);
-                                form.submit();
-                                document.body.removeChild(form);
-                            });
-                        }
-                    });
-                </script>
-
-
-            <h5 class="mt-4">Lançamentos do Sistema pendentes</h5>
-            <div class="table-responsive">
-                <table class="table table-sm">
-                    <thead>
-                        <tr><th>ID</th><th>Data</th><th>Descrição</th><th>Valor</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for l in manuais %}
-                        <tr>
-                            <td>{{ l.id }}</td>
-                            <td>{{ l.data or '-' }}</td>
-                            <td>{{ l.descricao }}</td>
-                            <td>R$ {{ '%.2f'|format(l.valor) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div class="obpc-page">
+  <header class="obpc-page-header">
+    <div>
+      <h1 class="obpc-page-title"><i class="fas fa-balance-scale"></i> Conciliação Bancária</h1>
+      <p class="obpc-page-subtitle">Compare extratos importados com lançamentos do sistema e trate as pendências.</p>
     </div>
+    <div class="obpc-page-actions">
+      <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-arrow-left"></i> Movimentações</a>
+      <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}" class="d-inline">
+        <button class="obpc-btn obpc-btn-primary" type="submit"><i class="fas fa-wand-magic-sparkles"></i> Conciliar Automaticamente</button>
+      </form>
+    </div>
+  </header>
+
+  <section class="obpc-section">
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Importados pendentes</p><p class="obpc-ops__value">{{ importados|length }}</p></article></div>
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Manuais pendentes</p><p class="obpc-ops__value">{{ manuais|length }}</p></article></div>
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Sugestões</p><p class="obpc-ops__value">{{ sugestoes|length if sugestoes else 0 }}</p></article></div>
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Conciliações registradas</p><p class="obpc-ops__value">{{ historicos|length if historicos else 0 }}</p></article></div>
+    </div>
+  </section>
+
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header">
+        <div><h2 class="obpc-section-title">Gerar sugestões</h2><p class="obpc-text-muted mb-0">Ajuste os parâmetros de proximidade antes de comparar os lançamentos.</p></div>
+      </div>
+      <div class="obpc-card-body">
+        <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}" class="obpc-filter-bar">
+          <div class="obpc-field"><label class="obpc-label">Dias janela</label><input type="number" name="days_window" value="{{ params.days_window if params else 2 }}" class="obpc-input"></div>
+          <div class="obpc-field"><label class="obpc-label">Tolerância valor (%)</label><input type="number" step="0.01" name="value_tol_pct" value="{{ params.value_tol_pct if params else 0.02 }}" class="obpc-input"></div>
+          <div class="obpc-field"><label class="obpc-label">Descrição limiar</label><input type="number" step="0.01" name="desc_thresh" value="{{ params.desc_thresh if params else 0.35 }}" class="obpc-input"></div>
+          <button class="obpc-btn obpc-btn-primary" type="submit"><i class="fas fa-magnifying-glass-chart"></i> Gerar Sugestões</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  {% if historicos %}
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header"><h2 class="obpc-section-title">Histórico de Conciliações</h2><span class="obpc-badge obpc-badge--info">{{ historicos|length }} registros</span></div>
+      <div class="obpc-card-body">
+        <div class="obpc-table-wrap">
+          <table class="obpc-table">
+            <thead><tr><th>ID</th><th>Data</th><th>Usuário</th><th>Conciliados</th><th>Pendentes</th><th>Observação</th><th>Ações</th></tr></thead>
+            <tbody>
+              {% for h in historicos %}
+              <tr>
+                <td>#{{ h.id }}</td><td>{{ h.data_conciliacao.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ h.usuario }}</td><td><span class="obpc-badge obpc-badge--success">{{ h.total_conciliados }}</span></td><td><span class="obpc-badge obpc-badge--warning">{{ h.total_pendentes }}</span></td><td>{{ h.observacao or '-' }}</td>
+                <td><form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" onsubmit="return confirm('Deseja realmente desfazer a conciliação #{{ h.id }}?')"><button class="obpc-btn obpc-btn-secondary obpc-btn--sm" type="submit"><i class="fas fa-rotate-left"></i> Desfazer</button></form></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header"><h2 class="obpc-section-title">Importados Pendentes</h2><span class="obpc-badge obpc-badge--warning">{{ importados|length }} pendentes</span></div>
+      <div class="obpc-card-body">
+        {% if importados %}
+        <div class="obpc-table-wrap"><table class="obpc-table"><thead><tr><th>ID</th><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>{% for l in importados %}<tr><td>#{{ l.id }}</td><td>{{ l.data or '-' }}</td><td>{{ l.descricao }}</td><td><strong>R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}</strong></td></tr>{% endfor %}</tbody></table></div>
+        {% else %}
+        <div class="obpc-empty"><i class="fas fa-circle-check obpc-empty-icon"></i><h3 class="obpc-empty-title">Nenhum importado pendente</h3><p class="obpc-empty-description">O extrato importado está sem itens aguardando conciliação.</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if sugestoes %}
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header"><h2 class="obpc-section-title">Sugestões de Conciliação</h2><span class="obpc-badge obpc-badge--primary">{{ sugestoes|length }} sugestões</span></div>
+      <div class="obpc-card-body">
+        <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}"><input type="hidden" name="pairs" id="pairs-field"></form>
+        <div class="obpc-table-wrap">
+          <table class="obpc-table">
+            <thead><tr><th></th><th>Score</th><th>Imp.</th><th>Manual</th><th>Data Imp.</th><th>Data Manual</th><th>Valor Imp.</th><th>Valor Manual</th><th>Descrição Imp.</th><th>Descrição Manual</th><th>Ação</th></tr></thead>
+            <tbody>
+              {% for s in sugestoes %}
+              <tr>
+                <td><input type="checkbox" class="pair-checkbox" data-imp="{{ s.imp_id }}" data-man="{{ s.man_id }}"></td>
+                <td><span class="obpc-badge obpc-badge--info">{{ s.score }}</span></td><td>#{{ s.imp_id }}</td><td>#{{ s.man_id }}</td><td>{{ s.imp.data or '-' }}</td><td>{{ s.man.data or '-' }}</td><td>R$ {{ '%.2f'|format(s.imp.valor)|replace('.', ',') }}</td><td>R$ {{ '%.2f'|format(s.man.valor)|replace('.', ',') }}</td><td>{{ s.imp.descricao }}</td><td>{{ s.man.descricao }}</td>
+                <td><form method="post" action="{{ url_for('financeiro.conciliacao_aceitar') }}"><input type="hidden" name="imp_id" value="{{ s.imp_id }}"><input type="hidden" name="man_id" value="{{ s.man_id }}"><button class="obpc-btn obpc-btn-primary obpc-btn--sm" type="submit"><i class="fas fa-check"></i> Aceitar</button></form></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="obpc-table-actions mt-3"><button id="aceitar-selecionados" class="obpc-btn obpc-btn-primary"><i class="fas fa-check-double"></i> Aceitar selecionados</button><button id="exportar-selecionados" class="obpc-btn obpc-btn-secondary"><i class="fas fa-file-csv"></i> Exportar selecionados</button></div>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="obpc-section">
+    <div class="obpc-card">
+      <div class="obpc-card-header"><h2 class="obpc-section-title">Lançamentos do Sistema Pendentes</h2><span class="obpc-badge obpc-badge--warning">{{ manuais|length }} pendentes</span></div>
+      <div class="obpc-card-body">
+        {% if manuais %}
+        <div class="obpc-table-wrap"><table class="obpc-table"><thead><tr><th>ID</th><th>Data</th><th>Descrição</th><th>Valor</th></tr></thead><tbody>{% for l in manuais %}<tr><td>#{{ l.id }}</td><td>{{ l.data or '-' }}</td><td>{{ l.descricao }}</td><td><strong>R$ {{ '%.2f'|format(l.valor)|replace('.', ',') }}</strong></td></tr>{% endfor %}</tbody></table></div>
+        {% else %}
+        <div class="obpc-empty"><i class="fas fa-circle-check obpc-empty-icon"></i><h3 class="obpc-empty-title">Nenhum lançamento manual pendente</h3><p class="obpc-empty-description">Não há movimentações do sistema aguardando conciliação.</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const btn = document.getElementById('aceitar-selecionados');
+  if(btn){
+    btn.addEventListener('click', function(e){
+      e.preventDefault();
+      const pairs = [];
+      document.querySelectorAll('.pair-checkbox').forEach(cb => {
+        if(cb.checked){ pairs.push({imp_id: parseInt(cb.getAttribute('data-imp')), man_id: parseInt(cb.getAttribute('data-man'))}); }
+      });
+      if(pairs.length === 0){ alert('Selecione ao menos um par.'); return; }
+      document.getElementById('pairs-field').value = JSON.stringify(pairs);
+      document.getElementById('aceitar-todos-form').submit();
+    });
+  }
+
+  const btnExport = document.getElementById('exportar-selecionados');
+  if(btnExport){
+    btnExport.addEventListener('click', function(e){
+      e.preventDefault();
+      const pairs = [];
+      document.querySelectorAll('.pair-checkbox').forEach(cb => {
+        if(cb.checked){ pairs.push({imp_id: parseInt(cb.getAttribute('data-imp')), man_id: parseInt(cb.getAttribute('data-man')), score: cb.closest('tr').querySelectorAll('td')[1].innerText}); }
+      });
+      if(pairs.length === 0){ alert('Selecione ao menos um par para exportar.'); return; }
+      const form = document.createElement('form');
+      form.method = 'post'; form.action = "{{ url_for('financeiro.conciliacao_export_pairs') }}"; form.style.display = 'none';
+      const input = document.createElement('input'); input.type = 'hidden'; input.name = 'pairs'; input.value = JSON.stringify(pairs); form.appendChild(input);
+      document.body.appendChild(form); form.submit(); document.body.removeChild(form);
+    });
+  }
+});
+</script>
 {% endblock %}
