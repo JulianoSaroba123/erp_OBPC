@@ -1,4 +1,4 @@
-name: D23D48 + D23D52 Financeiro Tests
+name: D23D48 + D23D52 + D23D53 Financeiro Tests
 
 on:
   pull_request:
@@ -14,6 +14,7 @@ on:
       - 'tests/test_d23d52_financeiro_padrao_membros.py'
       - 'tests/test_d23d52_global_theme.py'
       - 'tests/test_d23d52_template_syntax.py'
+      - 'tests/test_d23d53_relatorio_sede.py'
       - '.github/workflows/d23d48-tests.yml'
   workflow_dispatch:
 
@@ -81,3 +82,6 @@ jobs:
 
       - name: D23D52 sintaxe templates Jinja
         run: python tests/test_d23d52_template_syntax.py
+
+      - name: D23D53 relatorio da sede
+        run: python tests/test_d23d53_relatorio_sede.py

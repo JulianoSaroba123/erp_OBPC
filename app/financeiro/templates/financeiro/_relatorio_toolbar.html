@@ -1,66 +1,88 @@
 {% if not modo_pdf %}
-<div class="report-toolbar">
-    <div>
-        <p class="eyebrow">Sistema de Gestão Financeira</p>
-        <h1>{{ titulo_toolbar }}</h1>
-        <p class="toolbar-subtitle">Mesmo conjunto de dados financeiros, com apresentação específica para cada público.</p>
-    </div>
+<div class="report-toolbar report-workspace">
+    <header class="report-workspace__header">
+        <div class="report-workspace__heading">
+            <div class="report-workspace__icon"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div>
+                <p class="report-workspace__eyebrow">Financeiro · Relatórios</p>
+                <h1>{{ titulo_toolbar }}</h1>
+                <p class="report-workspace__subtitle">Consulte, revise e gere os documentos financeiros da competência selecionada.</p>
+            </div>
+        </div>
+        <div class="report-workspace__top-actions">
+            <a class="report-btn report-btn--secondary" href="{{ url_for('financeiro.lista_lancamentos') }}">
+                <i class="fas fa-arrow-left"></i> Movimentações
+            </a>
+            <a class="report-btn report-btn--primary" href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener">
+                <i class="fas fa-file-pdf"></i> Gerar PDF
+            </a>
+        </div>
+    </header>
 
-    <form method="get" action="{{ url_for('financeiro.gerar_relatorio') }}" class="toolbar-form">
-        <div class="toolbar-panel">
-            <span class="toolbar-label">Tipo de Relatório</span>
-            <div class="radio-group">
-                <label class="radio-chip">
+    <form method="get" action="{{ url_for('financeiro.gerar_relatorio') }}" class="report-controls">
+        <div class="report-controls__block report-controls__block--type">
+            <span class="report-label">Tipo de relatório</span>
+            <div class="report-type-grid">
+                <label class="report-type-card">
                     <input type="radio" name="tipo_relatorio" value="gerencial" {% if tipo_relatorio == 'gerencial' %}checked{% endif %}>
-                    <span>Gerencial</span>
+                    <span class="report-type-card__icon"><i class="fas fa-chart-line"></i></span>
+                    <span><strong>Gerencial</strong><small>Visão interna e indicadores.</small></span>
                 </label>
-                <label class="radio-chip">
+                <label class="report-type-card">
                     <input type="radio" name="tipo_relatorio" value="sede" {% if tipo_relatorio == 'sede' %}checked{% endif %}>
-                    <span>Oficial para Igreja Sede</span>
+                    <span class="report-type-card__icon"><i class="fas fa-church"></i></span>
+                    <span><strong>Oficial para Sede</strong><small>Prestação mensal institucional.</small></span>
                 </label>
-                <label class="radio-chip">
+                <label class="report-type-card">
                     <input type="radio" name="tipo_relatorio" value="auditoria" {% if tipo_relatorio == 'auditoria' %}checked{% endif %}>
-                    <span>Auditoria</span>
+                    <span class="report-type-card__icon"><i class="fas fa-shield-alt"></i></span>
+                    <span><strong>Auditoria</strong><small>Conferência e rastreabilidade.</small></span>
                 </label>
             </div>
         </div>
 
-        <div class="toolbar-grid">
-            <label>
-                <span>Mês</span>
-                <select name="mes">
-                    {% for mes_opcao in range(1, 13) %}
-                    <option value="{{ mes_opcao }}" {% if mes_opcao == mes %}selected{% endif %}>{{ "%02d"|format(mes_opcao) }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-
-            <label>
-                <span>Ano</span>
-                <select name="ano">
-                    {% for ano_opcao in range(2020, 2036) %}
-                    <option value="{{ ano_opcao }}" {% if ano_opcao == ano %}selected{% endif %}>{{ ano_opcao }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-        </div>
-
-        <div class="toolbar-actions">
-            <button type="submit" class="btn-primary-soft"><i class="fas fa-sync-alt"></i> Atualizar</button>
-            <a class="btn-outline-soft" href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> Gerar PDF</a>
-            <button type="button" class="btn-dark-soft" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
-            <a class="btn-outline-soft" href="{{ url_for('financeiro.lista_lancamentos') }}"><i class="fas fa-arrow-left"></i> Voltar para Lançamentos</a>
+        <div class="report-controls__block report-controls__block--period">
+            <span class="report-label">Competência</span>
+            <div class="report-period-grid">
+                <label class="report-field">
+                    <span>Mês</span>
+                    <select name="mes">
+                        {% for mes_opcao in range(1, 13) %}
+                        <option value="{{ mes_opcao }}" {% if mes_opcao == mes %}selected{% endif %}>{{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes_opcao] }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label class="report-field report-field--year">
+                    <span>Ano</span>
+                    <select name="ano">
+                        {% for ano_opcao in range(2020, 2036) %}
+                        <option value="{{ ano_opcao }}" {% if ano_opcao == ano %}selected{% endif %}>{{ ano_opcao }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <button type="submit" class="report-btn report-btn--primary report-btn--apply"><i class="fas fa-sync-alt"></i> Atualizar</button>
+            </div>
+            <div class="report-period-hint"><i class="fas fa-calendar-check"></i> Competência atual: <strong>{{ "%02d"|format(mes) }}/{{ ano }}</strong></div>
         </div>
     </form>
 
-    <div class="justificativa-card">
+    <div class="report-quick-actions">
+        <button type="button" class="report-btn report-btn--dark" onclick="window.print()"><i class="fas fa-print"></i> Imprimir tela</button>
+        <span class="report-quick-actions__note"><i class="fas fa-circle-info"></i> O PDF é gerado com o layout oficial, sem os controles desta tela.</span>
+    </div>
+
+    <section class="justificativa-card report-note-card">
         <div class="justificativa-header">
-            <div>
-                <p class="toolbar-label">Pré-PDF</p>
-                <h3><i class="fas fa-pen-to-square"></i> Justificativa Contábil dos Repasses à Sede</h3>
+            <div class="report-note-card__title">
+                <span class="report-note-card__icon"><i class="fas fa-pen-to-square"></i></span>
+                <div>
+                    <p class="report-label mb-0">Pré-PDF</p>
+                    <h3>Justificativa Contábil dos Repasses à Sede</h3>
+                    <p>Use este campo somente quando houver informação contábil relevante para a competência.</p>
+                </div>
             </div>
             <span class="status-pill {% if observacao_repasse_salva %}status-salva{% else %}status-auto{% endif %}">
-                {% if observacao_repasse_salva %}Texto salvo{% else %}Texto automático{% endif %}
+                {% if observacao_repasse_salva %}<i class="fas fa-check-circle"></i> Texto salvo{% else %}<i class="fas fa-wand-magic-sparkles"></i> Texto automático{% endif %}
             </span>
         </div>
 
@@ -72,101 +94,315 @@
             <textarea
                 name="observacao_repasse_sede"
                 class="justificativa-textarea"
-                rows="5"
-                placeholder="Digite a justificativa contábil dos repasses à sede"
+                rows="4"
+                placeholder="Digite a justificativa contábil dos repasses à Sede"
             >{{ observacao_repasse_sede }}</textarea>
 
-            <div class="toolbar-actions">
-                <button type="submit" name="acao" value="salvar" class="btn-primary-soft"><i class="fas fa-save"></i> Salvar Justificativa</button>
-                <button type="submit" name="acao" value="restaurar" class="btn-outline-soft"><i class="fas fa-rotate-left"></i> Restaurar Texto Automático</button>
+            <div class="report-note-card__actions">
+                <button type="submit" name="acao" value="salvar" class="report-btn report-btn--primary"><i class="fas fa-save"></i> Salvar justificativa</button>
+                <button type="submit" name="acao" value="restaurar" class="report-btn report-btn--secondary"><i class="fas fa-rotate-left"></i> Restaurar automático</button>
             </div>
 
-            <small class="toolbar-subtitle">A justificativa é salva por mês, ano e tipo de relatório. O PDF sempre usa o texto salvo para este contexto.</small>
+            <small class="report-workspace__subtitle">A justificativa é armazenada por mês, ano e tipo de relatório. O PDF usa o texto correspondente à competência selecionada.</small>
         </form>
-    </div>
+    </section>
 </div>
 
 <style>
-    .toolbar-actions .btn-primary-soft,
-    .toolbar-actions .btn-outline-soft,
-    .toolbar-actions .btn-dark-soft {
-        gap: 8px;
+    .report-workspace {
+        width: min(1160px, calc(100vw - 36px));
+        position: relative;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 0;
+        margin-bottom: 22px;
+        overflow: hidden;
+        border: 1px solid #dbe5f1;
+        border-radius: 18px;
+        background: #ffffff;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
     }
 
-    .justificativa-card {
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    .report-workspace::before {
+        content: "";
+        display: block;
+        height: 4px;
+        background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 58%, #16a34a 100%);
+    }
+
+    .report-workspace__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 22px 24px 18px;
+        border-bottom: 1px solid #e7edf5;
+    }
+
+    .report-workspace__heading {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .report-workspace__icon,
+    .report-note-card__icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+    }
+
+    .report-workspace__eyebrow,
+    .report-label {
+        margin: 0 0 4px;
+        color: #64748b;
+        font-size: 11px;
+        line-height: 1.2;
+        letter-spacing: .09em;
+        text-transform: uppercase;
+        font-weight: 800;
+    }
+
+    .report-workspace__header h1 {
+        margin: 0;
+        color: #0f172a;
+        font-size: clamp(22px, 2.2vw, 30px);
+        line-height: 1.12;
+        letter-spacing: -.02em;
+    }
+
+    .report-workspace__subtitle {
+        margin: 5px 0 0;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .report-workspace__top-actions,
+    .report-note-card__actions,
+    .report-quick-actions {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        flex-wrap: wrap;
+    }
+
+    .report-btn {
+        min-height: 38px;
+        padding: 8px 14px;
+        border-radius: 11px;
+        border: 1px solid transparent;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }
+
+    .report-btn:hover { transform: translateY(-1px); }
+    .report-btn--primary { background: #2554db; border-color: #2554db; color: #fff; box-shadow: 0 7px 16px rgba(37, 84, 219, .18); }
+    .report-btn--secondary { background: #fff; border-color: #cbd5e1; color: #334155; }
+    .report-btn--dark { background: #172033; border-color: #172033; color: #fff; }
+
+    .report-controls {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr);
+        gap: 14px;
+        padding: 18px 24px;
+        background: #f8fbff;
+        border-bottom: 1px solid #e7edf5;
+    }
+
+    .report-controls__block {
+        min-width: 0;
+        padding: 14px;
+        border: 1px solid #dbe5f1;
+        border-radius: 14px;
+        background: #fff;
+    }
+
+    .report-type-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 9px;
+        margin-top: 9px;
+    }
+
+    .report-type-card {
+        position: relative;
+        min-height: 76px;
+        padding: 11px 12px;
+        border: 1px solid #d9e2ee;
+        border-radius: 12px;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        cursor: pointer;
+        transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
+    }
+
+    .report-type-card input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .report-type-card:has(input:checked) {
+        border-color: #7da3ff;
+        background: #eef4ff;
+        box-shadow: inset 0 0 0 1px #bfdbfe;
+    }
+
+    .report-type-card__icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .report-type-card:has(input:checked) .report-type-card__icon { background: #2554db; color: #fff; }
+    .report-type-card strong { display: block; color: #0f172a; font-size: 13px; }
+    .report-type-card small { display: block; margin-top: 2px; color: #64748b; font-size: 10px; line-height: 1.25; }
+
+    .report-period-grid {
+        display: grid;
+        grid-template-columns: minmax(150px, 1fr) 100px auto;
+        gap: 9px;
+        align-items: end;
+        margin-top: 9px;
+    }
+
+    .report-field { display: grid; gap: 5px; }
+    .report-field > span { color: #475569; font-size: 11px; font-weight: 700; }
+    .report-field select {
+        width: 100%;
+        min-height: 40px;
+        padding: 0 11px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #fff;
+        color: #0f172a;
+        font: inherit;
+    }
+    .report-field select:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37, 84, 219, .1); }
+    .report-btn--apply { min-height: 40px; }
+
+    .report-period-hint {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #edf1f6;
+        color: #64748b;
+        font-size: 11px;
+    }
+
+    .report-quick-actions {
+        justify-content: flex-end;
+        padding: 12px 24px;
+        border-bottom: 1px solid #e7edf5;
+        background: #fff;
+    }
+
+    .report-quick-actions__note {
+        margin-right: auto;
+        color: #64748b;
+        font-size: 11px;
+    }
+
+    .report-note-card {
+        margin: 18px 24px 24px;
         padding: 16px;
+        border: 1px solid #dbe5f1;
+        border-radius: 14px;
+        background: #fff;
         display: grid;
         gap: 12px;
     }
 
     .justificativa-header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
-        gap: 10px;
+        gap: 14px;
     }
 
-    .justificativa-header h3 {
-        margin: 4px 0 0;
-        font-size: 16px;
-        color: var(--brand);
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+    .report-note-card__title {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+    }
+
+    .report-note-card__title h3 {
+        margin: 2px 0 3px;
+        color: #0f172a;
+        font-size: 15px;
+    }
+
+    .report-note-card__title p:not(.report-label) {
+        margin: 0;
+        color: #64748b;
+        font-size: 11px;
     }
 
     .status-pill {
-        padding: 6px 12px;
+        padding: 6px 10px;
         border-radius: 999px;
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 10px;
+        font-weight: 800;
         border: 1px solid transparent;
         white-space: nowrap;
     }
 
-    .status-salva {
-        background: #d1fae5;
-        color: #065f46;
-        border-color: #a7f3d0;
-    }
+    .status-salva { background: #ecfdf3; color: #166534; border-color: #bbf7d0; }
+    .status-auto { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
 
-    .status-auto {
-        background: #fef3c7;
-        color: #92400e;
-        border-color: #fde68a;
-    }
-
-    .justificativa-form {
-        display: grid;
-        gap: 10px;
-    }
-
+    .justificativa-form { display: grid; gap: 10px; }
     .justificativa-textarea {
         width: 100%;
-        border: 1px solid var(--line);
-        border-radius: 12px;
-        padding: 10px 12px;
+        min-height: 92px;
+        border: 1px solid #cbd5e1;
+        border-radius: 11px;
+        padding: 11px 12px;
         font: inherit;
-        color: var(--ink);
+        color: #0f172a;
         background: #fff;
         resize: vertical;
-        min-height: 110px;
+    }
+    .justificativa-textarea:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37, 84, 219, .1); }
+
+    @media (max-width: 980px) {
+        .report-controls { grid-template-columns: 1fr; }
+        .report-workspace__header { align-items: flex-start; flex-direction: column; }
+        .report-workspace__top-actions { width: 100%; }
     }
 
-    .justificativa-textarea:focus {
-        outline: none;
-        border-color: #2a7f62;
-        box-shadow: 0 0 0 3px rgba(42, 127, 98, 0.15);
-    }
-
-    @media (max-width: 900px) {
-        .justificativa-header {
-            flex-direction: column;
-            align-items: flex-start;
-        }
+    @media (max-width: 720px) {
+        .report-workspace { width: calc(100vw - 20px); }
+        .report-workspace__header, .report-controls, .report-quick-actions { padding-left: 14px; padding-right: 14px; }
+        .report-type-grid { grid-template-columns: 1fr; }
+        .report-period-grid { grid-template-columns: 1fr 1fr; }
+        .report-btn--apply { grid-column: 1 / -1; }
+        .report-note-card { margin-left: 14px; margin-right: 14px; }
+        .justificativa-header { flex-direction: column; }
+        .report-workspace__top-actions .report-btn { flex: 1; }
     }
 </style>
 {% endif %}
