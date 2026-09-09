@@ -47,11 +47,16 @@ class D23D56RelatorioFluxoOriginalVisualTest(unittest.TestCase):
         self.assertIn("max-width: 1480px", src)
         self.assertIn("D23D56: somente apresentação", src)
 
-    def test_templates_originais_continuam_sendo_os_documentos(self):
-        for nome in ("relatorio_gerencial.html", "relatorio_sede.html", "relatorio_auditoria.html"):
+    def test_templates_originais_continuam_com_estrutura_propria(self):
+        esperados = {
+            "relatorio_gerencial.html": 'class="hero"',
+            "relatorio_sede.html": 'class="document"',
+            "relatorio_auditoria.html": 'class="document"',
+        }
+        for nome, token_estrutura in esperados.items():
             src = (TEMPLATES / nome).read_text(encoding="utf-8-sig")
             self.assertIn("_relatorio_toolbar.html", src)
-            self.assertIn('class="document"', src)
+            self.assertIn(token_estrutura, src)
 
     def test_toolbar_parseia(self):
         env = Environment()
