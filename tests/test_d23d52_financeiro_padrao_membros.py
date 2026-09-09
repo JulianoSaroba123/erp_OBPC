@@ -6,6 +6,7 @@ TEMPLATES = ROOT / "app" / "financeiro" / "templates" / "financeiro"
 
 FILES = {
     "movimentacoes": TEMPLATES / "lista_lancamentos.html",
+    "movimentacoes_moderno": TEMPLATES / "lista_lancamentos_moderno.html",
     "projetos": TEMPLATES / "lista_projetos.html",
     "destinacoes": TEMPLATES / "caixa_destinacoes.html",
     "conciliacao": TEMPLATES / "conciliacao.html",
@@ -47,34 +48,20 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         for name, src in {**self.src, **self.aux}.items():
             with self.subTest(name=name):
                 self.assertIn("obpc-card", src)
-        for name in ("movimentacoes", "destinacoes", "conciliacao", "conciliacao_moderno", "repasse", "recibos"):
+        for name in ("movimentacoes", "movimentacoes_moderno", "destinacoes", "conciliacao", "conciliacao_moderno", "repasse", "recibos"):
             self.assertIn("obpc-table", self.src[name])
 
     def test_filtros_usam_filter_bar_quando_aplicavel(self):
-        for name in ("movimentacoes", "destinacoes", "conciliacao", "recibos"):
+        for name in ("movimentacoes", "movimentacoes_moderno", "destinacoes", "conciliacao", "recibos"):
             self.assertIn("obpc-filter-bar", self.src[name])
 
     def test_form_lancamento_preserva_campos_e_fluxos(self):
         src = self.aux["form_lancamento"]
         for token in (
-            'id="form-lancamento"',
-            "financeiro.salvar_lancamento",
-            'name="data"',
-            'name="tipo"',
-            'name="categoria"',
-            'name="projeto_id"',
-            'name="valor"',
-            'name="conta"',
-            'name="descricao"',
-            'name="observacoes"',
-            'name="comprovante"',
-            "financeiro.excluir_comprovante",
-            "financeiro.excluir_comprovante_multiplo",
-            "financeiro.upload_comprovantes",
-            'name="comprovantes[]"',
-            "OUTRAS OFERTAS",
-            "DESTINAÇÃO",
-            "GASTO PROJETO",
+            'id="form-lancamento"', "financeiro.salvar_lancamento", 'name="data"', 'name="tipo"', 'name="categoria"',
+            'name="projeto_id"', 'name="valor"', 'name="conta"', 'name="descricao"', 'name="observacoes"', 'name="comprovante"',
+            "financeiro.excluir_comprovante", "financeiro.excluir_comprovante_multiplo", "financeiro.upload_comprovantes",
+            'name="comprovantes[]"', "OUTRAS OFERTAS", "DESTINAÇÃO", "GASTO PROJETO",
         ):
             self.assertIn(token, src)
         for component in ("obpc-input", "obpc-select", "obpc-textarea", "btn-submit-lancamento"):
@@ -96,9 +83,10 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
             self.assertIn(token, visualizar)
 
     def test_acoes_criticas_foram_preservadas(self):
-        movimentacoes = self.src["movimentacoes"]
-        for token in ("financeiro.novo_lancamento", "financeiro.importar_extrato", "financeiro.conciliacao", "financeiro.editar_lancamento", "financeiro.excluir_lancamento"):
-            self.assertIn(token, movimentacoes)
+        for name in ("movimentacoes", "movimentacoes_moderno"):
+            movimentacoes = self.src[name]
+            for token in ("financeiro.novo_lancamento", "financeiro.importar_extrato", "financeiro.conciliacao", "financeiro.editar_lancamento", "financeiro.excluir_lancamento"):
+                self.assertIn(token, movimentacoes)
 
         projetos = self.src["projetos"]
         for token in ("financeiro.novo_projeto", "financeiro.editar_projeto", "financeiro.excluir_projeto"):
