@@ -1,13 +1,18 @@
-name: D23D48 Financeiro Tests
+name: D23D48 + D23D52 Financeiro Tests
 
 on:
   pull_request:
     paths:
       - 'app/financeiro/**'
+      - 'app/static/css/obpc-*.css'
+      - 'app/templates/login_base.html'
       - 'scripts/regularizar_d23d48_projeto_filipe.py'
       - 'tests/test_d23d48_conciliacao_repasse.py'
       - 'tests/test_d23d48_regularizacao_historica.py'
       - 'tests/etapa_a_obrigacoes_financeiras_unittest.py'
+      - 'tests/test_d23d52_financeiro_canonical.py'
+      - 'tests/test_d23d52_financeiro_padrao_membros.py'
+      - 'tests/test_d23d52_global_theme.py'
       - '.github/workflows/d23d48-tests.yml'
   workflow_dispatch:
 
@@ -42,7 +47,7 @@ jobs:
         run: python -m py_compile scripts/regularizar_d23d48_projeto_filipe.py
 
   regressao-repasse-python312:
-    name: Regressao Repasse Python 3.12
+    name: Regressao Repasse + Visual Python 3.12
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -63,3 +68,12 @@ jobs:
 
       - name: Regressao obrigacoes e repasse
         run: python tests/etapa_a_obrigacoes_financeiras_unittest.py
+
+      - name: D23D52 tema global
+        run: python tests/test_d23d52_global_theme.py
+
+      - name: D23D52 financeiro canonico
+        run: python tests/test_d23d52_financeiro_canonical.py
+
+      - name: D23D52 financeiro padrao membros
+        run: python tests/test_d23d52_financeiro_padrao_membros.py
