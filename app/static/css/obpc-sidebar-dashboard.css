@@ -1,0 +1,361 @@
+/* D23D51 v2 — Sidebar premium alinhada ao dashboard financeiro */
+:root {
+  --obpc-sidebar-navy: #0f172a;
+  --obpc-sidebar-blue: #1d4ed8;
+  --obpc-sidebar-cyan: #0ea5e9;
+  --obpc-sidebar-green: #16a34a;
+  --obpc-sidebar-orange: #ff6b35;
+  --obpc-sidebar-text: #f8fafc;
+  --obpc-sidebar-muted: #cbd5e1;
+}
+
+.sidebar {
+  position: fixed;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(34, 197, 94, 0.18), transparent 26%),
+    radial-gradient(circle at 100% 24%, rgba(14, 165, 233, 0.24), transparent 36%),
+    linear-gradient(180deg, #0f172a 0%, #173b8f 50%, #1665b4 78%, #0c4f72 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 14px 0 38px rgba(15, 23, 42, 0.24) !important;
+}
+
+.sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(255,255,255,0.065), transparent 30% 75%, rgba(14,165,233,0.08)),
+    repeating-linear-gradient(180deg, transparent 0 48px, rgba(255,255,255,0.018) 49px 50px);
+}
+
+.sidebar .logo {
+  position: relative;
+  overflow: hidden;
+  margin: 12px 10px 9px !important;
+  padding: 17px 14px 15px !important;
+  border: 1px solid rgba(255,255,255,0.14) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.14) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(145deg, rgba(255,255,255,0.13), rgba(255,255,255,0.055)) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 14px 30px rgba(2, 8, 23, 0.18) !important;
+  backdrop-filter: blur(12px);
+}
+
+.sidebar .logo::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 0;
+  height: 3px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, var(--obpc-sidebar-green), var(--obpc-sidebar-cyan));
+  opacity: 0.95;
+}
+
+.sidebar .logo img {
+  width: 102px !important;
+  height: 58px !important;
+  max-width: 102px !important;
+  max-height: 58px !important;
+  object-fit: contain;
+  padding: 3px;
+  margin-bottom: 9px !important;
+  border: 1px solid rgba(255,255,255,0.55) !important;
+  border-radius: 13px !important;
+  background: rgba(255,255,255,0.94);
+  box-shadow: 0 8px 20px rgba(2,8,23,0.24) !important;
+}
+
+.sidebar .logo h2 {
+  margin: 0 !important;
+  color: #ffffff !important;
+  font-size: 22px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.17em !important;
+  text-shadow: 0 2px 12px rgba(2,8,23,0.28) !important;
+}
+
+.sidebar .logo p {
+  margin: 4px 0 0 !important;
+  color: rgba(226,232,240,0.78) !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.16em !important;
+}
+
+.sidebar-content {
+  padding: 3px 8px 12px !important;
+}
+
+.sidebar a,
+.sidebar .menu-toggle-button {
+  min-height: 44px;
+  margin: 3px 4px;
+  padding: 9px 11px !important;
+  gap: 10px !important;
+  border: 1px solid transparent !important;
+  border-left: 1px solid transparent !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: rgba(248,250,252,0.91) !important;
+  font-size: 12.6px !important;
+  font-weight: 650 !important;
+  line-height: 1.15;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.16s ease,
+    box-shadow 0.16s ease !important;
+}
+
+.sidebar a > i,
+.sidebar .menu-toggle-button > i:first-child {
+  width: 28px !important;
+  height: 28px !important;
+  flex: 0 0 28px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #dbeafe !important;
+  background: rgba(255,255,255,0.085) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.sidebar a:hover,
+.sidebar .menu-toggle-button:hover {
+  color: #ffffff !important;
+  background: linear-gradient(90deg, rgba(255,255,255,0.115), rgba(255,255,255,0.065)) !important;
+  border-color: rgba(255,255,255,0.11) !important;
+  transform: translateX(2px) !important;
+  box-shadow: 0 8px 20px rgba(2,8,23,0.10) !important;
+}
+
+.sidebar a:hover > i,
+.sidebar .menu-toggle-button:hover > i:first-child {
+  color: #ffffff !important;
+  background: rgba(14,165,233,0.23) !important;
+}
+
+.sidebar a:focus-visible,
+.sidebar .menu-toggle-button:focus-visible,
+.sidebar-toggle:focus-visible,
+.mobile-toggle:focus-visible {
+  outline: 3px solid rgba(125,211,252,0.46) !important;
+  outline-offset: 2px;
+}
+
+.sidebar a.active,
+.sidebar .submenu-item.active,
+.sidebar .menu-toggle-button.active,
+.sidebar .submenu-toggle-button.active {
+  color: #ffffff !important;
+  background:
+    linear-gradient(100deg, var(--obpc-sidebar-orange) 0%, #ff4d2e 100%) !important;
+  border-color: rgba(255,255,255,0.18) !important;
+  box-shadow:
+    0 10px 24px rgba(166,49,20,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.22) !important;
+  transform: none !important;
+}
+
+.sidebar a.active > i,
+.sidebar .submenu-item.active > i,
+.sidebar .menu-toggle-button.active > i:first-child,
+.sidebar .submenu-toggle-button.active > i:first-child {
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.16) !important;
+}
+
+.sidebar .menu-toggle-button[aria-expanded="true"]:not(.active) {
+  color: #ffffff !important;
+  background: linear-gradient(90deg, rgba(29,78,216,0.30), rgba(14,165,233,0.16)) !important;
+  border-color: rgba(125,211,252,0.10) !important;
+}
+
+.sidebar .submenu {
+  margin: 3px 4px 8px 15px !important;
+  padding: 5px 4px 5px 8px !important;
+  border-left: 1px solid rgba(125,211,252,0.30) !important;
+  border-radius: 0 12px 12px 0 !important;
+  background: rgba(2,8,23,0.20) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+}
+
+.sidebar .submenu-item,
+.sidebar .submenu .menu-group > .menu-toggle-button.submenu-toggle-button {
+  min-height: 37px !important;
+  margin: 2px !important;
+  padding: 7px 9px !important;
+  border-radius: 9px !important;
+  color: rgba(226,232,240,0.84) !important;
+  font-size: 11.7px !important;
+  background: transparent !important;
+}
+
+.sidebar .submenu-item > i,
+.sidebar .submenu .menu-group > .menu-toggle-button.submenu-toggle-button > i:first-child {
+  width: 23px !important;
+  height: 23px !important;
+  flex-basis: 23px !important;
+  border-radius: 7px !important;
+  font-size: 10px !important;
+  background: rgba(255,255,255,0.07) !important;
+}
+
+.sidebar .submenu-item:hover,
+.sidebar .submenu .menu-group > .menu-toggle-button.submenu-toggle-button:hover {
+  color: #ffffff !important;
+  background: rgba(255,255,255,0.085) !important;
+  transform: translateX(2px) !important;
+}
+
+.sidebar .submenu .menu-group > .menu-toggle-button.submenu-toggle-button.active {
+  background: linear-gradient(100deg, rgba(255,107,53,0.95), rgba(255,77,46,0.95)) !important;
+}
+
+.sidebar .submenu-arrow {
+  width: auto !important;
+  height: auto !important;
+  margin-left: auto !important;
+  padding: 0 !important;
+  color: rgba(226,232,240,0.64) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 9px !important;
+}
+
+.sidebar .menu-toggle-button[aria-expanded="true"] .submenu-arrow {
+  color: #ffffff !important;
+}
+
+.sidebar-logout {
+  margin: 8px !important;
+  min-height: 44px !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-top: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+  background: rgba(2,8,23,0.26) !important;
+  color: rgba(248,250,252,0.88) !important;
+}
+
+.sidebar-logout:hover {
+  background: rgba(185,28,28,0.30) !important;
+  border-color: rgba(254,202,202,0.20) !important;
+}
+
+.sidebar-toggle {
+  width: 34px !important;
+  height: 34px !important;
+  top: 58px !important;
+  left: 232px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.72) !important;
+  border-radius: 11px !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 72%, #16a34a 125%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 22px rgba(15,23,42,0.28) !important;
+}
+
+.sidebar-toggle:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #0ea5e9 72%, #22c55e 125%) !important;
+  transform: translateY(-1px);
+}
+
+.sidebar-toggle.collapsed {
+  left: 52px !important;
+}
+
+.sidebar::-webkit-scrollbar,
+.sidebar-content::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.sidebar::-webkit-scrollbar-track,
+.sidebar-content::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(191,219,254,0.34) !important;
+  border-radius: 999px !important;
+}
+
+/* Evita o "Painel" competir com o submenu realmente ativo. */
+.sidebar-content:has(.submenu-item.active) > a:first-child.active {
+  color: rgba(248,250,252,0.91) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.sidebar-content:has(.submenu-item.active) > a:first-child.active > i {
+  color: #dbeafe !important;
+  background: rgba(255,255,255,0.085) !important;
+}
+
+.sidebar.collapsed .logo {
+  margin: 8px 5px 7px !important;
+  padding: 9px 4px 10px !important;
+  border-radius: 13px !important;
+}
+
+.sidebar.collapsed .logo::after {
+  left: 7px;
+  right: 7px;
+}
+
+.sidebar.collapsed .logo img {
+  width: 42px !important;
+  height: 42px !important;
+  max-width: 42px !important;
+  max-height: 42px !important;
+  margin-bottom: 0 !important;
+  border-radius: 11px !important;
+}
+
+.sidebar.collapsed .logo h2,
+.sidebar.collapsed .logo p {
+  display: none !important;
+}
+
+.sidebar.collapsed a,
+.sidebar.collapsed .menu-toggle-button {
+  margin-left: 5px !important;
+  margin-right: 5px !important;
+  padding: 8px !important;
+  justify-content: center;
+}
+
+.sidebar.collapsed a > i,
+.sidebar.collapsed .menu-toggle-button > i:first-child {
+  margin: 0 !important;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: min(86vw, 292px) !important;
+    border-radius: 0 20px 20px 0;
+    box-shadow: 18px 0 45px rgba(15,23,42,0.35) !important;
+  }
+
+  .mobile-toggle {
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border: 1px solid rgba(255,255,255,0.72) !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 72%, #16a34a 125%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 20px rgba(15,23,42,0.24) !important;
+  }
+}
