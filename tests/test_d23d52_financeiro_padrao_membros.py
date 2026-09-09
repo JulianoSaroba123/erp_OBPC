@@ -9,6 +9,7 @@ FILES = {
     "projetos": TEMPLATES / "lista_projetos.html",
     "destinacoes": TEMPLATES / "caixa_destinacoes.html",
     "conciliacao": TEMPLATES / "conciliacao.html",
+    "recibos": TEMPLATES / "lista_recibos.html",
 }
 
 
@@ -26,7 +27,7 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
                 self.assertIn('obpc-page-subtitle', src)
 
     def test_kpis_usam_mesmo_componente_de_membros(self):
-        for name in ("movimentacoes", "projetos", "destinacoes", "conciliacao"):
+        for name in ("movimentacoes", "projetos", "destinacoes", "conciliacao", "recibos"):
             self.assertIn("obpc-ops", self.src[name])
             self.assertIn("obpc-ops__label", self.src[name])
             self.assertIn("obpc-ops__value", self.src[name])
@@ -35,13 +36,12 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         for name, src in self.src.items():
             with self.subTest(name=name):
                 self.assertIn("obpc-card", src)
-        for name in ("movimentacoes", "destinacoes", "conciliacao"):
+        for name in ("movimentacoes", "destinacoes", "conciliacao", "recibos"):
             self.assertIn("obpc-table", self.src[name])
 
     def test_filtros_usam_filter_bar_quando_aplicavel(self):
-        self.assertIn("obpc-filter-bar", self.src["movimentacoes"])
-        self.assertIn("obpc-filter-bar", self.src["destinacoes"])
-        self.assertIn("obpc-filter-bar", self.src["conciliacao"])
+        for name in ("movimentacoes", "destinacoes", "conciliacao", "recibos"):
+            self.assertIn("obpc-filter-bar", self.src[name])
 
     def test_acoes_criticas_foram_preservadas(self):
         movimentacoes = self.src["movimentacoes"]
@@ -69,7 +69,17 @@ class D23D52FinanceiroPadraoMembrosTest(unittest.TestCase):
         ):
             self.assertIn(token, conciliacao)
 
-    def test_templates_nao_contêm_mutacao_de_banco(self):
+        recibos = self.src["recibos"]
+        for token in (
+            "financeiro.novo_recibo",
+            "financeiro.visualizar_recibo",
+            "financeiro.editar_recibo",
+            "financeiro.gerar_pdf_recibo",
+            "financeiro.excluir_recibo",
+        ):
+            self.assertIn(token, recibos)
+
+    def test_templates_nao_contem_mutacao_de_banco(self):
         forbidden = ("db.session", "UPDATE ", "INSERT ", "DELETE FROM", "ALTER TABLE")
         for name, src in self.src.items():
             for token in forbidden:
