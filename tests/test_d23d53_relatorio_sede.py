@@ -34,7 +34,7 @@ class D23D53RelatorioSedeTest(unittest.TestCase):
         self.assertEqual(fixas["site"], 20.0)
         self.assertEqual(sum(fixas.values()), 180.0)
 
-    def test_contexto_relatorio_recebe_valores_por_competencia(self):
+    def test_contexto_relatorio_recebe_valores_e_total_da_competencia(self):
         contexto = {
             "mes": 7,
             "ano": 2026,
@@ -46,6 +46,11 @@ class D23D53RelatorioSedeTest(unittest.TestCase):
                 "oferta_voluntaria_conchas": 0.0,
             },
             "despesas_fixas_lista": [],
+            "totais_sede": {
+                "valor_conselho": 1122.56,
+                "despesas_fixas": 0.0,
+                "total_envio_sede": 1122.56,
+            },
         }
         itens = [
             {"nome": "Contador", "valor": 100},
@@ -60,6 +65,9 @@ class D23D53RelatorioSedeTest(unittest.TestCase):
         self.assertEqual(contexto["envios"]["site"], 20.0)
         self.assertEqual(contexto["envios"]["projeto_filipe"], 10.0)
         self.assertEqual(contexto["envios"]["forca_para_viver"], 50.0)
+        self.assertEqual(contexto["totais_sede"]["despesas_fixas"], 180.0)
+        self.assertAlmostEqual(contexto["totais_sede"]["total_envio_sede"], 1302.56, places=2)
+        self.assertEqual(contexto["despesas_fixas_lista"], itens)
 
     def test_fallback_usa_lista_de_despesas_fixas(self):
         contexto = {
