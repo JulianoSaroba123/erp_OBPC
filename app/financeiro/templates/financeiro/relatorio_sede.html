@@ -204,6 +204,15 @@
             font-weight: 700;
             white-space: nowrap;
         }
+        .valor-entrada {
+           color: #15803d !important;
+           font-weight: 700;
+        }
+
+        .valor-saida {
+    color: #b91c1c !important;
+    font-weight: 700;
+        }
         .official-table tr.total td {
             font-size: 16px;
             color: #0f3d52;
@@ -373,10 +382,10 @@
                 <h3 class="section-title">Arrecadacao</h3>
                 <table class="official-table">
                     <tbody>
-                        <tr><td class="label">Dizimos</td><td class="value">{{ totais_sede.dizimos|valor_com_cor|safe }}</td></tr>
-                        <tr><td class="label">Ofertas Alcadas</td><td class="value">{{ totais_sede.ofertas_alcadas|valor_com_cor|safe }}</td></tr>
-                        <tr><td class="label">Oferta OMN</td><td class="value">{{ totais_sede.oferta_omn|valor_com_cor|safe }}</td></tr>
-                        <tr><td class="label">Outras Ofertas</td><td class="value">{{ totais_sede.outras_ofertas|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Dizimos</td><td class="value valor-entrada">{{ totais_sede.dizimos|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Ofertas Alcadas</td><td class="value valor-entrada">{{ totais_sede.ofertas_alcadas|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Oferta OMN</td><td class="value valor-entrada">{{ totais_sede.oferta_omn|valor_com_cor|safe }}</td></tr>
+                        <tr><td class="label">Outras Ofertas</td><td class="value valor-entrada">{{ totais_sede.outras_ofertas|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
             </section>
@@ -386,7 +395,9 @@
             <section>
                 <table class="official-table">
                     <tbody>
-                        <tr class="total"><td class="label">Total Arrecadado</td><td class="value">{{ totais_sede.entradas|valor_com_cor|safe }}</td></tr>
+                       <tr class="total">
+                            <td class="label">Total Arrecadado</td>
+                            <td class="value valor-entrada">{{ totais_sede.entradas|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
             </section>
@@ -396,7 +407,9 @@
             <section>
                 <table class="official-table">
                     <tbody>
-                        <tr><td class="label">Despesas do Mes</td><td class="value">{{ totais_sede.despesas_financeiras|valor_com_cor|safe }}</td></tr>
+                        <tr>
+                        <td class="label">Despesas do Mes</td>
+                        <td class="value valor-saida">{{ totais_sede.despesas_financeiras|valor_com_cor|safe }}</td></tr>
                     </tbody>
                 </table>
             </section>
