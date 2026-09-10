@@ -3,70 +3,323 @@
 
 {% block content %}
 <style>
-  .dashboard-card {
-    background: linear-gradient(135deg, white 0%, #f8fafc 100%);
-    border-radius: 20px;
-    border: none;
-    transition: all 0.3s ease;
+/* D23D60 — o painel possui cabeçalho próprio */
+.navbar-top {
+    display: none !important;
+}
+  .dashboard-page {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 6px 4px 28px;
+  }
+
+  .dashboard-hero {
     position: relative;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 20px;
+    padding: 24px 28px;
+    border-radius: 18px;
+    color: #ffffff;
+    background:
+      linear-gradient(135deg, #0f172a 0%, #1d4ed8 58%, #0ea5e9 100%);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.16);
   }
-  
+
+  .dashboard-hero::after {
+    content: "";
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    right: -70px;
+    top: -100px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .dashboard-eyebrow {
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #bae6fd;
+  }
+
+  .dashboard-hero h3 {
+    margin: 0 0 5px;
+    color: #ffffff !important;
+    font-size: 26px;
+    font-weight: 800;
+  }
+
+  .dashboard-hero p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 13.5px;
+  }
+
+  .dashboard-welcome {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 210px;
+    padding: 11px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.09);
+  }
+
+  .dashboard-welcome i {
+    font-size: 20px;
+    color: #7dd3fc;
+  }
+
+  .dashboard-welcome span {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .dashboard-welcome small {
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 11px;
+  }
+
+  .dashboard-welcome strong {
+    color: #ffffff;
+    font-size: 13px;
+  }
+
+  .dashboard-page > .card.shadow-sm.mb-4 {
+    border: 1px solid var(--obpc-app-border) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.97) !important;
+    box-shadow: var(--obpc-app-shadow-soft) !important;
+  }
+
+  .dashboard-page > .card.shadow-sm.mb-4 .card-body {
+    padding: 18px !important;
+  }
+
+  .dashboard-card {
+    min-height: 154px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--obpc-app-border) !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    box-shadow: var(--obpc-app-shadow-soft) !important;
+    transition: transform .16s ease, box-shadow .16s ease !important;
+  }
+
   .dashboard-card::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #FF6B35, #FF4500);
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--obpc-app-blue),
+      var(--obpc-app-cyan),
+      var(--obpc-app-orange)
+    );
   }
-  
+
   .dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(34, 139, 34, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.10) !important;
   }
-  
+
   .dashboard-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: 15px;
+    width: 50px;
+    height: 50px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin: 0 auto 15px;
-    font-size: 24px;
-    color: white;
+    margin: 0 auto 13px;
+    border-radius: 13px;
+    font-size: 20px;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
   }
-  
-  .icon-members { background: linear-gradient(135deg, #228b22, #1e3a8a); }
-  .icon-workers { background: linear-gradient(135deg, #059669, #10b981); }
-  .icon-finance { background: linear-gradient(135deg, #FF6B35, #FF4500); }
-  .icon-events { background: linear-gradient(135deg, #dc2626, #ef4444); }
-  
+
+  .icon-members {
+    background: linear-gradient(135deg, #0f172a, #2563eb);
+  }
+
+  .icon-workers {
+    background: linear-gradient(135deg, #15803d, #22c55e);
+  }
+
+  .icon-finance {
+    background: linear-gradient(135deg, #ea580c, #ff6b35);
+  }
+
+  .icon-events {
+    background: linear-gradient(135deg, #0369a1, #0ea5e9);
+  }
+
+  .dashboard-card h6 {
+    color: #64748b !important;
+    font-size: 13px;
+    font-weight: 700 !important;
+  }
+
+  .dashboard-card h4 {
+    margin: 0;
+    color: #0f172a !important;
+    font-size: 34px;
+    font-weight: 800 !important;
+}
+
+  .dashboard-page > .mt-5 {
+    margin-top: 30px !important;
+  }
+
+  .dashboard-page > .mt-5 > h5 {
+    margin-bottom: 5px;
+    padding-left: 12px !important;
+    border-left: 4px solid var(--obpc-app-orange) !important;
+    color: #0f172a !important;
+    font-size: 18px;
+    font-weight: 800 !important;
+  }
+
   .activity-card {
-    background: white;
-    border-radius: 15px;
-    border: 1px solid #e5e7eb;
-    transition: all 0.3s ease;
+    border: 1px solid var(--obpc-app-border) !important;
+    border-radius: 14px !important;
+    background: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.045) !important;
+    transition: border-color .15s ease, box-shadow .15s ease !important;
   }
-  
+
   .activity-card:hover {
-    border-color: #FF6B35;
-    box-shadow: 0 5px 15px rgba(255, 107, 53, 0.1);
+    border-color: #bfdbfe !important;
+    box-shadow: 0 7px 18px rgba(15, 23, 42, 0.07) !important;
   }
-  
+
   .bg-purple {
-    background-color: #8b5cf6 !important;
+    background-color: #7c3aed !important;
+  }
+  .dashboard-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.dashboard-section-icon {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--obpc-app-blue), var(--obpc-app-cyan));
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.10);
+}
+
+.dashboard-section-header h5 {
+    margin: 0;
+    color: #0f172a !important;
+    font-size: 18px;
+    font-weight: 800 !important;
+}
+
+.system-status-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.system-status-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.system-status-icon {
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 42px;
+    border-radius: 12px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #15803d, #22c55e);
+}
+
+.system-status-text strong {
+    display: block;
+    margin-bottom: 2px;
+    color: #0f172a;
+    font-size: 14px;
+}
+
+.system-status-text small {
+    color: #64748b;
+}
+
+.system-status-badge {
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+  @media (max-width: 768px) {
+    .dashboard-page {
+      padding-top: 70px;
+    }
+
+    .dashboard-hero {
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 20px;
+    }
+
+    .dashboard-welcome {
+      width: 100%;
+    }
   }
 </style>
 
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="fw-bold" style="color: #0d5450;">
-      <i class="fa-solid fa-church me-2" style="color: #eab308;"></i> Sistema OBPC - Tietê-SP
-    </h3>
-    <span style="color: #6b7280;">Bem-vindo, {{ current_user.nome }}!</span>
+<div class="container-fluid dashboard-page">
+
+  <div class="dashboard-hero">
+    <div>
+      <div class="dashboard-eyebrow">
+        <i class="fa-solid fa-chart-line me-1"></i>
+        Visão Geral
+      </div>
+
+      <h3>
+        <i class="fa-solid fa-church me-2"></i>
+        Sistema OBPC - Tietê-SP
+      </h3>
+
+      <p>Indicadores, agenda e atividades administrativas da igreja.</p>
+    </div>
+
+    <div class="dashboard-welcome">
+      <i class="fa-solid fa-circle-user"></i>
+      <span>
+        <small>Bem-vindo</small>
+        <strong>{{ current_user.nome }}</strong>
+      </span>
+    </div>
   </div>
 
   <!-- CONTROLES DO PAINEL -->
@@ -294,9 +547,16 @@
   </div>
 
   <div class="mt-5">
-    <h5 class="fw-semibold" style="color: #0d5450; border-left: 4px solid #eab308; padding-left: 15px;">Últimas Atividades</h5>
-    <p class="text-muted mb-4">Esta área será usada para listar lançamentos, eventos e notificações da igreja.</p>
+    <div class="dashboard-section-header">
+    <div class="dashboard-section-icon">
+        <i class="fa-solid fa-clock-rotate-left"></i>
+    </div>
+    <h5>Últimas Atividades</h5>
+</div>
 
+<p class="text-muted mb-4">
+    Acompanhe eventos, atividades e notificações recentes da igreja.
+</p>
     <!-- Próximos Eventos -->
     {% if proximos_eventos %}
     <div class="mb-4">
@@ -511,18 +771,26 @@
     {% endif %}
 
     <div class="card activity-card shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center">
-          <div class="rounded-circle bg-light p-3 me-3" style="background: linear-gradient(135deg, #eab308, #ca8a04) !important;">
-            <i class="fa-solid fa-clock text-white"></i>
-          </div>
-          <div>
-            <p class="mb-1 fw-semibold" style="color: #374151;">Sistema em funcionamento</p>
-            <p class="mb-0 text-muted small">Aguardando atividades dos usuários...</p>
-          </div>
+    <div class="card-body">
+        <div class="system-status-card">
+
+            <div class="system-status-main">
+                <div class="system-status-icon">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+
+                <div class="system-status-text">
+                    <strong>Sistema em funcionamento</strong>
+                    <small>Aguardando novas atividades dos usuários.</small>
+                </div>
+            </div>
+
+            <span class="system-status-badge">
+                <i class="fa-solid fa-circle me-1"></i>
+                Operacional
+            </span>
+
         </div>
-      </div>
     </div>
-  </div>
 </div>
 {% endblock %}
