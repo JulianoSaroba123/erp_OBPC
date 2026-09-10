@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Auditoria {{ "%02d"|format(mes) }}/{{ ano }}</title>
-    <style>
+{% extends 'financeiro/_relatorio_pdf_base.html' if modo_pdf|default(false) else 'base.html' %}
+
+{% block title %}Relatório de Auditoria {{ "%02d"|format(mes) }}/{{ ano }}{% endblock %}
+
+{% block extra_css %}
+<style>
         :root {
             --ink: #1e293b;
             --muted: #64748b;
@@ -183,9 +182,41 @@
         @media (max-width: 980px) {
             .header, .stats, .signature-grid { grid-template-columns: 1fr; display: grid; }
         }
-    </style>
-</head>
-<body>
+    
+</style>
+
+{% if not modo_pdf %}
+<style>
+    /*
+     * D23D57-C PILOTO AUDITORIA
+     * Apenas encaixe da página dentro do layout oficial do ERP.
+     * Nenhuma rota, consulta, cálculo ou regra financeira é alterada.
+     */
+    .content main > .page {
+        width: 100%;
+        max-width: 1480px !important;
+        padding: 18px 24px 36px !important;
+        margin-left: auto;
+        margin-right: auto;
+        overflow: visible;
+    }
+
+    .content main,
+    .content main > .page {
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .content main > .page > .document,
+    .content main > .page > .signature-card {
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
     <div class="page">
         {% set titulo_toolbar = 'Relatório de Auditoria' %}
         {% include 'financeiro/_relatorio_toolbar.html' %}
@@ -358,5 +389,4 @@
             </div>
         </section>
     </div>
-</body>
-</html>
+{% endblock %}
