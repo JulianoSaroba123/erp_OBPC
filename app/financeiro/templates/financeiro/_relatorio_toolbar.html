@@ -1,305 +1,630 @@
 {% if not modo_pdf %}
-<div class="report-toolbar report-workspace">
-    <header class="report-workspace__header">
-        <div class="report-workspace__heading">
-            <div class="report-workspace__icon"><i class="fas fa-file-invoice-dollar"></i></div>
-            <div>
-                <p class="report-workspace__eyebrow">Financeiro · Relatórios</p>
-                <h1>{{ titulo_toolbar }}</h1>
-                <p class="report-workspace__subtitle">Consulte, revise e gere os documentos financeiros da competência selecionada.</p>
-            </div>
+<div class="report-shell">
+
+    <header class="obpc-page-header report-module-header">
+        <div>
+            <h1 class="obpc-page-title">
+                <i class="fas fa-chart-bar"></i>
+                Relatórios Financeiros
+            </h1>
+            <p class="obpc-page-subtitle">
+                Consulte relatórios gerenciais, prestação à Sede e auditoria por competência.
+            </p>
         </div>
-        <div class="report-workspace__top-actions">
-            <a class="report-btn report-btn--secondary" href="{{ url_for('financeiro.lista_lancamentos') }}">
+
+        <div class="obpc-page-actions">
+            <a class="obpc-btn obpc-btn-secondary" href="{{ url_for('financeiro.lista_lancamentos') }}">
                 <i class="fas fa-arrow-left"></i> Movimentações
             </a>
-            <a class="report-btn report-btn--primary" href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}" target="_blank" rel="noopener">
+            <a class="obpc-btn obpc-btn-primary"
+               href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio=tipo_relatorio, mes=mes, ano=ano) }}"
+               target="_blank"
+               rel="noopener">
                 <i class="fas fa-file-pdf"></i> Gerar PDF
             </a>
         </div>
     </header>
 
-    <form method="get" action="{{ url_for('financeiro.gerar_relatorio') }}" class="report-controls">
-        <div class="report-controls__block report-controls__block--type">
-            <span class="report-label">Tipo de relatório</span>
-            <div class="report-type-grid">
-                <label class="report-type-card">
-                    <input type="radio" name="tipo_relatorio" value="gerencial" {% if tipo_relatorio == 'gerencial' %}checked{% endif %}>
-                    <span class="report-type-card__icon"><i class="fas fa-chart-line"></i></span>
-                    <span><strong>Gerencial</strong><small>Visão interna e indicadores.</small></span>
-                </label>
-                <label class="report-type-card">
-                    <input type="radio" name="tipo_relatorio" value="sede" {% if tipo_relatorio == 'sede' %}checked{% endif %}>
-                    <span class="report-type-card__icon"><i class="fas fa-church"></i></span>
-                    <span><strong>Oficial para Sede</strong><small>Prestação mensal institucional.</small></span>
-                </label>
-                <label class="report-type-card">
-                    <input type="radio" name="tipo_relatorio" value="auditoria" {% if tipo_relatorio == 'auditoria' %}checked{% endif %}>
-                    <span class="report-type-card__icon"><i class="fas fa-shield-alt"></i></span>
-                    <span><strong>Auditoria</strong><small>Conferência e rastreabilidade.</small></span>
-                </label>
-            </div>
+    <form method="get"
+          action="{{ url_for('financeiro.gerar_relatorio') }}"
+          id="report-config-form"
+          class="report-main-form">
+
+    <section class="obpc-section report-type-section">
+        <div class="report-type-grid">
+
+            <label class="obpc-ops report-type-card">
+                <input type="radio"
+                       name="tipo_relatorio"
+                       value="gerencial"
+                       {% if tipo_relatorio == 'gerencial' %}checked{% endif %}>
+                <div class="obpc-ops__head">
+                    <div>
+                        <p class="obpc-ops__label">Gerencial</p>
+                        <p class="obpc-ops__description">Visão interna, indicadores e acompanhamento da gestão.</p>
+                    </div>
+                    <span class="obpc-badge obpc-badge--neutral">
+                        <i class="fas fa-chart-line"></i> Interno
+                    </span>
+                </div>
+                <div class="report-type-card__footer">
+                    <span><i class="fas fa-circle-check"></i> Uso administrativo</span>
+                </div>
+            </label>
+
+            <label class="obpc-ops report-type-card">
+                <input type="radio"
+                       name="tipo_relatorio"
+                       value="sede"
+                       {% if tipo_relatorio == 'sede' %}checked{% endif %}>
+                <div class="obpc-ops__head">
+                    <div>
+                        <p class="obpc-ops__label">Oficial para Sede</p>
+                        <p class="obpc-ops__description">Prestação mensal institucional e valores destinados.</p>
+                    </div>
+                    <span class="obpc-badge obpc-badge--neutral">
+                        <i class="fas fa-church"></i> Oficial
+                    </span>
+                </div>
+                <div class="report-type-card__footer">
+                    <span><i class="fas fa-file-signature"></i> Prestação mensal</span>
+                </div>
+            </label>
+
+            <label class="obpc-ops report-type-card">
+                <input type="radio"
+                       name="tipo_relatorio"
+                       value="auditoria"
+                       {% if tipo_relatorio == 'auditoria' %}checked{% endif %}>
+                <div class="obpc-ops__head">
+                    <div>
+                        <p class="obpc-ops__label">Auditoria</p>
+                        <p class="obpc-ops__description">Conferência, rastreabilidade e validação dos registros.</p>
+                    </div>
+                    <span class="obpc-badge obpc-badge--neutral">
+                        <i class="fas fa-shield-alt"></i> Controle
+                    </span>
+                </div>
+                <div class="report-type-card__footer">
+                    <span><i class="fas fa-magnifying-glass-chart"></i> Conferência</span>
+                </div>
+            </label>
+
         </div>
+    </section>
 
-        <div class="report-controls__block report-controls__block--period">
-            <span class="report-label">Competência</span>
-            <div class="report-period-grid">
-                <label class="report-field">
-                    <span>Mês</span>
-                    <select name="mes">
-                        {% for mes_opcao in range(1, 13) %}
-                        <option value="{{ mes_opcao }}" {% if mes_opcao == mes %}selected{% endif %}>{{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes_opcao] }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-                <label class="report-field report-field--year">
-                    <span>Ano</span>
-                    <select name="ano">
-                        {% for ano_opcao in range(2020, 2036) %}
-                        <option value="{{ ano_opcao }}" {% if ano_opcao == ano %}selected{% endif %}>{{ ano_opcao }}</option>
-                        {% endfor %}
-                    </select>
-                </label>
-                <button type="submit" class="report-btn report-btn--primary report-btn--apply"><i class="fas fa-sync-alt"></i> Atualizar</button>
-            </div>
-            <div class="report-period-hint"><i class="fas fa-calendar-check"></i> Competência atual: <strong>{{ "%02d"|format(mes) }}/{{ ano }}</strong></div>
-        </div>
-    </form>
-
-    <div class="report-quick-actions">
-        <span class="report-quick-actions__note"><i class="fas fa-circle-info"></i> O PDF mantém o layout oficial e os dados da competência selecionada.</span>
-        <button type="button" class="report-btn report-btn--dark" onclick="window.print()"><i class="fas fa-print"></i> Imprimir tela</button>
-    </div>
-
-    <section class="justificativa-card report-note-card">
-        <div class="justificativa-header">
-            <div class="report-note-card__title">
-                <span class="report-note-card__icon"><i class="fas fa-pen-to-square"></i></span>
+    <section class="obpc-section">
+        <div class="obpc-card">
+            <div class="obpc-card-header">
                 <div>
-                    <p class="report-label mb-0">Pré-PDF</p>
-                    <h3>Justificativa Contábil dos Repasses à Sede</h3>
-                    <p>Use este campo somente quando houver informação contábil relevante para a competência.</p>
+                    <h2 class="obpc-section-title">
+                        <i class="fas fa-filter me-2"></i>Configuração do Relatório
+                    </h2>
+                    <p class="obpc-section-subtitle">
+                        Escolha a competência e atualize o documento sem alterar o fluxo financeiro.
+                    </p>
+                </div>
+
+                <span class="obpc-badge obpc-badge--info">
+                    <i class="fas fa-calendar-check"></i>
+                    {{ "%02d"|format(mes) }}/{{ ano }}
+                </span>
+            </div>
+
+            <div class="obpc-card-body">
+                <div class="obpc-form">
+                    <div class="obpc-filter-bar report-filter-bar">
+                        <div class="obpc-field report-field-month">
+                            <label for="relatorio-mes" class="obpc-label">Mês</label>
+                            <select id="relatorio-mes" name="mes" class="obpc-select">
+                                {% for mes_opcao in range(1, 13) %}
+                                <option value="{{ mes_opcao }}" {% if mes_opcao == mes %}selected{% endif %}>
+                                    {{ ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][mes_opcao] }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="obpc-field report-field-year">
+                            <label for="relatorio-ano" class="obpc-label">Ano</label>
+                            <select id="relatorio-ano" name="ano" class="obpc-select">
+                                {% for ano_opcao in range(2020, 2036) %}
+                                <option value="{{ ano_opcao }}" {% if ano_opcao == ano %}selected{% endif %}>
+                                    {{ ano_opcao }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="report-config-actions">
+                            <button type="submit" class="obpc-btn obpc-btn-primary">
+                                <i class="fas fa-sync-alt"></i> Atualizar
+                            </button>
+                            <button type="button"
+                                    class="obpc-btn obpc-btn-secondary"
+                                    onclick="window.print()">
+                                <i class="fas fa-print"></i> Imprimir tela
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="report-config-note">
+                        <i class="fas fa-circle-info"></i>
+                        O PDF mantém o layout próprio de cada relatório e os dados da competência selecionada.
+                    </div>
                 </div>
             </div>
-            <span class="status-pill {% if observacao_repasse_salva %}status-salva{% else %}status-auto{% endif %}">
-                {% if observacao_repasse_salva %}<i class="fas fa-check-circle"></i> Texto salvo{% else %}<i class="fas fa-wand-magic-sparkles"></i> Texto automático{% endif %}
-            </span>
         </div>
-
-        <form method="post" action="{{ url_for('financeiro.salvar_justificativa_relatorio') }}" class="justificativa-form">
-            <input type="hidden" name="tipo_relatorio" value="{{ tipo_relatorio }}">
-            <input type="hidden" name="mes" value="{{ mes }}">
-            <input type="hidden" name="ano" value="{{ ano }}">
-            <textarea name="observacao_repasse_sede" class="justificativa-textarea" rows="4" placeholder="Digite a justificativa contábil dos repasses à Sede">{{ observacao_repasse_sede }}</textarea>
-            <div class="report-note-card__actions">
-                <button type="submit" name="acao" value="salvar" class="report-btn report-btn--primary"><i class="fas fa-save"></i> Salvar justificativa</button>
-                <button type="submit" name="acao" value="restaurar" class="report-btn report-btn--secondary"><i class="fas fa-rotate-left"></i> Restaurar automático</button>
-            </div>
-            <small class="report-workspace__subtitle">A justificativa é armazenada por mês, ano e tipo de relatório.</small>
-        </form>
     </section>
+
+    </form>
+
+    <section class="obpc-section">
+        <div class="obpc-card">
+            <div class="obpc-card-header">
+                <div>
+                    <h2 class="obpc-section-title">
+                        <i class="fas fa-pen-to-square me-2"></i>Justificativa Contábil
+                    </h2>
+                    <p class="obpc-section-subtitle">
+                        Campo pré-PDF para observações relevantes da competência.
+                    </p>
+                </div>
+
+                <span class="obpc-badge {% if observacao_repasse_salva %}obpc-badge--success{% else %}obpc-badge--info{% endif %}">
+                    {% if observacao_repasse_salva %}
+                        <i class="fas fa-check-circle"></i> Texto salvo
+                    {% else %}
+                        <i class="fas fa-wand-magic-sparkles"></i> Texto automático
+                    {% endif %}
+                </span>
+            </div>
+
+            <div class="obpc-card-body">
+                <form method="post"
+                      action="{{ url_for('financeiro.salvar_justificativa_relatorio') }}"
+                      class="obpc-form report-note-form">
+
+                    <input type="hidden" name="tipo_relatorio" value="{{ tipo_relatorio }}">
+                    <input type="hidden" name="mes" value="{{ mes }}">
+                    <input type="hidden" name="ano" value="{{ ano }}">
+
+                    <div class="obpc-field">
+                        <label for="observacao-repasse-sede" class="obpc-label">
+                            Justificativa Contábil dos Repasses à Sede
+                        </label>
+                        <textarea id="observacao-repasse-sede"
+                                  name="observacao_repasse_sede"
+                                  class="obpc-textarea"
+                                  rows="4"
+                                  placeholder="Digite a justificativa contábil dos repasses à Sede">{{ observacao_repasse_sede }}</textarea>
+                    </div>
+
+                    <div class="report-note-actions">
+                        <button type="submit"
+                                name="acao"
+                                value="salvar"
+                                class="obpc-btn obpc-btn-primary">
+                            <i class="fas fa-save"></i> Salvar justificativa
+                        </button>
+
+                        <button type="submit"
+                                name="acao"
+                                value="restaurar"
+                                class="obpc-btn obpc-btn-secondary">
+                            <i class="fas fa-rotate-left"></i> Restaurar automático
+                        </button>
+                    </div>
+
+                    <p class="report-note-foot">
+                        A justificativa é armazenada por mês, ano e tipo de relatório.
+                    </p>
+                </form>
+            </div>
+        </div>
+    </section>
+
 </div>
 
 <style>
-    /* D23D56: somente apresentação. O fluxo e as rotas do relatório permanecem originais. */
+    /* D23D56: somente apresentação. Fluxo e rotas originais preservados. */
+    /* D23D57 V2.2 LOCAL: seleção visual somente por CSS, sem JavaScript. */
+
+    :root {
+        --obpc-primary: #1d4ed8;
+        --obpc-primary-dark: #0f172a;
+        --obpc-primary-light: #dbeafe;
+
+        --obpc-success: #166534;
+        --obpc-success-light: #dcfce7;
+        --obpc-danger: #b91c1c;
+        --obpc-danger-light: #fee2e2;
+        --obpc-warning: #92400e;
+        --obpc-warning-light: #fef3c7;
+        --obpc-info: #0f766e;
+        --obpc-info-light: #cffafe;
+        --obpc-neutral: #475569;
+        --obpc-neutral-light: #e2e8f0;
+
+        --obpc-bg-page: #f8fafc;
+        --obpc-bg-card: #ffffff;
+        --obpc-bg-soft: #f1f5f9;
+
+        --obpc-text-primary: #0f172a;
+        --obpc-text-secondary: #334155;
+        --obpc-text-muted: #64748b;
+
+        --obpc-border: #e2e8f0;
+        --obpc-border-soft: #eef2f7;
+        --obpc-border-strong: #cbd5e1;
+
+        --obpc-radius-sm: .85rem;
+        --obpc-radius-md: 1rem;
+        --obpc-radius-lg: 1.15rem;
+        --obpc-radius-xl: 1.25rem;
+        --obpc-radius-pill: 999px;
+
+        --obpc-shadow-sm: 0 4px 12px rgba(15, 23, 42, .06);
+        --obpc-shadow-md: 0 12px 32px rgba(15, 23, 42, .08);
+
+        --obpc-space-1: .35rem;
+        --obpc-space-2: .6rem;
+        --obpc-space-3: .75rem;
+        --obpc-space-4: .95rem;
+        --obpc-space-5: 1rem;
+        --obpc-space-6: 1.15rem;
+        --obpc-space-7: 1.35rem;
+        --obpc-space-8: 1.5rem;
+        --obpc-space-9: 2rem;
+    }
+
+    body {
+        background: var(--obpc-bg-soft) !important;
+        color: var(--obpc-text-primary);
+    }
+
     body > .page {
-        max-width: 1480px !important;
         width: 100%;
+        overflow: visible;
+        max-width: 1480px !important;
         padding: 18px 24px 36px !important;
     }
 
-    .report-workspace {
-        width: 100%;
-        max-width: none;
-        position: static;
-        left: auto;
-        transform: none;
-        padding: 0;
-        margin: 0 0 22px;
-        overflow: visible;
-        border: 1px solid #dbe5f1;
-        border-radius: 18px;
-        background: #fff;
-        box-shadow: 0 10px 28px rgba(15, 23, 42, .07);
+    .report-shell {
+        display: grid;
+        gap: var(--obpc-space-8);
+        margin-bottom: var(--obpc-space-8);
     }
 
-    .report-workspace::before {
-        content: "";
-        display: block;
-        height: 3px;
-        border-radius: 18px 18px 0 0;
-        background: linear-gradient(90deg, #1d4ed8 0%, #0ea5e9 58%, #16a34a 100%);
+    .obpc-page-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--obpc-space-8);
+        padding: var(--obpc-space-9);
+        border-radius: var(--obpc-radius-xl);
+        border: 1px solid var(--obpc-border);
+        background: var(--obpc-bg-card);
+        box-shadow: var(--obpc-shadow-md);
     }
 
-    .report-workspace__header {
+    .obpc-page-title {
+        display: flex;
+        align-items: center;
+        gap: var(--obpc-space-3);
+        margin: 0;
+        font-size: clamp(1.4rem, 2vw, 2rem);
+        line-height: 1.1;
+        font-weight: 800;
+        color: var(--obpc-text-primary);
+    }
+
+    .obpc-page-subtitle {
+        margin: var(--obpc-space-2) 0 0;
+        color: var(--obpc-text-muted);
+        font-size: .95rem;
+    }
+
+    .obpc-page-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--obpc-space-2);
+        align-items: center;
+        justify-content: flex-end;
+    }
+
+    .obpc-section {
+        display: grid;
+        gap: var(--obpc-space-5);
+    }
+
+    .obpc-section-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--obpc-text-primary);
+    }
+
+    .obpc-section-subtitle {
+        margin: var(--obpc-space-1) 0 0;
+        color: var(--obpc-text-muted);
+        font-size: .9rem;
+    }
+
+    .obpc-card {
+        background: var(--obpc-bg-card);
+        border: 1px solid var(--obpc-border);
+        border-radius: var(--obpc-radius-lg);
+        box-shadow: var(--obpc-shadow-md);
+    }
+
+    .obpc-card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 18px;
-        padding: 20px 22px 16px;
-        border-bottom: 1px solid #e7edf5;
-        background: #fff;
+        gap: var(--obpc-space-4);
+        padding: var(--obpc-space-7) var(--obpc-space-7) 0;
     }
 
-    .report-workspace__heading {
+    .obpc-card-body {
+        padding: var(--obpc-space-7);
+    }
+
+    .obpc-ops {
+        position: relative;
+        overflow: hidden;
+        display: grid;
+        gap: var(--obpc-space-2);
+        min-height: 140px;
+        padding: var(--obpc-space-5) var(--obpc-space-6);
+        background: var(--obpc-bg-card);
+        border: 1px solid var(--obpc-border);
+        border-radius: var(--obpc-radius-lg);
+        box-shadow: var(--obpc-shadow-sm);
+    }
+
+    .obpc-ops__head {
         display: flex;
-        align-items: center;
-        gap: 13px;
-        min-width: 0;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--obpc-space-4);
     }
 
-    .report-workspace__icon,
-    .report-note-card__icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
+    .obpc-ops__label {
+        margin: 0;
+        font-size: .82rem;
+        font-weight: 800;
+        letter-spacing: .12em;
+        text-transform: uppercase;
+        color: var(--obpc-text-muted);
+    }
+
+    .obpc-ops__description {
+        margin: var(--obpc-space-2) 0 0;
+        color: var(--obpc-text-muted);
+        font-size: .9rem;
+        line-height: 1.4;
+    }
+
+    .obpc-badge {
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        flex: 0 0 auto;
-        color: #1d4ed8;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-    }
-
-    .report-workspace__eyebrow,
-    .report-label {
-        margin: 0 0 4px;
-        color: #64748b;
-        font-size: 10px;
-        line-height: 1.2;
-        letter-spacing: .09em;
-        text-transform: uppercase;
+        gap: .35rem;
+        padding: .36rem .62rem;
+        border-radius: var(--obpc-radius-pill);
+        font-size: .78rem;
         font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
+        border: 1px solid transparent;
     }
 
-    .report-workspace__header h1 {
-        margin: 0;
-        color: #0f172a;
-        font-size: clamp(22px, 2vw, 28px);
-        line-height: 1.12;
-        letter-spacing: -.02em;
+    .obpc-badge--primary {
+        color: var(--obpc-primary);
+        background: var(--obpc-primary-light);
+        border-color: #bfdbfe;
     }
 
-    .report-workspace__subtitle {
-        margin: 4px 0 0;
-        color: #64748b;
-        font-size: 12px;
+    .obpc-badge--success {
+        color: var(--obpc-success);
+        background: var(--obpc-success-light);
+        border-color: #bbf7d0;
     }
 
-    .report-workspace__top-actions,
-    .report-note-card__actions,
-    .report-quick-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
+    .obpc-badge--info {
+        color: var(--obpc-info);
+        background: var(--obpc-info-light);
+        border-color: #a5f3fc;
     }
 
-    .report-btn {
-        min-height: 38px;
-        padding: 8px 14px;
-        border-radius: 11px;
+    .obpc-badge--neutral {
+        color: var(--obpc-neutral);
+        background: var(--obpc-neutral-light);
+        border-color: #cbd5e1;
+    }
+
+    .obpc-btn {
+        min-height: 42px;
+        padding: .62rem .92rem;
+        border-radius: .85rem;
         border: 1px solid transparent;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 7px;
+        gap: .5rem;
         font: inherit;
-        font-size: 12px;
-        font-weight: 700;
+        font-size: .88rem;
+        font-weight: 800;
+        line-height: 1;
         text-decoration: none;
         cursor: pointer;
         transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
     }
 
-    .report-btn:hover { transform: translateY(-1px); }
-    .report-btn--primary { background: #2554db; border-color: #2554db; color: #fff; box-shadow: 0 6px 14px rgba(37,84,219,.17); }
-    .report-btn--secondary { background: #fff; border-color: #cbd5e1; color: #334155; }
-    .report-btn--dark { background: #172033; border-color: #172033; color: #fff; }
-
-    .report-controls {
-        display: grid;
-        grid-template-columns: minmax(0, 1.65fr) minmax(320px, .75fr);
-        gap: 14px;
-        padding: 16px 22px;
-        background: #f8fbff;
-        border-bottom: 1px solid #e7edf5;
+    .obpc-btn:hover {
+        transform: translateY(-1px);
     }
 
-    .report-controls__block {
-        min-width: 0;
-        padding: 13px;
-        border: 1px solid #dbe5f1;
-        border-radius: 14px;
-        background: #fff;
+    .obpc-btn-primary {
+        color: #ffffff;
+        background: var(--obpc-primary);
+        border-color: var(--obpc-primary);
+        box-shadow: 0 5px 14px rgba(29, 78, 216, .18);
+    }
+
+    .obpc-btn-secondary {
+        color: var(--obpc-text-secondary);
+        background: #ffffff;
+        border-color: var(--obpc-border-strong);
+    }
+
+    .obpc-form {
+        display: grid;
+        gap: var(--obpc-space-5);
+    }
+
+    .obpc-filter-bar {
+        display: flex;
+        align-items: flex-end;
+        gap: var(--obpc-space-3);
+        flex-wrap: wrap;
+        padding: var(--obpc-space-4);
+        border: 1px solid var(--obpc-border);
+        border-radius: var(--obpc-radius-md);
+        background: var(--obpc-bg-soft);
+    }
+
+    .obpc-field {
+        display: grid;
+        gap: .42rem;
+    }
+
+    .obpc-label {
+        margin: 0;
+        color: var(--obpc-text-secondary);
+        font-size: .78rem;
+        line-height: 1.2;
+        font-weight: 800;
+    }
+
+    .obpc-select,
+    .obpc-textarea {
+        width: 100%;
+        border: 1px solid var(--obpc-border-strong);
+        border-radius: .72rem;
+        background: #ffffff;
+        color: var(--obpc-text-primary);
+        font: inherit;
+    }
+
+    .obpc-select {
+        min-height: 42px;
+        padding: 0 .78rem;
+    }
+
+    .obpc-textarea {
+        min-height: 104px;
+        padding: .78rem .86rem;
+        resize: vertical;
+    }
+
+    .obpc-select:focus,
+    .obpc-textarea:focus {
+        outline: none;
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 3px rgba(29, 78, 216, .10);
     }
 
     .report-type-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 9px;
-        margin-top: 8px;
+        gap: 1rem;
     }
 
     .report-type-card {
-        position: relative;
-        min-height: 72px;
-        padding: 10px 12px;
-        border: 1px solid #d9e2ee;
-        border-radius: 12px;
-        background: #fff;
-        display: flex;
-        align-items: center;
-        gap: 9px;
+        cursor: pointer;
+        transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+
+    .report-type-card:hover {
+        transform: translateY(-1px);
+        border-color: #bfdbfe;
+    }
+
+    .report-type-card input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
         cursor: pointer;
     }
 
-    .report-type-card input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .report-type-card:has(input:checked) { border-color: #7da3ff; background: #eef4ff; box-shadow: inset 0 0 0 1px #bfdbfe; }
-    .report-type-card__icon { width: 32px; height: 32px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: #f1f5f9; color: #475569; }
-    .report-type-card:has(input:checked) .report-type-card__icon { background: #2554db; color: #fff; }
-    .report-type-card strong { display: block; color: #0f172a; font-size: 12px; }
-    .report-type-card small { display: block; margin-top: 2px; color: #64748b; font-size: 10px; line-height: 1.25; }
-
-    .report-period-grid { display: grid; grid-template-columns: minmax(150px, 1fr) 100px auto; gap: 9px; align-items: end; margin-top: 8px; }
-    .report-field { display: grid; gap: 5px; }
-    .report-field > span { color: #475569; font-size: 10px; font-weight: 700; }
-    .report-field select { width: 100%; min-height: 40px; padding: 0 11px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #0f172a; font: inherit; }
-    .report-field select:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37,84,219,.1); }
-    .report-btn--apply { min-height: 40px; }
-    .report-period-hint { margin-top: 9px; padding-top: 9px; border-top: 1px solid #edf1f6; color: #64748b; font-size: 10px; }
-
-    .report-quick-actions {
-        justify-content: flex-end;
-        padding: 11px 22px;
-        border-bottom: 1px solid #e7edf5;
-        background: #fff;
-    }
-    .report-quick-actions__note { margin-right: auto; color: #64748b; font-size: 10px; }
-
-    .report-note-card {
-        margin: 16px 22px 22px;
-        padding: 15px;
-        border: 1px solid #dbe5f1;
-        border-radius: 14px;
-        background: #fff;
-        display: grid;
-        gap: 11px;
+    .report-type-card:has(input:checked) {
+        border-color: #93c5fd;
+        box-shadow: 0 0 0 2px rgba(29, 78, 216, .08), var(--obpc-shadow-sm);
     }
 
-    .justificativa-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-    .report-note-card__title { display: flex; align-items: flex-start; gap: 11px; }
-    .report-note-card__title h3 { margin: 2px 0 3px; color: #0f172a; font-size: 14px; }
-    .report-note-card__title p:not(.report-label) { margin: 0; color: #64748b; font-size: 10px; }
-    .status-pill { padding: 6px 10px; border-radius: 999px; font-size: 10px; font-weight: 800; border: 1px solid transparent; white-space: nowrap; }
-    .status-salva { background: #ecfdf3; color: #166534; border-color: #bbf7d0; }
-    .status-auto { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-    .justificativa-form { display: grid; gap: 9px; }
-    .justificativa-textarea { width: 100%; min-height: 90px; border: 1px solid #cbd5e1; border-radius: 11px; padding: 11px 12px; font: inherit; color: #0f172a; background: #fff; resize: vertical; }
-    .justificativa-textarea:focus { outline: none; border-color: #7da3ff; box-shadow: 0 0 0 3px rgba(37,84,219,.1); }
+    .report-type-card:has(input:checked)::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 5px;
+        background: var(--obpc-primary);
+    }
 
-    /* Documento continua sendo o documento original, apenas com melhor encaixe na tela. */
+
+    .report-type-card:has(input:checked) .obpc-badge {
+        color: var(--obpc-primary);
+        background: var(--obpc-primary-light);
+        border-color: #bfdbfe;
+    }
+
+    .report-type-card__footer {
+        margin-top: auto;
+        padding-top: var(--obpc-space-3);
+        border-top: 1px solid var(--obpc-border-soft);
+        color: var(--obpc-text-secondary);
+        font-size: .82rem;
+        font-weight: 700;
+    }
+
+    .report-filter-bar {
+        align-items: end;
+    }
+
+    .report-field-month {
+        min-width: 260px;
+        flex: 1.4;
+    }
+
+    .report-field-year {
+        min-width: 130px;
+        flex: .5;
+    }
+
+    .report-config-actions,
+    .report-note-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--obpc-space-2);
+        flex-wrap: wrap;
+    }
+
+    .report-config-note {
+        color: var(--obpc-text-muted);
+        font-size: .82rem;
+    }
+
+    .report-note-form {
+        gap: var(--obpc-space-4);
+    }
+
+    .report-note-foot {
+        margin: 0;
+        color: var(--obpc-text-muted);
+        font-size: .82rem;
+    }
+
+    /* O documento abaixo permanece o template original. */
     body > .page > .document,
     body > .page > .signature-block,
     body > .page > .signature-card {
@@ -309,28 +634,73 @@
     }
 
     @media (max-width: 980px) {
-        body > .page { padding: 12px 14px 28px !important; }
-        .report-controls { grid-template-columns: 1fr; }
-        .report-workspace__header { align-items: flex-start; flex-direction: column; }
-        .report-workspace__top-actions { width: 100%; }
+        body > .page {
+            padding: 12px 14px 28px !important;
+        }
+
+        .obpc-page-header {
+            flex-direction: column;
+        }
+
+        .obpc-page-actions {
+            width: 100%;
+        }
+
+        .report-type-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     @media (max-width: 720px) {
-        .report-workspace__header, .report-controls, .report-quick-actions { padding-left: 13px; padding-right: 13px; }
-        .report-type-grid { grid-template-columns: 1fr; }
-        .report-period-grid { grid-template-columns: 1fr 1fr; }
-        .report-btn--apply { grid-column: 1 / -1; }
-        .report-note-card { margin-left: 13px; margin-right: 13px; }
-        .justificativa-header { flex-direction: column; }
-        .report-workspace__top-actions .report-btn { flex: 1; }
+        .obpc-page-header {
+            padding: 1.2rem;
+        }
+
+        .obpc-page-actions .obpc-btn {
+            flex: 1;
+        }
+
+        .obpc-card-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .report-field-month,
+        .report-field-year {
+            min-width: 100%;
+            flex: 1 1 100%;
+        }
+
+        .report-config-actions {
+            width: 100%;
+        }
+
+        .report-config-actions .obpc-btn {
+            flex: 1;
+        }
     }
 
     @media print {
-        body > .page { max-width: none !important; width: auto !important; padding: 0 !important; }
-        .report-workspace { display: none !important; }
+        body {
+            background: #ffffff !important;
+        }
+
+        body > .page {
+            width: auto !important;
+            max-width: none !important;
+            padding: 0 !important;
+        }
+
+        .report-shell {
+            display: none !important;
+        }
+
         body > .page > .document,
         body > .page > .signature-block,
-        body > .page > .signature-card { max-width: none !important; margin: 0 !important; }
+        body > .page > .signature-card {
+            max-width: none !important;
+            margin: 0 !important;
+        }
     }
 </style>
 {% endif %}

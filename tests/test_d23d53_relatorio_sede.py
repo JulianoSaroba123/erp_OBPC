@@ -93,14 +93,14 @@ class D23D53RelatorioSedeTest(unittest.TestCase):
     def test_toolbar_adota_workspace_no_padrao_operacional(self):
         src = TOOLBAR.read_text(encoding="utf-8")
         for token in (
-            "report-workspace__header",
-            "report-controls",
-            "report-type-grid",
-            "report-period-grid",
-            "report-note-card",
-            "Gerar PDF",
-            "Movimentações",
-        ):
+    "report-shell",
+    "obpc-page-header",
+    "report-type-grid",
+    "obpc-filter-bar",
+    "report-note-form",
+    "Gerar PDF",
+    "Movimentações",
+):
             self.assertIn(token, src)
         self.assertIn("max-width: 1480px", src)
         self.assertIn("overflow: visible", src)

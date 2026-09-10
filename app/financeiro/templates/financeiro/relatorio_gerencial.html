@@ -1,10 +1,9 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório Gerencial {{ "%02d"|format(mes) }}/{{ ano }}</title>
-    <style>
+{% extends 'financeiro/_relatorio_pdf_base.html' if modo_pdf|default(false) else 'base.html' %}
+
+{% block title %}Relatório Gerencial {{ "%02d"|format(mes) }}/{{ ano }}{% endblock %}
+
+{% block extra_css %}
+<style>
         :root {
             --ink: #1e293b;
             --muted: #64748b;
@@ -315,9 +314,30 @@
                 overflow-wrap: anywhere;
             }
         }
-    </style>
-</head>
-<body>
+    
+</style>
+
+{% if not modo_pdf %}
+<style>
+    .content main > .page {
+        width: 100%;
+        max-width: 1480px !important;
+        padding: 18px 24px 36px !important;
+        margin-left: auto;
+        margin-right: auto;
+        overflow: visible;
+    }
+
+    .content main,
+    .content main > .page {
+        min-width: 0;
+        box-sizing: border-box;
+    }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
     <div class="page">
         {% set titulo_toolbar = 'Relatório Gerencial' %}
         {% include 'financeiro/_relatorio_toolbar.html' %}
@@ -545,5 +565,4 @@
             </div>
         </section>
     </div>
-</body>
-</html>
+{% endblock %}

@@ -1,10 +1,9 @@
-﻿<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatorio Mensal Oficial {{ "%02d"|format(mes) }}/{{ ano }}</title>
-    <style>
+{% extends 'financeiro/_relatorio_pdf_base.html' if modo_pdf|default(false) else 'base.html' %}
+
+{% block title %}Relatório Mensal Oficial {{ "%02d"|format(mes) }}/{{ ano }}{% endblock %}
+
+{% block extra_css %}
+<style>
         :root {
             --ink: #1e293b;
             --muted: #64748b;
@@ -287,9 +286,45 @@
             .info-strip, .signature-grid { grid-template-columns: 1fr; }
             .summary-cards { grid-template-columns: 1fr; }
         }
-    </style>
-</head>
-<body>
+    
+</style>
+
+{% if not modo_pdf %}
+<style>
+    /*
+     * D23D57-C PILOTO SEDE
+     * Apenas encaixe da página dentro do layout oficial do ERP.
+     * Nenhuma regra financeira, rota ou D23D53 é alterada aqui.
+     */
+    .content main > .page {
+        width: 100%;
+        max-width: 1480px !important;
+        padding: 18px 24px 36px !important;
+        margin-left: auto;
+        margin-right: auto;
+        overflow: visible;
+    }
+
+    .content main,
+    .content main > .page {
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    /*
+     * A prestação oficial mantém sua largura documental própria,
+     * apenas centralizada dentro da área útil do ERP.
+     */
+    .content main > .page > .document,
+    .content main > .page > .signature-block {
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+{% endif %}
+{% endblock %}
+
+{% block content %}
     <div class="page">
         {% set titulo_toolbar = 'Relatorio Mensal Oficial' %}
         {% include 'financeiro/_relatorio_toolbar.html' %}
@@ -514,5 +549,4 @@
             </div>
         </section>
     </div>
-</body>
-</html>
+{% endblock %}

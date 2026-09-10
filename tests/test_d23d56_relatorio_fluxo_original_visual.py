@@ -24,6 +24,7 @@ class D23D56RelatorioFluxoOriginalVisualTest(unittest.TestCase):
 
     def test_toolbar_preserva_fluxo_original(self):
         src = TOOLBAR.read_text(encoding="utf-8")
+
         for token in (
             "financeiro.gerar_relatorio",
             "financeiro.relatorio_pdf",
@@ -32,10 +33,11 @@ class D23D56RelatorioFluxoOriginalVisualTest(unittest.TestCase):
             'name="tipo_relatorio"',
             'name="mes"',
             'name="ano"',
-            'name="acao" value="salvar"',
-            'name="acao" value="restaurar"',
         ):
             self.assertIn(token, src)
+
+        self.assertRegex(src, r'name="acao"\s+value="salvar"')
+        self.assertRegex(src, r'name="acao"\s+value="restaurar"')
 
     def test_toolbar_e_apenas_visual_sem_iframe_ou_scroll_lock(self):
         src = TOOLBAR.read_text(encoding="utf-8")
