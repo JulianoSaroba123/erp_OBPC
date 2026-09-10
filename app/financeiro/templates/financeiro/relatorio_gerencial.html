@@ -189,8 +189,15 @@
         .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; background: var(--brand-soft); color: var(--brand); font-size: 12px; }
         .highlight-control { border: 2px solid #facc15; background: linear-gradient(180deg, #fffef4 0%, #ffffff 100%); }
         .highlight-note { border: 2px solid #bfdbfe; background: linear-gradient(180deg, #f7fbff 0%, #ffffff 100%); }
-        .text-success { color: var(--success); }
-        .text-danger { color: var(--danger); }
+       .text-success {
+    color: #15803d !important;
+    font-weight: 700;
+}
+
+.text-danger {
+    color: #b91c1c !important;
+    font-weight: 700;
+}
         .text-warning { color: var(--warning); }
         .signature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin-top: 34px; }
         .signature-line { padding-top: 36px; border-top: 1px solid var(--ink); text-align: center; }
@@ -390,10 +397,10 @@
                 <div class="section-header"><h3>Fluxo de Caixa</h3><p>Receitas x despesas</p></div>
                 <table>
                     <tbody>
-                        <tr><td>Entradas em banco / pix</td><td class="numeric">{{ totais_gerencial.entradas_banco|valor_com_cor|safe }}</td></tr>
-                        <tr><td>Entradas em dinheiro</td><td class="numeric">{{ totais_gerencial.entradas_dinheiro|valor_com_cor|safe }}</td></tr>
-                        <tr><td>Saídas em banco / pix</td><td class="numeric">{{ totais_gerencial.saidas_banco|valor_com_cor|safe }}</td></tr>
-                        <tr><td>Saídas em dinheiro</td><td class="numeric">{{ totais_gerencial.saidas_dinheiro|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Entradas em banco / pix</td><td class="numeric text-success">{{ totais_gerencial.entradas_banco|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Entradas em dinheiro</td><td class="numeric text-success">{{ totais_gerencial.entradas_dinheiro|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Saídas em banco / pix</td><td class="numeric text-danger">{{ totais_gerencial.saidas_banco|valor_com_cor|safe }}</td></tr>
+                        <tr><td>Saídas em dinheiro</td><td class="numeric text-danger">{{ totais_gerencial.saidas_dinheiro|valor_com_cor|safe }}</td></tr>
                         <tr><td>Dízimos + ofertas</td><td class="numeric">{{ totais_gerencial.total_dizimos_ofertas|valor_com_cor|safe }}</td></tr>
                         <tr><td>OMN + outras ofertas</td><td class="numeric">{{ (totais_gerencial.total_oferta_omn + totais_gerencial.total_outras_ofertas)|valor_com_cor|safe }}</td></tr>
                     </tbody>
@@ -511,8 +518,8 @@
                     {% for item in evolucao_financeira %}
                     <tr>
                         <td>{{ "%02d"|format(item.mes) }}/{{ item.ano }}</td>
-                        <td class="numeric">{{ item.entradas|valor_com_cor|safe }}</td>
-                        <td class="numeric">{{ item.saidas|valor_com_cor|safe }}</td>
+                        <td class="numeric text-success">{{ item.entradas|valor_com_cor|safe }}</td>
+                        <td class="numeric text-danger">{{ item.saidas|valor_com_cor|safe }}</td>
                         <td class="numeric">{{ item.saldo|valor_com_cor|safe }}</td>
                     </tr>
                     {% endfor %}
@@ -545,8 +552,23 @@
                         <td><span class="badge">{{ item.categoria }}</span></td>
                         <td>{{ item.descricao }}</td>
                         <td>{{ item.conta }}</td>
-                        <td class="numeric">{% if item.entrada %}{{ item.entrada|valor_com_cor|safe }}{% else %}-{% endif %}</td>
-                        <td class="numeric">{% if item.saida %}{{ item.saida|valor_com_cor|safe }}{% elif item.eh_destinacao %}<span class="text-warning">Destinação</span>{% else %}-{% endif %}</td>
+                        <td class="numeric text-success">
+                    {% if item.entrada %}
+        {{ item.entrada|valor_com_cor|safe }}
+    {% else %}
+        -
+    {% endif %}
+</td>
+
+<td class="numeric">
+    {% if item.saida %}
+        <span class="text-danger">{{ item.saida|valor_com_cor|safe }}</span>
+    {% elif item.eh_destinacao %}
+        <span class="text-warning">Destinação</span>
+    {% else %}
+        -
+    {% endif %}
+</td>
                         <td class="numeric">{{ item.saldo_acumulado|valor_com_cor|safe }}</td>
                         <td class="center">{{ item.total_comprovantes }}</td>
                     </tr>
