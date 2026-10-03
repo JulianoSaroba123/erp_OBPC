@@ -6,9 +6,15 @@ from unittest.mock import MagicMock, patch
 import pydyf
 import weasyprint
 from flask import Flask
+from sqlalchemy import create_engine
 from weasyprint import HTML
 
 from app.financeiro import financeiro_routes
+
+
+def test_postgresql_default_driver_continua_psycopg2():
+    engine = create_engine("postgresql://user:pass@localhost/db")
+    assert engine.dialect.driver == "psycopg2"
 
 
 def test_weasyprint_write_pdf_smoke():
@@ -134,6 +140,7 @@ def test_relatorio_caixa_rota_propria_08_2026_retorna_pdf():
 
 
 if __name__ == "__main__":
+    test_postgresql_default_driver_continua_psycopg2()
     test_weasyprint_write_pdf_smoke()
     test_relatorio_pdf_preserva_competencia_e_retorna_pdf_para_tres_tipos()
     test_relatorio_caixa_rota_propria_08_2026_retorna_pdf()
