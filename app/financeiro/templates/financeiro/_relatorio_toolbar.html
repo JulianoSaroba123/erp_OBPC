@@ -31,7 +31,7 @@
           class="report-main-form">
 
     <section class="obpc-section report-type-section">
-        <div class="report-type-grid">
+        <div class="report-type-grid{% if tipo_relatorio == 'livro_caixa' %} report-type-grid--four{% endif %}">
 
             <label class="obpc-ops report-type-card">
                 <input type="radio"
@@ -70,6 +70,27 @@
                     <span><i class="fas fa-file-signature"></i> Prestação mensal</span>
                 </div>
             </label>
+
+            {% if tipo_relatorio == 'livro_caixa' %}
+            <label class="obpc-ops report-type-card">
+                <input type="radio"
+                       name="tipo_relatorio"
+                       value="livro_caixa"
+                       checked>
+                <div class="obpc-ops__head">
+                    <div>
+                        <p class="obpc-ops__label">Livro Caixa</p>
+                        <p class="obpc-ops__description">Movimentação mensal completa para impressão e prestação documental.</p>
+                    </div>
+                    <span class="obpc-badge obpc-badge--neutral">
+                        <i class="fas fa-book-open"></i> Impressão
+                    </span>
+                </div>
+                <div class="report-type-card__footer">
+                    <span><i class="fas fa-print"></i> Entradas e saídas</span>
+                </div>
+            </label>
+            {% endif %}
 
             <label class="obpc-ops report-type-card">
                 <input type="radio"
@@ -159,6 +180,7 @@
 
     </form>
 
+{% if tipo_relatorio != 'livro_caixa' %}
     <section class="obpc-section">
         <div class="obpc-card">
             <div class="obpc-card-header">
@@ -223,6 +245,7 @@
             </div>
         </div>
     </section>
+{% endif %}
 
 </div>
 
@@ -539,6 +562,10 @@
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
+    }
+
+    .report-type-grid--four {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .report-type-card {
