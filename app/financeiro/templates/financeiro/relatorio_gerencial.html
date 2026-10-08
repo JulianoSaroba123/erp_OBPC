@@ -324,6 +324,179 @@
     
 </style>
 
+{% if modo_pdf %}
+<style>
+    /*
+     * D23D63_PDF_PAGAMENTOS
+     *
+     * Correcao exclusiva do PDF do Relatorio Gerencial.
+     *
+     * Objetivo:
+     * impedir overflow horizontal na tabela
+     * "Pagamentos Realizados no Mes".
+     *
+     * Nao altera dados, calculos ou regras financeiras.
+     */
+
+    .pagamentos-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .pagamentos-card .mobile-table-scroll {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+
+        /* PDF nunca deve ter barra horizontal */
+        overflow: visible !important;
+
+        box-sizing: border-box !important;
+    }
+
+    .pagamentos-card .pagamentos-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+
+        /* Sobrescreve os 920px usados na tela web */
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+    }
+
+    /*
+     * Larguras das 6 colunas.
+     * Total = 100%
+     */
+
+    .pagamentos-card .pagamentos-table th:nth-child(1),
+    .pagamentos-card .pagamentos-table td:nth-child(1) {
+        width: 13% !important;
+        min-width: 0 !important;
+    }
+
+    .pagamentos-card .pagamentos-table th:nth-child(2),
+    .pagamentos-card .pagamentos-table td:nth-child(2) {
+        width: 24% !important;
+        min-width: 0 !important;
+    }
+
+    .pagamentos-card .pagamentos-table th:nth-child(3),
+    .pagamentos-card .pagamentos-table td:nth-child(3) {
+        width: 10% !important;
+        min-width: 0 !important;
+    }
+
+    .pagamentos-card .pagamentos-table th:nth-child(4),
+    .pagamentos-card .pagamentos-table td:nth-child(4) {
+        width: 18% !important;
+        min-width: 0 !important;
+    }
+
+    .pagamentos-card .pagamentos-table th:nth-child(5),
+    .pagamentos-card .pagamentos-table td:nth-child(5) {
+        width: 18% !important;
+        min-width: 0 !important;
+    }
+
+    .pagamentos-card .pagamentos-table th:nth-child(6),
+    .pagamentos-card .pagamentos-table td:nth-child(6) {
+        width: 17% !important;
+        min-width: 0 !important;
+    }
+
+    /*
+     * Compactacao exclusiva dessa tabela.
+     */
+
+    .pagamentos-card .pagamentos-table th,
+    .pagamentos-card .pagamentos-table td {
+        padding: 4px 5px !important;
+        font-size: 8.5px !important;
+        line-height: 1.25 !important;
+        vertical-align: middle !important;
+
+        /* Remove o nowrap da versao web */
+        white-space: normal !important;
+
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+
+    /*
+     * Cabecalho.
+     */
+
+    .pagamentos-card .pagamentos-table th {
+        font-size: 7.8px !important;
+        letter-spacing: 0.025em !important;
+    }
+
+    /*
+     * Data e forma ficam em uma linha.
+     */
+
+    .pagamentos-card .pagamentos-table th:nth-child(1),
+    .pagamentos-card .pagamentos-table td:nth-child(1),
+    .pagamentos-card .pagamentos-table th:nth-child(3),
+    .pagamentos-card .pagamentos-table td:nth-child(3) {
+        white-space: nowrap !important;
+    }
+
+    /*
+     * Competencia pode quebrar linha.
+     * Necessario para descricoes longas como:
+     * Projeto Filipe acumulado 05/2026 a 07/2026.
+     */
+
+    .pagamentos-card .pagamentos-table th:nth-child(2),
+    .pagamentos-card .pagamentos-table td:nth-child(2) {
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+    }
+
+    /*
+     * Colunas monetarias.
+     */
+
+    .pagamentos-card .pagamentos-table th.numeric,
+    .pagamentos-card .pagamentos-table td.numeric {
+        text-align: right !important;
+        white-space: nowrap !important;
+    }
+
+    /*
+     * Evita dividir um pagamento entre paginas.
+     */
+
+    .pagamentos-card .pagamentos-table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /*
+     * Repete cabecalho se a tabela atravessar paginas.
+     */
+
+    .pagamentos-card .pagamentos-table thead {
+        display: table-header-group !important;
+    }
+
+    /*
+     * Evita qualquer elemento interno aumentar
+     * artificialmente a largura do card.
+     */
+
+    .pagamentos-card,
+    .pagamentos-card * {
+        box-sizing: border-box !important;
+    }
+</style>
+{% endif %}
 {% if not modo_pdf %}
 <style>
     .content main > .page {
