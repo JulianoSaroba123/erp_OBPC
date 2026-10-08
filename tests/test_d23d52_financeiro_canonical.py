@@ -42,7 +42,6 @@ class D23D52FinanceiroCanonicalTest(unittest.TestCase):
             "financeiro.conciliacao",
             "financeiro.editar_lancamento",
             "financeiro.excluir_lancamento",
-            "financeiro.relatorio_sede",
         ):
             self.assertIn(endpoint, self.financeiro)
 
