@@ -1126,8 +1126,8 @@
                     <h4>Gerencial</h4>
                     <p>Resumo gerencial consolidado com visão do período e distribuição financeira.</p>
                     <div class="report-actions">
-                        <a href="{{ url_for('financeiro.gerar_relatorio') }}?tipo_relatorio=gerencial" class="btn btn-outline-primary btn-sm">Abrir</a>
-                        <a href="{{ url_for('financeiro.relatorio_pdf') }}?tipo_relatorio=gerencial" class="btn btn-primary btn-sm" target="_blank">PDF</a>
+                        <a href="{{ url_for('financeiro.gerar_relatorio', tipo_relatorio='gerencial', mes=mes_selecionado, ano=ano_selecionado) }}" class="btn btn-outline-primary btn-sm">Abrir</a>
+                        <a href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio='gerencial', mes=mes_selecionado, ano=ano_selecionado) }}" class="btn btn-primary btn-sm" target="_blank">PDF</a>
                     </div>
                 </div>
                 <div class="report-card sede">
@@ -1135,8 +1135,8 @@
                     <h4>Sede</h4>
                     <p>Prestação de contas oficial com foco nas obrigações e no repasse institucional.</p>
                     <div class="report-actions">
-                        <a href="{{ url_for('financeiro.relatorio_sede') }}" class="btn btn-outline-success btn-sm">Abrir</a>
-                        <a href="{{ url_for('financeiro.relatorio_sede_pdf') }}" class="btn btn-success btn-sm" target="_blank">PDF</a>
+                        <a href="{{ url_for('financeiro.relatorio_sede', mes=mes_selecionado, ano=ano_selecionado) }}" class="btn btn-outline-success btn-sm">Abrir</a>
+                        <a href="{{ url_for('financeiro.relatorio_sede_pdf', mes=mes_selecionado, ano=ano_selecionado) }}" class="btn btn-success btn-sm" target="_blank">PDF</a>
                     </div>
                 </div>
                 <div class="report-card auditoria">
@@ -1144,8 +1144,8 @@
                     <h4>Auditoria</h4>
                     <p>Visão técnica para conferência das movimentações e consistência operacional.</p>
                     <div class="report-actions">
-                        <a href="{{ url_for('financeiro.relatorio_auditoria') }}" class="btn btn-outline-info btn-sm">Abrir</a>
-                        <a href="{{ url_for('financeiro.relatorio_pdf') }}?tipo_relatorio=auditoria" class="btn btn-info btn-sm" target="_blank">PDF</a>
+                        <a href="{{ url_for('financeiro.relatorio_auditoria', mes=mes_selecionado, ano=ano_selecionado) }}" class="btn btn-outline-info btn-sm">Abrir</a>
+                        <a href="{{ url_for('financeiro.relatorio_pdf', tipo_relatorio='auditoria', mes=mes_selecionado, ano=ano_selecionado) }}" class="btn btn-info btn-sm" target="_blank">PDF</a>
                     </div>
                 </div>
             </div>

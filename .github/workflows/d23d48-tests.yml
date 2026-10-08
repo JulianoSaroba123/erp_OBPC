@@ -17,6 +17,7 @@ on:
       - 'tests/test_d23d52_template_syntax.py'
       - 'tests/test_d23d53_relatorio_sede.py'
       - 'tests/test_d23d56_relatorio_fluxo_original_visual.py'
+      - 'tests/test_pdf_engine_smoke.py'
       - '.github/workflows/d23d48-tests.yml'
   workflow_dispatch:
 
@@ -40,6 +41,9 @@ jobs:
 
       - name: Instalar dependencias
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Smoke WeasyPrint
+        run: python tests/test_pdf_engine_smoke.py
 
       - name: Teste D23D48 conciliacao
         run: python tests/test_d23d48_conciliacao_repasse.py
@@ -69,6 +73,9 @@ jobs:
 
       - name: Instalar dependencias
         run: python -m pip install --upgrade pip && pip install -r requirements.txt
+
+      - name: Smoke WeasyPrint
+        run: python tests/test_pdf_engine_smoke.py
 
       - name: Regressao obrigacoes e repasse
         run: python tests/etapa_a_obrigacoes_financeiras_unittest.py

@@ -4647,12 +4647,25 @@ def excluir_comprovante_multiplo(comprovante_id):
 @login_required
 def gerar_relatorio():
     """Tela centralizada dos relatórios financeiros com seletor de apresentação."""
+    tipo_relatorio = request.args.get('tipo_relatorio', 'gerencial')
+    mes = request.args.get('mes', type=int)
+    ano = request.args.get('ano', type=int)
+
     try:
-        tipo_relatorio = request.args.get('tipo_relatorio', 'gerencial')
-        contexto = gerar_dados_relatorio(tipo_relatorio)
+        contexto = gerar_dados_relatorio(
+            tipo_relatorio=tipo_relatorio,
+            mes=mes,
+            ano=ano,
+        )
         return render_template(contexto['template_relatorio'], **contexto)
-    except Exception as e:
-        flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
+    except Exception:
+        current_app.logger.exception(
+            "Erro ao gerar relatório financeiro | tipo=%s | mes=%s | ano=%s",
+            tipo_relatorio,
+            mes,
+            ano,
+        )
+        flash('Não foi possível gerar o relatório. O erro foi registrado para diagnóstico.', 'danger')
         return redirect(url_for('financeiro.lista_lancamentos'))
 
 
@@ -4699,11 +4712,24 @@ def salvar_justificativa_relatorio():
 @login_required
 def relatorio_pdf():
     """Gera PDF a partir do template selecionado, preservando as regras financeiras."""
+    tipo_relatorio = request.args.get('tipo_relatorio', 'gerencial')
+    mes = request.args.get('mes', type=int)
+    ano = request.args.get('ano', type=int)
+    template_utilizado = None
+
     try:
         from weasyprint import HTML
 
-        tipo_relatorio = request.args.get('tipo_relatorio', 'gerencial')
-        contexto = gerar_dados_relatorio(tipo_relatorio)
+        contexto = gerar_dados_relatorio(
+            tipo_relatorio=tipo_relatorio,
+            mes=mes,
+            ano=ano,
+        )
+        tipo_relatorio = contexto['tipo_relatorio']
+        mes = contexto['mes']
+        ano = contexto['ano']
+        template_utilizado = contexto['template_relatorio']
+
         logo_pdf_src = None
         logo_relativo = str(contexto.get('dados_igreja', {}).get('logo', '') or '').replace('\\', '/').lstrip('/')
         if logo_relativo:
@@ -4715,22 +4741,44 @@ def relatorio_pdf():
                 if fallback_logo.exists():
                     logo_pdf_src = fallback_logo.resolve().as_uri()
 
-        html = render_template(contexto['template_relatorio'], modo_pdf=True, logo_pdf_src=logo_pdf_src, **contexto)
+        html = render_template(
+            template_utilizado,
+            modo_pdf=True,
+            logo_pdf_src=logo_pdf_src,
+            **contexto,
+        )
 
         pdf_buffer = io.BytesIO()
         HTML(string=html, base_url=request.url_root).write_pdf(pdf_buffer)
         pdf_buffer.seek(0)
 
-        nome_arquivo = gerar_nome_arquivo_relatorio(tipo_relatorio, contexto['mes'], contexto['ano'])
+        nome_arquivo = gerar_nome_arquivo_relatorio(tipo_relatorio, mes, ano)
         return send_file(
             pdf_buffer,
             mimetype='application/pdf',
             as_attachment=False,
-            download_name=nome_arquivo
+            download_name=nome_arquivo,
         )
-    except Exception as e:
-        flash(f'Erro ao gerar PDF do relatório: {str(e)}', 'danger')
-        return redirect(url_for('financeiro.gerar_relatorio', tipo_relatorio=request.args.get('tipo_relatorio', 'gerencial'), mes=request.args.get('mes'), ano=request.args.get('ano')))
+    except Exception:
+        current_app.logger.exception(
+            "Erro ao gerar PDF financeiro | tipo=%s | mes=%s | ano=%s | template=%s",
+            tipo_relatorio,
+            mes,
+            ano,
+            template_utilizado,
+        )
+        flash(
+            'Não foi possível gerar o PDF. O erro foi registrado para diagnóstico.',
+            'danger',
+        )
+        return redirect(
+            url_for(
+                'financeiro.gerar_relatorio',
+                tipo_relatorio=tipo_relatorio,
+                mes=mes,
+                ano=ano,
+            )
+        )
 
 @financeiro_bp.route('/financeiro/debug-outras-ofertas')
 @login_required
