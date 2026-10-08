@@ -2182,6 +2182,7 @@ def gerar_nome_arquivo_relatorio(tipo_relatorio, mes, ano):
     """Gera nome padronizado para os arquivos de relatório"""
     nomes = {
         'caixa': f'relatorio_caixa_{mes:02d}_{ano}.pdf',
+        'livro_caixa': f'livro_caixa_{mes:02d}_{ano}.pdf',
         'sede': f'relatorio_sede_{mes:02d}_{ano}.pdf'
     }
     return nomes.get(tipo_relatorio, f'relatorio_{mes:02d}_{ano}.pdf')
