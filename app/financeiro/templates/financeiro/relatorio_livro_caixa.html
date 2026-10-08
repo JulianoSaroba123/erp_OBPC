@@ -1,0 +1,655 @@
+{% extends 'financeiro/_relatorio_pdf_base.html' if modo_pdf|default(false) else 'base.html' %}
+
+{% block title %}Livro Caixa {{ "%02d"|format(mes) }}/{{ ano }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --ink: #1e293b;
+        --muted: #64748b;
+        --line: #dbe3ec;
+        --surface: #f4f7fb;
+        --surface-strong: #ffffff;
+        --brand: #114b5f;
+        --brand-deep: #0f3d52;
+        --brand-soft: #d8edf0;
+        --success: #15803d;
+        --success-soft: #ecfdf3;
+        --danger: #b42318;
+        --danger-soft: #fff1f1;
+        --warning: #9a6700;
+        --warning-soft: #fff9e6;
+        --cyan: #0e7490;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        color: var(--ink);
+        background:
+            radial-gradient(circle at 6% 0%, rgba(17, 75, 95, 0.10), transparent 36%),
+            linear-gradient(180deg, #e8f1f7 0%, #f7fbff 100%);
+    }
+
+    .page {
+        width: 100%;
+        max-width: 1480px;
+        margin: 0 auto;
+        padding: 18px 24px 36px;
+    }
+
+    .document {
+        width: 100%;
+        background: var(--surface-strong);
+        border: 1px solid #c9d9e8;
+        border-radius: 18px;
+        padding: 26px;
+        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.06);
+    }
+
+    .header {
+        text-align: center;
+        margin-bottom: 18px;
+        padding-bottom: 14px;
+        border-bottom: 2px solid var(--brand-deep);
+    }
+
+    .header img {
+        max-height: 86px;
+        max-width: 260px;
+        width: auto;
+        margin-bottom: 8px;
+    }
+
+    .header .eyebrow {
+        margin: 0 0 4px;
+        text-transform: uppercase;
+        letter-spacing: .12em;
+        font-size: 10px;
+        color: var(--muted);
+    }
+
+    .header h1 {
+        margin: 4px 0;
+        font-size: 22px;
+        letter-spacing: .025em;
+        color: var(--brand-deep);
+    }
+
+    .header h2 {
+        margin: 4px 0;
+        font-size: 16px;
+        color: #1d4f91;
+    }
+
+    .header p {
+        margin: 5px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    .info-strip {
+        display: grid;
+        grid-template-columns: 1.4fr .8fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .info-pill {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 8px 10px;
+        font-size: 11px;
+        min-width: 0;
+    }
+
+    .info-pill strong {
+        display: block;
+        margin-bottom: 3px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        font-size: 9px;
+    }
+
+    .section-title {
+        margin: 16px 0 8px;
+        font-size: 12px;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+        color: #1d4f91;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .summary-table,
+    .nature-table,
+    .movement-table,
+    .closing-table {
+        table-layout: fixed;
+        border: 1px solid var(--line);
+    }
+
+    .summary-table th,
+    .nature-table th,
+    .movement-table th {
+        padding: 6px 7px;
+        background: linear-gradient(90deg, #114b5f 0%, #1d4f91 100%);
+        color: #ffffff;
+        border-right: 1px solid rgba(255,255,255,.18);
+        text-transform: uppercase;
+        letter-spacing: .045em;
+        font-size: 9px;
+        line-height: 1.15;
+        text-align: center;
+    }
+
+    .summary-table td,
+    .nature-table td {
+        padding: 8px 7px;
+        background: #f8fbff;
+        border-right: 1px solid var(--line);
+        font-size: 11px;
+        font-weight: 700;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .summary-table th:last-child,
+    .summary-table td:last-child,
+    .nature-table th:last-child,
+    .nature-table td:last-child {
+        border-right: 0;
+    }
+
+    .text-success {
+        color: var(--success) !important;
+        font-weight: 700;
+    }
+
+    .text-danger {
+        color: var(--danger) !important;
+        font-weight: 700;
+    }
+
+    .text-warning {
+        color: var(--warning) !important;
+        font-weight: 700;
+    }
+
+    .movement-table th {
+        text-align: left;
+    }
+
+    .movement-table th.center,
+    .movement-table td.center {
+        text-align: center;
+    }
+
+    .movement-table th.numeric,
+    .movement-table td.numeric {
+        text-align: right;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .movement-table td {
+        padding: 5px 6px;
+        border-bottom: 1px solid var(--line);
+        border-right: 1px solid #edf2f7;
+        font-size: 9.4px;
+        line-height: 1.2;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .movement-table tbody tr:nth-child(even) {
+        background: #f8fbff;
+    }
+
+    .movement-table tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .movement-table thead {
+        display: table-header-group;
+    }
+
+    .movement-table .category {
+        color: var(--brand);
+        font-weight: 700;
+    }
+
+    .transfer-note {
+        display: block;
+        margin-top: 2px;
+        color: var(--warning);
+        font-size: 7.6px;
+        white-space: normal;
+    }
+
+    .closing-wrap {
+        display: grid;
+        grid-template-columns: 1.15fr .85fr;
+        gap: 16px;
+        align-items: end;
+        margin-top: 16px;
+    }
+
+    .closing-table td {
+        padding: 7px 9px;
+        border-bottom: 1px solid var(--line);
+        font-size: 10.5px;
+    }
+
+    .closing-table td:first-child {
+        font-weight: 700;
+        color: var(--muted);
+    }
+
+    .closing-table td:last-child {
+        text-align: right;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .closing-table tr:last-child td {
+        border-bottom: 0;
+        background: var(--surface);
+        font-size: 12px;
+    }
+
+    .signature-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 28px;
+        margin-top: 38px;
+    }
+
+    .signature-line {
+        padding-top: 8px;
+        border-top: 1px solid var(--ink);
+        text-align: center;
+        font-size: 10px;
+        line-height: 1.35;
+    }
+
+    .footer-note {
+        margin-top: 12px;
+        font-size: 8px;
+        color: var(--muted);
+        text-align: center;
+    }
+
+    {% if modo_pdf %}
+    @page {
+        size: A4 landscape;
+        margin: 10mm 10mm 12mm;
+
+        @bottom-left {
+            content: "Livro Caixa | {{ "%02d"|format(mes) }}/{{ ano }}";
+            color: #64748b;
+            font-size: 7.5pt;
+        }
+
+        @bottom-right {
+            content: "Página " counter(page) " de " counter(pages);
+            color: #64748b;
+            font-size: 7.5pt;
+        }
+    }
+
+    html,
+    body {
+        background: #ffffff !important;
+    }
+
+    .page {
+        max-width: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .document {
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border: 0 !important;
+        padding: 0 !important;
+    }
+
+    .header {
+        margin-bottom: 10px !important;
+        padding-bottom: 8px !important;
+    }
+
+    .header img {
+        max-height: 62px !important;
+        max-width: 220px !important;
+        margin-bottom: 4px !important;
+    }
+
+    .header h1 {
+        font-size: 16px !important;
+        margin: 2px 0 !important;
+    }
+
+    .header h2 {
+        font-size: 12px !important;
+        margin: 2px 0 !important;
+    }
+
+    .header p,
+    .header .eyebrow {
+        font-size: 8px !important;
+    }
+
+    .info-strip {
+        gap: 5px !important;
+        margin-bottom: 8px !important;
+    }
+
+    .info-pill {
+        padding: 5px 6px !important;
+        font-size: 8px !important;
+    }
+
+    .info-pill strong {
+        font-size: 7px !important;
+    }
+
+    .section-title {
+        margin: 8px 0 5px !important;
+        font-size: 9px !important;
+    }
+
+    .summary-table th,
+    .nature-table th {
+        padding: 4px !important;
+        font-size: 7px !important;
+    }
+
+    .summary-table td,
+    .nature-table td {
+        padding: 5px 4px !important;
+        font-size: 8px !important;
+    }
+
+    .movement-table th {
+        padding: 4px 4px !important;
+        font-size: 7px !important;
+    }
+
+    .movement-table td {
+        padding: 3.5px 4px !important;
+        font-size: 7.6px !important;
+        line-height: 1.15 !important;
+    }
+
+    .movement-table th:nth-child(1),
+    .movement-table td:nth-child(1) { width: 10%; }
+
+    .movement-table th:nth-child(2),
+    .movement-table td:nth-child(2) { width: 29%; }
+
+    .movement-table th:nth-child(3),
+    .movement-table td:nth-child(3) { width: 16%; }
+
+    .movement-table th:nth-child(4),
+    .movement-table td:nth-child(4) { width: 13%; }
+
+    .movement-table th:nth-child(5),
+    .movement-table td:nth-child(5) { width: 11%; }
+
+    .movement-table th:nth-child(6),
+    .movement-table td:nth-child(6) { width: 10%; }
+
+    .movement-table th:nth-child(7),
+    .movement-table td:nth-child(7) { width: 11%; }
+
+    .closing-wrap {
+        margin-top: 9px !important;
+        gap: 10px !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .closing-table td {
+        padding: 5px 6px !important;
+        font-size: 8px !important;
+    }
+
+    .closing-table tr:last-child td {
+        font-size: 9px !important;
+    }
+
+    .signature-grid {
+        margin-top: 24px !important;
+        gap: 20px !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .signature-line {
+        font-size: 8px !important;
+    }
+
+    .footer-note {
+        font-size: 7px !important;
+    }
+    {% endif %}
+
+    {% if not modo_pdf %}
+    @media (max-width: 980px) {
+        .info-strip,
+        .closing-wrap,
+        .signature-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .document {
+            padding: 18px;
+        }
+
+        .movement-scroll {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        .movement-table {
+            min-width: 920px;
+        }
+    }
+    {% endif %}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page">
+    {% set titulo_toolbar = 'Livro Caixa' %}
+    {% include 'financeiro/_relatorio_toolbar.html' %}
+
+    <section class="document">
+        <header class="header">
+            {% set logo_src = logo_pdf_src if modo_pdf and logo_pdf_src else url_for('static', filename=dados_igreja.logo if dados_igreja.logo else 'logo_obpc_novo.jpg') %}
+            <img src="{{ logo_src }}"
+                 alt="Logo Igreja"
+                 onerror="this.onerror=null;this.src='{{ url_for('static', filename='logo_obpc_novo.jpg') }}';">
+            <p class="eyebrow">Prestação de Contas Mensal</p>
+            <h1>Livro Caixa</h1>
+            <h2>{{ dados_igreja.nome }}{% if dados_igreja.cidade %} | {{ dados_igreja.cidade }} - SP{% endif %}</h2>
+            <p>Competência {{ "%02d"|format(mes) }}/{{ ano }} | Emissão {{ data_geracao.strftime('%d/%m/%Y') }}</p>
+        </header>
+
+        <section class="info-strip">
+            <div class="info-pill">
+                <strong>Igreja</strong>
+                {{ dados_igreja.nome }}
+            </div>
+            <div class="info-pill">
+                <strong>Período</strong>
+                {{ "%02d"|format(mes) }}/{{ ano }}
+            </div>
+            <div class="info-pill">
+                <strong>Pastor</strong>
+                {{ dados_igreja.pastor }}
+            </div>
+            <div class="info-pill">
+                <strong>Tesoureiro</strong>
+                {{ dados_igreja.tesoureiro }}
+            </div>
+        </section>
+
+        <h3 class="section-title">Resumo Financeiro por Meio</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Saldo Inicial</th>
+                    <th>Entradas Banco / PIX</th>
+                    <th>Entradas Dinheiro</th>
+                    <th>Saídas Banco / PIX</th>
+                    <th>Saídas Dinheiro</th>
+                    <th>Saldo Final</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ totais_gerencial.saldo_anterior|valor_com_cor|safe }}</td>
+                    <td class="text-success">{{ totais_gerencial.entradas_banco|valor_com_cor|safe }}</td>
+                    <td class="text-success">{{ totais_gerencial.entradas_dinheiro|valor_com_cor|safe }}</td>
+                    <td class="text-danger">{{ totais_gerencial.saidas_banco|valor_com_cor|safe }}</td>
+                    <td class="text-danger">{{ totais_gerencial.saidas_dinheiro|valor_com_cor|safe }}</td>
+                    <td class="{% if totais_gerencial.saldo_acumulado >= 0 %}text-success{% else %}text-danger{% endif %}">
+                        {{ totais_gerencial.saldo_acumulado|valor_com_cor|safe }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="section-title">Resumo das Entradas por Natureza</h3>
+        <table class="nature-table">
+            <thead>
+                <tr>
+                    <th>Dízimos</th>
+                    <th>Ofertas</th>
+                    <th>Outras Ofertas</th>
+                    <th>OMN</th>
+                    <th>Outras Entradas</th>
+                    <th>Total de Entradas</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-success">{{ totais_sede.dizimos|valor_com_cor|safe }}</td>
+                    <td class="text-success">{{ totais_sede.ofertas_alcadas|valor_com_cor|safe }}</td>
+                    <td class="text-success">{{ totais_sede.outras_ofertas|valor_com_cor|safe }}</td>
+                    <td class="text-success">{{ totais_sede.oferta_omn|valor_com_cor|safe }}</td>
+                    <td class="text-success">{{ totais_sede.outras_entradas|valor_com_cor|safe }}</td>
+                    <td class="text-success">{{ totais_gerencial.total_entradas|valor_com_cor|safe }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 class="section-title">Movimentação Financeira do Período</h3>
+        <div class="movement-scroll">
+            <table class="movement-table">
+                <thead>
+                    <tr>
+                        <th class="center">Data</th>
+                        <th>Histórico</th>
+                        <th>Categoria</th>
+                        <th>Conta / Meio</th>
+                        <th class="numeric">Entrada</th>
+                        <th class="numeric">Saída</th>
+                        <th class="numeric">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in movimentacao %}
+                    <tr>
+                        <td class="center">{{ item.data.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ item.descricao }}</td>
+                        <td class="category">{{ item.categoria }}</td>
+                        <td>{{ item.conta }}</td>
+                        <td class="numeric text-success">
+                            {% if item.entrada %}
+                                {{ item.entrada|valor_com_cor|safe }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="numeric">
+                            {% if item.saida %}
+                                <span class="text-danger">{{ item.saida|valor_com_cor|safe }}</span>
+                            {% elif item.eh_destinacao %}
+                                <span class="text-warning">{{ item.valor|valor_com_cor|safe }}</span>
+                                <span class="transfer-note">Transferência interna</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="numeric">{{ item.saldo_acumulado|valor_com_cor|safe }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="center">Nenhum lançamento financeiro registrado nesta competência.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="closing-wrap">
+            <div>
+                <h3 class="section-title">Fechamento</h3>
+                <table class="closing-table">
+                    <tbody>
+                        <tr>
+                            <td>Saldo inicial</td>
+                            <td>{{ totais_gerencial.saldo_anterior|valor_com_cor|safe }}</td>
+                        </tr>
+                        <tr>
+                            <td>Total de entradas</td>
+                            <td class="text-success">{{ totais_gerencial.total_entradas|valor_com_cor|safe }}</td>
+                        </tr>
+                        <tr>
+                            <td>Total de saídas</td>
+                            <td class="text-danger">{{ totais_gerencial.total_saidas|valor_com_cor|safe }}</td>
+                        </tr>
+                        <tr>
+                            <td>Saldo final</td>
+                            <td class="{% if totais_gerencial.saldo_acumulado >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {{ totais_gerencial.saldo_acumulado|valor_com_cor|safe }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div>
+                <div class="signature-grid">
+                    <div class="signature-line">
+                        {{ dados_igreja.pastor }}<br>
+                        Pastor Responsável
+                    </div>
+                    <div class="signature-line">
+                        {{ dados_igreja.tesoureiro }}<br>
+                        Tesoureiro
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="footer-note">
+            Livro Caixa consolidado da competência. Transferências internas são exibidas para rastreabilidade,
+            mas não alteram o saldo financeiro consolidado.
+        </p>
+    </section>
+</div>
+{% endblock %}

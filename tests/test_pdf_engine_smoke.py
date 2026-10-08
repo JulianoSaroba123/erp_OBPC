@@ -34,10 +34,10 @@ def _app_teste():
     return app
 
 
-def test_relatorio_pdf_preserva_competencia_e_retorna_pdf_para_tres_tipos():
+def test_relatorio_pdf_preserva_competencia_e_retorna_pdf_para_quatro_tipos():
     app = _app_teste()
 
-    for tipo_relatorio in ("gerencial", "sede", "auditoria"):
+    for tipo_relatorio in ("gerencial", "livro_caixa", "sede", "auditoria"):
         contexto = {
             "tipo_relatorio": tipo_relatorio,
             "mes": 8,
@@ -142,6 +142,6 @@ def test_relatorio_caixa_rota_propria_08_2026_retorna_pdf():
 if __name__ == "__main__":
     test_postgresql_default_driver_continua_psycopg2()
     test_weasyprint_write_pdf_smoke()
-    test_relatorio_pdf_preserva_competencia_e_retorna_pdf_para_tres_tipos()
+    test_relatorio_pdf_preserva_competencia_e_retorna_pdf_para_quatro_tipos()
     test_relatorio_caixa_rota_propria_08_2026_retorna_pdf()
     print("PDF_SMOKE_OK")
