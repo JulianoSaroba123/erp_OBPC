@@ -679,6 +679,9 @@
               <a href="{{ url_for('financeiro.gerar_relatorio', tipo_relatorio='gerencial') }}" class="submenu-item{% if caminho_atual == '/financeiro/relatorio' and request.args.get('tipo_relatorio', 'gerencial') == 'gerencial' %} active{% endif %}">
                 <i class="fas fa-chart-pie"></i><span>Gerencial</span>
               </a>
+              <a href="{{ url_for('financeiro.gerar_relatorio', tipo_relatorio='livro_caixa') }}" class="submenu-item{% if caminho_atual == '/financeiro/relatorio' and request.args.get('tipo_relatorio') == 'livro_caixa' %} active{% endif %}">
+                <i class="fas fa-book-open"></i><span>Livro Caixa</span>
+              </a>
               <a href="{{ url_for('financeiro.gerar_relatorio', tipo_relatorio='sede') }}" class="submenu-item{% if caminho_atual == '/financeiro/relatorio' and request.args.get('tipo_relatorio') == 'sede' %} active{% endif %}">
                 <i class="fas fa-landmark"></i><span>Sede</span>
               </a>
