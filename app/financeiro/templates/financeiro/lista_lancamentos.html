@@ -18,18 +18,6 @@
       <p class="obpc-page-subtitle">Lançamentos, filtros, conciliação e acompanhamento do caixa da igreja.</p>
     </div>
     <div class="obpc-page-actions">
-      <div class="dropdown">
-        <button type="button" class="obpc-btn obpc-btn-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="fas fa-chart-bar"></i> Relatórios
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="{{ url_for('financeiro.gerar_relatorio') }}"><i class="fas fa-list me-2"></i>Relatório Geral</a></li>
-          <li><a class="dropdown-item" href="{{ url_for('financeiro.relatorio_caixa') }}"><i class="fas fa-cash-register me-2"></i>Relatório de Caixa</a></li>
-          <li><a class="dropdown-item" href="{{ url_for('financeiro.relatorio_obpc') }}"><i class="fas fa-chart-line me-2"></i>Relatório OBPC (26→25)</a></li>
-          <li><hr class="dropdown-divider"></li>
-          <li><a class="dropdown-item" href="{{ url_for('financeiro.relatorio_sede') }}"><i class="fas fa-file-alt me-2"></i>Relatório para Sede</a></li>
-        </ul>
-      </div>
       <a href="{{ url_for('financeiro.novo_lancamento', **filtros) }}" class="obpc-btn obpc-btn-primary">
         <i class="fas fa-plus"></i> Novo Lançamento
       </a>
