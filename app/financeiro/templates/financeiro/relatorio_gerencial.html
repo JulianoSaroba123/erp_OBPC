@@ -497,6 +497,194 @@
     }
 </style>
 {% endif %}
+{% if modo_pdf %}
+<style>
+    /*
+     * D23D64_PDF_MOVIMENTACAO
+     *
+     * Ajuste exclusivo do PDF do Relatorio Gerencial.
+     * Corrige corte lateral da tabela Movimentacao Financeira.
+     *
+     * Nao altera dados, calculos ou regras contabeis.
+     */
+
+    .movimentacao-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .movimentacao-card .movimentacao-scroll-y,
+    .movimentacao-card .movimentacao-scroll-x {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .movimentacao-card .movimentacao-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+    }
+
+    /*
+     * Distribuicao das 8 colunas.
+     * Total = 100%
+     *
+     * Data       12%
+     * Categoria  14%
+     * Descricao  24%
+     * Conta       9%
+     * Entrada    11%
+     * Saida      10%
+     * Saldo      14%
+     * Comp.       6%
+     */
+
+    .movimentacao-table th:nth-child(1),
+    .movimentacao-table td:nth-child(1) {
+        width: 12% !important;
+    }
+
+    .movimentacao-table th:nth-child(2),
+    .movimentacao-table td:nth-child(2) {
+        width: 14% !important;
+    }
+
+    .movimentacao-table th:nth-child(3),
+    .movimentacao-table td:nth-child(3) {
+        width: 24% !important;
+    }
+
+    .movimentacao-table th:nth-child(4),
+    .movimentacao-table td:nth-child(4) {
+        width: 9% !important;
+    }
+
+    .movimentacao-table th:nth-child(5),
+    .movimentacao-table td:nth-child(5) {
+        width: 11% !important;
+    }
+
+    .movimentacao-table th:nth-child(6),
+    .movimentacao-table td:nth-child(6) {
+        width: 10% !important;
+    }
+
+    .movimentacao-table th:nth-child(7),
+    .movimentacao-table td:nth-child(7) {
+        width: 14% !important;
+    }
+
+    .movimentacao-table th:nth-child(8),
+    .movimentacao-table td:nth-child(8) {
+        width: 6% !important;
+    }
+
+    .movimentacao-table th,
+    .movimentacao-table td {
+        min-width: 0 !important;
+        padding: 4px 4px !important;
+        font-size: 8.4px !important;
+        line-height: 1.25 !important;
+        vertical-align: middle !important;
+        box-sizing: border-box !important;
+
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        word-wrap: break-word !important;
+    }
+
+    .movimentacao-table th {
+        font-size: 7.6px !important;
+        letter-spacing: 0.02em !important;
+    }
+
+    /*
+     * Data, conta e valores nao devem quebrar.
+     */
+
+    .movimentacao-table th:nth-child(1),
+    .movimentacao-table td:nth-child(1),
+    .movimentacao-table th:nth-child(4),
+    .movimentacao-table td:nth-child(4),
+    .movimentacao-table th:nth-child(5),
+    .movimentacao-table td:nth-child(5),
+    .movimentacao-table th:nth-child(6),
+    .movimentacao-table td:nth-child(6),
+    .movimentacao-table th:nth-child(7),
+    .movimentacao-table td:nth-child(7),
+    .movimentacao-table th:nth-child(8),
+    .movimentacao-table td:nth-child(8) {
+        white-space: nowrap !important;
+    }
+
+    /*
+     * Descricao pode quebrar livremente.
+     */
+
+    .movimentacao-table th:nth-child(3),
+    .movimentacao-table td:nth-child(3) {
+        white-space: normal !important;
+        overflow-wrap: anywhere !important;
+    }
+
+    /*
+     * Categoria compacta para nao forcar largura.
+     */
+
+    .movimentacao-table .badge {
+        display: inline-block !important;
+        max-width: 100% !important;
+        padding: 2px 5px !important;
+        font-size: 7.5px !important;
+        line-height: 1.15 !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        box-sizing: border-box !important;
+    }
+
+    /*
+     * Valores alinhados a direita e inteiros.
+     */
+
+    .movimentacao-table td.numeric,
+    .movimentacao-table th.numeric {
+        text-align: right !important;
+        white-space: nowrap !important;
+        font-variant-numeric: tabular-nums;
+    }
+
+    /*
+     * Nao dividir cada lancamento no meio da pagina.
+     */
+
+    .movimentacao-table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    /*
+     * Repete cabecalho nas paginas seguintes.
+     */
+
+    .movimentacao-table thead {
+        display: table-header-group !important;
+    }
+
+    .movimentacao-card,
+    .movimentacao-card * {
+        box-sizing: border-box !important;
+    }
+</style>
+{% endif %}
 {% if not modo_pdf %}
 <style>
     .content main > .page {
