@@ -52,6 +52,7 @@ class D23D56RelatorioFluxoOriginalVisualTest(unittest.TestCase):
     def test_templates_originais_continuam_com_estrutura_propria(self):
         esperados = {
             "relatorio_gerencial.html": 'class="hero"',
+            "relatorio_livro_caixa.html": 'class="document"',
             "relatorio_sede.html": 'class="document"',
             "relatorio_auditoria.html": 'class="document"',
         }
