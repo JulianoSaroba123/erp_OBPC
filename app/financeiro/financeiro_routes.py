@@ -1627,7 +1627,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
     def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
         """Centraliza a montagem de dados dos relatórios financeiros sem alterar as regras existentes."""
         tipo_relatorio = (tipo_relatorio or 'gerencial').lower()
-        if tipo_relatorio not in {'gerencial', 'sede', 'auditoria'}:
+        if tipo_relatorio not in {'gerencial', 'livro_caixa', 'sede', 'auditoria'}:
             tipo_relatorio = 'gerencial'
 
         mes, ano = _resolver_mes_ano_relatorio(mes, ano)
@@ -1695,7 +1695,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
 def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
     """Centraliza a montagem de dados dos relatórios financeiros sem alterar as regras existentes."""
     tipo_relatorio = (tipo_relatorio or 'gerencial').lower()
-    if tipo_relatorio not in {'gerencial', 'sede', 'auditoria'}:
+    if tipo_relatorio not in {'gerencial', 'livro_caixa', 'sede', 'auditoria'}:
         tipo_relatorio = 'gerencial'
 
     hoje = datetime.now()
@@ -4674,7 +4674,7 @@ def gerar_relatorio():
 def salvar_justificativa_relatorio():
     """Salva ou restaura a justificativa contábil por mes/ano/tipo de relatório."""
     tipo_relatorio = (request.form.get('tipo_relatorio') or 'gerencial').strip().lower()
-    if tipo_relatorio not in {'gerencial', 'sede', 'auditoria'}:
+    if tipo_relatorio not in {'gerencial', 'livro_caixa', 'sede', 'auditoria'}:
         tipo_relatorio = 'gerencial'
 
     hoje = datetime.now()
