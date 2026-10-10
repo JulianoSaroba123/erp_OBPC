@@ -319,7 +319,7 @@ def build_result(conn) -> dict[str, Any]:
             "saidas_erp": money(r["saidas"]),
             "resultado_erp": money(r["saldo_mes"]),
             "status_reconstrucao": (
-                "DATA_EXATA_DE_CAIXA_PENDENTE"
+                "DATA_DO_ACERTO_CONFIRMADA_04_07_2026"
                 if month in {1,2,3,4}
                 else "SEM_PENDENCIA_DE_DATA_NESTA_ETAPA"
             ),
@@ -371,7 +371,6 @@ def build_result(conn) -> dict[str, Any]:
         ),
         "movimento_mensal_atual": monthly_out,
         "pendencias_antes_do_apply": [
-            "Não inventar datas para os pagamentos em dinheiro de 01/2026, 02/2026, 03/2026 e a parcela em dinheiro de 04/2026.",
             "Vincular os PIX IDs 601 e 600 às competências 04/2026 e 05/2026 sem criar nova saída financeira.",
             "Manter Projeto Filipe de 05/2026 no pagamento acumulado de agosto.",
             "Tratar R$ 10,41 de maio como crédito/ajuste não alocado, sem forçar em obrigação.",
