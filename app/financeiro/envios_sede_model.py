@@ -92,6 +92,23 @@ class EnvioSede(db.Model):
         return total
 
     @classmethod
+    def somar_pagamentos_reais_mes(cls, mes, ano):
+        """Soma somente pagamentos que representam saída real de caixa no mês.
+
+        Registros HISTORICO_SEM_MOVIMENTACAO são quitação/status por competência
+        e não devem aparecer como movimento de caixa.
+        """
+        total = Decimal('0')
+        for valor in db.session.query(func.coalesce(cls.valor_total, cls.valor)).filter(
+            extract('month', cls.data_pagamento) == mes,
+            extract('year', cls.data_pagamento) == ano,
+            cls.tipo_pagamento == 'PAGAMENTO_BANCARIO',
+            cls.pagamento_historico_sem_movimentacao.is_(False),
+        ).all():
+            total += _decimal_monetario(valor[0])
+        return total
+
+    @classmethod
     def somar_pagamentos_antes_do_mes(cls, mes, ano):
         data_inicio = date(ano, mes, 1)
         total = Decimal('0')
