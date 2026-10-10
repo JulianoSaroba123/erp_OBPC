@@ -21,7 +21,7 @@
       <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Despesas fixas ativas</p><p class="obpc-ops__value">{{ despesas_ativas|length }}</p></article></div>
       <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Valor mensal fixo</p><p class="obpc-ops__value">{{ "R$ %.2f"|format(total_despesas)|replace(".", ",") }}</p></article></div>
       <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Valor anual estimado</p><p class="obpc-ops__value">{{ "R$ %.2f"|format(total_despesas * 12)|replace(".", ",") }}</p></article></div>
-      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Saldo pendente atual</p><p class="obpc-ops__value {% if controle_repasse_sede.saldo_pendente_atual > 0 %}text-danger{% else %}text-success{% endif %}">{{ "R$ %.2f"|format(controle_repasse_sede.saldo_pendente_atual)|replace(".", ",") }}</p></article></div>
+      <div class="col-12 col-md-6 col-xl-3"><article class="obpc-ops"><p class="obpc-ops__label">Saldo pendente atual</p><p class="obpc-ops__value {% if controle_competencia_sede.saldo_pendente_atual > 0 %}text-danger{% else %}text-success{% endif %}">{{ "R$ %.2f"|format(controle_competencia_sede.saldo_pendente_atual)|replace(".", ",") }}</p></article></div>
     </div>
   </section>
 
@@ -32,11 +32,13 @@
           <div class="obpc-card-header"><div><h2 class="obpc-section-title">Controle da Competência</h2><p class="obpc-text-muted mb-0">{{ "%02d"|format(mes_ref) }}/{{ ano_ref }}</p></div><span class="obpc-badge obpc-badge--primary">Sede</span></div>
           <div class="obpc-card-body">
             <div class="obpc-table-wrap"><table class="obpc-table" style="min-width:0;"><tbody>
-              <tr><td>Saldo pendente anterior</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.saldo_pendente_anterior)|replace(".", ",") }}</strong></td></tr>
-              <tr><td>30% gerado no mês</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.trinta_gerado_mes)|replace(".", ",") }}</strong></td></tr>
-              <tr><td>Total devido</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.total_devido_mes)|replace(".", ",") }}</strong></td></tr>
-              <tr><td>Valor enviado no mês</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_repasse_sede.valor_enviado_mes)|replace(".", ",") }}</strong></td></tr>
-              <tr><td><strong>Saldo pendente atual</strong></td><td class="text-end"><strong class="{% if controle_repasse_sede.saldo_pendente_atual > 0 %}text-danger{% else %}text-success{% endif %}">{{ "R$ %.2f"|format(controle_repasse_sede.saldo_pendente_atual)|replace(".", ",") }}</strong></td></tr>
+              <tr><td>Saldo pendente anterior</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_competencia_sede.saldo_pendente_anterior)|replace(".", ",") }}</strong></td></tr>
+              <tr><td>30% da competência</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_competencia_sede.administrativo_devido)|replace(".", ",") }}</strong></td></tr>
+              <tr><td>Despesas fixas da competência</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_competencia_sede.despesas_fixas_devidas)|replace(".", ",") }}</strong></td></tr>
+              <tr><td>Total devido da competência</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_competencia_sede.devido_competencia)|replace(".", ",") }}</strong></td></tr>
+              <tr><td>Pagamento desta competência</td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_competencia_sede.pago_competencia)|replace(".", ",") }}</strong></td></tr>
+              <tr><td>Pagamentos realizados no mês <span class="obpc-text-muted">(caixa)</span></td><td class="text-end"><strong>{{ "R$ %.2f"|format(controle_competencia_sede.pagamentos_realizados_mes)|replace(".", ",") }}</strong></td></tr>
+              <tr><td><strong>Saldo pendente atual</strong></td><td class="text-end"><strong class="{% if controle_competencia_sede.saldo_pendente_atual > 0 %}text-danger{% else %}text-success{% endif %}">{{ "R$ %.2f"|format(controle_competencia_sede.saldo_pendente_atual)|replace(".", ",") }}</strong></td></tr>
             </tbody></table></div>
           </div>
         </div>
@@ -47,6 +49,21 @@
           <div class="obpc-card-header"><div><h2 class="obpc-section-title">Registrar Pagamento de Repasse</h2><p class="obpc-text-muted mb-0">Competência, alocação e comprovante em um único fluxo.</p></div><span class="obpc-badge obpc-badge--info">Regularização / Pagamento</span></div>
           <div class="obpc-card-body">
             <div class="obpc-alert obpc-alert-info mb-3"><i class="fas fa-circle-info"></i><div>Use <strong>histórico sem movimentação bancária</strong> apenas para baixar competências antigas sem gerar saída no caixa/banco.</div></div>
+            {% if controle_competencia_sede.administrativo_devido > 0 and not controle_competencia_sede.administrativo_materializado %}
+            <div class="obpc-alert obpc-alert-warning mb-3">
+              <i class="fas fa-triangle-exclamation"></i>
+              <div class="flex-grow-1">
+                O 30% de <strong>{{ "R$ %.2f"|format(controle_competencia_sede.administrativo_devido)|replace(".", ",") }}</strong>
+                já foi calculado para {{ "%02d"|format(mes_ref) }}/{{ ano_ref }}, mas ainda não foi materializado como obrigação.
+                Ele aparece no controle, porém não entra na alocação do pagamento até ser gerado.
+              </div>
+              <form method="POST" action="{{ url_for('financeiro.gerar_lancamento_administrativo') }}" class="ms-2">
+                <input type="hidden" name="mes" value="{{ mes_ref }}">
+                <input type="hidden" name="ano" value="{{ ano_ref }}">
+                <button type="submit" class="obpc-btn obpc-btn-primary obpc-btn--sm"><i class="fas fa-percentage"></i> Gerar 30%</button>
+              </form>
+            </div>
+            {% endif %}
             <form method="POST" action="{{ url_for('financeiro.envio_sede') }}" enctype="multipart/form-data" id="form_pagamento_composto">
               <input type="hidden" name="acao" value="registrar_pagamento_sede">
               <div class="row g-3">
