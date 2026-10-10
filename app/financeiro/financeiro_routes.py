@@ -5227,6 +5227,96 @@ def _montar_controle_repasse_sede(mes, ano, percentual_conselho):
     }
 
 
+
+def _montar_controle_competencia_sede(mes, ano, percentual_conselho):
+    """Controle operacional por competência sem misturar obrigação com saída de caixa.
+
+    A obrigação administrativa pode ser exibida pelo cálculo do mês antes de ser
+    materializada em obrigacoes_financeiras. Despesas fixas e pagamentos usam o
+    motor moderno de obrigações. Pagamentos realizados no mês-calendário ficam
+    apenas como informação de caixa e não reduzem outra competência.
+    """
+    mes = int(mes)
+    ano = int(ano)
+    ordem_atual = (ano * 12) + mes
+
+    admin_calculado = _decimal_monetario(
+        _calcular_obrigacao_30_mes(mes, ano, percentual_conselho) or 0
+    )
+
+    obrigacoes = ObrigacaoFinanceira.query.filter(
+        ObrigacaoFinanceira.origem_obrigacao.in_(['automatico', 'migracao']),
+        ObrigacaoFinanceira.tipo_obrigacao.in_(['ADMIN_SEDE_30', 'DESPESA_FIXA']),
+        ObrigacaoFinanceira.status != 'CANCELADA',
+    ).order_by(
+        ObrigacaoFinanceira.competencia_ano.asc(),
+        ObrigacaoFinanceira.competencia_mes.asc(),
+        ObrigacaoFinanceira.id.asc(),
+    ).all()
+
+    pendente_anterior = Decimal('0.00')
+    admin_devido_materializado = Decimal('0.00')
+    fixas_devido = Decimal('0.00')
+    admin_pago_competencia = Decimal('0.00')
+    fixas_pago_competencia = Decimal('0.00')
+    admin_materializada = False
+    fixas_materializadas = False
+
+    for obrigacao in obrigacoes:
+        if obrigacao.competencia_mes is None or obrigacao.competencia_ano is None:
+            continue
+
+        ordem = (int(obrigacao.competencia_ano) * 12) + int(obrigacao.competencia_mes)
+        valor_devido = _decimal_monetario(obrigacao.valor_devido or 0)
+        valor_pago = _decimal_monetario(obrigacao.valor_pago or 0)
+        valor_pendente = _decimal_monetario(obrigacao.valor_pendente or 0)
+
+        if ordem < ordem_atual:
+            pendente_anterior += valor_pendente
+            continue
+
+        if ordem != ordem_atual:
+            continue
+
+        if obrigacao.tipo_obrigacao == 'ADMIN_SEDE_30':
+            admin_materializada = True
+            admin_devido_materializado += valor_devido
+            admin_pago_competencia += valor_pago
+        elif obrigacao.tipo_obrigacao == 'DESPESA_FIXA':
+            fixas_materializadas = True
+            fixas_devido += valor_devido
+            fixas_pago_competencia += valor_pago
+
+    # Enquanto o 30% ainda não foi materializado, o cálculo mensal é exibido
+    # como obrigação prevista, mas não cria lançamento nem movimenta caixa.
+    admin_devido = admin_devido_materializado if admin_materializada else admin_calculado
+
+    devido_competencia = admin_devido + fixas_devido
+    pago_competencia = admin_pago_competencia + fixas_pago_competencia
+    total_devido = pendente_anterior + devido_competencia
+    saldo_pendente_atual = total_devido - pago_competencia
+
+    pagamentos_realizados_mes = _decimal_monetario(
+        EnvioSede.somar_pagamentos_mes(mes, ano) or 0
+    )
+
+    return {
+        'saldo_pendente_anterior': _quantizar_monetario(pendente_anterior),
+        'administrativo_devido': _quantizar_monetario(admin_devido),
+        'administrativo_calculado': _quantizar_monetario(admin_calculado),
+        'administrativo_materializado': bool(admin_materializada),
+        'despesas_fixas_devidas': _quantizar_monetario(fixas_devido),
+        'despesas_fixas_materializadas': bool(fixas_materializadas),
+        'devido_competencia': _quantizar_monetario(devido_competencia),
+        'total_devido': _quantizar_monetario(total_devido),
+        'pago_competencia': _quantizar_monetario(pago_competencia),
+        'administrativo_pago_competencia': _quantizar_monetario(admin_pago_competencia),
+        'despesas_fixas_pagas_competencia': _quantizar_monetario(fixas_pago_competencia),
+        'pagamentos_realizados_mes': _quantizar_monetario(pagamentos_realizados_mes),
+        'saldo_pendente_atual': _quantizar_monetario(saldo_pendente_atual),
+    }
+
+
 def _gerar_observacao_repasse_padrao(controle_repasse_sede):
     valor_enviado_mes = float((controle_repasse_sede or {}).get('valor_enviado_mes', 0) or 0)
     if valor_enviado_mes <= 0:
@@ -5733,6 +5823,7 @@ def gerenciar_despesas_fixas():
         config = Configuracao.obter_configuracao()
         percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         controle_repasse_sede = _montar_controle_repasse_sede(mes_ref, ano_ref, percentual_conselho)
+        controle_competencia_sede = _montar_controle_competencia_sede(mes_ref, ano_ref, percentual_conselho)
         historico_pagamentos = EnvioSede.query.order_by(EnvioSede.data_pagamento.desc(), EnvioSede.id.desc()).limit(100).all()
         observacao_repasse_sede, observacao_repasse_padrao, observacao_repasse_salva = _obter_observacao_repasse_sede(
             mes_ref,
@@ -5765,6 +5856,7 @@ def gerenciar_despesas_fixas():
                              total_despesas=total_despesas,
                              categorias_saida=categorias_saida,
                              controle_repasse_sede=controle_repasse_sede,
+                             controle_competencia_sede=controle_competencia_sede,
                              historico_pagamentos=historico_pagamentos,
                              observacao_repasse_sede=observacao_repasse_sede,
                              observacao_repasse_padrao=observacao_repasse_padrao,
