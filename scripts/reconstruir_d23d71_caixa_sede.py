@@ -380,7 +380,7 @@ def build_result(conn) -> dict[str, Any]:
         "apto_para_apply_automatico": False,
         "motivo_bloqueio_apply": (
             "O saldo final até 31/08 pode ser reconstruído sem inventar caixa, "
-            "mas as datas exatas de quatro pagamentos em dinheiro não estão confirmadas."
+            "e a data do acerto em dinheiro foi confirmada como 04/07/2026."
         ),
     }
 
