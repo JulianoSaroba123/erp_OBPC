@@ -187,15 +187,16 @@ MAPEAMENTOS_BANCARIOS_CONFIRMADOS = {
         "competencia": "05/2026",
         "valor": Decimal("1426.00"),
         "natureza": "REPASSE_COMPETENCIA",
-        "descricao": "Acerto da competencia 05/2026 pago por PIX.",
+        "descricao": "Acerto da competencia 05/2026 pago por PIX, sem incluir Projeto Filipe.",
     },
 }
 
-# Referência contábil histórica antes da realocação D23D48 do Projeto Filipe.
-# O pagamento bancário de maio foi R$ 1.426,00, portanto existe diferença de
-# R$ 0,41 frente ao valor histórico de R$ 1.425,59. Essa diferença não deve
-# ser absorvida silenciosamente por nenhuma obrigação.
-VALOR_REFERENCIA_MAIO_ANTES_D23D48 = Decimal("1425.59")
+# Em 05/2026, o PIX real foi R$ 1.426,00 e o Projeto Filipe de R$ 10,00 NÃO
+# estava incluído nesse acerto. Após a realocação D23D48, a parte efetivamente
+# atribuível à competência de maio, sem Projeto Filipe, é R$ 1.415,59.
+# A diferença de R$ 10,41 deve permanecer como crédito/ajuste não alocado até
+# sua destinação documental ser confirmada.
+VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE = Decimal("1415.59")
 
 
 def rows(conn, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -348,7 +349,7 @@ def audit(conn, year: int, through_month: int) -> dict[str, Any]:
         )
     if any(row["id"] == 600 for row in candidatos_out):
         blockers.append(
-            "O PIX ID 600 foi confirmado como acerto de 05/2026, mas a alocacao interna de maio ainda precisa reconciliar Projeto Filipe e a diferenca de R$ 0,41."
+            "O PIX ID 600 foi confirmado como acerto de 05/2026 sem Projeto Filipe. A regularizacao deve preservar o Projeto Filipe para o pagamento acumulado de agosto e tratar R$ 10,41 como credito/ajuste nao alocado."
         )
 
     return {
@@ -379,11 +380,12 @@ def audit(conn, year: int, through_month: int) -> dict[str, Any]:
         },
         "ajuste_maio": {
             "pix_real": money(MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"]),
-            "referencia_historica_antes_d23d48": money(VALOR_REFERENCIA_MAIO_ANTES_D23D48),
-            "diferenca": money(
-                MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"] - VALOR_REFERENCIA_MAIO_ANTES_D23D48
+            "referencia_maio_sem_projeto_filipe": money(VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE),
+            "projeto_filipe_incluido_no_pix": False,
+            "credito_ou_ajuste_nao_alocado": money(
+                MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"] - VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE
             ),
-            "observacao": "Tratar a diferença como crédito/ajuste até concluir a alocação das obrigações de 05/2026.",
+            "observacao": "Projeto Filipe de 05/2026 permaneceu para o pagamento acumulado de agosto. O excedente de R$ 10,41 do PIX de maio deve ficar como crédito/ajuste não alocado até confirmação documental.",
         },
         "comparativo_mensal_simulacao_teorica": meses,
         "bloqueios_para_apply": blockers,
