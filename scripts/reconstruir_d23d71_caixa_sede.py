@@ -39,36 +39,40 @@ EXPECTED_UNPOSTED_CASH_TOTAL = Decimal("6416.41")
 EXPECTED_RECONSTRUCTED_BALANCE = Decimal("1882.06")
 
 # Pagamentos em dinheiro já reconhecidos como quitação histórica, mas que não
-# possuem lançamento financeiro real no caixa. As datas exatas não serão
-# inventadas pela D23D71.
+# possuem lançamento financeiro real no caixa. Foi confirmado que todos foram
+# entregues no mesmo acerto realizado em 04/07/2026.
 UNPOSTED_CASH_PAYMENTS = [
     {
         "code": "JAN_2026_DINHEIRO",
         "competencia": "01/2026",
         "valor": Decimal("1520.95"),
         "envio_ids": [15, 22],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
     {
         "code": "FEV_2026_DINHEIRO",
         "competencia": "02/2026",
         "valor": Decimal("1641.01"),
         "envio_ids": [16],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
     {
         "code": "MAR_2026_DINHEIRO",
         "competencia": "03/2026",
         "valor": Decimal("2109.11"),
         "envio_ids": [17],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
     {
         "code": "ABR_2026_DINHEIRO",
         "competencia": "04/2026",
         "valor": Decimal("1145.34"),
         "envio_ids": [18, 24],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
 ]
 
@@ -342,6 +346,7 @@ def build_result(conn) -> dict[str, Any]:
                     "valor": money(x["valor"]),
                     "envio_ids": x["envio_ids"],
                     "data_exata_confirmada": x["data_exata_confirmada"],
+                    "data_pagamento_confirmada": x["data_pagamento_confirmada"],
                 }
                 for x in UNPOSTED_CASH_PAYMENTS
             ],
