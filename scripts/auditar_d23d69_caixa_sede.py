@@ -173,6 +173,31 @@ READ_ONLY_SQL = (
     SQL_MENSAL_SIMULADO,
 )
 
+# Mapeamentos confirmados durante a auditoria D23D69.
+# Estes registros continuam sendo apenas evidência para diagnóstico. O script
+# não altera lançamentos, pagamentos, obrigações nem conciliações.
+MAPEAMENTOS_BANCARIOS_CONFIRMADOS = {
+    601: {
+        "competencia": "04/2026",
+        "valor": Decimal("1000.00"),
+        "natureza": "ADMIN_SEDE_30",
+        "descricao": "Parcela restante do administrativo de 04/2026 paga por PIX no acerto posterior.",
+    },
+    600: {
+        "competencia": "05/2026",
+        "valor": Decimal("1426.00"),
+        "natureza": "REPASSE_COMPETENCIA",
+        "descricao": "Acerto da competencia 05/2026 pago por PIX, sem incluir Projeto Filipe.",
+    },
+}
+
+# Em 05/2026, o PIX real foi R$ 1.426,00 e o Projeto Filipe de R$ 10,00 NÃO
+# estava incluído nesse acerto. Após a realocação D23D48, a parte efetivamente
+# atribuível à competência de maio, sem Projeto Filipe, é R$ 1.415,59.
+# A diferença de R$ 10,41 deve permanecer como crédito/ajuste não alocado até
+# sua destinação documental ser confirmada.
+VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE = Decimal("1415.59")
+
 
 def rows(conn, sql: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
     return [dict(r) for r in conn.execute(text(sql), params or {}).mappings().all()]
@@ -276,14 +301,27 @@ def audit(conn, year: int, through_month: int) -> dict[str, Any]:
     for row in candidatos:
         if not row.get("data") or int(row["data"].year) != year or int(row["data"].month) > through_month:
             continue
+        rid = int(row["id"])
+        mapping = MAPEAMENTOS_BANCARIOS_CONFIRMADOS.get(rid)
         candidatos_out.append({
-            "id": int(row["id"]),
+            "id": rid,
             "data": str(row["data"]),
             "valor": money(row.get("valor")),
             "categoria": row.get("categoria"),
             "descricao": row.get("descricao"),
             "observacoes": row.get("observacoes"),
-            "classificacao_preliminar": classify_candidate(row),
+            "classificacao_preliminar": (
+                "MAPEAMENTO_CONFIRMADO" if mapping else classify_candidate(row)
+            ),
+            "mapeamento_confirmado": (
+                {
+                    "competencia": mapping["competencia"],
+                    "valor": money(mapping["valor"]),
+                    "natureza": mapping["natureza"],
+                    "descricao": mapping["descricao"],
+                }
+                if mapping else None
+            ),
         })
 
     meses = []
@@ -302,9 +340,16 @@ def audit(conn, year: int, through_month: int) -> dict[str, Any]:
         blockers.append(
             "Existem pagamentos historicos com data real nao informada; nao converter automaticamente em movimento financeiro."
         )
-    if candidatos_out:
+    pendentes_nao_mapeados = [
+        row for row in candidatos_out if not row.get("mapeamento_confirmado")
+    ]
+    if pendentes_nao_mapeados:
         blockers.append(
             "Existem movimentos importados da Sede ainda nao conciliados/classificados; neutralizar o legado antes de mapea-los pode duplicar ou omitir caixa."
+        )
+    if any(row["id"] == 600 for row in candidatos_out):
+        blockers.append(
+            "O PIX ID 600 foi confirmado como acerto de 05/2026 sem Projeto Filipe. A regularizacao deve preservar o Projeto Filipe para o pagamento acumulado de agosto e tratar R$ 10,41 como credito/ajuste nao alocado."
         )
 
     return {
@@ -324,6 +369,24 @@ def audit(conn, year: int, through_month: int) -> dict[str, Any]:
         "pagamentos_historicos_sem_data_exata": pagamentos_sem_data_exata,
         "pagamentos_historicos_sem_lancamento_financeiro": historicos_sem_lancamento,
         "movimentos_importados_sede_pendentes_de_revisao": candidatos_out,
+        "mapeamentos_bancarios_confirmados": {
+            str(k): {
+                "competencia": v["competencia"],
+                "valor": money(v["valor"]),
+                "natureza": v["natureza"],
+                "descricao": v["descricao"],
+            }
+            for k, v in MAPEAMENTOS_BANCARIOS_CONFIRMADOS.items()
+        },
+        "ajuste_maio": {
+            "pix_real": money(MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"]),
+            "referencia_maio_sem_projeto_filipe": money(VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE),
+            "projeto_filipe_incluido_no_pix": False,
+            "credito_ou_ajuste_nao_alocado": money(
+                MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"] - VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE
+            ),
+            "observacao": "Projeto Filipe de 05/2026 permaneceu para o pagamento acumulado de agosto. O excedente de R$ 10,41 do PIX de maio deve ficar como crédito/ajuste não alocado até confirmação documental.",
+        },
         "comparativo_mensal_simulacao_teorica": meses,
         "bloqueios_para_apply": blockers,
         "apto_para_apply": len(blockers) == 0,

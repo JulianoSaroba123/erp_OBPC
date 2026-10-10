@@ -40,6 +40,33 @@ class D23D69AuditoriaCaixaSedeTest(unittest.TestCase):
             "CANDIDATO_DESPESA_FIXA_SEDE",
         )
 
+    def test_mapeamentos_bancarios_confirmados_sao_apenas_diagnosticos(self):
+        self.assertEqual(
+            self.mod.MAPEAMENTOS_BANCARIOS_CONFIRMADOS[601]["competencia"],
+            "04/2026",
+        )
+        self.assertEqual(
+            str(self.mod.MAPEAMENTOS_BANCARIOS_CONFIRMADOS[601]["valor"]),
+            "1000.00",
+        )
+        self.assertEqual(
+            self.mod.MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["competencia"],
+            "05/2026",
+        )
+        self.assertEqual(
+            str(self.mod.MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"]),
+            "1426.00",
+        )
+        self.assertEqual(
+            str(self.mod.VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE),
+            "1415.59",
+        )
+        credito = (
+            self.mod.MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"]
+            - self.mod.VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE
+        )
+        self.assertEqual(str(credito), "10.41")
+
     def test_simulacao_e_identificada_como_teorica(self):
         src = SCRIPT.read_text(encoding="utf-8")
         self.assertIn("comparativo_mensal_simulacao_teorica", src)
