@@ -39,36 +39,40 @@ EXPECTED_UNPOSTED_CASH_TOTAL = Decimal("6416.41")
 EXPECTED_RECONSTRUCTED_BALANCE = Decimal("1882.06")
 
 # Pagamentos em dinheiro já reconhecidos como quitação histórica, mas que não
-# possuem lançamento financeiro real no caixa. As datas exatas não serão
-# inventadas pela D23D71.
+# possuem lançamento financeiro real no caixa. Foi confirmado que todos foram
+# entregues no mesmo acerto realizado em 04/07/2026.
 UNPOSTED_CASH_PAYMENTS = [
     {
         "code": "JAN_2026_DINHEIRO",
         "competencia": "01/2026",
         "valor": Decimal("1520.95"),
         "envio_ids": [15, 22],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
     {
         "code": "FEV_2026_DINHEIRO",
         "competencia": "02/2026",
         "valor": Decimal("1641.01"),
         "envio_ids": [16],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
     {
         "code": "MAR_2026_DINHEIRO",
         "competencia": "03/2026",
         "valor": Decimal("2109.11"),
         "envio_ids": [17],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
     {
         "code": "ABR_2026_DINHEIRO",
         "competencia": "04/2026",
         "valor": Decimal("1145.34"),
         "envio_ids": [18, 24],
-        "data_exata_confirmada": False,
+        "data_exata_confirmada": True,
+        "data_pagamento_confirmada": "2026-07-04",
     },
 ]
 
@@ -315,7 +319,7 @@ def build_result(conn) -> dict[str, Any]:
             "saidas_erp": money(r["saidas"]),
             "resultado_erp": money(r["saldo_mes"]),
             "status_reconstrucao": (
-                "DATA_EXATA_DE_CAIXA_PENDENTE"
+                "DATA_DO_ACERTO_CONFIRMADA_04_07_2026"
                 if month in {1,2,3,4}
                 else "SEM_PENDENCIA_DE_DATA_NESTA_ETAPA"
             ),
@@ -342,6 +346,7 @@ def build_result(conn) -> dict[str, Any]:
                     "valor": money(x["valor"]),
                     "envio_ids": x["envio_ids"],
                     "data_exata_confirmada": x["data_exata_confirmada"],
+                    "data_pagamento_confirmada": x["data_pagamento_confirmada"],
                 }
                 for x in UNPOSTED_CASH_PAYMENTS
             ],
@@ -366,7 +371,6 @@ def build_result(conn) -> dict[str, Any]:
         ),
         "movimento_mensal_atual": monthly_out,
         "pendencias_antes_do_apply": [
-            "Não inventar datas para os pagamentos em dinheiro de 01/2026, 02/2026, 03/2026 e a parcela em dinheiro de 04/2026.",
             "Vincular os PIX IDs 601 e 600 às competências 04/2026 e 05/2026 sem criar nova saída financeira.",
             "Manter Projeto Filipe de 05/2026 no pagamento acumulado de agosto.",
             "Tratar R$ 10,41 de maio como crédito/ajuste não alocado, sem forçar em obrigação.",
@@ -375,7 +379,7 @@ def build_result(conn) -> dict[str, Any]:
         "apto_para_apply_automatico": False,
         "motivo_bloqueio_apply": (
             "O saldo final até 31/08 pode ser reconstruído sem inventar caixa, "
-            "mas as datas exatas de quatro pagamentos em dinheiro não estão confirmadas."
+            "e a data do acerto em dinheiro foi confirmada como 04/07/2026."
         ),
     }
 
