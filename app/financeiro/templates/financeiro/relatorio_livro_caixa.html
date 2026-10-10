@@ -267,13 +267,17 @@
     }
 
     .signature-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 28px;
-        margin-top: 38px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 34mm;
+        width: 100%;
+        margin-top: 34px;
     }
 
     .signature-line {
+        flex: 0 0 72mm;
+        max-width: 72mm;
         padding-top: 8px;
         border-top: 1px solid var(--ink);
         text-align: center;
@@ -430,14 +434,21 @@
     }
 
     .signature-grid {
-        margin-top: 24px !important;
-        gap: 20px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
+        gap: 28mm !important;
+        width: 100% !important;
+        margin-top: 18mm !important;
         break-inside: avoid;
         page-break-inside: avoid;
     }
 
     .signature-line {
+        flex: 0 0 68mm !important;
+        max-width: 68mm !important;
         font-size: 8px !important;
+        padding-top: 5px !important;
     }
 
     .footer-note {
@@ -631,18 +642,16 @@
                     </tbody>
                 </table>
             </div>
+        </div>
 
-            <div>
-                <div class="signature-grid">
-                    <div class="signature-line">
-                        {{ dados_igreja.pastor }}<br>
-                        Pastor Responsável
-                    </div>
-                    <div class="signature-line">
-                        {{ dados_igreja.tesoureiro }}<br>
-                        Tesoureiro
-                    </div>
-                </div>
+        <div class="signature-grid">
+            <div class="signature-line">
+                {{ dados_igreja.pastor }}<br>
+                Pastor Responsável
+            </div>
+            <div class="signature-line">
+                {{ dados_igreja.tesoureiro }}<br>
+                Tesoureiro
             </div>
         </div>
 
