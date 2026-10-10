@@ -148,7 +148,7 @@ SELECT COALESCE(SUM(
     END
 ),0) AS saldo
 FROM econ
-WHERE data <= DATE :data_limite
+WHERE data <= CAST(:data_limite AS DATE)
 """
 
 SQL_LEGACY_TARGETS = """
@@ -156,7 +156,7 @@ SELECT id,data,tipo,categoria,descricao,valor,conta,origem,observacoes
 FROM lancamentos
 WHERE origem='automatico'
   AND lower(tipo) IN ('saída','saida')
-  AND data <= DATE :data_limite
+  AND data <= CAST(:data_limite AS DATE)
   AND (
       (categoria='CONTRIB. SEDE' AND descricao ILIKE '30% Administrativo - Conselho Sede %')
       OR
