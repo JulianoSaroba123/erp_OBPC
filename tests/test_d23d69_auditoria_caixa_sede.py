@@ -58,9 +58,14 @@ class D23D69AuditoriaCaixaSedeTest(unittest.TestCase):
             "1426.00",
         )
         self.assertEqual(
-            str(self.mod.VALOR_REFERENCIA_MAIO_ANTES_D23D48),
-            "1425.59",
+            str(self.mod.VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE),
+            "1415.59",
         )
+        credito = (
+            self.mod.MAPEAMENTOS_BANCARIOS_CONFIRMADOS[600]["valor"]
+            - self.mod.VALOR_REFERENCIA_MAIO_SEM_PROJETO_FILIPE
+        )
+        self.assertEqual(str(credito), "10.41")
 
     def test_simulacao_e_identificada_como_teorica(self):
         src = SCRIPT.read_text(encoding="utf-8")
