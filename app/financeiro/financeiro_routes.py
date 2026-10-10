@@ -5297,7 +5297,7 @@ def _montar_controle_competencia_sede(mes, ano, percentual_conselho):
     saldo_pendente_atual = total_devido - pago_competencia
 
     pagamentos_realizados_mes = _decimal_monetario(
-        EnvioSede.somar_pagamentos_mes(mes, ano) or 0
+        EnvioSede.somar_pagamentos_reais_mes(mes, ano) or 0
     )
 
     return {
