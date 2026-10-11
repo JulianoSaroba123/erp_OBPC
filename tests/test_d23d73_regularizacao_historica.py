@@ -72,11 +72,10 @@ class D23D73RegularizacaoHistoricaTest(unittest.TestCase):
         src = SCRIPT.read_text(encoding="utf-8")
         self.assertIn("pg_advisory_xact_lock(237373)", src)
 
-    def test_executor_startup_exige_token_exato(self):
+    def test_executor_temporario_foi_removido_do_startup(self):
         app_src = (ROOT / "app" / "__init__.py").read_text(encoding="utf-8")
-        self.assertIn('D23D73_APPLY_TOKEN', app_src)
-        self.assertIn('CONFIRMO_D23D73_CAIXA_SEDE_2026', app_src)
-        self.assertIn('_executar_d23d73_autorizada_no_startup(app)', app_src)
+        self.assertNotIn('D23D73_APPLY_TOKEN', app_src)
+        self.assertNotIn('_executar_d23d73_autorizada_no_startup(app)', app_src)
 
     def test_apply_nao_roda_por_padrao(self):
         src = SCRIPT.read_text(encoding="utf-8")
