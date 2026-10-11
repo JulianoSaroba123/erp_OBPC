@@ -1,3 +1,4 @@
+import os
 from flask import Flask, redirect, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import Config
@@ -104,6 +105,35 @@ def _migrar_lancamentos_repasse_sede_legado(app):
     except Exception as exc:
         app.logger.warning('Falha ao migrar lançamentos legados de repasse à sede: %s', exc)
         return 0
+
+_D23D73_APPLY_TOKEN = "CONFIRMO_D23D73_CAIXA_SEDE_2026"
+
+
+def _executar_d23d73_autorizada_no_startup(app):
+    """Executa a D23D73 somente quando houver autorização operacional explícita.
+
+    A flag fica fora do código de negócio e é removida do ambiente após a
+    conferência. O script possui gates próprios, transação única e advisory lock.
+    """
+    token = (os.environ.get("D23D73_APPLY_TOKEN") or "").strip()
+    if token != _D23D73_APPLY_TOKEN:
+        return
+
+    database_url = os.environ.get("DATABASE_URL") or app.config.get("SQLALCHEMY_DATABASE_URI")
+    if not database_url or not str(database_url).startswith(("postgres://", "postgresql://")):
+        app.logger.error("D23D73 autorizada, mas DATABASE_URL PostgreSQL não está disponível.")
+        return
+
+    try:
+        from scripts.regularizar_d23d73_caixa_sede import executar
+        rc = executar(database_url, apply=True, confirm=token)
+        if rc == 0:
+            app.logger.warning("D23D73_EXECUCAO_AUTORIZADA_CONCLUIDA")
+        else:
+            app.logger.warning("D23D73_EXECUCAO_AUTORIZADA_BLOQUEADA rc=%s", rc)
+    except Exception:
+        app.logger.exception("D23D73_EXECUCAO_AUTORIZADA_FALHOU")
+
 
 def create_app():
     app = Flask(__name__)
@@ -318,6 +348,11 @@ def create_app():
                 app.logger.info('Migração de repasse à sede concluída: %s lançamentos atualizados para CONTRIB. SEDE', migrados)
         except Exception as e:
             app.logger.warning(f'⚠️  Erro ao migrar lançamentos legados de repasse à sede: {str(e)}')
+
+        try:
+            _executar_d23d73_autorizada_no_startup(app)
+        except Exception as e:
+            app.logger.exception("Falha inesperada no executor autorizado D23D73: %s", e)
 
         try:
             ObservacaoRelatorio.garantir_tabela()
