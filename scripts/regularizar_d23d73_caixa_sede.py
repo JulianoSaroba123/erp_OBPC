@@ -641,6 +641,10 @@ def executar(url: str, apply: bool, confirm: str | None) -> int:
         return 2
 
     with engine.begin() as conn:
+        # Serializa a execução em produção. Se mais de um worker iniciar ao
+        # mesmo tempo, apenas um aplica a regularização; os demais aguardam e
+        # reencontram o banco já regularizado, sendo bloqueados pelos gates.
+        conn.execute(text("SELECT pg_advisory_xact_lock(237373)"))
         result = aplicar(conn)
 
     print("D23D73_RESULTADO")
