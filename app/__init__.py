@@ -1,3 +1,4 @@
+import os
 from flask import Flask, redirect, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import Config
@@ -104,6 +105,44 @@ def _migrar_lancamentos_repasse_sede_legado(app):
     except Exception as exc:
         app.logger.warning('Falha ao migrar lançamentos legados de repasse à sede: %s', exc)
         return 0
+
+_D23D76_APPLY_TOKEN = "CONFIRMO_D23D76_TESTE_613"
+
+
+def _executar_d23d76_autorizada_no_startup(app):
+    """Executa a neutralização auditável do lançamento de teste somente com token explícito."""
+    token = (os.environ.get("D23D76_APPLY_TOKEN") or "").strip()
+    if token != _D23D76_APPLY_TOKEN:
+        return
+
+    database_url = os.environ.get("DATABASE_URL") or app.config.get("SQLALCHEMY_DATABASE_URI")
+    if not database_url or not str(database_url).startswith(("postgres://", "postgresql://")):
+        app.logger.error("D23D76 autorizada, mas DATABASE_URL PostgreSQL não está disponível.")
+        return
+
+    try:
+        from scripts.regularizar_d23d76_teste_613 import main as _unused_main
+        from scripts import regularizar_d23d76_teste_613 as d23d76
+        engine = d23d76.create_engine(d23d76.normalize_url(database_url))
+
+        with engine.connect() as conn:
+            report = d23d76.preview(conn)
+        print("D23D76_PREVIEW", flush=True)
+        print(report, flush=True)
+
+        if report.get("status") != "APTO":
+            app.logger.warning("D23D76_EXECUCAO_AUTORIZADA_BLOQUEADA preview=%s", report)
+            return
+
+        with engine.begin() as conn:
+            result = d23d76.apply(conn)
+
+        print("D23D76_RESULTADO", flush=True)
+        print(result, flush=True)
+        app.logger.warning("D23D76_EXECUCAO_AUTORIZADA_CONCLUIDA")
+    except Exception:
+        app.logger.exception("D23D76_EXECUCAO_AUTORIZADA_FALHOU")
+
 
 def create_app():
     app = Flask(__name__)
@@ -318,6 +357,11 @@ def create_app():
                 app.logger.info('Migração de repasse à sede concluída: %s lançamentos atualizados para CONTRIB. SEDE', migrados)
         except Exception as e:
             app.logger.warning(f'⚠️  Erro ao migrar lançamentos legados de repasse à sede: {str(e)}')
+
+        try:
+            _executar_d23d76_autorizada_no_startup(app)
+        except Exception as e:
+            app.logger.exception("Falha inesperada no executor autorizado D23D76: %s", e)
 
         try:
             ObservacaoRelatorio.garantir_tabela()
