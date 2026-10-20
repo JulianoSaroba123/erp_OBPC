@@ -32,11 +32,10 @@ class D23D76NeutralizaTeste613Test(unittest.TestCase):
         self.assertNotIn("DELETE FROM lancamentos", src)
         self.assertIn("D23D76_NEUTRALIZA_TESTE_613", src)
 
-    def test_executor_startup_exige_token_exato(self):
+    def test_executor_temporario_foi_removido_do_startup(self):
         app_src = (ROOT / "app" / "__init__.py").read_text(encoding="utf-8")
-        self.assertIn("D23D76_APPLY_TOKEN", app_src)
-        self.assertIn("CONFIRMO_D23D76_TESTE_613", app_src)
-        self.assertIn("_executar_d23d76_autorizada_no_startup(app)", app_src)
+        self.assertNotIn("D23D76_APPLY_TOKEN", app_src)
+        self.assertNotIn("_executar_d23d76_autorizada_no_startup(app)", app_src)
 
     def test_apply_exige_token_e_lock(self):
         src = SCRIPT.read_text(encoding="utf-8")
