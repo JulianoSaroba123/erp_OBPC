@@ -205,7 +205,7 @@
             <div class="obpc-card-body">
                 <form method="post"
                       action="{{ url_for('financeiro.salvar_justificativa_relatorio') }}"
-                      class="obpc-form report-note-form">
+                      class="obpc-form report-note-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <input type="hidden" name="tipo_relatorio" value="{{ tipo_relatorio }}">
                     <input type="hidden" name="mes" value="{{ mes }}">

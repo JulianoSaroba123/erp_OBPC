@@ -189,7 +189,7 @@
       
 
       
-      <form method="POST" action="{{ url_for('usuario.login') }}">
+      <form method="POST" action="{{ url_for('usuario.login', next=request.args.get('next')) }}">
         <div class="form-group mb-3">
           <label for="email" class="fw-semibold form-label">E-mail</label>
           <input type="email" class="form-control" id="email" name="email" placeholder="Digite seu e-mail" required>
