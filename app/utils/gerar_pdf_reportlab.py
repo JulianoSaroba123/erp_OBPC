@@ -200,15 +200,17 @@ class RelatorioFinanceiro:
         lancamentos_ordenados = sorted(lancamentos, key=lambda x: x.data)
         
         for lancamento in lancamentos_ordenados:
-            # Calcular saldo acumulado
-            if lancamento.tipo.lower() == 'entrada':
+            # Apenas movimentos econômicos alteram o saldo.
+            tipo_economico = (lancamento.tipo or '').strip().lower()
+            if tipo_economico == 'entrada':
                 saldo_acumulado += lancamento.valor
                 valor_formatado = f"+{self._formatar_moeda(lancamento.valor)}"
-                cor_valor = colors.green
-            else:
+            elif tipo_economico in ('saída', 'saida'):
                 saldo_acumulado -= lancamento.valor
                 valor_formatado = f"-{self._formatar_moeda(lancamento.valor)}"
-                cor_valor = colors.red
+            else:
+                # Evidências continuam visíveis, sem impacto no saldo.
+                valor_formatado = self._formatar_moeda(lancamento.valor)
             
             # Gerar informação do comprovante
             comprovante_info = self._gerar_info_comprovante(lancamento)
@@ -287,12 +289,16 @@ class RelatorioFinanceiro:
         if mostrar_saldo and total_colunas_tabela >= 7:
             estilo_tabela.append(('ALIGN', (6, 1), (6, ultima_linha_idx), 'RIGHT'))
         
-        # Aplicar cores específicas para valores
+        # Evidências aparecem em cor neutra, sem sinal de saída.
         for i, lancamento in enumerate(lancamentos_ordenados, 1):
-            if lancamento.tipo.lower() == 'entrada':
-                estilo_tabela.append(('TEXTCOLOR', (4, i), (4, i), colors.green))
+            tipo_economico = (lancamento.tipo or '').strip().lower()
+            if tipo_economico == 'entrada':
+                cor = colors.green
+            elif tipo_economico in ('saída', 'saida'):
+                cor = colors.red
             else:
-                estilo_tabela.append(('TEXTCOLOR', (4, i), (4, i), colors.red))
+                cor = colors.grey
+            estilo_tabela.append(('TEXTCOLOR', (4, i), (4, i), cor))
         
         tabela.setStyle(TableStyle(estilo_tabela))
         
@@ -756,14 +762,16 @@ class RelatorioFinanceiro:
             categoria = lancamento.categoria or 'Outros'
             valor = lancamento.valor or 0
             
-            if lancamento.tipo.lower() == 'entrada':
+            tipo_economico = (lancamento.tipo or '').strip().lower()
+            if tipo_economico == 'entrada':
                 if categoria not in totais['entradas']:
                     totais['entradas'][categoria] = 0
                 totais['entradas'][categoria] += valor
-            else:
+            elif tipo_economico in ('saída', 'saida'):
                 if categoria not in totais['saidas']:
                     totais['saidas'][categoria] = 0
                 totais['saidas'][categoria] += valor
+            # Evidência não integra entradas, saídas nem o resumo financeiro.
         
         return totais
     
@@ -778,8 +786,8 @@ class RelatorioFinanceiro:
             conta = (lancamento.conta or 'dinheiro').lower()
             valor = float(lancamento.valor) if lancamento.valor else 0
             
-            # Determinar a conta - mapeamento melhorado
-            if 'banco' in conta or 'conta' in conta:
+            # PIX integra o banco; dinheiro físico permanece separado.
+            if 'banco' in conta or 'conta' in conta or 'pix' in conta:
                 conta_key = 'banco'
             else:
                 conta_key = 'dinheiro'
