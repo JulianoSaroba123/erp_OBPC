@@ -6022,6 +6022,19 @@ def relatorio_caixa_pdf():
         config = Configuracao.obter_configuracao()
         current_app.logger.info(f"Configuracao OK - Logo: {config.logo if config else 'None'}")
 
+        # A7H.8 | Livro Caixa interno simplificado, opcional por formato.
+        # A rota ReportLab completa segue inalterada para chamadas antigas.
+        if request.args.get('formato', '').strip().lower() == 'livro_caixa':
+            from app.utils.livro_caixa_simplificado import gerar_livro_caixa_simplificado
+            buffer_livro = gerar_livro_caixa_simplificado(
+                lancamentos=lancamentos, mes=mes, ano=ano,
+                saldo_anterior=saldo_anterior, configuracao=config,
+            )
+            return send_file(
+                buffer_livro, mimetype='application/pdf', as_attachment=False,
+                download_name=f'livro_caixa_interno_{mes:02d}_{ano}.pdf',
+            )
+
         # Montar contexto de repasse à sede para renderização no PDF (informativo, sem alterar cálculos existentes)
         percentual_conselho = config.percentual_conselho if config and hasattr(config, 'percentual_conselho') and config.percentual_conselho else 30
         controle_repasse_sede = _montar_controle_repasse_sede(mes, ano, percentual_conselho)
