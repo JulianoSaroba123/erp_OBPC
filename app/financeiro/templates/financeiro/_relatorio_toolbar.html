@@ -22,6 +22,15 @@
                rel="noopener">
                 <i class="fas fa-file-pdf"></i> Gerar PDF
             </a>
+            {% if tipo_relatorio == 'livro_caixa' %}
+            <a class="obpc-btn obpc-btn-secondary"
+               href="{{ url_for('financeiro.relatorio_caixa_pdf', mes=mes, ano=ano, formato='livro_caixa') }}"
+               target="_blank"
+               rel="noopener"
+               title="Livro Caixa simplificado, com Dízimos, Ofertas, OMN e Envios à Sede">
+                <i class="fas fa-file-pdf"></i> PDF Simplificado
+            </a>
+            {% endif %}
         </div>
     </header>
 
