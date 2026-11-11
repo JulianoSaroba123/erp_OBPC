@@ -1,0 +1,65 @@
+name: OBPC P0 Security + Livro Caixa Regression
+
+on:
+  push:
+    branches:
+      - feat/obpc-a7h21-p0-integrada-20261111
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'tests/test_p0_*.py'
+      - 'tests/a7h*.py'
+      - 'tests/test_a7*.py'
+      - 'tests/test_livro_caixa_simplificado.py'
+      - '.github/workflows/obpc-p0-seguranca-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  security-and-finance:
+    name: P0 + A7H Python 3.11
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: .
+      FLASK_ENV: testing
+      RENDER: 'false'
+      DATABASE_URL: sqlite:////tmp/erp_obpc_p0_ci.sqlite
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
+
+      - name: Preparar chave efemera para teste
+        shell: bash
+        run: echo "SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(48))')" >> "$GITHUB_ENV"
+
+      - name: Regressao P0 autenticacao autorizacao CSRF startup
+        run: python -m pytest -q tests/test_p0_*.py
+
+      - name: Regressao Livro Caixa PDF OMN
+        run: |
+          python -m pytest -q \
+            tests/a7h15_livro_caixa_ui_test.py \
+            tests/a7h17_omn_regra_test.py \
+            tests/test_a7g_pdf_caixa.py \
+            tests/test_livro_caixa_simplificado.py \
+            tests/test_a7h10b_refinamento.py \
+            tests/test_a7h5_pdf_visual.py \
+            tests/test_a7h7b_paginacao.py
+
+      - name: Compilacao de Python
+        run: |
+          python -m py_compile run.py app/__init__.py \
+            app/financeiro/financeiro_routes.py \
+            app/financeiro/routes_conciliacao.py
