@@ -2,7 +2,8 @@ import os
 from datetime import timedelta
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or "chave-secreta-obpc-2025-igreja-brasil-para-cristo"
+    # Chave obrigatoria fornecida pelo ambiente. Nao ha fallback publico.
+    SECRET_KEY = os.environ.get('SECRET_KEY') or None
     
     # Usar PostgreSQL em produção, SQLite em desenvolvimento
     DATABASE_URL = os.environ.get('DATABASE_URL')

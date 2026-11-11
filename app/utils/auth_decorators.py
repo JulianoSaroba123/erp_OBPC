@@ -27,7 +27,7 @@ def requer_nivel_acesso(*niveis_permitidos):
                 if request.is_json or request.headers.get('Content-Type') == 'application/json':
                     return jsonify({'success': False, 'message': 'Usuário não autenticado'}), 401
                 flash('Por favor, faça login para acessar esta página.', 'info')
-                return redirect(url_for('usuario.login', next=request.url))
+                return redirect(url_for('usuario.login', next=request.full_path.rstrip('?')))
             
             # Verificar nível de acesso
             if current_user.nivel_acesso not in niveis_permitidos:
@@ -50,7 +50,7 @@ def requer_gerencia_usuarios(f):
         # Verificar autenticação
         if not current_user.is_authenticated:
             flash('Por favor, faça login para acessar esta página.', 'info')
-            return redirect(url_for('usuario.login', next=request.url))
+            return redirect(url_for('usuario.login', next=request.full_path.rstrip('?')))
         
         # Verificar permissão de gerenciamento
         if not current_user.pode_gerenciar_usuarios():
@@ -62,16 +62,39 @@ def requer_gerencia_usuarios(f):
 
 # Simplificação dos outros decoradores para evitar conflitos
 def requer_acesso_financeiro(f):
+    """Protege rotas financeiras sem ocultar excecoes."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        try:
-            if not current_user.is_authenticated or not current_user.tem_acesso_financeiro():
-                flash('Acesso negado ao módulo financeiro.', 'danger')
-                return redirect(url_for('usuario.login'))
-            return f(*args, **kwargs)
-        except:
-            return redirect(url_for('usuario.login'))
+        requisicao_api = (
+            request.is_json
+            or request.headers.get("X-Requested-With") == "XMLHttpRequest"
+            or request.accept_mimetypes.best == "application/json"
+            or request.path.startswith("/financeiro/conciliacao/api/")
+            or request.path.startswith("/financeiro/api/")
+        )
+
+        if not current_user.is_authenticated:
+            if requisicao_api:
+                return jsonify({
+                    "success": False,
+                    "message": "Usuario nao autenticado"
+                }), 401
+
+            return redirect(url_for("usuario.login", next=request.full_path.rstrip('?')))
+
+        if not current_user.tem_acesso_financeiro():
+            if requisicao_api:
+                return jsonify({
+                    "success": False,
+                    "message": "Acesso financeiro negado"
+                }), 403
+
+            abort(403)
+
+        return f(*args, **kwargs)
+
     return decorated_function
+
 
 def requer_acesso_secretaria(f):
     @wraps(f)

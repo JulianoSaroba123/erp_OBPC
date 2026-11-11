@@ -61,7 +61,7 @@
         </div>
       </div>
       <div class="obpc-card-body">
-        <form method="POST" action="{{ url_for('financeiro.importar_extrato_confirmar') }}" class="obpc-form">
+        <form method="POST" action="{{ url_for('financeiro.importar_extrato_confirmar') }}" class="obpc-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="registros" id="registros">
 
           <div class="obpc-table-wrap" style="max-height: 500px; overflow-y: auto;">

@@ -26,7 +26,7 @@
             {% if lancamento %}<span class="obpc-badge obpc-badge--info">ID #{{ lancamento.id }}</span>{% else %}<span class="obpc-badge obpc-badge--primary">Novo registro</span>{% endif %}
           </div>
           <div class="obpc-card-body">
-            <form id="form-lancamento" method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}" enctype="multipart/form-data">
+            <form id="form-lancamento" method="POST" action="{{ url_for('financeiro.salvar_lancamento') }}" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               {% if lancamento %}<input type="hidden" name="id" value="{{ lancamento.id }}">{% endif %}
               {% if filtros_ativos %}{% for campo, valor in filtros_ativos.items() %}<input type="hidden" name="filtro_{{ campo }}" value="{{ valor }}">{% endfor %}{% endif %}
 
@@ -150,7 +150,7 @@
             <div class="obpc-card mt-3">
               <div class="obpc-card-header"><h3 class="obpc-section-title">Adicionar Múltiplos Comprovantes</h3></div>
               <div class="obpc-card-body">
-                <form method="POST" action="{{ url_for('financeiro.upload_comprovantes', id=lancamento.id) }}" enctype="multipart/form-data" id="formUploadComprovantes">
+                <form method="POST" action="{{ url_for('financeiro.upload_comprovantes', id=lancamento.id) }}" enctype="multipart/form-data" id="formUploadComprovantes"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <div class="input-group"><input type="file" class="form-control" id="comprovantes_multiplos" name="comprovantes[]" accept=".jpg,.jpeg,.png,.pdf" multiple><button type="submit" class="obpc-btn obpc-btn-secondary"><i class="fas fa-upload"></i> Adicionar</button></div>
                   <span class="obpc-help">Você pode selecionar vários arquivos de uma vez.</span>
                 </form>

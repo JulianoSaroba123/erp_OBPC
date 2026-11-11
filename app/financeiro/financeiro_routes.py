@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app, session
 from flask_login import login_required, current_user
-from app.extensoes import db
+from app.utils.auth_decorators import requer_acesso_financeiro
+from app.extensoes import db, csrf
 from app.financeiro.financeiro_model import Lancamento
 from app.financeiro.financeiro_model import ConciliacaoHistorico, ConciliacaoPar
 from app.financeiro.projeto_model import Projeto
@@ -32,6 +33,20 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 financeiro_bp = Blueprint('financeiro', __name__, template_folder='templates')
+
+@financeiro_bp.before_request
+@requer_acesso_financeiro
+def _validar_acesso_financeiro_blueprint():
+    """Protege todas as rotas financeiras do Blueprint."""
+    return None
+
+
+@financeiro_bp.before_request
+def _validar_csrf_financeiro_blueprint():
+    """Valida token somente nas rotas financeiras mutantes."""
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        csrf.protect()
+
 
 _ENVIO_SEDE_REGULARIZACAO_SCHEMA_OK = False
 _MONEY_QUANTIZE = Decimal('0.01')
@@ -4454,7 +4469,7 @@ def editar_lancamento(id):
         filtros_ativos = obter_filtros_ativos()
         return redirect(url_for('financeiro.lista_lancamentos', **filtros_ativos))
 
-@financeiro_bp.route('/financeiro/excluir/<int:id>')
+@financeiro_bp.route('/financeiro/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_lancamento(id):
     """Exclui um lançamento"""

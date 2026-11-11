@@ -21,7 +21,7 @@
         <div class="obpc-card">
           <div class="obpc-card-header"><div><h2 class="obpc-section-title">Dados do Recibo</h2><p class="obpc-text-muted mb-0">Preencha os dados do recebedor e do pagamento.</p></div><span class="obpc-badge obpc-badge--primary">PDF</span></div>
           <div class="obpc-card-body">
-            <form method="POST" id="formRecibo" class="obpc-form">
+            <form method="POST" id="formRecibo" class="obpc-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div class="obpc-card mb-3">
                 <div class="obpc-card-header"><h3 class="obpc-section-title"><i class="fas fa-user"></i> Dados do Recebedor</h3></div>
                 <div class="obpc-card-body"><div class="row g-3">
