@@ -4,17 +4,33 @@ Rotas adicionais para funcionalidades avançadas de conciliação bancária
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
+from app.utils.auth_decorators import requer_acesso_financeiro
 from werkzeug.utils import secure_filename
 import os
 import json
 from datetime import datetime
 
-from app.extensoes import db
+from app.extensoes import db, csrf
 from app.financeiro.financeiro_model import Lancamento, ConciliacaoHistorico, ConciliacaoPar, ImportacaoExtrato
 from app.financeiro.utils.conciliacao_avancada import ConciliadorAvancado, ImportadorExtrato, GeradorRelatorios
 from app.configuracoes.configuracoes_model import Configuracao
 
 conciliacao_bp = Blueprint('conciliacao', __name__, template_folder='templates')
+
+@conciliacao_bp.before_request
+@requer_acesso_financeiro
+def _validar_acesso_financeiro_blueprint():
+    """Protege todas as rotas financeiras do Blueprint."""
+    return None
+
+
+@conciliacao_bp.before_request
+def _validar_csrf_financeiro_blueprint():
+    # Executa apos a guarda de permissao ja registrada no blueprint.
+    if request.method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+        csrf.protect()
+
+
 
 UPLOAD_FOLDER = 'app/static/uploads/extratos'
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
@@ -115,8 +131,10 @@ def upload_extrato():
                   
             # Executar conciliação automática se houver registros processados
             if resultado['registros_processados'] > 0:
-                return redirect(url_for('conciliacao.executar_conciliacao_auto', 
-                                      importacao_id=resultado['importacao_id']))
+                # Executar no mesmo POST do upload, sem redirecionamento GET.
+                return executar_conciliacao_auto(
+                    importacao_id=resultado['importacao_id']
+                )
         else:
             flash(f"Erro na importação: {'; '.join(resultado['erros'])}", 'danger')
         
@@ -126,8 +144,8 @@ def upload_extrato():
         flash(f'Erro no upload: {str(e)}', 'danger')
         return redirect(url_for('conciliacao.importar_extrato'))
 
-@conciliacao_bp.route('/financeiro/conciliacao/executar-automatica')
-@conciliacao_bp.route('/financeiro/conciliacao/executar-automatica/<int:importacao_id>')
+@conciliacao_bp.route('/financeiro/conciliacao/executar-automatica', methods=['POST'])
+@conciliacao_bp.route('/financeiro/conciliacao/executar-automatica/<int:importacao_id>', methods=['POST'])
 @login_required
 def executar_conciliacao_auto(importacao_id=None):
     """Executa conciliação automática"""

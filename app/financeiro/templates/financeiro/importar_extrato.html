@@ -18,7 +18,7 @@
         <div class="obpc-card">
           <div class="obpc-card-header"><div><h2 class="obpc-section-title">Arquivo e Configuração</h2><p class="obpc-text-muted mb-0">Selecione o formato e a competência antes de importar.</p></div><span class="obpc-badge obpc-badge--primary">Importação</span></div>
           <div class="obpc-card-body">
-            <form id="formImportar" action="{{ url_for('financeiro.importar_extrato') }}" method="post" enctype="multipart/form-data">
+            <form id="formImportar" action="{{ url_for('financeiro.importar_extrato') }}" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <div id="uploadArea" class="obpc-card text-center p-4 mb-3" style="border:2px dashed #cbd5e1;cursor:pointer;" onclick="document.getElementById('arquivo').click()">
                 <i class="fas fa-cloud-arrow-up fa-3x obpc-text-muted mb-3"></i><h3 class="obpc-section-title">Clique para selecionar o arquivo</h3><p class="obpc-text-muted mb-0">Formatos aceitos: .xlsx, .xls, .csv, .txt e .ofx</p><input type="file" id="arquivo" name="arquivo" accept=".xlsx,.xls,.csv,.txt,.ofx" style="display:none;" onchange="arquivoSelecionado()" required>
               </div>

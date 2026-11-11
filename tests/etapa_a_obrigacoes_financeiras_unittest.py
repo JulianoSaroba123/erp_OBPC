@@ -96,6 +96,7 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         env = os.environ.copy()
         env["DATABASE_URL"] = database_url
         env["PYTHONPATH"] = "."
+        env["PYTHONIOENCODING"] = "utf-8"
 
         return subprocess.run(
             [
@@ -106,6 +107,8 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
             env=env,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
         )
 
     def _nova_obrigacao(self, valor="1000.00", **kwargs):
@@ -1521,12 +1524,14 @@ class TestEtapaAObrigacoesFinanceiras(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             db_path = tmp.name
 
-        database_url = f"sqlite:///{db_path.replace('\\', '/')}"
+        database_url = "sqlite:///" + db_path.replace("\\", "/")
 
         try:
             env = os.environ.copy()
             env["DATABASE_URL"] = database_url
+            env["SECRET_KEY"] = "teste-ci-" + os.urandom(32).hex()
             env["PYTHONPATH"] = "."
+            env["PYTHONIOENCODING"] = "utf-8"
 
             probe_script = """
 from app import create_app
@@ -1538,7 +1543,7 @@ with app.app_context():
     alvo = {'obrigacoes_financeiras','pagamentos_obrigacao','pagamentos_obrigacao_itens','obrigacao_eventos'}
     existentes = set(insp.get_table_names())
     inter = sorted(alvo.intersection(existentes))
-    print(','.join(inter))
+    print("OBPC_CASO_R_TABELAS=" + ",".join(inter))
 """
 
             proc = subprocess.run(
@@ -1547,10 +1552,21 @@ with app.app_context():
                 env=env,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
             )
 
             self.assertEqual(proc.returncode, 0, msg=proc.stdout + "\n" + proc.stderr)
-            saida = (proc.stdout or "").strip()
+            marcador = "OBPC_CASO_R_TABELAS="
+            linhas = [
+                linha.strip() for linha in (proc.stdout or "").splitlines()
+                if linha.strip().startswith(marcador)
+            ]
+            self.assertEqual(
+                len(linhas), 1,
+                msg=f"marcador ausente ou duplicado: {proc.stdout!r}"
+            )
+            saida = linhas[0][len(marcador):]
             self.assertEqual(saida, "", msg=f"tabelas novas criadas no startup: {saida}")
         finally:
             try:
@@ -1562,7 +1578,7 @@ with app.app_context():
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             db_path = tmp.name
 
-        database_url = f"sqlite:///{db_path.replace('\\', '/')}"
+        database_url = "sqlite:///" + db_path.replace("\\", "/")
         try:
             run_result = self._run_schema_script(database_url)
             self.assertEqual(run_result.returncode, 0, msg=run_result.stdout + "\n" + run_result.stderr)
@@ -1585,7 +1601,7 @@ with app.app_context():
         with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
             db_path = tmp.name
 
-        database_url = f"sqlite:///{db_path.replace('\\', '/')}"
+        database_url = "sqlite:///" + db_path.replace("\\", "/")
         try:
             first_run = self._run_schema_script(database_url)
             self.assertEqual(first_run.returncode, 0, msg=first_run.stdout + "\n" + first_run.stderr)

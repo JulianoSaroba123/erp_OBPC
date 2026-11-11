@@ -1,66 +1,18 @@
-﻿import os
-import sys
-import traceback
+"""Ponto de entrada WSGI do ERP OBPC.
+
+Importar este modulo pelo Gunicorn nao inicia o servidor de desenvolvimento
+nem executa criacao automatica de administrador pelo run.py.
+A fabrica create_app() ainda possui inicializacoes legadas, tratadas a parte.
+"""
+
+import os
+
 from app import create_app
 
-# Configurar encoding UTF-8 para evitar erros com caracteres especiais no Windows
-if sys.platform.startswith('win'):
-    import codecs
-    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, errors='replace')
-    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, errors='replace')
 
-try:
-    app = create_app()
-    
-    # Inicializar banco de dados e criar admin padrão em produção
-    with app.app_context():
-        from app.extensoes import db
-        from app.usuario.usuario_model import Usuario, NivelAcesso
-        
-        # Criar tabelas se não existirem
-        db.create_all()
-        
-        # Verificar se existe algum usuário master/admin
-        admin_exists = Usuario.query.filter(
-            Usuario.nivel_acesso.in_(['master', 'administrador'])
-        ).first()
-        
-        if not admin_exists:
-            print(">>> Criando usuário admin padrão para produção...")
-            admin = Usuario(
-                nome='Administrador',
-                email='admin@obpc.com',
-                perfil='Admin',
-                nivel_acesso=NivelAcesso.MASTER.value,
-                ativo=True
-            )
-            admin.set_senha('admin123')
-            db.session.add(admin)
-            db.session.commit()
-            print(">>> Admin criado: email='admin@obpc.com', senha='admin123'")
-            print(">>> IMPORTANTE: Altere a senha após o primeiro login!")
-        else:
-            print(f">>> Usuário admin já existe: {admin_exists.email}")
-            
-except Exception as e:
-    print("Falha ao criar a aplicação Flask:")
-    traceback.print_exc()
-    raise
+app = create_app()
 
-if __name__ == '__main__':
-    try:
-        # Configuração para desenvolvimento
-        app.run(debug=True, host='127.0.0.1', port=5000)
-    except Exception as e:
-        print("Erro ao iniciar o servidor de desenvolvimento:")
-        traceback.print_exc()
-        raise
-else:
-    # Configuração para produção (Render, Heroku, etc.)
-    try:
-        port = int(os.environ.get('PORT', 5000))
-        app.run(host='0.0.0.0', port=port, debug=False)
-    except Exception as e:
-        print("Erro ao iniciar o servidor em produção:")
-        traceback.print_exc()
-        raise
+
+if __name__ == "__main__":
+    # Uso local explicito; em producao, iniciar com gunicorn run:app.
+    app.run(host="127.0.0.1", port=int(os.environ.get("PORT", "5000")), debug=False)

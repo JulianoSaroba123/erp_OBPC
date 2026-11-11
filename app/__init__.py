@@ -1,7 +1,7 @@
 from flask import Flask, redirect, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import Config
-from app.extensoes import db, login_manager
+from app.extensoes import db, login_manager, csrf
 from app.usuario.usuario_routes import usuario_bp
 from app.membros.membros_routes import membros_bp
 from app.obreiros.obreiros_routes import obreiros_bp
@@ -108,6 +108,13 @@ def _migrar_lancamentos_repasse_sede_legado(app):
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    # Falha antecipada, antes de extensoes ou qualquer acesso ao banco.
+    chave = app.config.get('SECRET_KEY')
+    if not chave or not str(chave).strip():
+        raise RuntimeError('SECRET_KEY ausente ou vazia. Configure a variavel no ambiente.')
+
+    # CSRF global automatico desativado; protecao explicita nos blueprints financeiros.
+    app.config['WTF_CSRF_CHECK_DEFAULT'] = False
 
     # ProxyFix configurado corretamente para Render.com
     app.wsgi_app = ProxyFix(
@@ -121,6 +128,7 @@ def create_app():
     # Inicializa extensões
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     # Flask-Login configurações
     login_manager.login_view = "usuario.login"
@@ -135,21 +143,17 @@ def create_app():
         if not session.permanent:
             session.permanent = True
 
-    # Handler de erro 500 para diagnóstico em produção
+    # Handler HTTP 500: detalhes tecnicos ficam apenas nos logs internos.
     @app.errorhandler(500)
     def internal_error(error):
         import traceback
         from flask import jsonify, request as req
         tb = traceback.format_exc()
-        app.logger.error(f"ERRO 500 em {req.path}:\n{tb}")
-        # Se vier de /usuarios, retornar JSON com detalhes
+        app.logger.error("ERRO 500 em %s:\n%s", req.path, tb)
+        # Mantem formato JSON esperado pelas rotas /usuarios, sem divulgar detalhes.
         if '/usuarios' in req.path:
-            return jsonify({
-                'error': str(error),
-                'path': req.path,
-                'traceback': tb
-            }), 500
-        return f"<h1>Erro Interno</h1><pre>{tb}</pre>", 500
+            return jsonify({'error': 'Erro interno do servidor.'}), 500
+        return "<h1>Erro Interno</h1><p>Ocorreu um erro inesperado.</p>", 500
 
     # Registro dos Blueprints
     app.register_blueprint(usuario_bp)
@@ -331,22 +335,6 @@ def create_app():
         except Exception as e:
             app.logger.warning(f"⚠️  Erro ao iniciar scheduler: {str(e)}")
         
-        # DEBUG: Listar usuários e permissões (apenas em produção com DATABASE_URL)
-        if app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('postgresql'):
-            try:
-                from app.usuario.usuario_model import Usuario
-                import sys
-                usuarios = Usuario.query.all()
-                print("\n" + "="*70, flush=True)
-                print("DEBUG: USUARIOS E PERMISSOES NO BANCO:", flush=True)
-                print("="*70, flush=True)
-                for u in usuarios:
-                    pode_gerenciar = u.pode_gerenciar_usuarios()
-                    print(f"ID={u.id} | Email={u.email} | Nivel='{u.nivel_acesso}' | PodeGerenciar={pode_gerenciar}", flush=True)
-                print("="*70 + "\n", flush=True)
-                sys.stdout.flush()
-            except Exception as e:
-                print(f"DEBUG: Erro ao listar usuarios: {str(e)}", flush=True)
 
     return app
 

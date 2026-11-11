@@ -435,6 +435,7 @@ function confirmarConciliacao() {
     $.ajax({
         url: '/financeiro/conciliacao/criar-par',
         type: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'},
         data: {
             manual_id: manualSelecionado.id,
             importado_id: importadoSelecionado.id
@@ -578,6 +579,7 @@ function aplicarSugestao(lancamento1Id, lancamento2Id, origem) {
     $.ajax({
         url: '/financeiro/conciliacao/criar-par',
         type: 'POST',
+        headers: {'X-CSRFToken': '{{ csrf_token() }}'},
         data: {
             manual_id: manualId,
             importado_id: importadoId

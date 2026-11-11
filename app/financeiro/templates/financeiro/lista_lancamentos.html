@@ -340,7 +340,9 @@
                 <td>
                   <div class="obpc-table-actions">
                     <a href="{{ url_for('financeiro.editar_lancamento', id=lancamento.id, **filtros) }}" class="obpc-btn obpc-btn-secondary obpc-btn--sm" title="Editar"><i class="fas fa-edit"></i></a>
-                    <a href="{{ url_for('financeiro.excluir_lancamento', id=lancamento.id, **filtros) }}" class="obpc-btn obpc-btn-danger obpc-btn--sm" title="Excluir" onclick="return confirm('Tem certeza que deseja excluir este lançamento?')"><i class="fas fa-trash"></i></a>
+                    <form method="POST" action="{{ url_for('financeiro.excluir_lancamento', id=lancamento.id, **filtros) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este lançamento?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="obpc-btn obpc-btn-danger obpc-btn--sm" title="Excluir" aria-label="Excluir lan?amento"><i class="fas fa-trash"></i></button>
+                    </form>
                   </div>
                 </td>
               </tr>

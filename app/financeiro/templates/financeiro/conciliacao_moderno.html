@@ -12,7 +12,7 @@
     <div class="obpc-page-actions">
       <a href="{{ url_for('financeiro.dashboard_moderno') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-chart-line"></i> Visão Geral</a>
       <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-list"></i> Movimentações</a>
-      <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}" class="d-inline">
+      <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="obpc-btn obpc-btn-primary" type="submit"><i class="fas fa-wand-magic-sparkles"></i> Conciliar Automaticamente</button>
       </form>
     </div>
@@ -47,7 +47,7 @@
         <div class="obpc-table-actions"><button class="obpc-btn obpc-btn-secondary obpc-btn--sm" type="button" onclick="selecionarTodos()"><i class="fas fa-check-square"></i> Selecionar Todos</button><button class="obpc-btn obpc-btn-primary obpc-btn--sm" type="button" onclick="aceitarSelecionados()"><i class="fas fa-check-double"></i> Aceitar Selecionados</button><button class="obpc-btn obpc-btn-secondary obpc-btn--sm" type="button" onclick="exportarSelecionados()"><i class="fas fa-file-csv"></i> Exportar CSV</button></div>
       </div>
       <div class="obpc-card-body">
-        <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}"><input type="hidden" name="pairs" id="pairs-field"></form>
+        <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="pairs" id="pairs-field"></form>
         <div class="row g-3">
           {% for s in sugestoes %}
           <div class="col-12 suggestion-card" id="suggestion-{{ loop.index }}">
@@ -95,7 +95,7 @@
         <div class="obpc-card h-100">
           <div class="obpc-card-header"><h2 class="obpc-section-title">Histórico de Conciliações</h2><span class="obpc-badge obpc-badge--info">{{ historicos|length if historicos else 0 }}</span></div>
           <div class="obpc-card-body">
-            {% if historicos %}<div class="obpc-table-wrap"><table class="obpc-table"><thead><tr><th>Data</th><th>Usuário</th><th>Conciliados</th><th>Ação</th></tr></thead><tbody>{% for h in historicos %}<tr><td>{{ h.data_conciliacao.strftime('%d/%m %H:%M') }}</td><td>{{ h.usuario }}</td><td><span class="obpc-badge obpc-badge--success">{{ h.total_conciliados }}</span></td><td><form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" class="d-inline" onsubmit="return confirm('Deseja desfazer a conciliação #{{ h.id }}?')"><button class="obpc-btn obpc-btn-secondary obpc-btn--sm" type="submit"><i class="fas fa-undo"></i> Desfazer</button></form></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="obpc-empty"><i class="fas fa-clock obpc-empty-icon"></i><h3 class="obpc-empty-title">Sem histórico</h3><p class="obpc-empty-description">Nenhuma conciliação foi registrada ainda.</p></div>{% endif %}
+            {% if historicos %}<div class="obpc-table-wrap"><table class="obpc-table"><thead><tr><th>Data</th><th>Usuário</th><th>Conciliados</th><th>Ação</th></tr></thead><tbody>{% for h in historicos %}<tr><td>{{ h.data_conciliacao.strftime('%d/%m %H:%M') }}</td><td>{{ h.usuario }}</td><td><span class="obpc-badge obpc-badge--success">{{ h.total_conciliados }}</span></td><td><form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" class="d-inline" onsubmit="return confirm('Deseja desfazer a conciliação #{{ h.id }}?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="obpc-btn obpc-btn-secondary obpc-btn--sm" type="submit"><i class="fas fa-undo"></i> Desfazer</button></form></td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="obpc-empty"><i class="fas fa-clock obpc-empty-icon"></i><h3 class="obpc-empty-title">Sem histórico</h3><p class="obpc-empty-description">Nenhuma conciliação foi registrada ainda.</p></div>{% endif %}
           </div>
         </div>
       </div>
@@ -107,7 +107,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title"><i class="fas fa-cog me-2"></i>Configurar Sugestões Inteligentes</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}">
+      <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="modal-body">
           <div class="mb-3"><label class="form-label">Janela de Dias</label><input type="number" name="days_window" value="{{ params.days_window if params else 7 }}" class="form-control" min="1" max="30"><small class="text-muted">Diferença máxima em dias entre as datas</small></div>
           <div class="mb-3"><label class="form-label">Tolerância de Valor (%)</label><input type="number" step="0.01" name="value_tol_pct" value="{{ params.value_tol_pct if params else 5.0 }}" class="form-control" min="0" max="100"><small class="text-muted">Percentual máximo de diferença entre valores</small></div>
