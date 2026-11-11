@@ -11,7 +11,7 @@
     </div>
     <div class="obpc-page-actions">
       <a href="{{ url_for('financeiro.lista_lancamentos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-arrow-left"></i> Movimentações</a>
-      <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}" class="d-inline">
+      <form method="POST" action="{{ url_for('financeiro.conciliacao_auto') }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="obpc-btn obpc-btn-primary" type="submit"><i class="fas fa-wand-magic-sparkles"></i> Conciliar Automaticamente</button>
       </form>
     </div>
@@ -32,7 +32,7 @@
         <div><h2 class="obpc-section-title">Gerar sugestões</h2><p class="obpc-text-muted mb-0">Ajuste os parâmetros de proximidade antes de comparar os lançamentos.</p></div>
       </div>
       <div class="obpc-card-body">
-        <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}" class="obpc-filter-bar">
+        <form method="POST" action="{{ url_for('financeiro.conciliacao_sugerir') }}" class="obpc-filter-bar"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div class="obpc-field"><label class="obpc-label">Dias janela</label><input type="number" name="days_window" value="{{ params.days_window if params else 2 }}" class="obpc-input"></div>
           <div class="obpc-field"><label class="obpc-label">Tolerância valor (%)</label><input type="number" step="0.01" name="value_tol_pct" value="{{ params.value_tol_pct if params else 0.02 }}" class="obpc-input"></div>
           <div class="obpc-field"><label class="obpc-label">Descrição limiar</label><input type="number" step="0.01" name="desc_thresh" value="{{ params.desc_thresh if params else 0.35 }}" class="obpc-input"></div>
@@ -54,7 +54,7 @@
               {% for h in historicos %}
               <tr>
                 <td>#{{ h.id }}</td><td>{{ h.data_conciliacao.strftime('%d/%m/%Y %H:%M') }}</td><td>{{ h.usuario }}</td><td><span class="obpc-badge obpc-badge--success">{{ h.total_conciliados }}</span></td><td><span class="obpc-badge obpc-badge--warning">{{ h.total_pendentes }}</span></td><td>{{ h.observacao or '-' }}</td>
-                <td><form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" onsubmit="return confirm('Deseja realmente desfazer a conciliação #{{ h.id }}?')"><button class="obpc-btn obpc-btn-secondary obpc-btn--sm" type="submit"><i class="fas fa-rotate-left"></i> Desfazer</button></form></td>
+                <td><form method="post" action="{{ url_for('financeiro.conciliacao_undo', historico_id=h.id) }}" onsubmit="return confirm('Deseja realmente desfazer a conciliação #{{ h.id }}?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="obpc-btn obpc-btn-secondary obpc-btn--sm" type="submit"><i class="fas fa-rotate-left"></i> Desfazer</button></form></td>
               </tr>
               {% endfor %}
             </tbody>
@@ -83,7 +83,7 @@
     <div class="obpc-card">
       <div class="obpc-card-header"><h2 class="obpc-section-title">Sugestões de Conciliação</h2><span class="obpc-badge obpc-badge--primary">{{ sugestoes|length }} sugestões</span></div>
       <div class="obpc-card-body">
-        <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}"><input type="hidden" name="pairs" id="pairs-field"></form>
+        <form id="aceitar-todos-form" method="post" action="{{ url_for('financeiro.conciliacao_aceitar_todos') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="pairs" id="pairs-field"></form>
         <div class="obpc-table-wrap">
           <table class="obpc-table">
             <thead><tr><th></th><th>Score</th><th>Imp.</th><th>Manual</th><th>Data Imp.</th><th>Data Manual</th><th>Valor Imp.</th><th>Valor Manual</th><th>Descrição Imp.</th><th>Descrição Manual</th><th>Ação</th></tr></thead>
@@ -92,7 +92,7 @@
               <tr>
                 <td><input type="checkbox" class="pair-checkbox" data-imp="{{ s.imp_id }}" data-man="{{ s.man_id }}"></td>
                 <td><span class="obpc-badge obpc-badge--info">{{ s.score }}</span></td><td>#{{ s.imp_id }}</td><td>#{{ s.man_id }}</td><td>{{ s.imp.data or '-' }}</td><td>{{ s.man.data or '-' }}</td><td>R$ {{ '%.2f'|format(s.imp.valor)|replace('.', ',') }}</td><td>R$ {{ '%.2f'|format(s.man.valor)|replace('.', ',') }}</td><td>{{ s.imp.descricao }}</td><td>{{ s.man.descricao }}</td>
-                <td><form method="post" action="{{ url_for('financeiro.conciliacao_aceitar') }}"><input type="hidden" name="imp_id" value="{{ s.imp_id }}"><input type="hidden" name="man_id" value="{{ s.man_id }}"><button class="obpc-btn obpc-btn-primary obpc-btn--sm" type="submit"><i class="fas fa-check"></i> Aceitar</button></form></td>
+                <td><form method="post" action="{{ url_for('financeiro.conciliacao_aceitar') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="imp_id" value="{{ s.imp_id }}"><input type="hidden" name="man_id" value="{{ s.man_id }}"><button class="obpc-btn obpc-btn-primary obpc-btn--sm" type="submit"><i class="fas fa-check"></i> Aceitar</button></form></td>
               </tr>
               {% endfor %}
             </tbody>

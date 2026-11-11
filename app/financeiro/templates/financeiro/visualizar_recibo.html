@@ -36,7 +36,7 @@
         </div>
 
         <div class="d-flex flex-wrap justify-content-between gap-2 mt-3 pt-3 border-top">
-          <form method="POST" action="{{ url_for('financeiro.excluir_recibo', id=recibo.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este recibo? Esta ação não pode ser desfeita.');"><button type="submit" class="obpc-btn obpc-btn-danger"><i class="fas fa-trash"></i> Excluir Recibo</button></form>
+          <form method="POST" action="{{ url_for('financeiro.excluir_recibo', id=recibo.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este recibo? Esta ação não pode ser desfeita.');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="obpc-btn obpc-btn-danger"><i class="fas fa-trash"></i> Excluir Recibo</button></form>
           <div class="obpc-table-actions"><a href="{{ url_for('financeiro.editar_recibo', id=recibo.id) }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-edit"></i> Editar</a><a href="{{ url_for('financeiro.gerar_pdf_recibo', id=recibo.id) }}" class="obpc-btn obpc-btn-primary"><i class="fas fa-download"></i> Baixar PDF</a><a href="{{ url_for('financeiro.lista_recibos') }}" class="obpc-btn obpc-btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a></div>
         </div>
       </div>

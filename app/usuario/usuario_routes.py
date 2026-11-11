@@ -6,6 +6,40 @@ from app.usuario.painel_model import FavoritoPainel, ConfiguracaoPainel
 from app.departamentos.departamentos_model import Departamento
 from app.utils.auth_decorators import requer_gerencia_usuarios, requer_nivel_acesso
 from datetime import datetime
+from urllib.parse import unquote, urlsplit
+import unicodedata
+
+
+def _destino_login_seguro(destino):
+    """Aceita somente caminhos internos iniciados por uma barra."""
+    if not isinstance(destino, str):
+        return False
+
+    candidato = destino
+
+    for _ in range(5):
+        if (
+            not candidato.startswith("/")
+            or candidato.startswith("//")
+            or "\\" in candidato
+            or any(unicodedata.category(c) == "Cc" for c in candidato)
+        ):
+            return False
+
+        try:
+            partes = urlsplit(candidato)
+        except ValueError:
+            return False
+
+        if partes.scheme or partes.netloc:
+            return False
+
+        decodificado = unquote(candidato)
+        if decodificado == candidato:
+            return True
+        candidato = decodificado
+
+    return False
 
 # Blueprint do módulo de usuário
 usuario_bp = Blueprint("usuario", __name__, template_folder="templates")
@@ -47,7 +81,7 @@ def login():
                 
                 # Verificar se há uma URL de destino (next)
                 next_page = request.args.get('next')
-                if next_page:
+                if _destino_login_seguro(next_page):
                     return redirect(next_page)
                 
                 # Redirecionar baseado no nível de acesso

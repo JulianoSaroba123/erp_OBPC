@@ -112,7 +112,7 @@
                   <a href="{{ url_for('financeiro.editar_projeto', id=item.projeto.id) }}" class="obpc-btn obpc-btn-secondary obpc-btn--sm"><i class="fas fa-edit"></i> Editar</a>
                   <a href="{{ url_for('financeiro.caixa_destinacoes') }}?projeto={{ item.projeto.id }}" class="obpc-btn obpc-btn-secondary obpc-btn--sm"><i class="fas fa-eye"></i> Movimentações</a>
                   {% if item.projeto.lancamentos.count() == 0 %}
-                  <form method="POST" action="{{ url_for('financeiro.excluir_projeto', id=item.projeto.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir o projeto \'{{ item.projeto.nome }}\'?');" class="d-inline">
+                  <form method="POST" action="{{ url_for('financeiro.excluir_projeto', id=item.projeto.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir o projeto \'{{ item.projeto.nome }}\'?');" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="obpc-btn obpc-btn-danger obpc-btn--sm"><i class="fas fa-trash"></i> Excluir</button>
                   </form>
                   {% endif %}
