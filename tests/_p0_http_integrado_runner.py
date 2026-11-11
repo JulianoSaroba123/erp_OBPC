@@ -83,7 +83,29 @@ def main():
                 return
             blocked.append("socket.bind")
             raise RuntimeError("Socket bind nao autorizado")
-        elif event in {"socket.connect", "subprocess.Popen", "os.system"}:
+        elif event == "subprocess.Popen":
+            # WeasyPrint/CFFI pede ao sistema a localizacao de bibliotecas
+            # nativas via ctypes.util.find_library. Liberamos APENAS a
+            # consulta local `ldconfig -p`, sem rede, e somente se vier
+            # da implementacao padrao ctypes.util no Linux.
+            exe = os.fsdecode(args[0]) if args and args[0] is not None else ""
+            argv = args[1] if len(args) > 1 else None
+            origem_ctypes = any(
+                frame.name == "_findSoname_ldconfig"
+                and frame.filename.replace("\\", "/").endswith("/ctypes/util.py")
+                for frame in traceback.extract_stack(limit=24)
+            )
+            permitido = (
+                sys.platform.startswith("linux")
+                and exe in {"/sbin/ldconfig", "/usr/sbin/ldconfig"}
+                and isinstance(argv, (tuple, list))
+                and list(argv) == [exe, "-p"]
+                and origem_ctypes
+            )
+            if not permitido:
+                blocked.append(event)
+                raise RuntimeError(f"Operacao externa bloqueada: {event}")
+        elif event in {"socket.connect", "os.system"}:
             blocked.append(event)
             raise RuntimeError(f"Operacao externa bloqueada: {event}")
 
