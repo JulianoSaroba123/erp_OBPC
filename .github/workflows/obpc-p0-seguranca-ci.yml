@@ -63,3 +63,6 @@ jobs:
           python -m py_compile run.py app/__init__.py \
             app/financeiro/financeiro_routes.py \
             app/financeiro/routes_conciliacao.py
+
+      - name: Smoke Gunicorn isolado e acesso anonimo
+        run: python -B -X utf8 tests/_p0_wsgi_gunicorn_smoke.py
