@@ -178,7 +178,7 @@ class RelatorioFinanceiro:
         
         return elementos
     
-    def _criar_tabela_lancamentos(self, lancamentos, mostrar_saldo=True):
+    def _criar_tabela_lancamentos(self, lancamentos, mostrar_saldo=True, saldo_anterior=0):
         """Cria tabela profissional de lançamentos"""
         if not lancamentos:
             return [Paragraph("Nenhum lançamento encontrado para este período.", self.styles['texto_normal'])]
@@ -194,21 +194,23 @@ class RelatorioFinanceiro:
         
         # Dados da tabela
         dados = [colunas]
-        saldo_acumulado = 0
+        saldo_acumulado = saldo_anterior or 0
         
         # Ordenar lançamentos por data
         lancamentos_ordenados = sorted(lancamentos, key=lambda x: x.data)
         
         for lancamento in lancamentos_ordenados:
-            # Calcular saldo acumulado
-            if lancamento.tipo.lower() == 'entrada':
+            # Apenas movimentos econômicos alteram o saldo.
+            tipo_economico = (lancamento.tipo or '').strip().lower()
+            if tipo_economico == 'entrada':
                 saldo_acumulado += lancamento.valor
                 valor_formatado = f"+{self._formatar_moeda(lancamento.valor)}"
-                cor_valor = colors.green
-            else:
+            elif tipo_economico in ('saída', 'saida'):
                 saldo_acumulado -= lancamento.valor
                 valor_formatado = f"-{self._formatar_moeda(lancamento.valor)}"
-                cor_valor = colors.red
+            else:
+                # Evidências continuam visíveis, sem impacto no saldo.
+                valor_formatado = self._formatar_moeda(lancamento.valor)
             
             # Gerar informação do comprovante
             comprovante_info = self._gerar_info_comprovante(lancamento)
@@ -287,12 +289,16 @@ class RelatorioFinanceiro:
         if mostrar_saldo and total_colunas_tabela >= 7:
             estilo_tabela.append(('ALIGN', (6, 1), (6, ultima_linha_idx), 'RIGHT'))
         
-        # Aplicar cores específicas para valores
+        # Evidências aparecem em cor neutra, sem sinal de saída.
         for i, lancamento in enumerate(lancamentos_ordenados, 1):
-            if lancamento.tipo.lower() == 'entrada':
-                estilo_tabela.append(('TEXTCOLOR', (4, i), (4, i), colors.green))
+            tipo_economico = (lancamento.tipo or '').strip().lower()
+            if tipo_economico == 'entrada':
+                cor = colors.green
+            elif tipo_economico in ('saída', 'saida'):
+                cor = colors.red
             else:
-                estilo_tabela.append(('TEXTCOLOR', (4, i), (4, i), colors.red))
+                cor = colors.grey
+            estilo_tabela.append(('TEXTCOLOR', (4, i), (4, i), cor))
         
         tabela.setStyle(TableStyle(estilo_tabela))
         
@@ -300,6 +306,7 @@ class RelatorioFinanceiro:
     
     def _criar_resumo_financeiro(self, entradas_total, saidas_total, saldo_anterior=0, lancamentos=None):
         """Cria seção de resumo financeiro detalhado com despesas fixas e conselho"""
+        from reportlab.platypus import KeepTogether
         elementos = []
         
         elementos.append(Spacer(1, 20))
@@ -310,7 +317,7 @@ class RelatorioFinanceiro:
             totais_categoria = self._calcular_totais_por_categoria(lancamentos)
             
             # Seção 1: Entradas
-            elementos.append(Paragraph("ENTRADAS", self.styles['cabecalho_secao']))
+            cabecalho_entradas = Paragraph("ENTRADAS", self.styles['cabecalho_secao'])
             
             dados_entradas = [
                 ['CATEGORIA', 'VALOR', '%']
@@ -333,13 +340,13 @@ class RelatorioFinanceiro:
             ])
             
             # Ajustar larguras para evitar sobreposição
-            tabela_entradas = Table(dados_entradas, colWidths=[9*cm, 4.5*cm, 2.5*cm])
+            tabela_entradas = Table(dados_entradas, colWidths=[9*cm, 4.5*cm, 2.5*cm], repeatRows=1)
             self._aplicar_estilo_tabela_resumo(tabela_entradas, colors.green)
-            elementos.append(tabela_entradas)
+            elementos.append(KeepTogether([cabecalho_entradas, tabela_entradas]))
             elementos.append(Spacer(1, 15))
             
             # Seção 2: Saídas/Despesas (incluindo fixas)
-            elementos.append(Paragraph("SAÍDAS E DESPESAS", self.styles['cabecalho_secao']))
+            cabecalho_saidas = Paragraph("SAÍDAS E DESPESAS", self.styles['cabecalho_secao'])
             
             dados_saidas = [
                 ['CATEGORIA', 'VALOR', '%']
@@ -368,9 +375,9 @@ class RelatorioFinanceiro:
             ])
             
             # Ajustar larguras para evitar sobreposição
-            tabela_saidas = Table(dados_saidas, colWidths=[9*cm, 4.5*cm, 2.5*cm])
+            tabela_saidas = Table(dados_saidas, colWidths=[9*cm, 4.5*cm, 2.5*cm], repeatRows=1)
             self._aplicar_estilo_tabela_resumo(tabela_saidas, colors.red)
-            elementos.append(tabela_saidas)
+            elementos.append(KeepTogether([cabecalho_saidas, tabela_saidas]))
             elementos.append(Spacer(1, 20))
             
             # Seção 3: Resumo por Tipo de Conta
@@ -479,7 +486,7 @@ class RelatorioFinanceiro:
             elementos.append(Spacer(1, 20))
         
         # Seção Final: Resumo Final (com totais corretos)
-        elementos.append(Paragraph("RESUMO FINAL", self.styles['cabecalho_secao']))
+        cabecalho_resumo_final = Paragraph("RESUMO FINAL", self.styles['cabecalho_secao'])
         
         # Recalcular totais incluindo despesas fixas e conselho
         if lancamentos:
@@ -610,7 +617,7 @@ class RelatorioFinanceiro:
             estilo_resumo.append(('BACKGROUND', (0, ultima_linha_resumo), (1, ultima_linha_resumo), colors.HexColor('#DC143C')))
         
         tabela_resumo.setStyle(TableStyle(estilo_resumo))
-        elementos.append(tabela_resumo)
+        elementos.append(KeepTogether([cabecalho_resumo_final, tabela_resumo]))
         
         return elementos
 
@@ -662,9 +669,23 @@ class RelatorioFinanceiro:
         pagamentos_mes = list(controle.get('pagamentos_mes') or [])
 
         elementos.append(Spacer(1, 12))
-        elementos.append(Paragraph("PAGAMENTOS REALIZADOS NO MÊS", self.styles['cabecalho_secao']))
-
-        dados_pagamentos = [['DATA', 'COMPETÊNCIA', 'FORMA', 'ADMINISTRATIVO', 'DESPESAS FIXAS', 'TOTAL']]
+        cabecalho_pagamentos = Paragraph("PAGAMENTOS REALIZADOS NO MÊS", self.styles['cabecalho_secao'])
+        from reportlab.platypus import KeepTogether
+        estilo_cabecalho = ParagraphStyle(
+            'A7H5CabecalhoPagamentos', parent=self.styles['texto_normal'],
+            fontName='Helvetica-Bold', fontSize=7, leading=9,
+            textColor=colors.whitesmoke, alignment=TA_CENTER,
+        )
+        estilo_celula = ParagraphStyle(
+            'A7H5CelulaPagamentos', parent=self.styles['texto_normal'],
+            fontSize=8, leading=10,
+        )
+        estilo_total = ParagraphStyle(
+            'A7H5TotalPagamentos', parent=estilo_celula,
+            fontName='Helvetica-Bold', leading=10,
+        )
+        dados_pagamentos = [[Paragraph(t, estilo_cabecalho) for t in
+            ('DATA', 'COMPETÊNCIA', 'FORMA', 'ADMINISTRATIVO', 'DESPESAS FIXAS', 'TOTAL')]]
         total_admin_mes = 0.0
         total_despesas_fixas_mes = 0.0
         total_pago_mes = 0.0
@@ -686,21 +707,21 @@ class RelatorioFinanceiro:
 
             dados_pagamentos.append([
                 data_pagamento.strftime('%d/%m/%Y') if data_pagamento else '-',
-                competencia or '-',
-                getattr(pagamento, 'forma_pagamento', None) or '-',
+                Paragraph(escape(str(competencia or '-')), estilo_celula),
+                Paragraph(escape(str(getattr(pagamento, 'forma_pagamento', None) or '-')), estilo_celula),
                 self._formatar_moeda(valor_admin),
                 self._formatar_moeda(valor_fixas),
                 self._formatar_moeda(valor_total),
             ])
 
         if len(dados_pagamentos) == 1:
-            dados_pagamentos.append(['-', 'Nenhum pagamento registrado no mês.', '-', self._formatar_moeda(0), self._formatar_moeda(0), self._formatar_moeda(0)])
+            dados_pagamentos.append(['-', Paragraph('Nenhum pagamento registrado no mês.', estilo_celula), '-', self._formatar_moeda(0), self._formatar_moeda(0), self._formatar_moeda(0)])
 
-        dados_pagamentos.append(['', '', 'TOTAL ADMINISTRATIVO NO MÊS', self._formatar_moeda(float(controle.get('total_administrativo_pago_mes', total_admin_mes) or 0)), '', ''])
-        dados_pagamentos.append(['', '', 'TOTAL DESPESAS FIXAS NO MÊS', '', self._formatar_moeda(float(controle.get('total_despesas_fixas_pago_mes', total_despesas_fixas_mes) or 0)), ''])
-        dados_pagamentos.append(['', '', 'TOTAL PAGO NO MÊS', '', '', self._formatar_moeda(float(controle.get('total_pago_mes', total_pago_mes) or 0))])
+        dados_pagamentos.append([Paragraph('TOTAL ADMINISTRATIVO NO MÊS', estilo_total), '', '', self._formatar_moeda(float(controle.get('total_administrativo_pago_mes', total_admin_mes) or 0)), '', ''])
+        dados_pagamentos.append([Paragraph('TOTAL DESPESAS FIXAS NO MÊS', estilo_total), '', '', '', self._formatar_moeda(float(controle.get('total_despesas_fixas_pago_mes', total_despesas_fixas_mes) or 0)), ''])
+        dados_pagamentos.append([Paragraph('TOTAL PAGO NO MÊS', estilo_total), '', '', '', '', self._formatar_moeda(float(controle.get('total_pago_mes', total_pago_mes) or 0))])
 
-        tabela_pagamentos = Table(dados_pagamentos, colWidths=[2.2*cm, 4.1*cm, 2.2*cm, 2.8*cm, 2.8*cm, 2.8*cm])
+        tabela_pagamentos = Table(dados_pagamentos, colWidths=[2.2*cm, 4.1*cm, 2.2*cm, 2.8*cm, 2.8*cm, 2.8*cm], repeatRows=1)
         ultima_linha = len(dados_pagamentos) - 1
         primeira_linha_totais = ultima_linha - 2
         tabela_pagamentos.setStyle(TableStyle([
@@ -715,12 +736,18 @@ class RelatorioFinanceiro:
             ('ROWBACKGROUNDS', (0, 1), (5, primeira_linha_totais - 1), [colors.white, colors.HexColor('#f8f9fa')]),
             ('FONTNAME', (2, primeira_linha_totais), (5, ultima_linha), 'Helvetica-Bold'),
             ('BACKGROUND', (0, primeira_linha_totais), (5, ultima_linha), colors.HexColor('#fff7ed')),
+            ('SPAN', (0, primeira_linha_totais), (2, primeira_linha_totais)),
+            ('SPAN', (0, primeira_linha_totais + 1), (2, primeira_linha_totais + 1)),
+            ('SPAN', (0, primeira_linha_totais + 2), (2, primeira_linha_totais + 2)),
+            ('ALIGN', (0, primeira_linha_totais), (2, ultima_linha), 'LEFT'),
+            ('LEFTPADDING', (0, 0), (5, ultima_linha), 4),
+            ('RIGHTPADDING', (0, 0), (5, ultima_linha), 4),
             ('GRID', (0, 0), (5, ultima_linha), 1, colors.black),
             ('VALIGN', (0, 0), (5, ultima_linha), 'MIDDLE'),
             ('TOPPADDING', (0, 0), (5, ultima_linha), 6),
             ('BOTTOMPADDING', (0, 0), (5, ultima_linha), 6),
         ]))
-        elementos.append(tabela_pagamentos)
+        elementos.append(KeepTogether([cabecalho_pagamentos, tabela_pagamentos]))
 
         return elementos
 
@@ -730,8 +757,9 @@ class RelatorioFinanceiro:
         texto = observacao_repasse_sede if observacao_repasse_sede not in (None, '') else '-'
         texto_html = escape(texto).replace('\n', '<br/>')
 
-        elementos.append(Spacer(1, 14))
-        elementos.append(Paragraph("JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE", self.styles['cabecalho_secao']))
+        from reportlab.platypus import KeepTogether
+        elementos.append(Spacer(1, 8))
+        cabecalho_justificativa = Paragraph("JUSTIFICATIVA CONTÁBIL DOS REPASSES À SEDE", self.styles['cabecalho_secao'])
 
         estilo_justificativa = ParagraphStyle(
             'JustificativaRepasseSede',
@@ -741,7 +769,7 @@ class RelatorioFinanceiro:
             spaceBefore=2,
             spaceAfter=4
         )
-        elementos.append(Paragraph(texto_html, estilo_justificativa))
+        elementos.append(KeepTogether([cabecalho_justificativa, Paragraph(texto_html, estilo_justificativa)]))
 
         return elementos
     
@@ -756,14 +784,16 @@ class RelatorioFinanceiro:
             categoria = lancamento.categoria or 'Outros'
             valor = lancamento.valor or 0
             
-            if lancamento.tipo.lower() == 'entrada':
+            tipo_economico = (lancamento.tipo or '').strip().lower()
+            if tipo_economico == 'entrada':
                 if categoria not in totais['entradas']:
                     totais['entradas'][categoria] = 0
                 totais['entradas'][categoria] += valor
-            else:
+            elif tipo_economico in ('saída', 'saida'):
                 if categoria not in totais['saidas']:
                     totais['saidas'][categoria] = 0
                 totais['saidas'][categoria] += valor
+            # Evidência não integra entradas, saídas nem o resumo financeiro.
         
         return totais
     
@@ -778,8 +808,8 @@ class RelatorioFinanceiro:
             conta = (lancamento.conta or 'dinheiro').lower()
             valor = float(lancamento.valor) if lancamento.valor else 0
             
-            # Determinar a conta - mapeamento melhorado
-            if 'banco' in conta or 'conta' in conta:
+            # PIX integra o banco; dinheiro físico permanece separado.
+            if 'banco' in conta or 'conta' in conta or 'pix' in conta:
                 conta_key = 'banco'
             else:
                 conta_key = 'dinheiro'
@@ -891,7 +921,9 @@ class RelatorioFinanceiro:
     def _criar_campos_assinatura(self):
         """Cria campos de assinatura usando configurações"""
         elementos = []
-        
+        if not (self.config.campo_assinatura_1 or self.config.campo_assinatura_2):
+            return elementos
+
         elementos.append(Spacer(1, 40))
         
         # Criar tabela de assinaturas se configuradas
@@ -994,7 +1026,8 @@ class RelatorioFinanceiro:
             if lancamentos:
                 # Tabela de lançamentos
                 try:
-                    elementos.extend(self._criar_tabela_lancamentos(lancamentos, mostrar_saldo=True))
+                    elementos.extend(self._criar_tabela_lancamentos(
+                        lancamentos, mostrar_saldo=True, saldo_anterior=saldo_anterior))
                 except Exception as e:
                     current_app.logger.error(f"Erro ao criar tabela lançamentos: {e}")
                 
@@ -1012,11 +1045,15 @@ class RelatorioFinanceiro:
                 elementos.append(Paragraph("Nenhum lançamento encontrado para este período.", 
                                          self.styles['texto_normal']))
 
-            # Blocos complementares solicitados no PDF de caixa.
+            # O bloco Sede deve permanecer coeso quando couber em uma pagina.
+            # Isso nao altera repasses nem calculos, apenas a quebra visual.
             try:
-                elementos.extend(self._criar_secao_controle_repasse_sede(controle_repasse_sede))
-                elementos.extend(self._criar_secao_pagamentos_repasse_mes(controle_repasse_sede))
-                elementos.extend(self._criar_secao_justificativa_repasse_sede(observacao_repasse_sede))
+                from reportlab.platypus import KeepTogether
+                elementos_sede = []
+                elementos_sede.extend(self._criar_secao_controle_repasse_sede(controle_repasse_sede))
+                elementos_sede.extend(self._criar_secao_pagamentos_repasse_mes(controle_repasse_sede))
+                elementos_sede.extend(self._criar_secao_justificativa_repasse_sede(observacao_repasse_sede))
+                elementos.append(KeepTogether(elementos_sede))
             except Exception as e:
                 current_app.logger.error(f"Erro ao criar blocos de repasse à sede: {e}")
             
