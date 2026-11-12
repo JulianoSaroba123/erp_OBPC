@@ -1,6 +1,8 @@
+from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.extensoes import db, login_manager
+from app.usuario.sessao_segura import extrair_usuario_id, gerar_id_sessao, validar_id_sessao
 from enum import Enum
 
 class NivelAcesso(Enum):
@@ -120,6 +122,10 @@ class Usuario(UserMixin, db.Model):
         return nomes.get(self.nivel_acesso, 'Desconhecido')
 
     # -------- Métodos do Flask-Login --------
+    def get_id(self):
+        # Qualquer troca de senha invalida todos os identificadores anteriores.
+        return gerar_id_sessao(self.id, self.senha_hash, current_app.secret_key)
+
     @property
     def is_active(self):
         """Permite desativar usuários sem deletar"""
@@ -128,19 +134,20 @@ class Usuario(UserMixin, db.Model):
     def __repr__(self):
         return f"<Usuario {self.nome} ({self.email}) - {self.get_nome_nivel()}>"
 
-# Callback do Flask-Login para carregar usuário
+# Callback do Flask-Login para carregar usuario.
+# Identificadores numericos legados sao rejeitados para exigir novo login.
 @login_manager.user_loader
 def load_user(user_id):
+    usuario_id = extrair_usuario_id(user_id)
+    if usuario_id is None:
+        return None
     try:
-        import sys
-        usuario = Usuario.query.get(int(user_id))
-        msg = f"USER_LOADER: ID={user_id} -> {'OK: ' + usuario.email if usuario else 'NAO_ENCONTRADO'}"
-        print(msg, flush=True)
-        sys.stdout.flush()
+        usuario = db.session.get(Usuario, usuario_id)
+        if usuario is None or not usuario.ativo:
+            return None
+        if not validar_id_sessao(user_id, usuario.senha_hash, current_app.secret_key):
+            return None
         return usuario
-    except Exception as e:
-        import sys
-        msg = f"USER_LOADER ERRO: ID={user_id} -> {str(e)}"
-        print(msg, flush=True)
-        sys.stdout.flush()
+    except Exception:
+        current_app.logger.exception("Falha ao carregar usuario autenticado")
         return None
