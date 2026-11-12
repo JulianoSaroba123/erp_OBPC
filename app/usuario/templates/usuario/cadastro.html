@@ -110,6 +110,7 @@
       {% endwith %}
 
       <form method="POST" action="{{ url_for('usuario.cadastro') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group mb-3">
           <label for="nome" class="fw-semibold" style="color: #374151;">Nome completo</label>
           <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite o nome completo" required>
@@ -122,7 +123,7 @@
 
         <div class="form-group mb-3">
           <label for="senha" class="fw-semibold" style="color: #374151;">Senha</label>
-          <input type="password" class="form-control" id="senha" name="senha" placeholder="Crie uma senha segura" required>
+          <input type="password" class="form-control" id="senha" name="senha" minlength="12" maxlength="128" placeholder="Mínimo 12 caracteres" required>
         </div>
 
         <div class="form-group mb-4">
