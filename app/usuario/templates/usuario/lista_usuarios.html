@@ -162,6 +162,7 @@
                                     
                                     {% if usuario.nivel_acesso != 'master' and usuario.id != current_user.id %}
                                     <form method="POST" action="{{ url_for('usuario.toggle_status_usuario', user_id=usuario.id) }}" style="display:inline">
+                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-{{ 'danger' if usuario.ativo else 'success' }} btn-sm" title="{{ 'Desativar' if usuario.ativo else 'Ativar' }}">
                                             <i class="fas fa-{{ 'ban' if usuario.ativo else 'check' }}"></i>
                                         </button>
