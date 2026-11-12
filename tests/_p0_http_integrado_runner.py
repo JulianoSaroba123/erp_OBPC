@@ -248,14 +248,14 @@ def main():
             master_efemero.post("/configuracoes/resetar", data={"aba": "gerais"}), 400,
         )
         # A7H.29: exercita a autorizacao de rotas legadas SEM executar mutacoes.
-        token_negado = denied.get("/__p05h/token").get_json()["token"]
+        token_negado = https_get(denied, "/__p05h/token").get_json()["token"]
         test_case(
             "16D Membro nao consulta configuracoes de notificacoes",
             denied.get("/notificacoes/configuracoes"), 403,
         )
         test_case(
             "16E Membro nao testa envio de email",
-            denied.post(
+            https_post(denied,
                 "/notificacoes/testar-email",
                 data={"csrf_token": token_negado, "email_teste": "fake@invalid.test"},
             ), 403,
