@@ -98,3 +98,26 @@ def test_antigas_senhas_nao_sao_invalidadas_no_login():
     final = codigo.index("# ---------- ROTA DE LOGOUT", inicio)
     assert "validar_nova_senha(" not in codigo[inicio:final]
     assert "usuario.check_senha(senha)" in codigo[inicio:final]
+
+
+def test_configuracoes_mutantes_exigem_permissao_e_token():
+    codigo = (ROOT / "app/configuracoes/configuracoes_routes.py").read_text(
+        encoding="utf-8-sig"
+    )
+    for endpoint in (
+        "configuracoes.salvar_configuracoes",
+        "configuracoes.upload_logo",
+        "configuracoes.resetar_configuracoes",
+        "configuracoes.teste_email",
+        "configuracoes.fazer_backup",
+        "configuracoes.limpar_dados_sistema",
+    ):
+        assert f'"{endpoint}"' in codigo
+    assert "current_user.tem_acesso_configuracoes()" in codigo
+    assert "csrf.protect()" in codigo
+    template = (
+        ROOT / "app/configuracoes/templates/configuracoes/configuracoes.html"
+    ).read_text(encoding="utf-8-sig")
+    assert template.count('name="csrf_token"') >= 4
+    assert "'X-CSRFToken': csrfConfigToken" in template
+    assert "formData.append('csrf_token', csrfConfigToken)" in template
