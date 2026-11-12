@@ -158,6 +158,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" id="formPerfil">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -197,14 +198,14 @@
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="nova_senha" class="form-label">Nova Senha</label>
-                                    <input type="password" class="form-control" id="nova_senha" name="nova_senha" minlength="6">
-                                    <small class="form-text text-muted">Mínimo 6 caracteres</small>
+                                    <input type="password" class="form-control" id="nova_senha" name="nova_senha" minlength="12" maxlength="128">
+                                    <small class="form-text text-muted">Mínimo 12 caracteres; recomendamos 15 ou mais.</small>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
                                     <label for="confirmar_senha" class="form-label">Confirmar Nova Senha</label>
-                                    <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" minlength="6">
+                                    <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" minlength="12" maxlength="128">
                                 </div>
                             </div>
                         </div>
@@ -263,9 +264,9 @@ document.getElementById('formPerfil').addEventListener('submit', function(e) {
             return;
         }
         
-        if (nova_senha.length < 6) {
+        if (nova_senha.length < 12) {
             e.preventDefault();
-            alert('A nova senha deve ter pelo menos 6 caracteres!');
+            alert('A nova senha deve ter pelo menos 12 caracteres!');
             document.getElementById('nova_senha').focus();
             return;
         }
