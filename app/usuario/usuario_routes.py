@@ -634,7 +634,7 @@ def lista_usuarios():
 @usuario_bp.route("/usuarios/debug-info")
 @requer_nivel_acesso('master')
 def debug_info():
-    """Diagnostico minimo somente em testes. Nunca expor tracebacks em producao."""
+    """Diagnostico minimo somente em testes, sem dados internos."""
     if not current_app.config.get("TESTING"):
         abort(404)
     return jsonify({"status": "ok", "diagnostico": "ambiente de testes"})
