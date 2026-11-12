@@ -136,12 +136,8 @@ def create_app():
     login_manager.login_message_category = "info"
     login_manager.session_protection = None  # Desabilitar para evitar conflitos com proxy
     
-    # Handler crítico: Garantir sessão permanente
-    @app.before_request
-    def ensure_session_permanent():
-        from flask import session
-        if not session.permanent:
-            session.permanent = True
+    # Sessao persistente somente quando o usuario opta por 'lembrar de mim'.
+    # Nao forcar session.permanent a cada requisicao: o login define a escolha.
 
     # Handler HTTP 500: detalhes tecnicos ficam apenas nos logs internos.
     @app.errorhandler(500)
