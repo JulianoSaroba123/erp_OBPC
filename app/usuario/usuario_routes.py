@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, current_app
+from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, current_app, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensoes import db, csrf
 from app.usuario.usuario_model import Usuario, NivelAcesso
@@ -50,6 +50,7 @@ _ROTAS_SENSIVEIS_USUARIO = frozenset({
     "usuario.login", "usuario.cadastro", "usuario.perfil",
     "usuario.novo_usuario", "usuario.editar_usuario",
     "usuario.toggle_status_usuario", "usuario.excluir_usuario",
+    "usuario.atualizar_atividades_painel",
 })
 
 
@@ -631,44 +632,13 @@ def lista_usuarios():
     )
 
 @usuario_bp.route("/usuarios/debug-info")
-@login_required
+@requer_nivel_acesso('master')
 def debug_info():
-    """Rota de diagnóstico - retorna informações de debug"""
-    from flask import jsonify
-    import traceback
-    info = {
-        'user_id': current_user.id,
-        'user_email': current_user.email,
-        'user_nivel': current_user.nivel_acesso,
-        'pode_gerenciar': current_user.pode_gerenciar_usuarios(),
-        'authenticated': current_user.is_authenticated,
-    }
-    try:
-        usuarios = Usuario.query.order_by(Usuario.nome).all()
-        info['total_usuarios'] = len(usuarios)
-        info['query_ok'] = True
-        info['usuarios_sample'] = [{'id': u.id, 'nome': u.nome} for u in usuarios[:3]]
-    except Exception as e:
-        info['query_error'] = str(e)
-        info['query_traceback'] = traceback.format_exc()
-    try:
-        from app.configuracoes.configuracoes_model import Configuracao
-        config = Configuracao.query.filter_by(id=1).first()
-        info['config_ok'] = config is not None
-    except Exception as e:
-        info['config_error'] = str(e)
-    try:
-        from app.usuario.painel_model import FavoritoPainel, ConfiguracaoPainel
-        info['painel_model_ok'] = True
-    except Exception as e:
-        info['painel_model_error'] = str(e)
-    try:
-        # Testar render do template manualmente
-        from jinja2 import TemplateError
-        info['template_check'] = 'nao_testado'
-    except Exception as e:
-        info['template_error'] = str(e)
-    return jsonify(info)
+    """Diagnostico minimo somente em testes. Nunca expor tracebacks em producao."""
+    if not current_app.config.get("TESTING"):
+        abort(404)
+    return jsonify({"status": "ok", "diagnostico": "ambiente de testes"})
+
 
 @usuario_bp.route("/usuarios/novo", methods=["GET", "POST"])
 @requer_gerencia_usuarios
@@ -975,9 +945,9 @@ def perfil():
 
 
 # ---------- ROTA ADMINISTRATIVA: ATUALIZAR ATIVIDADES ----------
-@usuario_bp.route("/admin/atualizar-atividades-painel")
+@usuario_bp.route("/admin/atualizar-atividades-painel", methods=["POST"])
 @login_required
-@requer_nivel_acesso(NivelAcesso.ADMINISTRADOR)
+@requer_nivel_acesso('master', 'administrador')
 def atualizar_atividades_painel():
     """Atualiza atividades existentes para aparecerem no painel"""
     from app.departamentos.departamentos_model import CronogramaDepartamento
@@ -1021,8 +991,9 @@ def atualizar_atividades_painel():
         
         flash(f"Atividades atualizadas! {atualizadas} marcadas para painel, {datas_atualizadas} datas atualizadas. Total no painel: {total_painel}", "success")
         
-    except Exception as e:
-        current_app.logger.error(f"Erro ao atualizar atividades: {e}")
-        flash(f"Erro ao atualizar atividades: {str(e)}", "danger")
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Erro administrativo ao atualizar atividades")
+        flash("Nao foi possivel atualizar atividades.", "danger")
     
     return redirect(url_for("usuario.painel"))
