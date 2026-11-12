@@ -128,14 +128,9 @@
 
         <div class="form-group mb-4">
           <label for="perfil" class="fw-semibold" style="color: #374151;">Perfil</label>
-          <select class="form-select" id="perfil" name="perfil" required>
-            <option value="">Selecione o perfil</option>
-            <option value="Pastor">Pastor</option>
-            <option value="Secretário">Secretário</option>
-            <option value="Tesoureiro">Tesoureiro</option>
-            <option value="Obreiro">Obreiro</option>
-            <option value="Membro">Membro</option>
-          </select>
+          <input type="text" class="form-control" value="Membro (acesso inicial)" disabled>
+          <input type="hidden" name="perfil" value="Membro">
+          <small class="text-muted">Privilégios especiais são atribuídos somente pela administração.</small>
         </div>
 
         <button type="submit" class="btn btn-primary w-100">Criar Conta</button>
