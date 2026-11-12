@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, current_app
 from flask_login import login_user, logout_user, login_required, current_user
-from app.extensoes import db
+from app.extensoes import db, csrf
 from app.usuario.usuario_model import Usuario, NivelAcesso
+from app.usuario.politica_senhas import validar_nova_senha
 from app.usuario.painel_model import FavoritoPainel, ConfiguracaoPainel
 from app.departamentos.departamentos_model import Departamento
 from app.utils.auth_decorators import requer_gerencia_usuarios, requer_nivel_acesso
@@ -43,6 +44,21 @@ def _destino_login_seguro(destino):
 
 # Blueprint do módulo de usuário
 usuario_bp = Blueprint("usuario", __name__, template_folder="templates")
+
+
+_ROTAS_SENSIVEIS_USUARIO = frozenset({
+    "usuario.login", "usuario.cadastro", "usuario.perfil",
+    "usuario.novo_usuario", "usuario.editar_usuario",
+    "usuario.toggle_status_usuario", "usuario.excluir_usuario",
+})
+
+
+@usuario_bp.before_request
+def _csrf_usuarios_sensiveis():
+    # CSRF global nao foi ativado: proteger somente rotas de autenticacao/usuarios.
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.endpoint in _ROTAS_SENSIVEIS_USUARIO:
+            csrf.protect()
 
 # ---------- ROTA DE TESTE DE IMAGEM (TEMPORÁRIA) ----------
 @usuario_bp.route("/teste-imagem")
@@ -109,6 +125,15 @@ def cadastro():
         email = request.form.get("email")
         senha = request.form.get("senha")
         perfil = request.form.get("perfil")
+        if not all([nome, email, senha]) or perfil not in {
+            "Pastor", "Secretário", "Tesoureiro", "Obreiro", "Membro"
+        }:
+            flash("Preencha os campos corretamente.", "danger")
+            return render_template("usuario/cadastro.html")
+        erro_senha = validar_nova_senha(senha)
+        if erro_senha:
+            flash(erro_senha, "danger")
+            return render_template("usuario/cadastro.html")
 
         # Verifica se já existe usuário com esse email
         existente = Usuario.query.filter_by(email=email).first()
@@ -117,7 +142,11 @@ def cadastro():
             return redirect(url_for("usuario.cadastro"))
 
         # Cria novo usuário
-        novo_usuario = Usuario(nome=nome, email=email, perfil=perfil)
+        # Autocadastro publico nao pode receber nivel de autorizacao privilegiado.
+        novo_usuario = Usuario(
+            nome=nome, email=email, perfil=perfil,
+            nivel_acesso=NivelAcesso.MEMBRO.value, ativo=True,
+        )
         novo_usuario.set_senha(senha)
 
         db.session.add(novo_usuario)
@@ -652,10 +681,17 @@ def novo_usuario():
         senha = request.form.get("senha")
         nivel_acesso = request.form.get("nivel_acesso")
         departamento_id = request.form.get("departamento_id")
+        confirmar_senha = request.form.get("confirmar_senha")
 
         # Validações
         if not all([nome, email, senha, nivel_acesso]):
             flash("Todos os campos são obrigatórios!", "danger")
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
+
+        erro_senha = validar_nova_senha(senha)
+        if erro_senha or senha != confirmar_senha:
+            flash(erro_senha or "As senhas nao conferem.", "danger")
             departamentos = Departamento.query.order_by(Departamento.nome).all()
             return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
 
@@ -669,6 +705,13 @@ def novo_usuario():
         # Verificar se pode criar usuário com esse nível
         if not pode_criar_nivel(current_user.nivel_acesso, nivel_acesso):
             flash("Você não pode criar usuários com este nível de acesso!", "danger")
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
+
+        if nivel_acesso == 'master' and not current_user.check_senha(
+            request.form.get("confirmar_senha_admin") or ""
+        ):
+            flash("Confirme sua senha para criar uma conta Master.", "danger")
             departamentos = Departamento.query.order_by(Departamento.nome).all()
             return render_template("usuario/novo_usuario.html", niveis=NivelAcesso, departamentos=departamentos)
 
@@ -695,7 +738,10 @@ def novo_usuario():
 
         db.session.add(novo_usuario)
         db.session.commit()
-
+        current_app.logger.info(
+            "AUDIT_USUARIOS criar actor_id=%s alvo_id=%s nivel=%s",
+            current_user.id, novo_usuario.id, nivel_acesso,
+        )
         flash(f"Usuário {nome} criado com sucesso!", "success")
         return redirect(url_for("usuario.lista_usuarios"))
 
@@ -740,6 +786,32 @@ def editar_usuario(user_id):
             departamentos = Departamento.query.order_by(Departamento.nome).all()
             return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
 
+        if nova_senha:
+            erro_senha = validar_nova_senha(nova_senha)
+            if erro_senha:
+                flash(erro_senha, "danger")
+                departamentos = Departamento.query.order_by(Departamento.nome).all()
+                return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
+
+        if (
+            usuario.nivel_acesso == 'master' or nivel_acesso == 'master' or bool(nova_senha)
+        ) and not current_user.check_senha(request.form.get("confirmar_senha_admin") or ""):
+            flash("Confirme sua senha de administrador para esta alteracao.", "danger")
+            departamentos = Departamento.query.order_by(Departamento.nome).all()
+            return render_template("usuario/editar_usuario.html", usuario=usuario, niveis=NivelAcesso, departamentos=departamentos)
+
+        if usuario.nivel_acesso == 'master' and not ativo:
+            flash("Uma conta Master nao pode ser desativada por edicao.", "danger")
+            return redirect(url_for("usuario.lista_usuarios"))
+        if usuario.id == current_user.id and not ativo:
+            flash("Nao e permitido desativar a propria conta.", "danger")
+            return redirect(url_for("usuario.lista_usuarios"))
+        if (usuario.nivel_acesso == 'master' and nivel_acesso != 'master'
+                and Usuario.query.filter_by(nivel_acesso='master', ativo=True).count() <= 1):
+            flash("O ultimo Master ativo nao pode perder os privilegios.", "danger")
+            return redirect(url_for("usuario.lista_usuarios"))
+        nivel_anterior = usuario.nivel_acesso
+
         # Atualizar dados
         usuario.nome = nome
         usuario.email = email
@@ -762,6 +834,10 @@ def editar_usuario(user_id):
             usuario.set_senha(nova_senha)
 
         db.session.commit()
+        current_app.logger.info(
+            "AUDIT_USUARIOS editar actor_id=%s alvo_id=%s nivel_antigo=%s nivel_novo=%s troca_senha=%s",
+            current_user.id, usuario.id, nivel_anterior, nivel_acesso, bool(nova_senha),
+        )
         flash(f"Usuário {nome} atualizado com sucesso!", "success")
         return redirect(url_for("usuario.lista_usuarios"))
 
@@ -784,6 +860,10 @@ def toggle_status_usuario(user_id):
     
     usuario.ativo = not usuario.ativo
     db.session.commit()
+    current_app.logger.info(
+        "AUDIT_USUARIOS status actor_id=%s alvo_id=%s ativo=%s",
+        current_user.id, usuario.id, usuario.ativo,
+    )
     status = "ativado" if usuario.ativo else "desativado"
     flash(f"Usuário {usuario.nome} {status} com sucesso!", "success")
     return redirect(url_for('usuario.lista_usuarios'))
@@ -806,6 +886,10 @@ def excluir_usuario(user_id):
         nome = usuario.nome
         db.session.delete(usuario)
         db.session.commit()
+        current_app.logger.info(
+            "AUDIT_USUARIOS excluir actor_id=%s alvo_id=%s",
+            current_user.id, user_id,
+        )
         flash(f"Usuário {nome} excluído com sucesso!", "success")
         return redirect(url_for('usuario.lista_usuarios'))
         
@@ -868,14 +952,19 @@ def perfil():
                 flash("A confirmação da nova senha não confere!", "danger")
                 return render_template("usuario/perfil.html")
             
-            if len(nova_senha) < 6:
-                flash("A nova senha deve ter pelo menos 6 caracteres!", "danger")
+            erro_senha = validar_nova_senha(nova_senha)
+            if erro_senha:
+                flash(erro_senha, "danger")
                 return render_template("usuario/perfil.html")
-            
+            if current_user.check_senha(nova_senha):
+                flash("A nova senha precisa ser diferente da atual.", "danger")
+                return render_template("usuario/perfil.html")
+
             current_user.set_senha(nova_senha)
 
         db.session.commit()
         if nova_senha:
+            current_app.logger.info("AUDIT_USUARIOS troca_senha_propria actor_id=%s", current_user.id)
             # O identificador antigo foi revogado; encerra a sessao atual tambem.
             logout_user()
             flash("Senha alterada. Entre novamente com a nova senha.", "success")
