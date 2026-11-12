@@ -60,7 +60,7 @@ def login():
     if request.method == "POST":
         email = request.form.get("email")
         senha = request.form.get("senha")
-        lembrar = request.form.get("lembrar")  # Checkbox "lembrar de mim"
+        lembrar = request.form.get("lembrar") == "1"  # Opt-in explicito
 
         usuario = Usuario.query.filter_by(email=email).first()
 
@@ -70,12 +70,10 @@ def login():
                 usuario.ultimo_login = datetime.now()
                 db.session.commit()
                 
-                # Login SEMPRE com remember=True para garantir persistência
-                login_user(usuario, remember=True)
-                
-                # Sessão permanente (já configurado no before_request global)
+                # Sem opt-in, usar cookie de sessao encerrado ao fechar o navegador.
+                login_user(usuario, remember=lembrar)
                 from flask import session
-                session.permanent = True
+                session.permanent = lembrar
                 
                 flash(f"Bem-vindo, {usuario.nome}! ({usuario.get_nome_nivel()})", "success")
                 
@@ -877,6 +875,11 @@ def perfil():
             current_user.set_senha(nova_senha)
 
         db.session.commit()
+        if nova_senha:
+            # O identificador antigo foi revogado; encerra a sessao atual tambem.
+            logout_user()
+            flash("Senha alterada. Entre novamente com a nova senha.", "success")
+            return redirect(url_for("usuario.login"))
         flash("Perfil atualizado com sucesso!", "success")
         return redirect(url_for("usuario.perfil"))
 
