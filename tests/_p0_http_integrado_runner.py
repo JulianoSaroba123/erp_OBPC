@@ -343,6 +343,108 @@ def main():
         )
         print("OK: login sem next mantem destino padrao.")
 
+        # A7H.28: fluxo REAL de cadastro e gestao Master no mesmo SQLite efemero.
+        publico = app_instance.test_client()
+        token_publico = publico.get("/__p05h/token").get_json()["token"]
+        cadastro_publico = {
+            "nome": "Membro P28 ficticio", "email": "p28-membro@invalid.test",
+            "senha": "SenhaLongaPublica!2026", "perfil": "Pastor",
+            "nivel_acesso": "master", "csrf_token": token_publico,
+        }
+        test_case("17 Cadastro publico sem CSRF", publico.post(
+            "/cadastro", data={k: v for k, v in cadastro_publico.items() if k != "csrf_token"}
+        ), 400)
+        test_case("18 Cadastro publico com perfil Pastor forjado", publico.post(
+            "/cadastro", data=cadastro_publico, follow_redirects=False,
+        ), 302)
+        with app_instance.app_context():
+            membro = Usuario.query.filter_by(email="p28-membro@invalid.test").one()
+            assert membro.nivel_acesso == "membro" and membro.perfil == "Membro"
+            master = Usuario(
+                nome="Master P28 ficticio", email="p28-master@invalid.test",
+                nivel_acesso="master", perfil="Master", ativo=True,
+            )
+            master.set_senha("SenhaMasterFicticia2026!")
+            db.session.add(master)
+            db.session.commit()
+
+        navegador_master = app_instance.test_client()
+        tela_login = navegador_master.get("/login")
+        parser_master = LoginForm()
+        parser_master.feed(tela_login.get_data(as_text=True))
+        assert parser_master.csrf_token
+        test_case("19 Login real do Master ficticio", navegador_master.post(
+            parser_master.action,
+            data={"email": "p28-master@invalid.test",
+                  "senha": "SenhaMasterFicticia2026!",
+                  "csrf_token": parser_master.csrf_token},
+            follow_redirects=False,
+        ), 302)
+        test_case("20 Tela de criacao de usuarios para Master", navegador_master.get(
+            "/usuarios/novo"
+        ), 200)
+        token_master = navegador_master.get("/__p05h/token").get_json()["token"]
+        criacao = {
+            "nome": "Segundo Master P28", "email": "p28-master2@invalid.test",
+            "senha": "SenhaMasterSegunda2026!", "confirmar_senha": "SenhaMasterSegunda2026!",
+            "nivel_acesso": "master", "csrf_token": token_master,
+        }
+        test_case("21 Criar Master sem CSRF bloqueado", navegador_master.post(
+            "/usuarios/novo", data={k: v for k, v in criacao.items() if k != "csrf_token"},
+        ), 400)
+        test_case("22 Criar Master sem reautenticacao bloqueado", navegador_master.post(
+            "/usuarios/novo", data=criacao,
+        ), 200)
+        with app_instance.app_context():
+            assert Usuario.query.filter_by(email="p28-master2@invalid.test").first() is None
+        criacao["confirmar_senha_admin"] = "SenhaMasterFicticia2026!"
+        test_case("23 Criar Master com senha do gestor", navegador_master.post(
+            "/usuarios/novo", data=criacao, follow_redirects=False,
+        ), 302)
+        with app_instance.app_context():
+            novo_master = Usuario.query.filter_by(email="p28-master2@invalid.test").one()
+            novo_id = novo_master.id
+
+        edicao = {
+            "nome": "Master P28 auditado", "email": "p28-master2@invalid.test",
+            "nivel_acesso": "master", "ativo": "on", "csrf_token": token_master,
+        }
+        test_case("24 Editar Master sem reautenticacao bloqueado", navegador_master.post(
+            f"/usuarios/{novo_id}/editar", data=edicao,
+        ), 200)
+        with app_instance.app_context():
+            assert db.session.get(Usuario, novo_id).nome == "Segundo Master P28"
+        edicao["confirmar_senha_admin"] = "SenhaMasterFicticia2026!"
+        test_case("25 Editar Master autenticado", navegador_master.post(
+            f"/usuarios/{novo_id}/editar", data=edicao, follow_redirects=False,
+        ), 302)
+        with app_instance.app_context():
+            assert db.session.get(Usuario, novo_id).nome == "Master P28 auditado"
+
+        perfil_base = {
+            "nome": "Master P28 ficticio", "email": "p28-master@invalid.test",
+            "senha_atual": "SenhaMasterFicticia2026!",
+            "nova_senha": "curta", "confirmar_senha": "curta",
+            "csrf_token": token_master,
+        }
+        test_case("26 Perfil sem CSRF bloqueado", navegador_master.post(
+            "/perfil", data={k: v for k, v in perfil_base.items() if k != "csrf_token"},
+        ), 400)
+        test_case("27 Troca de senha curta rejeitada", navegador_master.post(
+            "/perfil", data=perfil_base,
+        ), 200)
+        perfil_base["nova_senha"] = "NovaSenhaSegura2026!"
+        perfil_base["confirmar_senha"] = "NovaSenhaSegura2026!"
+        test_case("28 Troca de senha valida exige novo login", navegador_master.post(
+            "/perfil", data=perfil_base, follow_redirects=False,
+        ), 302)
+        test_case("29 Sessao anterior encerrada", navegador_master.get("/usuarios"), 302)
+        with app_instance.app_context():
+            master_recarregado = Usuario.query.filter_by(email="p28-master@invalid.test").one()
+            assert master_recarregado.check_senha("NovaSenhaSegura2026!")
+            assert not master_recarregado.check_senha("SenhaMasterFicticia2026!")
+        print("OK: A7H.28 - cadastro, CSRF, Master e politica de senha validados.", flush=True)
+
         # Garante novamente que nenhuma movimentacao foi realizada.
         with app_instance.app_context():
             n_login_depois = db.session.execute(text("SELECT COUNT(*) FROM lancamentos")).scalar_one()
