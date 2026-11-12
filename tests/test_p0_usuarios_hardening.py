@@ -47,7 +47,7 @@ def test_csrf_escopado_ao_blueprint_usuario_sem_globais():
     texto = ROTAS.read_text(encoding="utf-8-sig")
     arvore = ast.parse(texto)
     decoradores = {
-        nome.name for node in arvore.body if isinstance(node, ast.FunctionDef)
+        nome.attr for node in arvore.body if isinstance(node, ast.FunctionDef)
         for nome in node.decorator_list if isinstance(nome, ast.Attribute)
     }
     assert "before_request" in decoradores
