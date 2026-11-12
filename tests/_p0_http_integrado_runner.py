@@ -206,6 +206,25 @@ def main():
         test_case("13 Exclusao por GET continua proibida", anonymous.get("/financeiro/excluir/1"), 405)
         test_case("14 Conciliacao automatica por GET continua proibida", anonymous.get("/financeiro/conciliacao/executar-automatica"), 405)
 
+        # A7H.28: perfil textual 'Pastor' nao pode autorizar limpeza destrutiva.
+        fake_users["p05h_denied"].perfil = "Pastor"
+        test_case(
+            "15 Autocadastrado Pastor com nivel membro nao pode limpar dados",
+            denied.get("/configuracoes/limpar-dados-sistema"), 403,
+        )
+        fake_users["p05h_master"] = FakeUser("p05h_master", "master")
+        master_efemero = app_instance.test_client()
+        with master_efemero.session_transaction() as sessao:
+            sessao["_user_id"] = "p05h_master"
+            sessao["_fresh"] = True
+        test_case(
+            "16 Master nao pode limpar dados sem token CSRF",
+            master_efemero.post(
+                "/configuracoes/limpar-dados-sistema",
+                data={"senha_confirmacao": "invalida", "confirmacao_texto": "LIMPAR TUDO"},
+            ), 400,
+        )
+
         with app_instance.app_context():
             n_depois = db.session.execute(text("SELECT COUNT(*) FROM lancamentos")).scalar_one()
             assert n_antes == n_depois, "Quantidade de lancamentos alterada nos testes"
