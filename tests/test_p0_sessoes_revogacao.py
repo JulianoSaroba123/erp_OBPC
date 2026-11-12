@@ -18,7 +18,7 @@ def importar_helper():
     return modulo
 
 
-def testar_loader_real_em_isolamento(manager, usuarios, helper):
+def _carregar_loader_real_em_isolamento(manager, usuarios, helper):
     """Compila o callback REAL de usuario_model, com banco ficticio em memoria."""
     from flask import current_app
 
@@ -91,7 +91,7 @@ def test_identificador_de_usuario_e_loader_compativeis():
             return self.ativo
 
     usuario = UsuarioFicticio()
-    testar_loader_real_em_isolamento(manager, {1: usuario}, helper)
+    _carregar_loader_real_em_isolamento(manager, {1: usuario}, helper)
 
     @app.get("/entrar")
     def entrar():
