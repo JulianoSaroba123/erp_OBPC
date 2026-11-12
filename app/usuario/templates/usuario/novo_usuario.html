@@ -133,6 +133,12 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="confirmar_senha_admin" class="form-label">Confirmação da sua senha de administrador</label>
+                            <input type="password" class="form-control" name="confirmar_senha_admin" id="confirmar_senha_admin" autocomplete="current-password">
+                            <small class="text-muted">Obrigatória somente para criar outra conta Master.</small>
+                        </div>
+
                         <div class="d-flex justify-content-end gap-2">
                             <a href="{{ url_for('usuario.lista_usuarios') }}" class="btn btn-secondary">
                                 <i class="fas fa-times me-1"></i>
