@@ -136,6 +136,8 @@ def main():
                 self.nivel_acesso = role
             def tem_acesso_financeiro(self):
                 return self.nivel_acesso in {"master", "administrador", "Admin", "tesoureiro"}
+            def tem_acesso_configuracoes(self):
+                return self.nivel_acesso in {"master", "administrador", "Admin"}
             def get_menu_principal(self):
                 return "usuario.painel"
 
@@ -230,6 +232,18 @@ def main():
                 "/configuracoes/limpar-dados-sistema",
                 data={"senha_confirmacao": "invalida", "confirmacao_texto": "LIMPAR TUDO"},
             ), 400,
+        )
+        test_case(
+            "16A Membro nao pode alterar configuracoes",
+            denied.post("/configuracoes/salvar", data={"nome_igreja": "NUNCA"}), 403,
+        )
+        test_case(
+            "16B Membro nao pode resetar configuracoes",
+            denied.post("/configuracoes/resetar", data={"aba": "gerais"}), 403,
+        )
+        test_case(
+            "16C Master sem CSRF nao pode resetar configuracoes",
+            master_efemero.post("/configuracoes/resetar", data={"aba": "gerais"}), 400,
         )
 
         with app_instance.app_context():
