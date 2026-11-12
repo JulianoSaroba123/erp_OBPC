@@ -1,22 +1,28 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
-from flask_login import login_required
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
+from flask_login import login_required, current_user
 from functools import wraps
-from app.extensoes import db
+from app.extensoes import db, csrf
 from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes, HistoricoNotificacoes
 from app.notificacoes.notificacoes_service import ServicoNotificacoes
 
 notificacoes_bp = Blueprint('notificacoes', __name__, template_folder='templates')
 
 
+@notificacoes_bp.before_request
+def _proteger_mutacoes_notificacoes():
+    """CSRF so em POSTs deste modulo; nao alterar a protecao global."""
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        csrf.protect()
+
+
 def requer_admin(f):
-    """Decorator para verificar se é admin"""
+    """Somente Master e Administrador podem consultar/alterar credenciais."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        from flask_login import current_user
-        # Aqui você pode adicionar lógica para verificar permissões
-        # Por enquanto, apenas verifica se está logado
         if not current_user.is_authenticated:
             return redirect(url_for('usuario.login'))
+        if not current_user.tem_acesso_configuracoes():
+            abort(403)
         return f(*args, **kwargs)
     return decorated_function
 
@@ -74,13 +80,13 @@ def configurar_notificacoes():
             
             except Exception as e:
                 db.session.rollback()
-                flash(f'Erro ao salvar: {str(e)[:100]}', 'danger')
+                flash('Erro ao salvar configurações de notificação.', 'danger')
                 return redirect(url_for('notificacoes.configurar_notificacoes'))
         
         return render_template('notificacoes/configurar_notificacoes.html', config=config)
     
     except Exception as e:
-        flash(f'Erro ao carregar: {str(e)[:100]}', 'danger')
+        flash('Erro ao carregar configurações de notificação.', 'danger')
         # Retornar com config padrão (vazio)
         from app.notificacoes.notificacoes_model import ConfiguracaoNotificacoes
         config = ConfiguracaoNotificacoes()

@@ -26,6 +26,7 @@
     </div>
 
     <form method="POST" id="form-notificacoes">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <!-- Configurações de Email -->
         <div class="row mb-4">
             <div class="col-12">
@@ -511,6 +512,7 @@ document.getElementById('btn-testar-email').addEventListener('click', function()
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': "{{ csrf_token() }}",
         },
         body: 'email_teste=' + encodeURIComponent(email)
     })
@@ -536,6 +538,7 @@ document.getElementById('btn-testar-whatsapp').addEventListener('click', functio
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': "{{ csrf_token() }}",
         },
         body: 'numero_teste=' + encodeURIComponent(numero)
     })

@@ -34,6 +34,7 @@
                 <div class="card-body">
                     <form method="POST" action="{% if evento %}{{ url_for('eventos.salvar_evento') }}{% else %}{{ url_for('eventos.salvar_evento') }}{% endif %}" 
                           novalidate class="needs-validation">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         
                         {% if evento %}
                         <input type="hidden" name="evento_id" value="{{ evento.id }}">

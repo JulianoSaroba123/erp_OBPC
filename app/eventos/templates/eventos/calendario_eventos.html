@@ -55,10 +55,14 @@
                     <a id="eventoEditar" href="#" class="btn btn-warning">
                         <i class="fas fa-edit me-1"></i> Editar
                     </a>
-                    <a id="eventoExcluir" href="#" class="btn btn-danger" 
-                       onclick="return confirm('Tem certeza que deseja excluir este evento?')">
-                        <i class="fas fa-trash me-1"></i> Excluir
-                    </a>
+                    {% if current_user.pode_gerenciar_eventos() %}
+                    <form id="formExcluirEvento" method="POST" style="display:inline" onsubmit="return confirm('Deseja excluir este evento?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" id="eventoExcluir" class="btn btn-danger">
+                            <i class="fas fa-trash me-1"></i> Excluir
+                        </button>
+                    </form>
+                    {% endif %>
                 </div>
             </div>
         </div>
@@ -196,7 +200,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Configurar links de ação
         document.getElementById('eventoEditar').href = '{{ url_for("eventos.editar_evento", evento_id="") }}' + evento.id;
-        document.getElementById('eventoExcluir').href = '{{ url_for("eventos.excluir_evento", evento_id="") }}' + evento.id;
+        {% if current_user.pode_gerenciar_eventos() %}
+        document.getElementById('formExcluirEvento').action = '{{ url_for("eventos.excluir_evento", evento_id="") }}' + evento.id;
+        {% endif %}
         
         // Mostrar modal
         var modal = new bootstrap.Modal(document.getElementById('eventoModal'));

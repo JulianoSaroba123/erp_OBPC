@@ -179,11 +179,12 @@
                                                class="btn btn-sm btn-outline-warning" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <a href="{{ url_for('eventos.excluir_evento', evento_id=evento.id) }}" 
-                                               class="btn btn-sm btn-outline-danger" title="Excluir"
-                                               onclick="return confirm('Tem certeza que deseja excluir o evento \'{{ evento.titulo }}\'?')">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
+                                            <form method="POST" action="{{ url_for('eventos.excluir_evento', evento_id=evento.id) }}" style="display:inline" onsubmit="return confirm('Deseja excluir este evento?')">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
                                             {% endif %}
                                         </div>
                                     </td>

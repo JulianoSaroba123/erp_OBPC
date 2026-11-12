@@ -9,14 +9,25 @@ Rotas para gerenciamento de eventos da igreja
 """
 
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, abort
 from flask_login import login_required, current_user
-from app.extensoes import db
+from app.extensoes import db, csrf
 from app.eventos.eventos_model import Evento
 
 # Criar blueprint
 eventos_bp = Blueprint('eventos', __name__, url_prefix='/eventos', 
                       template_folder='templates')
+
+
+@eventos_bp.before_request
+def _proteger_mutacoes_eventos():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return
+    if not current_user.is_authenticated:
+        return redirect(url_for('usuario.login'))
+    if not current_user.pode_gerenciar_eventos():
+        abort(403)
+    csrf.protect()
 
 
 @eventos_bp.route('/')
@@ -63,6 +74,8 @@ def lista_eventos():
 @login_required
 def novo_evento():
     """Formulário para cadastro de novo evento"""
+    if not current_user.pode_gerenciar_eventos():
+        abort(403)
     return render_template('eventos/cadastro_evento.html', evento=None)
 
 
@@ -169,6 +182,8 @@ def salvar_evento():
 @login_required
 def editar_evento(evento_id):
     """Formulário para edição de evento existente"""
+    if not current_user.pode_gerenciar_eventos():
+        abort(403)
     try:
         evento = Evento.query.get_or_404(evento_id)
         return render_template('eventos/cadastro_evento.html', evento=evento)
@@ -179,7 +194,7 @@ def editar_evento(evento_id):
         return redirect(url_for('eventos.lista_eventos'))
 
 
-@eventos_bp.route('/excluir/<int:evento_id>')
+@eventos_bp.route('/excluir/<int:evento_id>', methods=['POST'])
 @login_required
 def excluir_evento(evento_id):
     """Exclui evento"""

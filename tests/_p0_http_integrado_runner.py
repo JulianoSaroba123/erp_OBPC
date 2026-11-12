@@ -138,6 +138,8 @@ def main():
                 return self.nivel_acesso in {"master", "administrador", "Admin", "tesoureiro"}
             def tem_acesso_configuracoes(self):
                 return self.nivel_acesso in {"master", "administrador", "Admin"}
+            def pode_gerenciar_eventos(self):
+                return self.nivel_acesso in {"master", "administrador", "lider_departamento", "midia"}
             def get_menu_principal(self):
                 return "usuario.painel"
 
@@ -244,6 +246,48 @@ def main():
         test_case(
             "16C Master sem CSRF nao pode resetar configuracoes",
             master_efemero.post("/configuracoes/resetar", data={"aba": "gerais"}), 400,
+        )
+        # A7H.29: exercita a autorizacao de rotas legadas SEM executar mutacoes.
+        token_negado = https_get(denied, "/__p05h/token").get_json()["token"]
+        test_case(
+            "16D Membro nao consulta configuracoes de notificacoes",
+            denied.get("/notificacoes/configuracoes"), 403,
+        )
+        test_case(
+            "16E Membro nao testa envio de email",
+            https_post(denied,
+                "/notificacoes/testar-email",
+                data={"csrf_token": token_negado, "email_teste": "fake@invalid.test"},
+            ), 403,
+        )
+        test_case(
+            "16F Master nao envia notificacao sem token",
+            master_efemero.post("/notificacoes/testar-email",
+                               data={"email_teste": "fake@invalid.test"}), 400,
+        )
+        test_case(
+            "16G Exclusao de evento nao aceita GET",
+            denied.get("/eventos/excluir/1"), 405,
+        )
+        test_case(
+            "16H Membro nao cadastra evento com token valido",
+            denied.post("/eventos/salvar", data={"csrf_token": token_negado}), 403,
+        )
+        test_case(
+            "16I Master nao exclui evento sem CSRF",
+            master_efemero.post("/eventos/excluir/1"), 400,
+        )
+        test_case(
+            "16J Diagnostico de usuarios oculto em producao",
+            master_efemero.get("/usuarios/debug-info"), 404,
+        )
+        test_case(
+            "16K Atualizacao administrativa nao aceita GET",
+            master_efemero.get("/admin/atualizar-atividades-painel"), 405,
+        )
+        test_case(
+            "16L Atualizacao administrativa nao aceita POST sem CSRF",
+            master_efemero.post("/admin/atualizar-atividades-painel"), 400,
         )
 
         with app_instance.app_context():
