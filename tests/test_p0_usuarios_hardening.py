@@ -71,6 +71,26 @@ def test_gates_sensiveis_no_servidor():
     assert "nivel_acesso=NivelAcesso.MEMBRO.value" in codigo
     assert "AUDIT_USUARIOS" in codigo
 
+def test_autocadastro_sem_perfil_privilegiado_e_limpeza_restrita_a_master():
+    rotas = ROTAS.read_text(encoding="utf-8-sig")
+    inicio = rotas.index("def cadastro():")
+    fim = rotas.index("# ---------- ROTA DO PAINEL", inicio)
+    codigo_cadastro = rotas[inicio:fim]
+    assert 'perfil = "Membro"' in codigo_cadastro
+    assert "nivel_acesso=NivelAcesso.MEMBRO.value" in codigo_cadastro
+
+    config = (ROOT / "app/configuracoes/configuracoes_routes.py").read_text(encoding="utf-8-sig")
+    inicio = config.index("def limpar_dados_sistema():")
+    codigo_limpeza = config[inicio:]
+    assert "current_user.nivel_acesso != 'master'" in codigo_limpeza
+    assert "current_user.perfil != 'Pastor'" not in codigo_limpeza
+    assert "csrf.protect()" in codigo_limpeza
+
+    html = (
+        ROOT / "app/configuracoes/templates/configuracoes/limpar_dados.html"
+    ).read_text(encoding="utf-8-sig")
+    assert 'name="csrf_token"' in html
+
 
 def test_antigas_senhas_nao_sao_invalidadas_no_login():
     codigo = ROTAS.read_text(encoding="utf-8-sig")
