@@ -21,6 +21,30 @@ import re
 configuracoes_bp = Blueprint('configuracoes', __name__, url_prefix='/configuracoes', 
                             template_folder='templates')
 
+# Rotas que alteram dados ou realizam acoes de administracao.
+_MUTACOES_CONFIGURACOES = frozenset({
+    "configuracoes.salvar_configuracoes",
+    "configuracoes.upload_logo",
+    "configuracoes.resetar_configuracoes",
+    "configuracoes.teste_email",
+    "configuracoes.fazer_backup",
+    "configuracoes.limpar_dados_sistema",
+})
+
+
+@configuracoes_bp.before_request
+def _proteger_alteracoes_configuracoes():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return
+    if request.endpoint not in _MUTACOES_CONFIGURACOES:
+        return
+    if not current_user.is_authenticated:
+        return redirect(url_for("usuario.login"))
+    if not current_user.tem_acesso_configuracoes():
+        abort(403)
+    csrf.protect()
+
+
 @configuracoes_bp.route('/')
 @login_required
 def configuracoes():
