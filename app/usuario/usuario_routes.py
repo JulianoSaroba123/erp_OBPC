@@ -124,10 +124,9 @@ def cadastro():
         nome = request.form.get("nome")
         email = request.form.get("email")
         senha = request.form.get("senha")
-        perfil = request.form.get("perfil")
-        if not all([nome, email, senha]) or perfil not in {
-            "Pastor", "Secretário", "Tesoureiro", "Obreiro", "Membro"
-        }:
+        # Autocadastro nunca define cargo nem permissao. Campos enviados sao ignorados.
+        perfil = "Membro"
+        if not all([nome, email, senha]):
             flash("Preencha os campos corretamente.", "danger")
             return render_template("usuario/cadastro.html")
         erro_senha = validar_nova_senha(senha)
