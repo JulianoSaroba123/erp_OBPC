@@ -136,6 +136,8 @@ def main():
                 self.nivel_acesso = role
             def tem_acesso_financeiro(self):
                 return self.nivel_acesso in {"master", "administrador", "Admin", "tesoureiro"}
+            def tem_acesso_configuracoes(self):
+                return self.nivel_acesso in {"master", "administrador", "Admin"}
             def get_menu_principal(self):
                 return "usuario.painel"
 
@@ -171,6 +173,13 @@ def main():
         # em requisicoes POST normais de mesma origem. Nao desativar SSL_STRICT.
         HTTPS_ORIGIN = "https://localhost"
         SAME_ORIGIN = {"Referer": HTTPS_ORIGIN + "/financeiro/conciliacao"}
+
+        def https_get(cliente, endereco, **kwargs):
+            return cliente.get(endereco, base_url=HTTPS_ORIGIN, **kwargs)
+
+        def https_post(cliente, endereco, **kwargs):
+            kwargs.setdefault("headers", {"Referer": HTTPS_ORIGIN + "/login"})
+            return cliente.post(endereco, base_url=HTTPS_ORIGIN, **kwargs)
         assert app_instance.config.get("WTF_CSRF_SSL_STRICT", True) is True
 
         conciliacao = "/financeiro/conciliacao/criar-par"  # Sem IDs -> sem gravacoes
@@ -206,12 +215,43 @@ def main():
         test_case("13 Exclusao por GET continua proibida", anonymous.get("/financeiro/excluir/1"), 405)
         test_case("14 Conciliacao automatica por GET continua proibida", anonymous.get("/financeiro/conciliacao/executar-automatica"), 405)
 
+        # A7H.28: perfil textual 'Pastor' nao pode autorizar limpeza destrutiva.
+        fake_users["p05h_denied"].perfil = "Pastor"
+        test_case(
+            "15 Autocadastrado Pastor com nivel membro nao pode limpar dados",
+            denied.get("/configuracoes/limpar-dados-sistema"), 403,
+        )
+        fake_users["p05h_master"] = FakeUser("p05h_master", "master")
+        master_efemero = app_instance.test_client()
+        with master_efemero.session_transaction() as sessao:
+            sessao["_user_id"] = "p05h_master"
+            sessao["_fresh"] = True
+        test_case(
+            "16 Master nao pode limpar dados sem token CSRF",
+            master_efemero.post(
+                "/configuracoes/limpar-dados-sistema",
+                data={"senha_confirmacao": "invalida", "confirmacao_texto": "LIMPAR TUDO"},
+            ), 400,
+        )
+        test_case(
+            "16A Membro nao pode alterar configuracoes",
+            denied.post("/configuracoes/salvar", data={"nome_igreja": "NUNCA"}), 403,
+        )
+        test_case(
+            "16B Membro nao pode resetar configuracoes",
+            denied.post("/configuracoes/resetar", data={"aba": "gerais"}), 403,
+        )
+        test_case(
+            "16C Master sem CSRF nao pode resetar configuracoes",
+            master_efemero.post("/configuracoes/resetar", data={"aba": "gerais"}), 400,
+        )
+
         with app_instance.app_context():
             n_depois = db.session.execute(text("SELECT COUNT(*) FROM lancamentos")).scalar_one()
             assert n_antes == n_depois, "Quantidade de lancamentos alterada nos testes"
         # P0.6D-B: testa o login REAL, com usuario/senha ficticios apenas
         # no banco descartavel. Nao reutiliza a autenticacao simulada P0.5H.
-        from app.usuario.usuario_model import Usuario
+        from app.usuario.usuario_model import Usuario, load_user
         from flask import url_for
         from html.parser import HTMLParser
         from urllib.parse import quote, parse_qs, urlsplit
@@ -220,12 +260,14 @@ def main():
             def __init__(self):
                 super().__init__()
                 self.action = None
+                self.csrf_token = None
             def handle_starttag(self, tag, attrs):
-                if tag.lower() != "form":
-                    return
                 d = dict(attrs)
-                if (d.get("method") or "").lower() == "post" and self.action is None:
-                    self.action = d.get("action")
+                if tag.lower() == "form" and (d.get("method") or "").lower() == "post":
+                    if self.action is None:
+                        self.action = d.get("action")
+                if tag.lower() == "input" and d.get("name") == "csrf_token":
+                    self.csrf_token = d.get("value")
 
         with app_instance.app_context():
             assert "usuarios" in set(inspect(db.engine).get_table_names())
@@ -242,7 +284,7 @@ def main():
             assert conta_id is not None
 
         # Login Manager volta a buscar os usuarios reais, mas APENAS do banco temporario.
-        login_manager.user_loader(lambda uid: db.session.get(Usuario, int(uid)) if uid.isdigit() else None)
+        login_manager.user_loader(load_user)
 
         with app_instance.test_request_context():
             fallback = url_for("financeiro.lista_lancamentos")
@@ -256,20 +298,30 @@ def main():
                 pagina = "/login"
             else:
                 pagina = "/login?next=" + quote(next_destino, safe="")
-            get_response = navegador.get(pagina)
+            get_response = https_get(navegador, pagina)
             assert get_response.status_code == 200, (
                 "GET login falhou: " + str(get_response.status_code)
             )
             parser = LoginForm()
             parser.feed(get_response.get_data(as_text=True))
             assert parser.action is not None, "Form de login sem action"
+            assert parser.csrf_token, "CSRF ausente do formulario de login"
+            test_case(
+                "Login sem CSRF bloqueado",
+                https_post(navegador, parser.action, data=dados_login, follow_redirects=False),
+                400,
+            )
             # Verifica que o formulario realmente transmite o next no POST.
             if next_destino is not None:
                 recebido = parse_qs(urlsplit(parser.action).query).get("next")
                 assert recebido == [next_destino], (
                     "Formulario nao preservou next: " + repr(recebido)
                 )
-            res = navegador.post(parser.action, data=dados_login, follow_redirects=False)
+            res = https_post(
+                navegador, parser.action,
+                data={**dados_login, "csrf_token": parser.csrf_token},
+                follow_redirects=False,
+            )
             assert res.status_code == 302, (
                 "POST login deveria redirecionar: HTTP " + str(res.status_code)
             )
@@ -311,6 +363,108 @@ def main():
             "Login sem next deveria ir ao painel padrao: " + repr(location)
         )
         print("OK: login sem next mantem destino padrao.")
+
+        # A7H.28: fluxo REAL de cadastro e gestao Master no mesmo SQLite efemero.
+        publico = app_instance.test_client()
+        token_publico = https_get(publico, "/__p05h/token").get_json()["token"]
+        cadastro_publico = {
+            "nome": "Membro P28 ficticio", "email": "p28-membro@invalid.test",
+            "senha": "SenhaLongaPublica!2026", "perfil": "Pastor",
+            "nivel_acesso": "master", "csrf_token": token_publico,
+        }
+        test_case("17 Cadastro publico sem CSRF", https_post(publico,
+            "/cadastro", data={k: v for k, v in cadastro_publico.items() if k != "csrf_token"}
+        ), 400)
+        test_case("18 Cadastro publico com perfil Pastor forjado", https_post(publico,
+            "/cadastro", data=cadastro_publico, follow_redirects=False,
+        ), 302)
+        with app_instance.app_context():
+            membro = Usuario.query.filter_by(email="p28-membro@invalid.test").one()
+            assert membro.nivel_acesso == "membro" and membro.perfil == "Membro"
+            master = Usuario(
+                nome="Master P28 ficticio", email="p28-master@invalid.test",
+                nivel_acesso="master", perfil="Master", ativo=True,
+            )
+            master.set_senha("SenhaMasterFicticia2026!")
+            db.session.add(master)
+            db.session.commit()
+
+        navegador_master = app_instance.test_client()
+        tela_login = https_get(navegador_master, "/login")
+        parser_master = LoginForm()
+        parser_master.feed(tela_login.get_data(as_text=True))
+        assert parser_master.csrf_token
+        test_case("19 Login real do Master ficticio", https_post(navegador_master,
+            parser_master.action,
+            data={"email": "p28-master@invalid.test",
+                  "senha": "SenhaMasterFicticia2026!",
+                  "csrf_token": parser_master.csrf_token},
+            follow_redirects=False,
+        ), 302)
+        test_case("20 Tela de criacao de usuarios para Master", https_get(navegador_master,
+            "/usuarios/novo"
+        ), 200)
+        token_master = https_get(navegador_master, "/__p05h/token").get_json()["token"]
+        criacao = {
+            "nome": "Segundo Master P28", "email": "p28-master2@invalid.test",
+            "senha": "SenhaMasterSegunda2026!", "confirmar_senha": "SenhaMasterSegunda2026!",
+            "nivel_acesso": "master", "csrf_token": token_master,
+        }
+        test_case("21 Criar Master sem CSRF bloqueado", https_post(navegador_master,
+            "/usuarios/novo", data={k: v for k, v in criacao.items() if k != "csrf_token"},
+        ), 400)
+        test_case("22 Criar Master sem reautenticacao bloqueado", https_post(navegador_master,
+            "/usuarios/novo", data=criacao,
+        ), 200)
+        with app_instance.app_context():
+            assert Usuario.query.filter_by(email="p28-master2@invalid.test").first() is None
+        criacao["confirmar_senha_admin"] = "SenhaMasterFicticia2026!"
+        test_case("23 Criar Master com senha do gestor", https_post(navegador_master,
+            "/usuarios/novo", data=criacao, follow_redirects=False,
+        ), 302)
+        with app_instance.app_context():
+            novo_master = Usuario.query.filter_by(email="p28-master2@invalid.test").one()
+            novo_id = novo_master.id
+
+        edicao = {
+            "nome": "Master P28 auditado", "email": "p28-master2@invalid.test",
+            "nivel_acesso": "master", "ativo": "on", "csrf_token": token_master,
+        }
+        test_case("24 Editar Master sem reautenticacao bloqueado", https_post(navegador_master,
+            f"/usuarios/{novo_id}/editar", data=edicao,
+        ), 200)
+        with app_instance.app_context():
+            assert db.session.get(Usuario, novo_id).nome == "Segundo Master P28"
+        edicao["confirmar_senha_admin"] = "SenhaMasterFicticia2026!"
+        test_case("25 Editar Master autenticado", https_post(navegador_master,
+            f"/usuarios/{novo_id}/editar", data=edicao, follow_redirects=False,
+        ), 302)
+        with app_instance.app_context():
+            assert db.session.get(Usuario, novo_id).nome == "Master P28 auditado"
+
+        perfil_base = {
+            "nome": "Master P28 ficticio", "email": "p28-master@invalid.test",
+            "senha_atual": "SenhaMasterFicticia2026!",
+            "nova_senha": "curta", "confirmar_senha": "curta",
+            "csrf_token": token_master,
+        }
+        test_case("26 Perfil sem CSRF bloqueado", https_post(navegador_master,
+            "/perfil", data={k: v for k, v in perfil_base.items() if k != "csrf_token"},
+        ), 400)
+        test_case("27 Troca de senha curta rejeitada", https_post(navegador_master,
+            "/perfil", data=perfil_base,
+        ), 200)
+        perfil_base["nova_senha"] = "NovaSenhaSegura2026!"
+        perfil_base["confirmar_senha"] = "NovaSenhaSegura2026!"
+        test_case("28 Troca de senha valida exige novo login", https_post(navegador_master,
+            "/perfil", data=perfil_base, follow_redirects=False,
+        ), 302)
+        test_case("29 Sessao anterior encerrada", https_get(navegador_master, "/usuarios"), 302)
+        with app_instance.app_context():
+            master_recarregado = Usuario.query.filter_by(email="p28-master@invalid.test").one()
+            assert master_recarregado.check_senha("NovaSenhaSegura2026!")
+            assert not master_recarregado.check_senha("SenhaMasterFicticia2026!")
+        print("OK: A7H.28 - cadastro, CSRF, Master e politica de senha validados.", flush=True)
 
         # Garante novamente que nenhuma movimentacao foi realizada.
         with app_instance.app_context():

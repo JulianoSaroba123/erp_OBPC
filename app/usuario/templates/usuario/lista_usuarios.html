@@ -162,6 +162,7 @@
                                     
                                     {% if usuario.nivel_acesso != 'master' and usuario.id != current_user.id %}
                                     <form method="POST" action="{{ url_for('usuario.toggle_status_usuario', user_id=usuario.id) }}" style="display:inline">
+                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-{{ 'danger' if usuario.ativo else 'success' }} btn-sm" title="{{ 'Desativar' if usuario.ativo else 'Ativar' }}">
                                             <i class="fas fa-{{ 'ban' if usuario.ativo else 'check' }}"></i>
                                         </button>
@@ -170,6 +171,7 @@
                                     
                                     {% if current_user.nivel_acesso == 'master' and usuario.nivel_acesso != 'master' and usuario.id != current_user.id %}
                                     <form method="POST" action="{{ url_for('usuario.excluir_usuario', user_id=usuario.id) }}" style="display:inline" onsubmit="return confirm('Excluir {{ usuario.nome }}? Esta ação não pode ser desfeita!')">
+                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-outline-danger btn-sm" title="Excluir">
                                             <i class="fas fa-trash"></i>
                                         </button>
@@ -187,12 +189,14 @@
 </div>
 
 <script>
+const usuarioCsrfToken = "{{ csrf_token() }}";
 function toggleStatus(userId) {
     if (confirm('Tem certeza que deseja alterar o status deste usuário?')) {
         fetch(`/usuarios/${userId}/toggle-status`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': usuarioCsrfToken,
             }
         })
         .then(response => response.json())
@@ -215,7 +219,8 @@ function excluirUsuario(userId, nome) {
         fetch(`/usuarios/${userId}/excluir`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': usuarioCsrfToken,
             }
         })
         .then(response => response.json())

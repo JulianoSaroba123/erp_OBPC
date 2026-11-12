@@ -110,6 +110,7 @@
       {% endwith %}
 
       <form method="POST" action="{{ url_for('usuario.cadastro') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group mb-3">
           <label for="nome" class="fw-semibold" style="color: #374151;">Nome completo</label>
           <input type="text" class="form-control" id="nome" name="nome" placeholder="Digite o nome completo" required>
@@ -122,19 +123,14 @@
 
         <div class="form-group mb-3">
           <label for="senha" class="fw-semibold" style="color: #374151;">Senha</label>
-          <input type="password" class="form-control" id="senha" name="senha" placeholder="Crie uma senha segura" required>
+          <input type="password" class="form-control" id="senha" name="senha" minlength="12" maxlength="128" placeholder="Mínimo 12 caracteres" required>
         </div>
 
         <div class="form-group mb-4">
           <label for="perfil" class="fw-semibold" style="color: #374151;">Perfil</label>
-          <select class="form-select" id="perfil" name="perfil" required>
-            <option value="">Selecione o perfil</option>
-            <option value="Pastor">Pastor</option>
-            <option value="Secretário">Secretário</option>
-            <option value="Tesoureiro">Tesoureiro</option>
-            <option value="Obreiro">Obreiro</option>
-            <option value="Membro">Membro</option>
-          </select>
+          <input type="text" class="form-control" value="Membro (acesso inicial)" disabled>
+          <input type="hidden" name="perfil" value="Membro">
+          <small class="text-muted">Privilégios especiais são atribuídos somente pela administração.</small>
         </div>
 
         <button type="submit" class="btn btn-primary w-100">Criar Conta</button>

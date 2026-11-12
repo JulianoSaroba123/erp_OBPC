@@ -34,6 +34,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" id="formEditarUsuario">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -140,8 +141,14 @@
                                 <i class="fas fa-lock me-1"></i>
                                 Nova Senha (opcional)
                             </label>
-                            <input type="password" class="form-control" id="nova_senha" name="nova_senha" minlength="6">
-                            <small class="form-text text-muted">Deixe em branco para manter a senha atual. Mínimo 6 caracteres.</small>
+                            <input type="password" class="form-control" id="nova_senha" name="nova_senha" minlength="12" maxlength="128">
+                            <small class="form-text text-muted">Deixe em branco para manter a senha atual. Mínimo 12 caracteres para novas senhas.</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="confirmar_senha_admin" class="form-label">Confirmação da sua senha de administrador</label>
+                            <input type="password" class="form-control" name="confirmar_senha_admin" id="confirmar_senha_admin" autocomplete="current-password">
+                            <small class="text-muted">Obrigatória para editar uma conta Master, promover alguém a Master ou redefinir senhas.</small>
                         </div>
 
                         <!-- Informações Adicionais -->
@@ -225,9 +232,9 @@ document.getElementById('formEditarUsuario').addEventListener('submit', function
     }
     
     const nova_senha = document.getElementById('nova_senha').value;
-    if (nova_senha && nova_senha.length < 6) {
+    if (nova_senha && nova_senha.length < 12) {
         e.preventDefault();
-        alert('A nova senha deve ter pelo menos 6 caracteres!');
+        alert('A nova senha deve ter pelo menos 12 caracteres!');
         return;
     }
 });

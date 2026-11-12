@@ -79,6 +79,7 @@
                         <div class="tab-pane fade {% if aba_ativa == 'gerais' %}show active{% endif %}" 
                              id="gerais" role="tabpanel">
                             <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="aba_ativa" value="gerais">
                                 
                                 <div class="row mb-4">
@@ -308,6 +309,7 @@
                         <div class="tab-pane fade {% if aba_ativa == 'financeiro' %}show active{% endif %}" 
                              id="financeiro" role="tabpanel">
                             <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="aba_ativa" value="financeiro">
                                 
                                 <div class="row mb-4">
@@ -486,6 +488,7 @@
                         <div class="tab-pane fade {% if aba_ativa == 'relatorios' %}show active{% endif %}" 
                              id="relatorios" role="tabpanel">
                             <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="aba_ativa" value="relatorios">
                                 
                                 <div class="row mb-4">
@@ -579,6 +582,7 @@
                         <div class="tab-pane fade {% if aba_ativa == 'layout' %}show active{% endif %}" 
                              id="layout" role="tabpanel">
                             <form method="POST" action="{{ url_for('configuracoes.salvar_configuracoes') }}" class="needs-validation" novalidate>
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="aba_ativa" value="layout">
                                 
                                 <div class="row mb-4">
@@ -767,6 +771,8 @@
     }, false);
 })();
 
+const csrfConfigToken = "{{ csrf_token() }}";
+
 // Função para resetar configurações de uma aba
 function resetarAba(aba) {
     if (confirm(`Tem certeza que deseja resetar as configurações da aba "${aba.toUpperCase()}" para os valores padrão?`)) {
@@ -780,6 +786,11 @@ function resetarAba(aba) {
         inputAba.value = aba;
         
         form.appendChild(inputAba);
+        var inputCsrf = document.createElement('input');
+        inputCsrf.type = 'hidden';
+        inputCsrf.name = 'csrf_token';
+        inputCsrf.value = csrfConfigToken;
+        form.appendChild(inputCsrf);
         document.body.appendChild(form);
         form.submit();
     }
@@ -792,6 +803,7 @@ function fazerBackup() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': csrfConfigToken,
             }
         })
         .then(response => response.json())
@@ -860,6 +872,7 @@ function uploadLogo(file) {
     
     const formData = new FormData();
     formData.append('logo', file);
+    formData.append('csrf_token', csrfConfigToken);
     
     // Mostrar indicador de carregamento
     const uploadInput = document.getElementById('logo_upload');
