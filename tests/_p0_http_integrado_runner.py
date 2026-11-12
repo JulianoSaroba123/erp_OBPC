@@ -211,7 +211,7 @@ def main():
             assert n_antes == n_depois, "Quantidade de lancamentos alterada nos testes"
         # P0.6D-B: testa o login REAL, com usuario/senha ficticios apenas
         # no banco descartavel. Nao reutiliza a autenticacao simulada P0.5H.
-        from app.usuario.usuario_model import Usuario
+        from app.usuario.usuario_model import Usuario, load_user
         from flask import url_for
         from html.parser import HTMLParser
         from urllib.parse import quote, parse_qs, urlsplit
@@ -220,12 +220,14 @@ def main():
             def __init__(self):
                 super().__init__()
                 self.action = None
+                self.csrf_token = None
             def handle_starttag(self, tag, attrs):
-                if tag.lower() != "form":
-                    return
                 d = dict(attrs)
-                if (d.get("method") or "").lower() == "post" and self.action is None:
-                    self.action = d.get("action")
+                if tag.lower() == "form" and (d.get("method") or "").lower() == "post":
+                    if self.action is None:
+                        self.action = d.get("action")
+                if tag.lower() == "input" and d.get("name") == "csrf_token":
+                    self.csrf_token = d.get("value")
 
         with app_instance.app_context():
             assert "usuarios" in set(inspect(db.engine).get_table_names())
@@ -242,7 +244,7 @@ def main():
             assert conta_id is not None
 
         # Login Manager volta a buscar os usuarios reais, mas APENAS do banco temporario.
-        login_manager.user_loader(lambda uid: db.session.get(Usuario, int(uid)) if uid.isdigit() else None)
+        login_manager.user_loader(load_user)
 
         with app_instance.test_request_context():
             fallback = url_for("financeiro.lista_lancamentos")
@@ -263,13 +265,23 @@ def main():
             parser = LoginForm()
             parser.feed(get_response.get_data(as_text=True))
             assert parser.action is not None, "Form de login sem action"
+            assert parser.csrf_token, "CSRF ausente do formulario de login"
+            test_case(
+                "Login sem CSRF bloqueado",
+                navegador.post(parser.action, data=dados_login, follow_redirects=False),
+                400,
+            )
             # Verifica que o formulario realmente transmite o next no POST.
             if next_destino is not None:
                 recebido = parse_qs(urlsplit(parser.action).query).get("next")
                 assert recebido == [next_destino], (
                     "Formulario nao preservou next: " + repr(recebido)
                 )
-            res = navegador.post(parser.action, data=dados_login, follow_redirects=False)
+            res = navegador.post(
+                parser.action,
+                data={**dados_login, "csrf_token": parser.csrf_token},
+                follow_redirects=False,
+            )
             assert res.status_code == 302, (
                 "POST login deveria redirecionar: HTTP " + str(res.status_code)
             )
