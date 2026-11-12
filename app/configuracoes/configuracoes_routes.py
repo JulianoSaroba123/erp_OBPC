@@ -9,9 +9,9 @@ Rotas para gerenciamento das configurações do sistema
 """
 
 from datetime import datetime
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, jsonify, abort
 from flask_login import login_required, current_user
-from app.extensoes import db
+from app.extensoes import db, csrf
 from app.configuracoes.configuracoes_model import Configuracao
 import os
 import requests
@@ -509,13 +509,13 @@ def buscar_cep(cep):
 @configuracoes_bp.route('/limpar-dados-sistema', methods=['GET', 'POST'])
 @login_required
 def limpar_dados_sistema():
-    """Limpa todos os dados do sistema - Só pastor pode acessar"""
-    
-    # Verificar se usuário é pastor
-    if current_user.perfil != 'Pastor':
-        flash('Acesso negado. Apenas pastores podem limpar dados do sistema.', 'danger')
-        return redirect(url_for('configuracoes.configuracoes'))
-    
+    """Operacao destrutiva restrita a Master, nunca ao texto do perfil."""
+    if current_user.nivel_acesso != 'master':
+        abort(403)
+
+    if request.method == 'POST':
+        csrf.protect()
+
     if request.method == 'GET':
         # Exibir página de confirmação
         return render_template('configuracoes/limpar_dados.html')
