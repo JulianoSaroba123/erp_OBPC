@@ -7,6 +7,14 @@ from sqlalchemy import extract
 
 membros_bp = Blueprint('membros', __name__, template_folder='templates')
 
+
+
+from app.utils.seguranca_modulos import proteger_modulo_legado
+
+
+@membros_bp.before_request
+def _autorizar_modulo_legado():
+    return proteger_modulo_legado("tem_acesso_membros")
 # ============================================================================
 # FUNÇÕES AUXILIARES
 # ============================================================================
