@@ -42,6 +42,7 @@
                     {% endif %}
 
                     <form method="POST" action="{{ url_for('oficios.salvar_oficio') }}" class="obpc-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if editando %}
                         <input type="hidden" name="id" value="{{ oficio.id }}">
                         {% endif %}
