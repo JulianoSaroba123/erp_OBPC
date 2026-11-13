@@ -150,6 +150,12 @@ def main():
                 return self.nivel_acesso in {"master", "administrador", "lider_departamento"}
             def eh_lider_departamento(self):
                 return self.nivel_acesso == "lider_departamento" and getattr(self, "departamento_id", None) is not None
+            def pode_gerenciar_usuarios(self):
+                return self.nivel_acesso in {"master", "administrador"}
+            def tem_acesso_midia(self):
+                return self.nivel_acesso in {"master", "administrador", "midia"}
+            def get_nome_nivel(self):
+                return self.nivel_acesso.replace("_", " ").title()
             def get_menu_principal(self):
                 return "usuario.painel"
 
