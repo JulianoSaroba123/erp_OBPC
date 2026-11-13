@@ -24,6 +24,14 @@ from io import BytesIO
 
 atas_bp = Blueprint('atas', __name__, template_folder='templates')
 
+
+
+from app.utils.seguranca_modulos import proteger_modulo_legado
+
+
+@atas_bp.before_request
+def _autorizar_modulo_legado():
+    return proteger_modulo_legado("tem_acesso_secretaria")
 @atas_bp.route('/secretaria/atas')
 @login_required
 def lista_atas():
