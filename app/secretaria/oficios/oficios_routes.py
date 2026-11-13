@@ -26,6 +26,14 @@ oficios_bp = Blueprint('oficios', __name__,
                       template_folder='templates',
                       url_prefix='/secretaria/oficios')
 
+
+
+from app.utils.seguranca_modulos import proteger_modulo_legado
+
+
+@oficios_bp.before_request
+def _autorizar_modulo_legado():
+    return proteger_modulo_legado("tem_acesso_secretaria")
 @oficios_bp.route('/')
 @login_required
 def lista_oficios():

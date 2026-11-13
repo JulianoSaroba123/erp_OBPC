@@ -19,6 +19,14 @@ participacao_bp = Blueprint('participacao', __name__,
                            template_folder='templates',
                            url_prefix='/secretaria/participacao')
 
+
+
+from app.utils.seguranca_modulos import proteger_modulo_legado
+
+
+@participacao_bp.before_request
+def _autorizar_modulo_legado():
+    return proteger_modulo_legado("tem_acesso_secretaria")
 @participacao_bp.route('/')
 @login_required
 def listar_participacoes():

@@ -18,6 +18,7 @@
 
                 <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('atas.salvar_ata') }}" class="obpc-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if ata %}
                             <input type="hidden" name="ata_id" value="{{ ata.id }}">
                         {% endif %}

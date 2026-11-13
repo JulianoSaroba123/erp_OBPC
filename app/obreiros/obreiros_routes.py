@@ -6,6 +6,14 @@ from datetime import datetime
 
 obreiros_bp = Blueprint('obreiros', __name__, template_folder='templates')
 
+
+
+from app.utils.seguranca_modulos import proteger_modulo_legado
+
+
+@obreiros_bp.before_request
+def _autorizar_modulo_legado():
+    return proteger_modulo_legado("tem_acesso_obreiros")
 @obreiros_bp.route('/obreiros')
 @login_required
 def lista_obreiros():

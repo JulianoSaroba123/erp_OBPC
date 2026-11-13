@@ -30,6 +30,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('oficios.atualizar_oficio', id=oficio.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <!-- Coluna esquerda -->
                             <div class="col-md-6">
