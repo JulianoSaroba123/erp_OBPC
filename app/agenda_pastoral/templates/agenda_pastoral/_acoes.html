@@ -1,0 +1,31 @@
+<script>
+async function alterarAtividade(url) {
+    try {
+        const resposta = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRFToken': {{ csrf_token()|tojson }}
+            }
+        });
+        if (!(resposta.headers.get('Content-Type') || '').includes('application/json')) {
+            alert('Não foi possível alterar a atividade. Atualize a página e tente novamente.');
+            return;
+        }
+        const dados = await resposta.json();
+        if (resposta.ok && dados.success) {
+            location.reload();
+        } else {
+            alert(dados.message || 'Não foi possível alterar a atividade.');
+        }
+    } catch {
+        alert('Não foi possível comunicar com o servidor.');
+    }
+}
+
+function excluirAtividade(url) {
+    if (confirm('Tem certeza que deseja excluir esta atividade?')) {
+        alterarAtividade(url);
+    }
+}
+</script>

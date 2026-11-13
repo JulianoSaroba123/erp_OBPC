@@ -26,6 +26,7 @@
             <div class="card">
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('midia.salvar_certificado') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if certificado %}
                         <input type="hidden" name="id" value="{{ certificado.id }}">
                         {% endif %}

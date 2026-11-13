@@ -26,6 +26,7 @@
             <div class="card shadow-sm">
                 <div class="card-body p-4">
                     <form method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <!-- Informações Principais -->
                         <div class="row g-3 mb-4">
                             <div class="col-md-12">
@@ -47,7 +48,7 @@
                                 <textarea class="form-control" 
                                           id="descricao" 
                                           name="descricao" 
-                                          rows="3">{{ atividade.descricao if atividade else '' }}</textarea>
+                                          rows="3">{{ (atividade.descricao or '') if atividade else '' }}</textarea>
                             </div>
                         </div>
 
@@ -106,7 +107,7 @@
                                        class="form-control" 
                                        id="local" 
                                        name="local" 
-                                       value="{{ atividade.local if atividade else '' }}" 
+                                       value="{{ (atividade.local or '') if atividade else '' }}"
                                        placeholder="Ex: Igreja, Casa do Membro, etc.">
                             </div>
                         </div>
@@ -141,7 +142,7 @@
                                 <textarea class="form-control" 
                                           id="observacoes" 
                                           name="observacoes" 
-                                          rows="3">{{ atividade.observacoes if atividade else '' }}</textarea>
+                                          rows="3">{{ (atividade.observacoes or '') if atividade else '' }}</textarea>
                             </div>
                         </div>
 

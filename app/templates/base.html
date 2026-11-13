@@ -583,9 +583,7 @@
             <button type="button" class="menu-toggle-button submenu-toggle-button{% if sec_credenciais_ativas %} active{% endif %}" onclick="toggleSubmenu(this, event)" aria-expanded="{{ 'true' if sec_credenciais_ativas else 'false' }}"><i class="fas fa-id-card"></i><span>Credenciais</span><i class="fas fa-chevron-down submenu-arrow"{% if sec_credenciais_ativas %} style="transform: rotate(180deg);"{% endif %}></i></button>
             <div class="submenu{% if sec_credenciais_ativas %} show{% endif %}">
               <a href="{{ url_for('midia.listar_carteiras') }}" class="submenu-item{% if caminho_atual.startswith('/midia/carteiras') %} active{% endif %}"><i class="fas fa-id-card"></i><span>Carteiras</span></a>
-              {% if current_user.tem_acesso_midia() %}
               <a href="{{ url_for('midia.listar_certificados') }}" class="submenu-item{% if caminho_atual.startswith('/midia/certificados') %} active{% endif %}"><i class="fas fa-certificate"></i><span>Certificados</span></a>
-              {% endif %}
             </div>
           </div>
 
@@ -702,6 +700,14 @@
           <a href="{{ url_for('midia.listar_agenda') }}" class="submenu-item">
             <i class="fas fa-calendar-week"></i><span>Agenda Semanal</span>
           </a>
+          <a href="{{ url_for('escala_ministerial.listar_escalas') }}" class="submenu-item">
+            <i class="fas fa-calendar-check"></i><span>Escala Ministerial</span>
+          </a>
+          {% if not current_user.tem_acesso_secretaria() %}
+          <a href="{{ url_for('midia.listar_certificados') }}" class="submenu-item">
+            <i class="fas fa-certificate"></i><span>Certificados</span>
+          </a>
+          {% endif %}
         </div>
       </div>
       {% endif %}

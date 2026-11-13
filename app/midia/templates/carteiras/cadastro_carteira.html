@@ -22,10 +22,17 @@
                 </a>
             </div>
 
+            {% with avisos = get_flashed_messages(with_categories=true) %}
+                {% for categoria, mensagem in avisos %}
+                    <div class="alert alert-{{ categoria }}" role="alert">{{ mensagem }}</div>
+                {% endfor %}
+            {% endwith %}
+
             <!-- Formulário -->
             <div class="card">
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('midia.salvar_carteira') }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if carteira %}
                         <input type="hidden" name="id" value="{{ carteira.id }}">
                         {% endif %}
@@ -76,7 +83,7 @@
                                     <i class="fas fa-phone text-primary me-1"></i>Telefone
                                 </label>
                                 <input type="tel" class="form-control" id="telefone" name="telefone" 
-                                       value="{{ carteira.telefone if carteira else '' }}" 
+                                       value="{{ (carteira.telefone or '') if carteira else '' }}"
                                        maxlength="20">
                             </div>
 
@@ -86,7 +93,7 @@
                                     <i class="fas fa-map-marker-alt text-primary me-1"></i>Endereço
                                 </label>
                                 <input type="text" class="form-control" id="endereco" name="endereco" 
-                                       value="{{ carteira.endereco if carteira else '' }}" 
+                                       value="{{ (carteira.endereco or '') if carteira else '' }}"
                                        maxlength="300">
                             </div>
 
@@ -96,7 +103,7 @@
                                     <i class="fas fa-briefcase text-primary me-1"></i>Cargo/Função
                                 </label>
                                 <input type="text" class="form-control" id="cargo_funcao" name="cargo_funcao" 
-                                       value="{{ carteira.cargo_funcao if carteira else '' }}" 
+                                       value="{{ (carteira.cargo_funcao or '') if carteira else '' }}"
                                        maxlength="100">
                             </div>
 
@@ -121,7 +128,7 @@
                                 {% if carteira and carteira.foto_caminho %}
                                 <div class="mt-2">
                                     <small class="text-muted">Foto atual:</small><br>
-                                    <img src="{{ url_for('static', filename=carteira.foto_caminho) }}" 
+                                    <img src="{{ url_for('midia.foto_carteira', carteira_id=carteira.id) }}"
                                          alt="Foto atual" class="rounded border" width="120" height="120" style="object-fit: cover;">
                                     <br><small class="text-warning">⚠️ Selecionar nova foto substituirá a atual</small>
                                 </div>
@@ -134,7 +141,7 @@
                                     <i class="fas fa-sticky-note text-primary me-1"></i>Observações
                                 </label>
                                 <textarea class="form-control" id="observacoes" name="observacoes" rows="3" 
-                                          maxlength="500">{{ carteira.observacoes if carteira else '' }}</textarea>
+                                          maxlength="500">{{ (carteira.observacoes or '') if carteira else '' }}</textarea>
                                 <div class="form-text">Informações adicionais (máx. 500 caracteres)</div>
                             </div>
                         </div>
@@ -166,16 +173,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-preencher data de emissão com data atual se for nova carteira
-    {% if not carteira %}
-    const dataEmissao = document.getElementById('data_emissao');
-    if (!dataEmissao.value) {
-        const hoje = new Date();
-        const dataFormatada = hoje.toISOString().split('T')[0];
-        dataEmissao.value = dataFormatada;
-    }
-    {% endif %}
-    
     // Validação de arquivo de foto e preview
     const fotoInput = document.getElementById('foto');
     fotoInput.addEventListener('change', function(e) {

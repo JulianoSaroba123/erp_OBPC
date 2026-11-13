@@ -79,6 +79,7 @@ relatorio_*.pdf
 
 # Uploads (opcional - remova se quiser versionar uploads)
 static/uploads/
+/app/static/uploads/
 
 # Debug/Test files temporários
 debug_*.py

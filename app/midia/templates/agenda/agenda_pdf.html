@@ -171,7 +171,7 @@
     <!-- Cabeçalho -->
     <div class="header">
         <h1 class="title">AGENDA SEMANAL</h1>
-        <p class="subtitle">Organização Batista Pró-Comunhão</p>
+        <p class="subtitle">Igreja O Brasil para Cristo</p>
         <div class="period">
             Semana {{ semana }} de {{ ano }}<br>
             {{ inicio_semana.strftime('%d/%m/%Y') }} a {{ fim_semana.strftime('%d/%m/%Y') }}
@@ -181,10 +181,9 @@
     <!-- Calendário da Semana -->
     <div class="weekdays">
         {% set dias_semana = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] %}
-        {% for i in range(7) %}
-            {% set data_dia = inicio_semana + timedelta(days=i) %}
+        {% for data_dia in dias_semana_datas %}
             <div class="weekday {% if data_dia == hoje %}current{% endif %}">
-                {{ dias_semana[i] }}<br>
+                {{ dias_semana[loop.index0] }}<br>
                 {{ data_dia.strftime('%d/%m') }}
             </div>
         {% endfor %}
@@ -194,13 +193,12 @@
     <div class="agenda-container">
         {% set dias_semana = ['Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado', 'Domingo'] %}
         
-        {% for i in range(7) %}
-            {% set data_dia = inicio_semana + timedelta(days=i) %}
+        {% for data_dia in dias_semana_datas %}
             {% set eventos_dia = agenda | selectattr('data_evento', 'equalto', data_dia) | list %}
             
             <div class="day-section">
                 <div class="day-header">
-                    {{ dias_semana[i] }} - {{ data_dia.strftime('%d/%m/%Y') }}
+                    {{ dias_semana[loop.index0] }} - {{ data_dia.strftime('%d/%m/%Y') }}
                     <span style="float: right; font-weight: normal; font-size: 14px;">
                         ({{ eventos_dia | length }} evento{% if eventos_dia | length != 1 %}s{% endif %})
                     </span>
@@ -210,8 +208,8 @@
                     {% if eventos_dia %}
                         {% for evento in eventos_dia %}
                             <div class="event-item">
-                                {% if evento.horario %}
-                                    <span class="event-time">{{ evento.horario.strftime('%H:%M') }}</span>
+                                {% if evento.hora_inicio %}
+                                    <span class="event-time">{{ evento.hora_inicio.strftime('%H:%M') }}</span>
                                 {% endif %}
                                 
                                 <div class="event-title">{{ evento.titulo }}</div>
@@ -237,8 +235,8 @@
 
     <!-- Rodapé -->
     <div class="footer">
-        <p>Relatório gerado em {{ moment().format('DD/MM/YYYY [às] HH:mm') }}</p>
-        <p>Sistema OBPC - Organização Batista Pró-Comunhão</p>
+        <p>Relatório gerado em {{ gerado_em.strftime('%d/%m/%Y às %H:%M') }}</p>
+        <p>Sistema OBPC - Igreja O Brasil para Cristo</p>
     </div>
 
     <script>
