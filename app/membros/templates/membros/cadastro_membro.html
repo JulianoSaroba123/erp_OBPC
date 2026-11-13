@@ -46,6 +46,7 @@
 
                 <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('membros.salvar_membro') }}" novalidate class="obpc-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if membro %}
                             <input type="hidden" name="id" value="{{ membro.id }}">
                         {% endif %}
