@@ -396,6 +396,40 @@ def main():
                 data={"id": str(id_outro), "csrf_token": token_lider},
             ), 403,
         )
+        # Fluxos autorizados chegam a validacao de negocio sem alterar o banco.
+        token_secretario = https_get(secretario, "/__p05h/token").get_json()["token"]
+        for rota in ("/membros/salvar", "/obreiros/salvar", "/secretaria/atas/salvar"):
+            test_case(
+                "41 Secretario com CSRF valida dados de formulario: " + rota,
+                https_post(secretario, rota, data={"csrf_token": token_secretario}), 302,
+            )
+        test_case(
+            "42 Lider pode abrir a edicao do proprio departamento",
+            cliente_lider.get(f"/departamentos/editar/{id_dept}"), 200,
+        )
+        resposta_validacao = https_post(
+            cliente_lider,
+            f"/departamentos/{id_dept}/cronogramas/adicionar",
+            json={},
+            headers={"Referer": HTTPS_ORIGIN + "/departamentos",
+                     "X-CSRFToken": token_lider},
+        )
+        test_case(
+            "43 Lider autenticado com CSRF chega a validacao de cronograma",
+            resposta_validacao, 400,
+            lambda res: res.is_json and "obrigat" in res.get_json().get("erro", "").lower(),
+        )
+        test_case(
+            "44 Lider nao adiciona cronograma em outro departamento",
+            https_post(
+                cliente_lider,
+                f"/departamentos/{id_outro}/cronogramas/adicionar",
+                json={},
+                headers={"Referer": HTTPS_ORIGIN + "/departamentos",
+                         "X-CSRFToken": token_lider},
+            ), 403,
+        )
+
 
 
         with app_instance.app_context():
