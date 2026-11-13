@@ -140,6 +140,16 @@ def main():
                 return self.nivel_acesso in {"master", "administrador", "Admin"}
             def pode_gerenciar_eventos(self):
                 return self.nivel_acesso in {"master", "administrador", "lider_departamento", "midia"}
+            def tem_acesso_membros(self):
+                return self.nivel_acesso in {"master", "administrador", "secretario"}
+            def tem_acesso_obreiros(self):
+                return self.tem_acesso_membros()
+            def tem_acesso_secretaria(self):
+                return self.tem_acesso_membros()
+            def tem_acesso_departamentos(self):
+                return self.nivel_acesso in {"master", "administrador", "lider_departamento"}
+            def eh_lider_departamento(self):
+                return self.nivel_acesso == "lider_departamento" and getattr(self, "departamento_id", None) is not None
             def get_menu_principal(self):
                 return "usuario.painel"
 
@@ -289,6 +299,98 @@ def main():
             "16L Atualizacao administrativa nao aceita POST sem CSRF",
             master_efemero.post("/admin/atualizar-atividades-painel"), 400,
         )
+        # A7H.30: acesso a cadastros sensiveis e permissoes de lider por ID.
+        for rota in (
+            "/membros", "/obreiros", "/secretaria/atas",
+            "/secretaria/oficios/", "/secretaria/inventario/lista",
+            "/secretaria/participacao/", "/departamentos",
+        ):
+            test_case(
+                "30 Membro sem permissao negado: " + rota,
+                denied.get(rota), 403,
+            )
+
+        token_membro = https_get(denied, "/__p05h/token").get_json()["token"]
+        for rota in (
+            "/membros/salvar", "/obreiros/salvar", "/secretaria/atas/salvar",
+            "/secretaria/oficios/salvar", "/secretaria/inventario/cadastrar",
+            "/secretaria/participacao/salvar", "/departamentos/salvar",
+        ):
+            test_case(
+                "31 Membro nao pode gravar: " + rota,
+                https_post(denied, rota, data={"csrf_token": token_membro}), 403,
+            )
+
+        for rota in (
+            "/membros/salvar", "/obreiros/salvar", "/secretaria/atas/salvar",
+            "/secretaria/oficios/salvar", "/secretaria/inventario/cadastrar",
+            "/secretaria/participacao/salvar", "/departamentos/salvar",
+        ):
+            test_case(
+                "32 Master nao grava sem CSRF: " + rota,
+                master_efemero.post(rota, data={}), 400,
+            )
+
+        fake_users["p30_secretario"] = FakeUser("p30_secretario", "secretario")
+        secretario = app_instance.test_client()
+        with secretario.session_transaction() as sessao:
+            sessao["_user_id"] = "p30_secretario"
+            sessao["_fresh"] = True
+        for rota in (
+            "/membros", "/obreiros", "/secretaria/atas",
+        ):
+            test_case(
+                "33 Secretario pode consultar: " + rota,
+                secretario.get(rota), 200,
+            )
+        test_case(
+            "34 Secretario nao administra departamentos",
+            secretario.get("/departamentos"), 403,
+        )
+
+        from app.departamentos.departamentos_model import Departamento
+        with app_instance.app_context():
+            dept_a = Departamento(nome="Departamento teste A7H30", status="Ativo")
+            dept_b = Departamento(nome="Departamento teste A7H30 B", status="Ativo")
+            db.session.add_all([dept_a, dept_b])
+            db.session.commit()
+            id_dept, id_outro = dept_a.id, dept_b.id
+        lider_falso = FakeUser("p30_lider", "lider_departamento")
+        lider_falso.departamento_id = id_dept
+        fake_users["p30_lider"] = lider_falso
+        cliente_lider = app_instance.test_client()
+        with cliente_lider.session_transaction() as sessao:
+            sessao["_user_id"] = "p30_lider"
+            sessao["_fresh"] = True
+        test_case(
+            "35 Lider lista somente seu departamento",
+            cliente_lider.get("/departamentos"), 200,
+        )
+        test_case(
+            "36 Lider nao edita outro departamento",
+            cliente_lider.get(f"/departamentos/editar/{id_outro}"), 403,
+        )
+        test_case(
+            "37 Lider nao consulta cronograma de outro departamento",
+            cliente_lider.get(f"/departamentos/{id_outro}/cronogramas/listar"), 403,
+        )
+        test_case(
+            "38 Lider nao cria outro departamento",
+            cliente_lider.get("/departamentos/novo"), 403,
+        )
+        test_case(
+            "39 Lider pode consultar seu cronograma",
+            cliente_lider.get(f"/departamentos/{id_dept}/cronogramas/listar"), 200,
+        )
+        token_lider = https_get(cliente_lider, "/__p05h/token").get_json()["token"]
+        test_case(
+            "40 Lider nao altera outro departamento por POST",
+            https_post(
+                cliente_lider, "/departamentos/salvar",
+                data={"id": str(id_outro), "csrf_token": token_lider},
+            ), 403,
+        )
+
 
         with app_instance.app_context():
             n_depois = db.session.execute(text("SELECT COUNT(*) FROM lancamentos")).scalar_one()
