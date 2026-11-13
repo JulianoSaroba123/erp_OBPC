@@ -13,6 +13,7 @@
         </h5>
         
         <form method="POST" action="{% if participacao %}{{ url_for('participacao.editar_participacao', id=participacao.id) }}{% else %}{{ url_for('participacao.salvar_participacao') }}{% endif %}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="obreiro_id" class="form-label">Obreiro *</label>
