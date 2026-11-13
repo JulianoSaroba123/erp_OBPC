@@ -25,6 +25,14 @@ from io import BytesIO
 inventario_bp = Blueprint('inventario', __name__, template_folder='templates')
 
 
+
+
+from app.utils.seguranca_modulos import proteger_modulo_legado
+
+
+@inventario_bp.before_request
+def _autorizar_modulo_legado():
+    return proteger_modulo_legado("tem_acesso_secretaria")
 def _rotas_teste_habilitadas():
     """Permite rotas de teste apenas em ambiente de desenvolvimento explícito."""
     flag = current_app.config.get('ALLOW_DEV_SEED_ROUTES')
