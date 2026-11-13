@@ -66,7 +66,6 @@ def test_departamento_lider_verifica_recursos_e_nao_registra_form_completo():
     assert "csrf.protect()" not in source  # helper central faz CSRF
     assert "proteger_modulo_legado('tem_acesso_departamentos')" in source
     assert "dict(request.form)" not in source
-    assert "api" not in ""  # manter verificacao sem efeitos colaterais
 
 
 def test_departamento_ajax_envia_csrf_em_todas_mutacoes():
