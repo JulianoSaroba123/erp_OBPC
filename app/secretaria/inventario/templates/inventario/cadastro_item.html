@@ -18,6 +18,7 @@
 
                 <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('inventario.cadastrar_item') }}" class="obpc-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if item %}
                             <input type="hidden" name="item_id" value="{{ item.id }}">
                         {% endif %}
