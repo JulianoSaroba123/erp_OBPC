@@ -14,6 +14,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('inventario.atualizar_item', id=item.id) }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <!-- Código -->
                             <div class="col-md-3 mb-3">
