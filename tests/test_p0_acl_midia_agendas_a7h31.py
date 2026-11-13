@@ -36,7 +36,7 @@ def cenario(tmp_path_factory):
         m.setattr(Config, "SQLALCHEMY_DATABASE_URI", f"sqlite:///{base / 'teste.sqlite'}")
         m.setattr(Config, "SQLALCHEMY_ENGINE_OPTIONS", {})
         m.setattr(Config, "SESSION_COOKIE_SECURE", False)
-        m.setattr(Config, "PREFERRED_URL_SCHEME", "http")
+        m.setattr(Config, "PREFERRED_URL_SCHEME", "http", raising=False)
         m.setattr(tarefas_agendadas, "iniciar_scheduler", lambda _app: None)
         app = create_app()
         app.config.update(TESTING=True, ALLOW_DEV_SEED_ROUTES=False)
@@ -226,6 +226,21 @@ def test_midia_carteira_certificado_agenda_e_escala_com_token(cenario):
     assert rejeitado.headers["Location"] == "/midia/carteiras/nova"
     with app.app_context():
         assert CarteiraMembro.query.filter_by(numero_carteira="T-002").count() == 0
+
+    with secretaria.session_transaction() as sess:
+        sess.pop("_flashes", None)
+    # Cabeçalho PNG válido, mas CRC inválido. Pillow verifica o contêiner
+    # e pode lançar SyntaxError em vez de OSError.
+    from base64 import b64decode
+    foto_corrompida = b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jMioAAAAASUVORK5CYII="
+    )
+    rejeitado = secretaria.post("/midia/carteiras/salvar", data=dict(
+        dados_carteira, csrf_token=csrf_secretaria,
+        foto=(io.BytesIO(foto_corrompida), "corrompida.png"),
+    ), follow_redirects=True)
+    assert rejeitado.status_code == 200
+    assert b"Envie uma imagem" in rejeitado.data
 
     from PIL import Image
     foto = io.BytesIO()

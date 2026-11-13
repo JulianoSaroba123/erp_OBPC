@@ -752,7 +752,7 @@ def salvar_carteira():
                         raise ValueError
                     imagem.verify()
                 foto.stream.seek(0)
-            except (OSError, ValueError, Image.DecompressionBombError):
+            except (OSError, SyntaxError, ValueError, Image.DecompressionBombError):
                 db.session.rollback()
                 flash('Envie uma imagem PNG, JPG ou GIF válida de até 5 MB.', 'warning')
                 return redirect(url_for('midia.editar_carteira', carteira_id=carteira_id)

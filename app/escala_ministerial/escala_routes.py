@@ -134,7 +134,7 @@ def salvar_escala():
             escala.observacoes = observacoes if observacoes else None
             escala.atualizado_em = datetime.utcnow()
             
-            flash('Agenda pastoral atualizada com sucesso!', 'success')
+            flash('Escala ministerial atualizada com sucesso!', 'success')
         else:
             # Criar nova escala
             nova_escala = EscalaMinisterial(
@@ -149,7 +149,7 @@ def salvar_escala():
             )
             
             db.session.add(nova_escala)
-            flash('Agenda pastoral cadastrada com sucesso!', 'success')
+            flash('Escala ministerial cadastrada com sucesso!', 'success')
         
         db.session.commit()
         return redirect(url_for('escala_ministerial.listar_escalas'))
