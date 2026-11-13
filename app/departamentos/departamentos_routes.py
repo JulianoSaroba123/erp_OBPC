@@ -17,6 +17,14 @@ def _autorizar_departamentos_e_escopo():
     if not current_user.is_authenticated:
         return None
 
+    # Dados marcados para o painel continuam visiveis aos usuarios logados.
+    # Nao expor por esta excecao as consultas de gestao privada.
+    if request.endpoint in {
+        'departamentos.cronogramas_painel',
+        'departamentos.aulas_painel',
+    }:
+        return None
+
     if not current_user.tem_acesso_departamentos():
         abort(403)
 
