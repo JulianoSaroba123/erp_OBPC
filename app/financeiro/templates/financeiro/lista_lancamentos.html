@@ -323,8 +323,8 @@
                   {% endif %}
                 </td>
                 <td class="text-center">
-                  {% if lancamento.tem_comprovante() %}
-                  <a href="{{ lancamento.comprovante }}" target="_blank" class="obpc-btn obpc-btn-secondary obpc-btn--sm" title="Ver comprovante: {{ lancamento.nome_arquivo_comprovante() }}">
+                  {% if lancamento.comprovante|url_comprovante %}
+                  <a href="{{ lancamento.comprovante|url_comprovante }}" target="_blank" class="obpc-btn obpc-btn-secondary obpc-btn--sm" title="Ver comprovante: {{ lancamento.nome_arquivo_comprovante() }}">
                     {% if lancamento.is_comprovante_imagem() %}
                     <i class="fas fa-image"></i>
                     {% elif lancamento.is_comprovante_pdf() %}
@@ -333,6 +333,8 @@
                     <i class="fas fa-paperclip"></i>
                     {% endif %}
                   </a>
+                  {% elif lancamento.tem_comprovante() %}
+                  <a href="{{ url_for('financeiro.editar_lancamento', id=lancamento.id, **filtros) }}" title="Ver anexos"><i class="fas fa-paperclip"></i></a>
                   {% else %}
                   <span class="obpc-text-muted">-</span>
                   {% endif %}

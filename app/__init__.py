@@ -153,13 +153,22 @@ def create_app():
         return "<h1>Erro Interno</h1><p>Ocorreu um erro inesperado.</p>", 500
 
     @app.before_request
-    def bloquear_fotos_de_carteira_na_rota_estatica():
-        # Mantém arquivos legados no mesmo lugar, mas só a rota com ACL pode servi-los.
+    def bloquear_arquivos_privados_na_rota_estatica():
+        # Links históricos de comprovantes são atendidos pelo blueprint Financeiro.
         if request.endpoint == "static":
             nome = (request.view_args or {}).get("filename", "")
             pasta_estatica = Path(app.static_folder).resolve()
-            pasta_fotos = (pasta_estatica / "uploads/fotos_membros").resolve()
-            if (pasta_estatica / nome).resolve().is_relative_to(pasta_fotos):
+            destino = pasta_estatica / nome
+            for subpasta in ("fotos_membros", "comprovantes", "extratos"):
+                pasta_restrita = pasta_estatica / "uploads" / subpasta
+                if destino.is_relative_to(pasta_restrita) or destino.resolve().is_relative_to(pasta_restrita.resolve()):
+                    abort(404)
+            from app.financeiro.arquivos_financeiros import pasta_financeira_privada
+            try:
+                pasta_privada = pasta_financeira_privada()
+            except ValueError:
+                abort(404)
+            if destino.resolve().is_relative_to(pasta_privada):
                 abort(404)
 
     # Registro dos Blueprints
@@ -180,6 +189,9 @@ def create_app():
     app.register_blueprint(conciliacao_bp)
     app.register_blueprint(agenda_pastoral_bp)
     app.register_blueprint(notificacoes_bp)
+
+    from app.financeiro.arquivos_financeiros import url_comprovante
+    app.add_template_filter(url_comprovante, "url_comprovante")
 
     # Registro de filtros Jinja2
     @app.template_filter('mes_nome_completo')

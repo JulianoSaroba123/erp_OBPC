@@ -2,13 +2,16 @@
 Rotas adicionais para funcionalidades avançadas de conciliação bancária
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
 from app.utils.auth_decorators import requer_acesso_financeiro
 from werkzeug.utils import secure_filename
 import os
 import json
 from datetime import datetime
+from tempfile import TemporaryDirectory
+
+from app.financeiro.arquivos_financeiros import pasta_financeira_privada
 
 from app.extensoes import db, csrf
 from app.financeiro.financeiro_model import Lancamento, ConciliacaoHistorico, ConciliacaoPar, ImportacaoExtrato
@@ -32,7 +35,6 @@ def _validar_csrf_financeiro_blueprint():
 
 
 
-UPLOAD_FOLDER = 'app/static/uploads/extratos'
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 
 def allowed_file(filename):
@@ -100,29 +102,23 @@ def upload_extrato():
             flash('Tipo de arquivo não permitido. Use CSV, XLS ou XLSX', 'danger')
             return redirect(url_for('conciliacao.importar_extrato'))
         
-        # Salvar arquivo temporariamente
+        # O extrato só existe durante o processamento. Diretórios distintos
+        # evitam colisões mesmo quando dois usuários enviam o mesmo nome.
         filename = secure_filename(file.filename)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{timestamp}_{filename}"
-        
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(file_path)
-        
-        # Importar extrato
-        importador = ImportadorExtrato()
-        resultado = importador.importar_arquivo(
-            file_path, 
-            banco, 
-            current_user.nome if hasattr(current_user, 'nome') else 'Sistema'
-        )
-        
-        # Remover arquivo temporário
-        try:
-            os.remove(file_path)
-        except:
-            pass
-        
+        if not allowed_file(filename):
+            flash('Nome de arquivo de extrato inválido.', 'danger')
+            return redirect(url_for('conciliacao.importar_extrato'))
+        pasta = pasta_financeira_privada() / "temporarios"
+        pasta.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if pasta.is_symlink():
+            raise OSError("Pasta temporária inválida")
+        with TemporaryDirectory(prefix="extrato-", dir=pasta) as temporario:
+            file_path = os.path.join(temporario, filename)
+            file.save(file_path)
+            resultado = ImportadorExtrato().importar_arquivo(
+                file_path, banco, getattr(current_user, 'nome', 'Sistema')
+            )
+
         if resultado['sucesso']:
             flash(f"Extrato importado com sucesso! "
                   f"Processados: {resultado['registros_processados']}, "
@@ -141,7 +137,8 @@ def upload_extrato():
         return redirect(url_for('conciliacao.dashboard_conciliacao'))
         
     except Exception as e:
-        flash(f'Erro no upload: {str(e)}', 'danger')
+        current_app.logger.error('Falha no upload de extrato (%s)', type(e).__name__)
+        flash('Não foi possível processar o extrato.', 'danger')
         return redirect(url_for('conciliacao.importar_extrato'))
 
 @conciliacao_bp.route('/financeiro/conciliacao/executar-automatica', methods=['POST'])

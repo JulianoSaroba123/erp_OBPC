@@ -28,6 +28,7 @@ MANIFEST
 
 # Flask
 instance/*.db
+/instance/arquivos_financeiros/
 *.db
 *.sqlite
 *.sqlite3

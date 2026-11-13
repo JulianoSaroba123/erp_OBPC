@@ -135,7 +135,7 @@
             <td>{{ "R$ %.2f"|format((pagamento.valor_despesas_fixas if pagamento.valor_despesas_fixas is not none else 0)|default(0, true))|replace(".", ",") }}</td>
             <td><strong>{{ "R$ %.2f"|format((pagamento.valor_total if pagamento.valor_total is not none else pagamento.valor)|default(0, true))|replace(".", ",") }}</strong></td><td>{{ pagamento.forma_pagamento }}</td><td>{{ pagamento.competencia }}</td>
             <td>{% if pagamento.pagamento_historico_sem_movimentacao %}<span class="obpc-badge obpc-badge--neutral">Histórico</span>{% else %}<span class="obpc-badge obpc-badge--success">Bancário</span>{% endif %}</td>
-            <td>{% if pagamento.comprovante %}<a href="{{ pagamento.comprovante }}" target="_blank" rel="noopener">Abrir</a>{% else %}-{% endif %}</td><td>{{ pagamento.observacao or '-' }}</td>
+            <td>{% if pagamento.comprovante|url_comprovante %}<a href="{{ pagamento.comprovante|url_comprovante }}" target="_blank" rel="noopener">Abrir</a>{% else %}-{% endif %}</td><td>{{ pagamento.observacao or '-' }}</td>
             <td><div class="obpc-table-actions">
               {% if pagamento.pagamento_obrigacao_id is not none %}
               <span class="obpc-badge obpc-badge--neutral" title="Pagamento vinculado ao motor de obrigações.">Controlado por obrigação</span><button type="button" class="obpc-btn obpc-btn-secondary obpc-btn--sm" disabled><i class="fas fa-lock"></i></button>

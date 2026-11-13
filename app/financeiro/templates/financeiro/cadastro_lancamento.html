@@ -118,7 +118,7 @@
                   {% if lancamento %}
                     {% if lancamento.comprovante and lancamento.comprovante.strip() %}
                     <div class="obpc-alert obpc-alert-info mt-3">
-                      <div class="flex-grow-1"><strong>Comprovante principal:</strong> <a href="{{ lancamento.comprovante }}" target="_blank">{{ lancamento.nome_arquivo_comprovante() }}</a></div>
+                      <div class="flex-grow-1"><strong>Comprovante principal:</strong> {% if lancamento.comprovante|url_comprovante %}<a href="{{ lancamento.comprovante|url_comprovante }}" target="_blank" rel="noopener">{{ lancamento.nome_arquivo_comprovante() }}</a>{% else %}Referência indisponível{% endif %}</div>
                       <button type="submit" class="obpc-btn obpc-btn-danger obpc-btn--sm" formaction="{{ url_for('financeiro.excluir_comprovante', id=lancamento.id) }}" formmethod="POST" onclick="return confirm('Tem certeza que deseja excluir este comprovante?');"><i class="fas fa-trash-alt"></i></button>
                     </div>
                     {% endif %}
@@ -129,7 +129,7 @@
                       <div class="obpc-card-body">
                         {% for comp in lancamento.comprovantes.all() %}
                         <div class="d-flex align-items-center justify-content-between gap-3 py-2 {% if not loop.last %}border-bottom{% endif %}">
-                          <div class="d-flex align-items-center gap-2"><i class="fas {% if comp.is_imagem() %}fa-image{% elif comp.is_pdf() %}fa-file-pdf{% else %}fa-file{% endif %} obpc-text-muted"></i><div><a href="{{ comp.arquivo }}" target="_blank"><strong>{{ comp.nome_original }}</strong></a><div class="obpc-text-muted small">{{ comp.tamanho_formatado() }} · {{ comp.criado_em.strftime('%d/%m/%Y %H:%M') if comp.criado_em else 'N/A' }}</div></div></div>
+                          <div class="d-flex align-items-center gap-2"><i class="fas {% if comp.is_imagem() %}fa-image{% elif comp.is_pdf() %}fa-file-pdf{% else %}fa-file{% endif %} obpc-text-muted"></i><div><a href="{{ comp.arquivo|url_comprovante or url_for('financeiro.editar_lancamento', id=lancamento.id) }}" target="_blank" rel="noopener"><strong>{{ comp.nome_original }}</strong></a><div class="obpc-text-muted small">{{ comp.tamanho_formatado() }} · {{ comp.criado_em.strftime('%d/%m/%Y %H:%M') if comp.criado_em else 'N/A' }}</div></div></div>
                           <button type="submit" class="obpc-btn obpc-btn-danger obpc-btn--sm" formaction="{{ url_for('financeiro.excluir_comprovante_multiplo', comprovante_id=comp.id) }}" formmethod="POST" onclick="return confirm('Tem certeza que deseja excluir este comprovante?');"><i class="fas fa-trash-alt"></i></button>
                         </div>
                         {% endfor %}

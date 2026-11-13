@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
-from flask import current_app
+from flask import current_app, has_request_context
+from xml.sax.saxutils import escape, quoteattr
 from app.configuracoes.configuracoes_model import Configuracao
 from reportlab.lib.pagesizes import A4, letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
@@ -981,18 +982,16 @@ class RelatorioFinanceiro:
     def _gerar_info_comprovante(self, lancamento):
         """Gera informação do comprovante para o PDF"""
         if hasattr(lancamento, 'comprovante') and lancamento.comprovante:
-            # Extrair nome do arquivo do caminho
-            nome_arquivo = lancamento.comprovante.split('/')[-1] if '/' in lancamento.comprovante else lancamento.comprovante
-            
-            # Gerar URL completa do comprovante
-            url_comprovante = f"http://127.0.0.1:5000/static/uploads/comprovantes/{nome_arquivo}"
-            
-            # Criar link clicável usando HTML
+            from app.financeiro.arquivos_financeiros import nome_da_referencia, url_comprovante
             from reportlab.platypus import Paragraph
-            # Truncar nome para caber na coluna (mais espaço agora)
-            nome_truncado = nome_arquivo if len(nome_arquivo) <= 20 else nome_arquivo[:17] + '...'
-            link_html = f'<link href="{url_comprovante}">📎 {nome_truncado}</link>'
-            return Paragraph(link_html, self.styles['texto_normal'])
+
+            nome = nome_da_referencia(lancamento.comprovante)
+            if not nome:
+                return "Comprovante"
+            nome_truncado = escape(nome if len(nome) <= 20 else nome[:17] + '...')
+            url = url_comprovante(lancamento.comprovante, externa=True) if has_request_context() else None
+            rotulo = f'<link href={quoteattr(url)}>{nome_truncado}</link>' if url else nome_truncado
+            return Paragraph(rotulo, self.styles['texto_normal'])
         else:
             return "-"
     

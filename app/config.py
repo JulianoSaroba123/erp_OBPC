@@ -34,6 +34,7 @@ class Config:
         }
     
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    FINANCEIRO_ARQUIVOS_DIR = os.environ.get('FINANCEIRO_ARQUIVOS_DIR')
     
     # Configurações de sessão - OTIMIZADO PARA RENDER
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
