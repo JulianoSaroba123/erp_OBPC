@@ -46,6 +46,7 @@
                 
                 <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('departamentos.salvar_departamento') }}">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if departamento %}
                             <input type="hidden" name="id" value="{{ departamento.id }}">
                         {% endif %}
@@ -477,6 +478,7 @@ document.getElementById('contato').addEventListener('input', function(e) {
 
 // ============================================================================
 // SALVAR CRONOGRAMAS E AULAS ANTES DE SUBMETER O FORMULÁRIO
+const csrfDeptToken = "{{ csrf_token() }}";
 // ============================================================================
 
 document.querySelector('form').addEventListener('submit', async function(e) {
@@ -511,6 +513,7 @@ document.querySelector('form').addEventListener('submit', async function(e) {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfDeptToken,
                         },
                         body: JSON.stringify(cronogramaData)
                     });
@@ -532,6 +535,7 @@ document.querySelector('form').addEventListener('submit', async function(e) {
             for (let item of novasAulas) {
                 // Usar FormData para enviar arquivo junto
                 const formData = new FormData();
+                formData.append('csrf_token', csrfDeptToken);
                 formData.append('titulo', item.querySelector('.aula-titulo').value);
                 formData.append('descricao', item.querySelector('.aula-descricao').value);
                 formData.append('professora', item.querySelector('.aula-professora').value);
@@ -849,7 +853,8 @@ function removerCronogramaSalvo(cronogramaId, button) {
     fetch(`/cronogramas/${cronogramaId}/excluir`, {
         method: 'DELETE',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfDeptToken
         }
     })
     .then(response => response.json())
@@ -887,7 +892,8 @@ function removerAulaSalva(aulaId, button) {
     fetch(`/aulas/${aulaId}/excluir`, {
         method: 'DELETE',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfDeptToken
         }
     })
     .then(response => response.json())
