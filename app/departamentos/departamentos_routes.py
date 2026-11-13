@@ -1,13 +1,73 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_from_directory
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app, send_from_directory, abort
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import os
 import json
 from app.extensoes import db
+from app.utils.seguranca_modulos import proteger_modulo_legado
 from app.departamentos.departamentos_model import Departamento, CronogramaDepartamento, AulaDepartamento
 from datetime import datetime
 
 departamentos_bp = Blueprint('departamentos', __name__, template_folder='templates')
+
+
+@departamentos_bp.before_request
+def _autorizar_departamentos_e_escopo():
+    """Master/Admin: todos. Lider: somente seu departamento e atividades."""
+    if not current_user.is_authenticated:
+        return None
+
+    if not current_user.tem_acesso_departamentos():
+        abort(403)
+
+    if current_user.nivel_acesso == 'lider_departamento':
+        dept_id = current_user.departamento_id
+        if not dept_id:
+            abort(403)
+
+        endpoint = request.endpoint
+        args = request.view_args or {}
+        if endpoint in {
+            'departamentos.novo_departamento',
+            'departamentos.excluir_departamento',
+        }:
+            abort(403)
+
+        if endpoint == 'departamentos.salvar_departamento':
+            # Lider nao cria novos departamentos nem edita outros.
+            try:
+                id_form = int(request.form.get('id') or 0)
+            except (TypeError, ValueError):
+                abort(403)
+            if id_form != dept_id:
+                abort(403)
+
+        for campo in ('id', 'departamento_id'):
+            if campo in args and args[campo] != dept_id:
+                abort(403)
+
+        for campo, model in (
+            ('cronograma_id', CronogramaDepartamento),
+            ('aula_id', AulaDepartamento),
+        ):
+            if campo in args:
+                objeto = db.session.get(model, args[campo])
+                if objeto is None:
+                    abort(404)
+                if objeto.departamento_id != dept_id:
+                    abort(403)
+
+        if endpoint == 'departamentos.download_arquivo_aula':
+            arquivo = args.get('filename', '')
+            if not arquivo.startswith(f'dept_{dept_id}_'):
+                abort(403)
+            # O prefixo nao basta: arquivo deve pertencer a uma aula do departamento.
+            if not AulaDepartamento.query.filter_by(
+                departamento_id=dept_id, arquivo_anexo=arquivo
+            ).first():
+                abort(404)
+
+    return proteger_modulo_legado('tem_acesso_departamentos')
 
 # Configurações para upload de arquivos
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'txt', 'jpg', 'jpeg', 'png'}
@@ -107,7 +167,7 @@ def salvar_departamento():
         print("="*60)
         print("[DEBUG] Rota salvar_departamento chamada!")
         print(f"[DEBUG] Metodo: {request.method}")
-        print(f"[DEBUG] Form data: {dict(request.form)}")
+        # Nunca registrar formulario completo: pode conter informacoes pessoais.
         print("="*60)
         
         current_app.logger.info(">>> Rota salvar_departamento chamada!")
@@ -124,11 +184,7 @@ def salvar_departamento():
         possui_aulas = bool(request.form.get('possui_aulas'))  # Checkbox retorna valor ou None
         planejamento_aulas = request.form.get('planejamento_aulas', '').strip()
         
-        print(f"[DEBUG] Dados capturados:")
-        print(f"  - ID: {departamento_id}")
-        print(f"  - Nome: {nome}")
-        print(f"  - Lider: {lider}")
-        print(f"  - Status: {status}")
+        # Log completo de dados de formulario removido (privacidade).
         
         current_app.logger.info(f">>> Dados recebidos - Nome: {nome}, Lider: {lider}, ID: {departamento_id}")
         
