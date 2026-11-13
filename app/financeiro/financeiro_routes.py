@@ -16,6 +16,9 @@ from app.financeiro.obrigacoes_model import (
 from app.financeiro.observacao_relatorio_model import ObservacaoRelatorio
 from app.financeiro.recibo_model import Recibo
 from app.financeiro.comprovante_model import Comprovante
+from app.financeiro.arquivos_financeiros import (
+    gravar_comprovante, servir_comprovante, url_comprovante,
+)
 from app.configuracoes.configuracoes_model import Configuracao
 from app.utils.gerar_pdf_reportlab import RelatorioFinanceiro, gerar_nome_arquivo_relatorio
 from datetime import datetime, date, timedelta
@@ -24,7 +27,6 @@ from sqlalchemy.exc import OperationalError, ProgrammingError
 from decimal import Decimal, ROUND_HALF_UP
 import json
 import os
-from werkzeug.utils import secure_filename
 import io
 import csv
 import re
@@ -1302,7 +1304,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
         if lancamento.comprovante and lancamento.comprovante.strip():
             comprovantes.append({
                 'nome': lancamento.nome_arquivo_comprovante() or 'Comprovante',
-                'url': lancamento.comprovante,
+                'url': url_comprovante(lancamento.comprovante),
                 'origem': 'legado'
             })
 
@@ -1310,7 +1312,7 @@ def _sincronizar_lancamento_repasse_sede(pagamento, *, commit=True):
             for comprovante in lancamento.comprovantes.all():
                 comprovantes.append({
                     'nome': comprovante.nome_original or comprovante.nome_arquivo() or 'Comprovante',
-                    'url': comprovante.arquivo,
+                    'url': url_comprovante(comprovante.arquivo),
                     'origem': 'relacionado'
                 })
         except Exception:
@@ -1732,7 +1734,7 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
         if lancamento.comprovante and lancamento.comprovante.strip():
             comprovantes.append({
                 'nome': lancamento.nome_arquivo_comprovante() or 'Comprovante',
-                'url': lancamento.comprovante,
+                'url': url_comprovante(lancamento.comprovante),
                 'origem': 'legado'
             })
 
@@ -1740,7 +1742,7 @@ def gerar_dados_relatorio(tipo_relatorio='gerencial', mes=None, ano=None):
             for comprovante in lancamento.comprovantes.all():
                 comprovantes.append({
                     'nome': comprovante.nome_original or comprovante.nome_arquivo() or 'Comprovante',
-                    'url': comprovante.arquivo,
+                    'url': url_comprovante(comprovante.arquivo),
                     'origem': 'relacionado'
                 })
         except Exception:
@@ -2628,43 +2630,33 @@ def conciliacao_moderno():
         flash(f'Erro ao carregar conciliação: {str(e)}', 'danger')
         return redirect(url_for('financeiro.conciliacao'))
 
-# Configurações para upload de arquivos
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'pdf'}
-
-def allowed_file(filename):
-    """Verifica se o arquivo tem extensão permitida"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
 def processar_upload_comprovante(file):
-    """Processa upload do arquivo de comprovante"""
-    if not file or file.filename == '':
+    """Grava novos comprovantes fora da árvore estática."""
+    if not file or not file.filename:
         return None
-    
-    if not allowed_file(file.filename):
-        flash('Tipo de arquivo não permitido. Use: JPG, PNG ou PDF', 'danger')
-        return None
-    
     try:
-        # Gerar nome único para o arquivo
-        import uuid
-        filename = secure_filename(file.filename)
-        nome_unico = f"{uuid.uuid4().hex}_{filename}"
-        
-        # Criar diretório se não existir
-        upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'comprovantes')
-        os.makedirs(upload_dir, exist_ok=True)
-        
-        # Salvar arquivo
-        file_path = os.path.join(upload_dir, nome_unico)
-        file.save(file_path)
-        
-        # Retornar caminho relativo para salvar no banco
-        return f"/static/uploads/comprovantes/{nome_unico}"
-        
-    except Exception as e:
-        flash(f'Erro ao fazer upload do comprovante: {str(e)}', 'danger')
-        return None
+        referencia, _, _ = gravar_comprovante(file)
+        return referencia
+    except ValueError:
+        flash('Tipo de arquivo não permitido. Use: JPG, PNG ou PDF', 'danger')
+    except OSError as e:
+        current_app.logger.error('Falha ao gravar comprovante (%s)', type(e).__name__)
+        flash('Não foi possível gravar o comprovante.', 'danger')
+    return None
+
+
+@financeiro_bp.route('/financeiro/arquivos/comprovantes/<nome>')
+@login_required
+def abrir_comprovante(nome):
+    return servir_comprovante(nome)
+
+
+@financeiro_bp.route('/static/uploads/comprovantes/<nome>')
+@login_required
+def abrir_comprovante_legado(nome):
+    """Links salvos em relatórios antigos passam pela ACL financeira."""
+    return servir_comprovante(nome, legado_apenas=True)
+
 
 # ========== ROTAS ESPECÍFICAS (devem vir ANTES de /financeiro) ==========
 
@@ -4347,11 +4339,6 @@ def salvar_lancamento():
         if observacoes_raw and observacoes_raw.lower() != 'none' and observacoes_raw.strip():
             observacoes = observacoes_raw
         
-        # Processar upload de comprovante
-        file = request.files.get('comprovante')
-        caminho_comprovante = None
-        if file:
-            caminho_comprovante = processar_upload_comprovante(file)
         
         # Validações básicas
         if not tipo or tipo not in ['Entrada', 'Saída']:
@@ -4397,6 +4384,7 @@ def salvar_lancamento():
             lancamento.observacoes = observacoes
             lancamento.projeto_id = projeto_id  # Atualizar projeto
             # Atualizar comprovante apenas se um novo foi enviado
+            caminho_comprovante = processar_upload_comprovante(request.files.get('comprovante'))
             if caminho_comprovante:
                 lancamento.comprovante = caminho_comprovante
             flash('Lançamento atualizado com sucesso!', 'success')
@@ -4420,6 +4408,7 @@ def salvar_lancamento():
                 flash('Já existe um lançamento igual cadastrado! Verifique os dados.', 'danger')
                 filtros_ativos = obter_filtros_ativos()
                 return redirect(url_for('financeiro.novo_lancamento', **filtros_ativos))
+            caminho_comprovante = processar_upload_comprovante(request.files.get('comprovante'))
             # Criar novo lançamento
             novo_lancamento = Lancamento(
                 data=data_obj,
@@ -4493,169 +4482,78 @@ def excluir_lancamento(id):
 @financeiro_bp.route('/financeiro/excluir-comprovante/<int:id>', methods=['POST'])
 @login_required
 def excluir_comprovante(id):
-    """Exclui apenas o comprovante de um lançamento"""
-    try:
-        import os
-        from flask import current_app
-        
-        lancamento = Lancamento.query.get_or_404(id)
-        
-        if lancamento.tem_comprovante():
-            # Tentar excluir o arquivo físico
-            try:
-                caminho_completo = os.path.join(current_app.root_path, lancamento.comprovante.lstrip('/'))
-                if os.path.exists(caminho_completo):
-                    os.remove(caminho_completo)
-            except Exception as e:
-                current_app.logger.warning(f'Erro ao excluir arquivo físico: {str(e)}')
-            
-            # Limpar referência no banco
+    """Desvincula o comprovante principal, que pode ser compartilhado com um repasse."""
+    lancamento = db.get_or_404(Lancamento, id)
+    if not lancamento.comprovante:
+        flash('Este lançamento não possui comprovante principal.', 'warning')
+    else:
+        try:
             lancamento.comprovante = None
             db.session.commit()
-            
-            flash('Comprovante excluído com sucesso!', 'success')
-        else:
-            flash('Este lançamento não possui comprovante.', 'warning')
-        
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao excluir comprovante: {str(e)}', 'danger')
-    
-    # Redirecionar de volta para a edição
+            flash('Comprovante desvinculado com sucesso!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error('Falha ao desvincular comprovante (%s)', type(e).__name__)
+            flash('Não foi possível desvincular o comprovante.', 'danger')
     return redirect(url_for('financeiro.editar_lancamento', id=id))
+
 
 @financeiro_bp.route('/financeiro/upload-comprovantes/<int:id>', methods=['POST'])
 @login_required
 def upload_comprovantes(id):
-    """Upload de múltiplos comprovantes para um lançamento"""
+    """Anexa arquivos privados ao lançamento."""
+    lancamento = db.get_or_404(Lancamento, id)
+    arquivos = request.files.getlist('comprovantes[]') or request.files.getlist('comprovantes_multiplos')
+    gravados = []
     try:
-        from app.financeiro.comprovante_model import Comprovante
-        import uuid
-        
-        lancamento = Lancamento.query.get_or_404(id)
-        
-        # Debug - verificar o que está vindo no request
-        current_app.logger.info(f">>> Upload comprovantes - Request.files: {request.files}")
-        current_app.logger.info(f">>> Request.files.keys(): {request.files.keys()}")
-        
-        # Verificar se há arquivos (tentar ambas as formas)
-        files = None
-        if 'comprovantes[]' in request.files:
-            files = request.files.getlist('comprovantes[]')
-            current_app.logger.info(f">>> Encontrado comprovantes[] - Total: {len(files)}")
-        elif 'comprovantes_multiplos' in request.files:
-            files = request.files.getlist('comprovantes_multiplos')
-            current_app.logger.info(f">>> Encontrado comprovantes_multiplos - Total: {len(files)}")
-        
-        if not files:
-            current_app.logger.warning(">>> Nenhum arquivo encontrado no request")
-            flash('Nenhum arquivo selecionado', 'warning')
-            return redirect(url_for('financeiro.editar_lancamento', id=id))
-        
-        if files[0].filename == '':
-            current_app.logger.warning(">>> Primeiro arquivo está vazio")
-            flash('Nenhum arquivo selecionado', 'warning')
-            return redirect(url_for('financeiro.editar_lancamento', id=id))
-        
-        arquivos_salvos = 0
-        erros = []
-        
-        for file in files:
-            if file and file.filename != '':
-                current_app.logger.info(f">>> Processando arquivo: {file.filename}")
-                
-                if not allowed_file(file.filename):
-                    erros.append(f"{file.filename} - formato não permitido")
-                    current_app.logger.warning(f">>> Arquivo rejeitado: {file.filename}")
-                    continue
-                
-                try:
-                    # Gerar nome único
-                    filename = secure_filename(file.filename)
-                    nome_unico = f"{uuid.uuid4().hex}_{filename}"
-                    
-                    # Criar diretório se não existir
-                    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'comprovantes')
-                    os.makedirs(upload_dir, exist_ok=True)
-                    
-                    # Salvar arquivo
-                    file_path = os.path.join(upload_dir, nome_unico)
-                    file.save(file_path)
-                    current_app.logger.info(f">>> Arquivo salvo: {file_path}")
-                    
-                    # Obter informações do arquivo
-                    file_size = os.path.getsize(file_path)
-                    
-                    # Criar registro no banco
-                    comprovante = Comprovante(
-                        lancamento_id=lancamento.id,
-                        arquivo=f"/static/uploads/comprovantes/{nome_unico}",
-                        nome_original=filename,
-                        tamanho=file_size,
-                        tipo_mime=file.content_type
-                    )
-                    db.session.add(comprovante)
-                    arquivos_salvos += 1
-                    current_app.logger.info(f">>> Comprovante adicionado ao banco: {filename}")
-                    
-                except Exception as e:
-                    erro_msg = f"{file.filename} - {str(e)}"
-                    erros.append(erro_msg)
-                    current_app.logger.error(f'>>> Erro ao processar arquivo {file.filename}: {str(e)}')
-                    import traceback
-                    traceback.print_exc()
-                    continue
-        
-        if arquivos_salvos > 0:
+        for file in arquivos:
+            if not file or not file.filename:
+                continue
+            try:
+                referencia, nome_original, caminho = gravar_comprovante(file)
+            except (ValueError, OSError) as e:
+                current_app.logger.warning('Comprovante não aceito (%s)', type(e).__name__)
+                flash('Um comprovante não pôde ser gravado. Use JPG, PNG ou PDF.', 'warning')
+                continue
+            gravados.append(caminho)
+            db.session.add(Comprovante(
+                lancamento_id=lancamento.id,
+                arquivo=referencia,
+                nome_original=nome_original,
+                tamanho=caminho.stat().st_size,
+                tipo_mime=file.content_type,
+            ))
+        if gravados:
             db.session.commit()
-            current_app.logger.info(f">>> Total de {arquivos_salvos} comprovantes salvos com sucesso")
-            flash(f'{arquivos_salvos} comprovante(s) adicionado(s) com sucesso!', 'success')
+            flash(f'{len(gravados)} comprovante(s) adicionado(s) com sucesso!', 'success')
         else:
-            current_app.logger.warning(">>> Nenhum arquivo foi salvo")
-            flash('Nenhum arquivo foi processado', 'warning')
-        
-        if erros:
-            for erro in erros:
-                flash(f'Erro: {erro}', 'danger')
-        
+            flash('Nenhum arquivo foi processado.', 'warning')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.error(f'>>> Erro geral no upload de comprovantes: {str(e)}')
-        import traceback
-        traceback.print_exc()
-        flash(f'Erro ao fazer upload: {str(e)}', 'danger')
-    
+        for caminho in gravados:
+            try:
+                caminho.unlink(missing_ok=True)
+            except OSError:
+                current_app.logger.warning('Não foi possível limpar um comprovante sem vínculo.')
+        current_app.logger.error('Falha ao anexar comprovantes (%s)', type(e).__name__)
+        flash('Não foi possível anexar os comprovantes.', 'danger')
     return redirect(url_for('financeiro.editar_lancamento', id=id))
+
 
 @financeiro_bp.route('/financeiro/excluir-comprovante-multiplo/<int:comprovante_id>', methods=['POST'])
 @login_required
 def excluir_comprovante_multiplo(comprovante_id):
-    """Exclui um comprovante específico da lista de múltiplos comprovantes"""
+    """Desvincula um comprovante adicional."""
+    comprovante = db.get_or_404(Comprovante, comprovante_id)
+    lancamento_id = comprovante.lancamento_id
     try:
-        from app.financeiro.comprovante_model import Comprovante
-        import os
-        
-        comprovante = Comprovante.query.get_or_404(comprovante_id)
-        lancamento_id = comprovante.lancamento_id
-        
-        # Tentar excluir o arquivo físico
-        try:
-            caminho_completo = os.path.join(current_app.root_path, comprovante.arquivo.lstrip('/'))
-            if os.path.exists(caminho_completo):
-                os.remove(caminho_completo)
-        except Exception as e:
-            current_app.logger.warning(f'Erro ao excluir arquivo físico: {str(e)}')
-        
-        # Excluir registro do banco
         db.session.delete(comprovante)
         db.session.commit()
-        
-        flash('Comprovante excluído com sucesso!', 'success')
-        
+        flash('Comprovante desvinculado com sucesso!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao excluir comprovante: {str(e)}', 'danger')
-    
+        current_app.logger.error('Falha ao desvincular comprovante (%s)', type(e).__name__)
+        flash('Não foi possível desvincular o comprovante.', 'danger')
     return redirect(url_for('financeiro.editar_lancamento', id=lancamento_id))
 
 @financeiro_bp.route('/financeiro/relatorio')
@@ -5733,11 +5631,11 @@ def gerenciar_despesas_fixas():
                     data_pagamento = date(competencia_ano_ref, competencia_mes_ref, 1)
                     data_pagamento_informada = False
 
-                if pagamento.comprovante:
-                    pagamento.comprovante = pagamento.comprovante
                 file = request.files.get('comprovante_sede')
                 if file and file.filename:
-                    pagamento.comprovante = processar_upload_comprovante(file)
+                    novo_comprovante = processar_upload_comprovante(file)
+                    if novo_comprovante:
+                        pagamento.comprovante = novo_comprovante
 
                 pagamento.data_pagamento = data_pagamento
                 pagamento.valor = valor_total

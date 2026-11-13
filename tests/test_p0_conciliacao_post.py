@@ -7,10 +7,11 @@ import importlib.util
 import io
 import os
 from datetime import datetime
+from tempfile import TemporaryDirectory
 from pathlib import Path
 
 import pytest
-from flask import Blueprint, Flask, flash, jsonify, redirect, request, url_for
+from flask import Blueprint, Flask, current_app, flash, jsonify, redirect, request, url_for
 from flask_login import LoginManager, UserMixin, current_user, login_required, login_user
 from werkzeug.utils import secure_filename
 
@@ -86,7 +87,7 @@ def ambiente(tmp_path):
     class ImportadorFicticio:
         def importar_arquivo(self, arquivo_path, banco, usuario):
             caminho = Path(arquivo_path)
-            assert caminho.parent.resolve() == tmp_path.resolve()
+            assert caminho.parent.parent.resolve() == (tmp_path / "temporarios").resolve()
             assert caminho.read_bytes() == b"movimento-ficticio"
             eventos["importacoes"].append((banco, usuario))
             return {
@@ -125,7 +126,9 @@ def ambiente(tmp_path):
         "os": os,
         "datetime": datetime,
         "secure_filename": secure_filename,
-        "UPLOAD_FOLDER": str(tmp_path),
+        "pasta_financeira_privada": lambda: tmp_path,
+        "TemporaryDirectory": TemporaryDirectory,
+        "current_app": current_app,
         "allowed_file": lambda nome: nome.lower().endswith(".csv"),
         "ImportadorExtrato": ImportadorFicticio,
         "ConciliadorAvancado": ConciliadorFicticio,
@@ -198,7 +201,7 @@ def test_upload_processado_executa_conciliacao_sem_get(ambiente):
     assert len(eventos["conciliacoes"]) == 1
     assert "/financeiro/conciliacao/dashboard" in resposta.headers["Location"]
     assert "executar-automatica" not in resposta.headers["Location"]
-    assert list(pasta_temporaria.iterdir()) == []
+    assert list(pasta_temporaria.glob("temporarios/*")) == []
 
 
 def test_upload_vazio_nao_concilia(ambiente):
@@ -213,7 +216,7 @@ def test_upload_vazio_nao_concilia(ambiente):
     assert resposta.status_code == 302
     assert len(eventos["importacoes"]) == 1
     assert eventos["conciliacoes"] == []
-    assert list(pasta_temporaria.iterdir()) == []
+    assert list(pasta_temporaria.glob("temporarios/*")) == []
 
 
 def test_upload_sem_permissao_nao_importa(ambiente):
