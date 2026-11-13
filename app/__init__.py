@@ -1,4 +1,5 @@
-from flask import Flask, redirect, request
+from pathlib import Path
+from flask import Flask, abort, redirect, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 from app.config import Config
 from app.extensoes import db, login_manager, csrf
@@ -150,6 +151,16 @@ def create_app():
         if '/usuarios' in req.path:
             return jsonify({'error': 'Erro interno do servidor.'}), 500
         return "<h1>Erro Interno</h1><p>Ocorreu um erro inesperado.</p>", 500
+
+    @app.before_request
+    def bloquear_fotos_de_carteira_na_rota_estatica():
+        # Mantém arquivos legados no mesmo lugar, mas só a rota com ACL pode servi-los.
+        if request.endpoint == "static":
+            nome = (request.view_args or {}).get("filename", "")
+            pasta_estatica = Path(app.static_folder).resolve()
+            pasta_fotos = (pasta_estatica / "uploads/fotos_membros").resolve()
+            if (pasta_estatica / nome).resolve().is_relative_to(pasta_fotos):
+                abort(404)
 
     # Registro dos Blueprints
     app.register_blueprint(usuario_bp)

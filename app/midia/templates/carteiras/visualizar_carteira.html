@@ -224,7 +224,7 @@
         <div class="conteudo">
             <div class="foto-container">
                 {% if carteira.foto_caminho %}
-                <img src="{{ url_for('static', filename=carteira.foto_caminho) }}" 
+                <img src="{{ url_for('midia.foto_carteira', carteira_id=carteira.id) }}"
                      alt="Foto do membro" class="foto">
                 {% else %}
                 <div class="foto-placeholder">

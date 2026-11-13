@@ -22,8 +22,9 @@
             <div class="card shadow-sm">
                 <div class="card-body p-4">
                     <form method="POST" action="{{ url_for('escala_ministerial.salvar_escala') }}" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if escala %}
-                            <input type="hidden" name="escala_id" value="{{ escala.id }}">
+                            <input type="hidden" name="id" value="{{ escala.id }}">
                         {% endif %}
                         
                         <div class="row g-3">
@@ -33,11 +34,11 @@
                                 <select class="form-select" id="evento_id" name="evento_id">
                                     <option value="">Selecione um evento da agenda semanal</option>
                                     {% for evento in eventos %}
-                                        <option value="{{ evento.id }}" 
+                                        <option value="{{ evento.id }}" data-url="{{ url_for('escala_ministerial.buscar_dados_evento', evento_id=evento.id) }}"
                                                 {% if escala and escala.evento_id == evento.id %}selected{% endif %}>
                                             {{ evento.titulo }} - {{ evento.data_evento.strftime('%d/%m/%Y') }}
-                                            {% if evento.horario %}
-                                                às {{ evento.horario.strftime('%H:%M') }}
+                                            {% if evento.hora_inicio %}
+                                                às {{ evento.hora_inicio.strftime('%H:%M') }}
                                             {% endif %}
                                         </option>
                                     {% endfor %}
@@ -51,12 +52,12 @@
                                        value="{% if escala and escala.data_evento %}{{ escala.data_evento.strftime('%Y-%m-%d') }}{% endif %}" required>
                             </div>
                             
-                            <!-- Campo para título manual -->
+                            <!-- Evento vinculado -->
                             <div class="col-md-12">
-                                <label for="titulo_evento" class="form-label">Título do Evento</label>
+                                <label for="titulo_evento" class="form-label">Título do Evento Vinculado</label>
                                 <input type="text" class="form-control" id="titulo_evento" name="titulo_evento" 
-                                       value="{{ escala.titulo_evento if escala else '' }}" 
-                                       placeholder="Ex: Culto de Domingo, Oração, Estudo Bíblico...">
+                                       value="{{ escala.evento.titulo if escala and escala.evento else '' }}" readonly
+                                       placeholder="Nenhum evento vinculado">
                                 <div class="form-text">Será preenchido automaticamente ao selecionar um evento da agenda</div>
                             </div>
 
@@ -139,19 +140,19 @@
 <script>
 // Autocomplete para seleção de evento
 document.getElementById('evento_id').addEventListener('change', function() {
-    const eventoId = this.value;
-    
-    if (eventoId) {
-        // Buscar dados do evento via AJAX
-        fetch(`/escala/api/evento/${eventoId}`)
+    const url = this.selectedOptions[0]?.dataset.url;
+    if (url) {
+        fetch(url)
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.sucesso) {
                     document.getElementById('data_evento').value = data.evento.data_evento;
                     document.getElementById('titulo_evento').value = data.evento.titulo;
                 }
             })
-            .catch(error => console.error('Erro ao buscar evento:', error));
+            .catch(() => { document.getElementById('titulo_evento').value = ''; });
+    } else {
+        document.getElementById('titulo_evento').value = '';
     }
 });
 

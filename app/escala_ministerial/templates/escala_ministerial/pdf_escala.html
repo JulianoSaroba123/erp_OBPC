@@ -136,7 +136,7 @@
 <body>
     <!-- Cabeçalho -->
     <div class="header">
-        <h1>{{ config.nome_igreja if config and config.nome_igreja else 'OBPC - Organização Batista Pró-Comunhão' }}</h1>
+        <h1>{{ config.nome_igreja if config and config.nome_igreja else 'OBPC - Igreja O Brasil para Cristo' }}</h1>
         {% if config %}
             {% if config.endereco %}
                 <div class="info-line">{{ config.endereco }}</div>
@@ -189,14 +189,14 @@
                 <td class="evento-col">
                     {% if escala.evento %}
                         <strong>{{ escala.evento.titulo }}</strong>
-                        {% if escala.evento.horario %}
-                            <br><small>{{ escala.evento.horario.strftime('%H:%M') }}</small>
+                        {% if escala.evento.hora_inicio %}
+                            <br><small>{{ escala.evento.hora_inicio.strftime('%H:%M') }}</small>
                         {% endif %}
                         {% if escala.evento.local %}
                             <br><small>{{ escala.evento.local }}</small>
                         {% endif %}
                     {% else %}
-                        {{ escala.titulo_evento or '-' }}
+                        -
                     {% endif %}
                 </td>
                 <td class="ministerio-col">{{ escala.pregador or '-' }}</td>
@@ -223,8 +223,8 @@
 
     <!-- Rodapé -->
     <div class="footer">
-        <p>Documento gerado em {{ moment().format('DD/MM/YYYY [às] HH:mm') if moment else now().strftime('%d/%m/%Y às %H:%M') }}</p>
-        <p>Sistema OBPC - Organização Batista Pró-Comunhão</p>
+        <p>Documento gerado em {{ data_geracao.strftime('%d/%m/%Y às %H:%M') }}</p>
+        <p>Sistema OBPC - Igreja O Brasil para Cristo</p>
     </div>
 
     <script>

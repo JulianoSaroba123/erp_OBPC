@@ -125,6 +125,7 @@
                                                 <i class="fas fa-edit"></i>
                                             </a>
                                             <form method="POST" action="{{ url_for('midia.excluir_agenda', item_id=item.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="btn btn-outline-danger" title="Excluir"
                                                         onclick="return confirm('Confirma exclusão do item {{ item.titulo }}?')">
                                                     <i class="fas fa-trash"></i>

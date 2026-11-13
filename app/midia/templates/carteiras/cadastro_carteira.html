@@ -26,6 +26,7 @@
             <div class="card">
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('midia.salvar_carteira') }}" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         {% if carteira %}
                         <input type="hidden" name="id" value="{{ carteira.id }}">
                         {% endif %}
@@ -121,7 +122,7 @@
                                 {% if carteira and carteira.foto_caminho %}
                                 <div class="mt-2">
                                     <small class="text-muted">Foto atual:</small><br>
-                                    <img src="{{ url_for('static', filename=carteira.foto_caminho) }}" 
+                                    <img src="{{ url_for('midia.foto_carteira', carteira_id=carteira.id) }}"
                                          alt="Foto atual" class="rounded border" width="120" height="120" style="object-fit: cover;">
                                     <br><small class="text-warning">⚠️ Selecionar nova foto substituirá a atual</small>
                                 </div>

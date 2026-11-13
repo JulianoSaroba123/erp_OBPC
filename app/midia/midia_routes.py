@@ -3,26 +3,67 @@ Rotas do Módulo Mídia - Sistema OBPC
 Unifica todas as rotas: Agenda, Certificados e Carteiras
 """
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file, current_app, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, current_app, abort
 from app import db
 from flask_login import login_required
 from .midia_model import AgendaSemanal, Certificado, CarteiraMembro
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import calendar
 import os
-from werkzeug.utils import secure_filename
+from pathlib import Path, PurePosixPath
+from werkzeug.exceptions import HTTPException
+from uuid import uuid4
+
+from PIL import Image
+from app.utils.seguranca_modulos import proteger_modulo_legado
 
 midia_bp = Blueprint('midia', __name__, url_prefix='/midia', template_folder='templates')
 
 
+_SEEDS_CERTIFICADOS = {"midia.criar_exemplos", "midia.criar_certificados_exemplo"}
+_FORMATOS_FOTO = {"PNG": ".png", "JPEG": ".jpg", "GIF": ".gif"}
+_EXTENSOES_FOTO = set(_FORMATOS_FOTO.values()) | {".jpeg"}
+_LIMITE_FOTO = 5 * 1024 * 1024
+_MAX_PIXELS_FOTO = 25_000_000
+_PASTA_FOTOS = "uploads/fotos_membros"
+
+
+@midia_bp.before_request
+def _proteger_midia():
+    endpoint = request.endpoint or ""
+    if endpoint in _SEEDS_CERTIFICADOS:
+        if not _rotas_seed_habilitadas():
+            abort(404)
+        return proteger_modulo_legado("tem_acesso_configuracoes")
+    if endpoint in {
+        "midia.listar_carteiras", "midia.nova_carteira", "midia.salvar_carteira",
+        "midia.editar_carteira", "midia.excluir_carteira", "midia.carteira_pdf", "midia.foto_carteira",
+    }:
+        return proteger_modulo_legado("tem_acesso_secretaria")
+    if endpoint in {
+        "midia.listar_certificados", "midia.novo_certificado", "midia.salvar_certificado",
+        "midia.editar_certificado", "midia.excluir_certificado",
+        "midia.visualizar_certificado", "midia.certificado_pdf",
+    }:
+        return proteger_modulo_legado("tem_acesso_certificados")
+    return proteger_modulo_legado("tem_acesso_midia")
+
+
+def _nome_foto_carteira(caminho):
+    if not caminho:
+        return None
+    foto = PurePosixPath(caminho)
+    if (foto.parent.as_posix() != _PASTA_FOTOS or "\\" in foto.name
+            or foto.suffix.lower() not in _EXTENSOES_FOTO):
+        return None
+    return foto.name
+
+
 def _rotas_seed_habilitadas():
     """Habilita rotas de seed apenas em ambiente de desenvolvimento explícito."""
-    flag = current_app.config.get('ALLOW_DEV_SEED_ROUTES')
-    if flag is not None:
-        return bool(flag)
-
     env = (os.environ.get('FLASK_ENV') or os.environ.get('APP_ENV') or '').strip().lower()
-    return current_app.debug or env in {'development', 'dev', 'local'}
+    ambiente_local = current_app.testing or env in {'development', 'dev', 'local'}
+    return ambiente_local and current_app.config.get('ALLOW_DEV_SEED_ROUTES') is True
 
 # ============================================================================
 # ROTAS DOS CERTIFICADOS MODERNOS
@@ -50,8 +91,11 @@ def certificado_pdf(certificado_id):
         return render_template(template_name, 
                              certificado=certificado, 
                              config=config_obj)
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao gerar PDF do certificado: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao gerar PDF do certificado (%s)', type(e).__name__)
+        flash('Erro ao gerar PDF do certificado.', 'danger')
         return redirect(url_for('midia.listar_certificados'))
 
 # ============================================================================
@@ -70,16 +114,11 @@ def listar_agenda():
         tipo_evento = request.args.get('tipo_evento', '')
         
         # Data atual como padrão
-        hoje = datetime.now().date()
-        if not semana:
-            semana = hoje.isocalendar()[1]  # Semana atual
-        if not ano:
-            ano = hoje.year
-            
-        # Calcular datas da semana
-        primeiro_dia_ano = datetime(ano, 1, 1).date()
-        dias_para_semana = (semana - 1) * 7
-        inicio_semana = primeiro_dia_ano + timedelta(days=dias_para_semana - primeiro_dia_ano.weekday())
+        hoje = date.today()
+        iso_atual = hoje.isocalendar()
+        semana = semana or iso_atual.week
+        ano = ano or iso_atual.year
+        inicio_semana = date.fromisocalendar(ano, semana, 1)
         fim_semana = inicio_semana + timedelta(days=6)
         
         # Query base
@@ -101,7 +140,7 @@ def listar_agenda():
         tipos_evento = ['Culto', 'Reunião', 'Evento', 'Anúncio']
         
         # Semanas do ano para o filtro
-        semanas_ano = list(range(1, 53))
+        semanas_ano = list(range(1, date(ano, 12, 28).isocalendar().week + 1))
         
         return render_template('agenda/lista_agenda.html',
                              agenda=agenda,
@@ -113,8 +152,11 @@ def listar_agenda():
                              inicio_semana=inicio_semana,
                              fim_semana=fim_semana)
                              
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao carregar agenda: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao carregar agenda (%s)', type(e).__name__)
+        flash('Erro ao carregar agenda.', 'danger')
         return redirect(url_for('usuario.index'))
 
 
@@ -146,22 +188,22 @@ def salvar_agenda():
         # Validações
         if not titulo:
             flash('Título é obrigatório!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_agenda'))
+            return redirect(url_for('midia.novo_agenda'))
             
         if not data_evento:
             flash('Data do evento é obrigatória!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_agenda'))
+            return redirect(url_for('midia.novo_agenda'))
             
         if not tipo_evento:
             flash('Tipo de evento é obrigatório!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_agenda'))
+            return redirect(url_for('midia.novo_agenda'))
         
         # Converter datas
         try:
             data_evento = datetime.strptime(data_evento, '%Y-%m-%d').date()
         except ValueError:
             flash('Data inválida!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_agenda'))
+            return redirect(url_for('midia.novo_agenda'))
         
         # Converter horários (opcional)
         hora_inicio_obj = None
@@ -171,14 +213,14 @@ def salvar_agenda():
                 hora_inicio_obj = datetime.strptime(hora_inicio, '%H:%M').time()
             except ValueError:
                 flash('Hora de início inválida!', 'danger')
-                return redirect(request.referrer or url_for('midia.novo_agenda'))
+                return redirect(url_for('midia.novo_agenda'))
                 
         if hora_fim:
             try:
                 hora_fim_obj = datetime.strptime(hora_fim, '%H:%M').time()
             except ValueError:
                 flash('Hora de fim inválida!', 'danger')
-                return redirect(request.referrer or url_for('midia.novo_agenda'))
+                return redirect(url_for('midia.novo_agenda'))
         
         # Salvar ou atualizar
         if item_id:
@@ -210,10 +252,13 @@ def salvar_agenda():
         flash('Item da agenda salvo com sucesso!', 'success')
         return redirect(url_for('midia.listar_agenda'))
         
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao salvar item: {str(e)}', 'danger')
-        return redirect(request.referrer or url_for('midia.novo_agenda'))
+        current_app.logger.error('Erro ao salvar item (%s)', type(e).__name__)
+        flash('Erro ao salvar item.', 'danger')
+        return redirect(url_for('midia.novo_agenda'))
 
 
 @midia_bp.route('/agenda/editar/<int:item_id>')
@@ -235,9 +280,12 @@ def excluir_agenda(item_id):
         db.session.commit()
         
         flash('Item da agenda excluído com sucesso!', 'success')
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao excluir item: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao excluir item (%s)', type(e).__name__)
+        flash('Erro ao excluir item.', 'danger')
     
     return redirect(url_for('midia.listar_agenda'))
 
@@ -252,16 +300,11 @@ def agenda_pdf():
         ano = request.args.get('ano', type=int)
         
         # Data atual como padrão
-        hoje = datetime.now().date()
-        if not semana:
-            semana = hoje.isocalendar()[1]  # Semana atual
-        if not ano:
-            ano = hoje.year
-            
-        # Calcular datas da semana
-        primeiro_dia_ano = datetime(ano, 1, 1).date()
-        dias_para_semana = (semana - 1) * 7
-        inicio_semana = primeiro_dia_ano + timedelta(days=dias_para_semana - primeiro_dia_ano.weekday())
+        hoje = date.today()
+        iso_atual = hoje.isocalendar()
+        semana = semana or iso_atual.week
+        ano = ano or iso_atual.year
+        inicio_semana = date.fromisocalendar(ano, semana, 1)
         fim_semana = inicio_semana + timedelta(days=6)
         
         # Buscar agenda
@@ -269,16 +312,22 @@ def agenda_pdf():
             AgendaSemanal.ativo == True,
             AgendaSemanal.data_evento >= inicio_semana,
             AgendaSemanal.data_evento <= fim_semana
-        ).order_by(AgendaSemanal.data_evento.asc(), AgendaSemanal.created_at.asc()).all()
+        ).order_by(AgendaSemanal.data_evento.asc(), AgendaSemanal.id.asc()).all()
         
-        return render_template('agenda/agenda_pdf.html', 
+        return render_template('agenda/agenda_pdf.html',
                              agenda=agenda,
                              semana=semana,
                              ano=ano,
+                             dias_semana_datas=[inicio_semana + timedelta(days=i) for i in range(7)],
+                             hoje=hoje,
+                             gerado_em=datetime.now(),
                              inicio_semana=inicio_semana,
                              fim_semana=fim_semana)
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao gerar PDF da agenda: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao gerar PDF da agenda (%s)', type(e).__name__)
+        flash('Erro ao gerar PDF da agenda.', 'danger')
         return redirect(url_for('midia.listar_agenda'))
 
 
@@ -289,8 +338,11 @@ def visualizar_agenda(item_id):
     try:
         item = AgendaSemanal.query.get_or_404(item_id)
         return render_template('agenda/visualizar_agenda.html', item=item)
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao visualizar item da agenda: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao visualizar item da agenda (%s)', type(e).__name__)
+        flash('Erro ao visualizar item da agenda.', 'danger')
         return redirect(url_for('midia.listar_agenda'))
 
 
@@ -329,8 +381,11 @@ def listar_certificados():
                              nome_atual=nome,
                              mes_atual=None,
                              ano_atual=None)
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao carregar certificados: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao carregar certificados (%s)', type(e).__name__)
+        flash('Erro ao carregar certificados.', 'danger')
         return render_template('certificados/lista_certificados.html',
                              certificados=[],
                              tipos_certificado=['Batismo', 'Apresentação'],
@@ -340,16 +395,11 @@ def listar_certificados():
                              ano_atual=None)
 
 
-@midia_bp.route('/certificados/criar-exemplos')
+@midia_bp.route('/certificados/criar-exemplos', methods=['POST'])
 @login_required
 def criar_exemplos():
     """Cria certificados de exemplo para teste"""
-    if not _rotas_seed_habilitadas():
-        abort(404)
-
     try:
-        from datetime import date
-        
         # Verificar quantos certificados existem
         total_atual = Certificado.query.count()
         
@@ -406,9 +456,12 @@ def criar_exemplos():
         flash(f'✅ {len(certificados)} novos certificados adicionados! Total: {total_final}', 'success')
         return redirect(url_for('midia.listar_certificados'))
         
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao criar certificados: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao criar certificados (%s)', type(e).__name__)
+        flash('Erro ao criar certificados.', 'danger')
         return redirect(url_for('midia.listar_certificados'))
 
 
@@ -442,30 +495,30 @@ def salvar_certificado():
         # Validações
         if not nome_pessoa:
             flash('Nome da pessoa é obrigatório!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_certificado'))
+            return redirect(url_for('midia.novo_certificado'))
             
         if not tipo_certificado:
             flash('Tipo de certificado é obrigatório!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_certificado'))
+            return redirect(url_for('midia.novo_certificado'))
             
         # if not genero:  # Temporariamente removido - Reativado para cores
         #     flash('Gênero é obrigatório!', 'danger')
-        #     return redirect(request.referrer or url_for('midia.novo_certificado'))
+        #     return redirect(url_for('midia.novo_certificado'))
             
         if not data_evento:
             flash('Data do evento é obrigatória!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_certificado'))
+            return redirect(url_for('midia.novo_certificado'))
             
         if not pastor_responsavel:
             flash('Pastor responsável é obrigatório!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_certificado'))
+            return redirect(url_for('midia.novo_certificado'))
         
         # Converter data
         try:
             data_evento = datetime.strptime(data_evento, '%Y-%m-%d').date()
         except ValueError:
             flash('Data inválida!', 'danger')
-            return redirect(request.referrer or url_for('midia.novo_certificado'))
+            return redirect(url_for('midia.novo_certificado'))
         
         # Salvar ou atualizar
         if certificado_id:
@@ -496,10 +549,13 @@ def salvar_certificado():
         flash('Certificado salvo com sucesso!', 'success')
         return redirect(url_for('midia.listar_certificados'))
         
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao salvar certificado: {str(e)}', 'danger')
-        return redirect(request.referrer or url_for('midia.novo_certificado'))
+        current_app.logger.error('Erro ao salvar certificado (%s)', type(e).__name__)
+        flash('Erro ao salvar certificado.', 'danger')
+        return redirect(url_for('midia.novo_certificado'))
 
 
 @midia_bp.route('/certificados/editar/<int:certificado_id>')
@@ -522,9 +578,12 @@ def excluir_certificado(certificado_id):
         db.session.commit()
         
         flash('Certificado excluído com sucesso!', 'success')
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao excluir certificado: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao excluir certificado (%s)', type(e).__name__)
+        flash('Erro ao excluir certificado.', 'danger')
     
     return redirect(url_for('midia.listar_certificados'))
 
@@ -554,8 +613,11 @@ def visualizar_certificado(certificado_id, template_style=None):
             template_name = 'certificados/visualizar_certificado.html'
             
         return render_template(template_name, certificado=certificado, config=config)
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao visualizar certificado: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao visualizar certificado (%s)', type(e).__name__)
+        flash('Erro ao visualizar certificado.', 'danger')
         return redirect(url_for('midia.listar_certificados'))
 
 
@@ -589,8 +651,11 @@ def listar_carteiras():
                              nome_atual=nome,
                              numero_atual=numero)
                              
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao carregar carteiras: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao carregar carteiras (%s)', type(e).__name__)
+        flash('Erro ao carregar carteiras.', 'danger')
         return redirect(url_for('usuario.index'))
 
 
@@ -606,6 +671,8 @@ def nova_carteira():
 @login_required
 def salvar_carteira():
     """Salva carteira de membro"""
+    foto_nova = None
+    foto_anterior = None
     try:
         # Obter dados do formulário
         carteira_id = request.form.get('id')
@@ -621,22 +688,22 @@ def salvar_carteira():
         # Validações
         if not numero_carteira:
             flash('Número da carteira é obrigatório!', 'danger')
-            return redirect(request.referrer or url_for('midia.nova_carteira'))
+            return redirect(url_for('midia.nova_carteira'))
             
         if not nome_completo:
             flash('Nome completo é obrigatório!', 'danger')
-            return redirect(request.referrer or url_for('midia.nova_carteira'))
+            return redirect(url_for('midia.nova_carteira'))
             
         if not data_nascimento:
             flash('Data de nascimento é obrigatória!', 'danger')
-            return redirect(request.referrer or url_for('midia.nova_carteira'))
+            return redirect(url_for('midia.nova_carteira'))
         
         # Converter datas
         try:
             data_nascimento = datetime.strptime(data_nascimento, '%Y-%m-%d').date()
         except ValueError:
             flash('Data de nascimento inválida!', 'danger')
-            return redirect(request.referrer or url_for('midia.nova_carteira'))
+            return redirect(url_for('midia.nova_carteira'))
         
         data_batismo_obj = None
         if data_batismo:
@@ -644,14 +711,14 @@ def salvar_carteira():
                 data_batismo_obj = datetime.strptime(data_batismo, '%Y-%m-%d').date()
             except ValueError:
                 flash('Data de batismo inválida!', 'danger')
-                return redirect(request.referrer or url_for('midia.nova_carteira'))
+                return redirect(url_for('midia.nova_carteira'))
         
         # Verificar se número já existe (para novas carteiras)
         if not carteira_id:
             existe = CarteiraMembro.query.filter_by(numero_carteira=numero_carteira).first()
             if existe:
                 flash('Número de carteira já existe!', 'danger')
-                return redirect(request.referrer or url_for('midia.nova_carteira'))
+                return redirect(url_for('midia.nova_carteira'))
         
         # Salvar ou atualizar
         if carteira_id:
@@ -672,70 +739,60 @@ def salvar_carteira():
         carteira.cargo_funcao = cargo_funcao
         carteira.observacoes = observacoes
         
-        # Processar upload de foto (se houver)
-        if 'foto' in request.files:
-            foto = request.files['foto']
-            if foto and foto.filename:
-                try:
-                    # Validar tipo de arquivo
-                    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif'}
-                    if '.' in foto.filename and foto.filename.rsplit('.', 1)[1].lower() in allowed_extensions:
-                        
-                        # Gerar nome único para o arquivo
-                        import uuid
-                        filename = secure_filename(foto.filename)
-                        name, ext = os.path.splitext(filename)
-                        unique_filename = f"carteira_{uuid.uuid4().hex}{ext}"
-                        
-                        # Definir pasta de upload dentro de app/static
-                        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'fotos_membros')
-                        os.makedirs(upload_folder, exist_ok=True)
-                        
-                        current_app.logger.info(f'Pasta de upload: {upload_folder}')
-                        
-                        # Remover foto anterior se existir (para edições)
-                        old_photo_path = None
-                        if carteira_id:
-                            carteira_existente = CarteiraMembro.query.get(carteira_id)
-                            if carteira_existente and carteira_existente.foto_caminho:
-                                old_photo_path = os.path.join(current_app.root_path, 'static', carteira_existente.foto_caminho)
-                        
-                        # Salvar arquivo
-                        filepath = os.path.join(upload_folder, unique_filename)
-                        foto.save(filepath)
-                        current_app.logger.info(f'Foto salva em: {filepath}')
-                        
-                        # Atualizar caminho no banco (relativo à pasta static, SEM 'static/' no início)
-                        carteira.foto_caminho = f'uploads/fotos_membros/{unique_filename}'
-                        current_app.logger.info(f'Caminho salvo no banco: {carteira.foto_caminho}')
-                        
-                        # Remover foto antiga após salvar a nova
-                        if old_photo_path and os.path.exists(old_photo_path):
-                            try:
-                                os.remove(old_photo_path)
-                                current_app.logger.info(f'Foto antiga removida: {old_photo_path}')
-                            except Exception as e:
-                                current_app.logger.warning(f'Erro ao remover foto antiga: {str(e)}')
-                                pass  # Ignora erro ao remover foto antiga
-                                
-                    else:
-                        flash('Tipo de arquivo não permitido. Use PNG, JPG, JPEG ou GIF.', 'warning')
-                        
-                except Exception as e:
-                    flash(f'Erro ao fazer upload da foto: {str(e)}', 'warning')
-        
+        foto = request.files.get('foto')
+        if foto and foto.filename:
+            try:
+                foto.stream.seek(0, os.SEEK_END)
+                if foto.stream.tell() > _LIMITE_FOTO:
+                    raise ValueError
+                foto.stream.seek(0)
+                with Image.open(foto.stream) as imagem:
+                    extensao = _FORMATOS_FOTO.get(imagem.format)
+                    if not extensao or imagem.width * imagem.height > _MAX_PIXELS_FOTO:
+                        raise ValueError
+                    imagem.verify()
+                foto.stream.seek(0)
+            except (OSError, ValueError, Image.DecompressionBombError):
+                db.session.rollback()
+                flash('Envie uma imagem PNG, JPG ou GIF válida de até 5 MB.', 'warning')
+                return redirect(url_for('midia.editar_carteira', carteira_id=carteira_id)
+                                if carteira_id else url_for('midia.nova_carteira'))
+
+            pasta = Path(current_app.static_folder) / _PASTA_FOTOS
+            pasta.mkdir(parents=True, exist_ok=True)
+            nome_anterior = _nome_foto_carteira(carteira.foto_caminho)
+            if nome_anterior:
+                foto_anterior = pasta / nome_anterior
+            nome = f'carteira_{uuid4().hex}{extensao}'
+            foto_nova = pasta / nome
+            foto.save(foto_nova)
+            carteira.foto_caminho = f'{_PASTA_FOTOS}/{nome}'
+
         if not carteira_id:
             db.session.add(carteira)
         
         db.session.commit()
-        
+        if foto_anterior:
+            try:
+                foto_anterior.unlink(missing_ok=True)
+            except OSError:
+                current_app.logger.warning('Não foi possível limpar a foto anterior da carteira.')
+
         flash('Carteira salva com sucesso!', 'success')
         return redirect(url_for('midia.listar_carteiras'))
         
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao salvar carteira: {str(e)}', 'danger')
-        return redirect(request.referrer or url_for('midia.nova_carteira'))
+        if foto_nova:
+            try:
+                foto_nova.unlink(missing_ok=True)
+            except OSError:
+                current_app.logger.warning('Não foi possível limpar a foto não vinculada.')
+        current_app.logger.error('Erro ao salvar carteira (%s)', type(e).__name__)
+        flash('Erro ao salvar carteira.', 'danger')
+        return redirect(url_for('midia.nova_carteira'))
 
 
 @midia_bp.route('/carteiras/editar/<int:carteira_id>')
@@ -756,11 +813,32 @@ def excluir_carteira(carteira_id):
         db.session.commit()
         
         flash('Carteira excluída com sucesso!', 'success')
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao excluir carteira: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao excluir carteira (%s)', type(e).__name__)
+        flash('Erro ao excluir carteira.', 'danger')
     
     return redirect(url_for('midia.listar_carteiras'))
+
+
+@midia_bp.route('/carteiras/foto/<int:carteira_id>')
+@login_required
+def foto_carteira(carteira_id):
+    carteira = CarteiraMembro.query.filter_by(id=carteira_id, ativo=True).first_or_404()
+    nome = _nome_foto_carteira(carteira.foto_caminho)
+    if not nome:
+        abort(404)
+
+    pasta_fotos = os.path.join(current_app.static_folder, _PASTA_FOTOS)
+    if os.path.islink(os.path.join(pasta_fotos, nome)):
+        abort(404)
+
+    resposta = send_from_directory(pasta_fotos, nome, conditional=False)
+    resposta.headers["Cache-Control"] = "private, no-store"
+    resposta.headers["X-Content-Type-Options"] = "nosniff"
+    return resposta
 
 
 @midia_bp.route('/carteiras/pdf/<int:carteira_id>')
@@ -770,8 +848,11 @@ def carteira_pdf(carteira_id):
     try:
         carteira = CarteiraMembro.query.get_or_404(carteira_id)
         return render_template('carteiras/visualizar_carteira.html', carteira=carteira)
+    except HTTPException:
+        raise
     except Exception as e:
-        flash(f'Erro ao visualizar carteira: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao visualizar carteira (%s)', type(e).__name__)
+        flash('Erro ao visualizar carteira.', 'danger')
         return redirect(url_for('midia.listar_carteiras'))
 
 
@@ -792,16 +873,11 @@ def api_membros():
     return jsonify([])
 
 
-@midia_bp.route('/certificados/criar_exemplos')
+@midia_bp.route('/certificados/criar_exemplos', methods=['POST'])
 @login_required
 def criar_certificados_exemplo():
     """Rota especial para criar certificados de exemplo"""
-    if not _rotas_seed_habilitadas():
-        abort(404)
-
     try:
-        from datetime import date
-        
         # Verificar se já existem certificados
         total_atual = Certificado.query.count()
         
@@ -869,7 +945,10 @@ def criar_certificados_exemplo():
         
         return redirect(url_for('midia.listar_certificados'))
         
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao criar certificados de exemplo: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao criar certificados de exemplo (%s)', type(e).__name__)
+        flash('Erro ao criar certificados de exemplo.', 'danger')
         return redirect(url_for('midia.listar_certificados'))

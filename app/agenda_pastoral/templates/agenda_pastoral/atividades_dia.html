@@ -54,7 +54,7 @@
                                 <input type="checkbox" 
                                        class="form-check-input" 
                                        {% if atividade.concluida %}checked{% endif %}
-                                       onchange="concluirAtividade({{ atividade.id }})">
+                                       onchange="alterarAtividade(this.dataset.url)" data-url="{{ url_for('agenda_pastoral.concluir_atividade', id=atividade.id) }}">
                             </td>
                             <td>
                                 {% if atividade.hora_inicio %}
@@ -107,7 +107,7 @@
                                    class="btn btn-sm btn-primary" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <button onclick="excluirAtividade({{ atividade.id }})" 
+                                <button onclick="excluirAtividade(this.dataset.url)" data-url="{{ url_for('agenda_pastoral.excluir_atividade', id=atividade.id) }}"
                                         class="btn btn-sm btn-danger" title="Excluir">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -132,41 +132,5 @@
     </div>
 </div>
 
-<script>
-function concluirAtividade(id) {
-    fetch(`/agenda-pastoral/${id}/concluir`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message);
-        }
-    });
-}
-
-function excluirAtividade(id) {
-    if (confirm('Tem certeza que deseja excluir esta atividade?')) {
-        fetch(`/agenda-pastoral/${id}/excluir`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message);
-            }
-        });
-    }
-}
-</script>
+{% include 'agenda_pastoral/_acoes.html' %}
 {% endblock %}

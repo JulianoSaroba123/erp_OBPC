@@ -1,4 +1,4 @@
-{% extends "midia/base_midia.html" %}
+{% extends "base.html" %}
 
 {% block title %}Visualizar Item da Agenda{% endblock %}
 
@@ -16,7 +16,7 @@
                     <a href="{{ url_for('midia.listar_agenda') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-arrow-left me-2"></i>Voltar
                     </a>
-                    <a href="{{ url_for('midia.agenda_pdf') }}?semana={{ item.data_evento.isocalendar()[1] }}&ano={{ item.data_evento.year }}" 
+                    <a href="{{ url_for('midia.agenda_pdf') }}?semana={{ item.data_evento.isocalendar()[1] }}&ano={{ item.data_evento.isocalendar()[0] }}"
                        class="btn btn-success" target="_blank">
                         <i class="fas fa-file-pdf me-2"></i>Baixar PDF
                     </a>
@@ -49,9 +49,9 @@
                                     {{ item.data_evento.strftime('%d/%m/%Y') }} 
                                     ({{ item.data_evento.strftime('%A')|replace('Monday','Segunda')|replace('Tuesday','Terça')|replace('Wednesday','Quarta')|replace('Thursday','Quinta')|replace('Friday','Sexta')|replace('Saturday','Sábado')|replace('Sunday','Domingo') }})
                                 </p>
-                                {% if item.horario %}
+                                {% if item.hora_inicio %}
                                 <p class="mb-0">
-                                    <strong>Horário:</strong> {{ item.horario.strftime('%H:%M') }}
+                                    <strong>Horário:</strong> {{ item.hora_inicio.strftime('%H:%M') }}
                                 </p>
                                 {% endif %}
                             </div>
@@ -65,18 +65,6 @@
                                 <p class="mb-2">
                                     <strong>Tipo:</strong> 
                                     <span class="badge bg-info">{{ item.tipo_evento }}</span>
-                                </p>
-                                {% endif %}
-                                {% if item.prioridade %}
-                                <p class="mb-0">
-                                    <strong>Prioridade:</strong> 
-                                    {% if item.prioridade == 'Alta' %}
-                                        <span class="badge bg-danger">{{ item.prioridade }}</span>
-                                    {% elif item.prioridade == 'Média' %}
-                                        <span class="badge bg-warning">{{ item.prioridade }}</span>
-                                    {% else %}
-                                        <span class="badge bg-success">{{ item.prioridade }}</span>
-                                    {% endif %}
                                 </p>
                                 {% endif %}
                             </div>
@@ -150,7 +138,7 @@
                     <!-- Data de criação -->
                     <div class="text-center mt-4">
                         <small class="text-muted">
-                            Criado em: {{ item.created_at.strftime('%d/%m/%Y às %H:%M') }}
+                            Criado em: {{ item.data_criacao.strftime('%d/%m/%Y às %H:%M') if item.data_criacao else '—' }}
                         </small>
                     </div>
                 </div>

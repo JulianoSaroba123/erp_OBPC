@@ -58,6 +58,10 @@ class Usuario(UserMixin, db.Model):
         """Verifica se tem acesso ao módulo mídia"""
         return self.nivel_acesso in ['master', 'administrador', 'Admin', 'midia']
     
+    def tem_acesso_certificados(self):
+        """Certificados são compartilhados por Secretaria e Mídia."""
+        return self.tem_acesso_secretaria() or self.tem_acesso_midia()
+
     def tem_acesso_membros(self):
         """Verifica se tem acesso ao módulo membros"""
         return self.nivel_acesso in ['master', 'administrador', 'Admin', 'secretario']

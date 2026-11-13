@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import tempfile
 import unittest
 from datetime import date
@@ -27,7 +28,8 @@ class TestD23D31SecretariaHardening(unittest.TestCase):
     def setUpClass(cls):
         cls.app = create_app()
         cls.app.config["TESTING"] = True
-        cls.app.config["WTF_CSRF_ENABLED"] = False
+        cls.app.config["PREFERRED_URL_SCHEME"] = "http"
+        cls.app.config["SESSION_COOKIE_SECURE"] = False
 
     @classmethod
     def tearDownClass(cls):
@@ -66,7 +68,7 @@ class TestD23D31SecretariaHardening(unittest.TestCase):
 
         self.client = self.app.test_client()
         with self.client.session_transaction() as sess:
-            sess["_user_id"] = str(self.user.id)
+            sess["_user_id"] = self.user.get_id()
             sess["_fresh"] = True
 
     def tearDown(self):
@@ -131,10 +133,17 @@ class TestD23D31SecretariaHardening(unittest.TestCase):
         db.session.commit()
         return ata.id, oficio.id
 
+    def _csrf_headers(self, rota):
+        resp = self.client.get(rota)
+        self.assertEqual(resp.status_code, 200)
+        token = re.search(rb'name="csrf_token"\s+value="([^"]+)"', resp.data)
+        self.assertIsNotNone(token)
+        return {"X-CSRFToken": token.group(1).decode()}
+
     def test_seed_and_test_routes_blocked_outside_development(self):
         resp_inv = self.client.get("/inventario-teste")
-        resp_seed_a = self.client.get("/midia/certificados/criar-exemplos")
-        resp_seed_b = self.client.get("/midia/certificados/criar_exemplos")
+        resp_seed_a = self.client.post("/midia/certificados/criar-exemplos")
+        resp_seed_b = self.client.post("/midia/certificados/criar_exemplos")
 
         self.assertEqual(resp_inv.status_code, 404)
         self.assertEqual(resp_seed_a.status_code, 404)
@@ -144,10 +153,12 @@ class TestD23D31SecretariaHardening(unittest.TestCase):
         self.app.config["ALLOW_DEV_SEED_ROUTES"] = True
 
         resp_inv = self.client.get("/inventario-teste")
-        resp_seed = self.client.get("/midia/certificados/criar-exemplos", follow_redirects=False)
+        resp_seed = self.client.post("/midia/certificados/criar-exemplos",
+                                     headers=self._csrf_headers("/midia/certificados/novo"),
+                                     follow_redirects=False)
 
         self.assertNotEqual(resp_inv.status_code, 404)
-        self.assertNotEqual(resp_seed.status_code, 404)
+        self.assertEqual(resp_seed.status_code, 302)
 
     def test_get_delete_routes_are_rejected(self):
         membro_id = self._seed_membro()
@@ -166,10 +177,11 @@ class TestD23D31SecretariaHardening(unittest.TestCase):
         departamento_id = self._seed_departamento()
         participacao_id = self._seed_participacao()
 
-        r1 = self.client.post(f"/membros/excluir/{membro_id}", follow_redirects=False)
-        r2 = self.client.post(f"/obreiros/excluir/{obreiro_id}", follow_redirects=False)
-        r3 = self.client.post(f"/departamentos/excluir/{departamento_id}", follow_redirects=False)
-        r4 = self.client.post(f"/secretaria/participacao/excluir/{participacao_id}", follow_redirects=False)
+        headers = self._csrf_headers("/membros")
+        r1 = self.client.post(f"/membros/excluir/{membro_id}", headers=headers, follow_redirects=False)
+        r2 = self.client.post(f"/obreiros/excluir/{obreiro_id}", headers=headers, follow_redirects=False)
+        r3 = self.client.post(f"/departamentos/excluir/{departamento_id}", headers=headers, follow_redirects=False)
+        r4 = self.client.post(f"/secretaria/participacao/excluir/{participacao_id}", headers=headers, follow_redirects=False)
 
         self.assertIn(r1.status_code, (302, 303))
         self.assertIn(r2.status_code, (302, 303))

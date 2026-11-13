@@ -3,13 +3,22 @@ Rotas da Agenda Pastoral
 Cada pastor gerencia sua agenda privada
 """
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify
+from flask import Blueprint, current_app, render_template, redirect, url_for, request, flash, jsonify
 from flask_login import login_required, current_user
-from app.extensoes import db
+from app.extensoes import db, csrf
 from app.agenda_pastoral.agenda_pastoral_model import AgendaPastoral
-from datetime import datetime, date, timedelta
+from calendar import monthrange
+from datetime import datetime, date
+from werkzeug.exceptions import NotFound
 
 agenda_pastoral_bp = Blueprint('agenda_pastoral', __name__, template_folder='templates')
+
+
+@agenda_pastoral_bp.before_request
+def _proteger_mutacoes_agenda_pessoal():
+    if current_user.is_authenticated and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        csrf.protect()
+
 
 @agenda_pastoral_bp.route('/agenda-pastoral')
 @login_required
@@ -38,10 +47,7 @@ def lista_agenda():
         
         # Filtro por mês/ano
         data_inicio = date(ano, mes, 1)
-        if mes == 12:
-            data_fim = date(ano + 1, 1, 1) - timedelta(days=1)
-        else:
-            data_fim = date(ano, mes + 1, 1) - timedelta(days=1)
+        data_fim = date(ano, mes, monthrange(ano, mes)[1])
         
         query = query.filter(AgendaPastoral.data >= data_inicio, AgendaPastoral.data <= data_fim)
         
@@ -63,10 +69,8 @@ def lista_agenda():
                              concluidas=concluidas,
                              pendentes=pendentes)
     except Exception as e:
-        print(f"[ERRO] Erro ao carregar agenda: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        flash(f'Erro ao carregar agenda: {str(e)}', 'danger')
+        current_app.logger.error("Erro ao carregar agenda pessoal (%s)", type(e).__name__)
+        flash('Não foi possível carregar a agenda.', 'danger')
         # Retornar com valores padrão
         hoje = date.today()
         return render_template('agenda_pastoral/lista_agenda.html', 
@@ -135,7 +139,8 @@ def nova_atividade():
             
         except Exception as e:
             db.session.rollback()
-            flash(f'Erro ao adicionar atividade: {str(e)}', 'danger')
+            current_app.logger.error("Erro ao adicionar atividade (%s)", type(e).__name__)
+            flash('Não foi possível adicionar a atividade.', 'danger')
     
     return render_template('agenda_pastoral/cadastro_atividade.html')
 
@@ -171,7 +176,8 @@ def editar_atividade(id):
             
         except Exception as e:
             db.session.rollback()
-            flash(f'Erro ao atualizar atividade: {str(e)}', 'danger')
+            current_app.logger.error("Erro ao atualizar atividade (%s)", type(e).__name__)
+            flash('Não foi possível atualizar a atividade.', 'danger')
     
     return render_template('agenda_pastoral/cadastro_atividade.html', atividade=atividade)
 
@@ -186,9 +192,12 @@ def excluir_atividade(id):
         db.session.commit()
         
         return jsonify({'success': True, 'message': 'Atividade excluída com sucesso!'})
+    except NotFound:
+        return jsonify({'success': False, 'message': 'Atividade não encontrada.'}), 404
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        current_app.logger.error("Erro ao alterar atividade (%s)", type(e).__name__)
+        return jsonify({'success': False, 'message': 'Não foi possível alterar a atividade.'}), 500
 
 @agenda_pastoral_bp.route('/agenda-pastoral/<int:id>/concluir', methods=['POST'])
 @login_required
@@ -208,9 +217,12 @@ def concluir_atividade(id):
             'concluida': atividade.concluida,
             'message': 'Atividade concluída!' if atividade.concluida else 'Atividade reaberta!'
         })
+    except NotFound:
+        return jsonify({'success': False, 'message': 'Atividade não encontrada.'}), 404
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
+        current_app.logger.error("Erro ao alterar atividade (%s)", type(e).__name__)
+        return jsonify({'success': False, 'message': 'Não foi possível alterar a atividade.'}), 500
 
 @agenda_pastoral_bp.route('/agenda-pastoral/hoje')
 @login_required

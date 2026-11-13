@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response
+from flask import Blueprint, current_app, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
 from app.extensoes import db
+from app.utils.seguranca_modulos import proteger_modulo_legado
 from app.escala_ministerial.escala_model import EscalaMinisterial
 from app.midia.midia_model import AgendaSemanal
 from app.configuracoes.configuracoes_model import Configuracao
@@ -9,6 +10,12 @@ import calendar
 
 # Blueprint para Agenda Pastoral
 escala_ministerial_bp = Blueprint('escala_ministerial', __name__, template_folder='templates')
+
+
+@escala_ministerial_bp.before_request
+def _proteger_escala():
+    return proteger_modulo_legado("tem_acesso_midia")
+
 
 @escala_ministerial_bp.route('/escala-ministerial')
 @escala_ministerial_bp.route('/escala-ministerial/')
@@ -52,7 +59,8 @@ def listar_escalas():
                              ano_atual=ano)
                              
     except Exception as e:
-        flash(f'Erro ao carregar escalas: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao carregar escalas (%s)', type(e).__name__)
+        flash('Erro ao carregar escalas.', 'danger')
         return render_template('escala_ministerial/lista_escala.html',
                              escalas=[],
                              meses=[], anos=[], 
@@ -69,7 +77,8 @@ def nova_escala():
         return render_template('escala_ministerial/cadastro_escala.html', 
                              eventos=eventos, escala=None)
     except Exception as e:
-        flash(f'Erro ao carregar formulário: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao carregar formulário (%s)', type(e).__name__)
+        flash('Erro ao carregar formulário.', 'danger')
         return redirect(url_for('escala_ministerial.listar_escalas'))
 
 @escala_ministerial_bp.route('/escala-ministerial/salvar', methods=['POST'])
@@ -99,6 +108,10 @@ def salvar_escala():
             flash('Data do evento inválida!', 'danger')
             return redirect(url_for('escala_ministerial.nova_escala'))
         
+        if evento_id and not AgendaSemanal.query.filter_by(id=evento_id, ativo=True).first():
+            flash('Evento da agenda não encontrado.', 'danger')
+            return redirect(url_for('escala_ministerial.nova_escala'))
+
         # Verificar se já existe escala para esta data
         escala_existente = EscalaMinisterial.query.filter_by(
             data_evento=data_evento, ativo=True
@@ -143,7 +156,8 @@ def salvar_escala():
         
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao salvar escala: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao salvar escala (%s)', type(e).__name__)
+        flash('Erro ao salvar escala.', 'danger')
         return redirect(url_for('escala_ministerial.nova_escala'))
 
 @escala_ministerial_bp.route('/escala-ministerial/editar/<int:id>')
@@ -157,7 +171,8 @@ def editar_escala(id):
         return render_template('escala_ministerial/cadastro_escala.html', 
                              eventos=eventos, escala=escala)
     except Exception as e:
-        flash(f'Erro ao carregar dados da escala: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao carregar dados da escala (%s)', type(e).__name__)
+        flash('Erro ao carregar dados da escala.', 'danger')
         return redirect(url_for('escala_ministerial.listar_escalas'))
 
 @escala_ministerial_bp.route('/escala-ministerial/excluir/<int:id>', methods=['POST'])
@@ -177,7 +192,8 @@ def excluir_escala(id):
         
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao excluir escala: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao excluir escala (%s)', type(e).__name__)
+        flash('Erro ao excluir escala.', 'danger')
     
     return redirect(url_for('escala_ministerial.listar_escalas'))
 
@@ -215,7 +231,8 @@ def gerar_pdf_escala():
                              data_geracao=datetime.now())
                              
     except Exception as e:
-        flash(f'Erro ao gerar PDF: {str(e)}', 'danger')
+        current_app.logger.error('Erro ao gerar PDF (%s)', type(e).__name__)
+        flash('Erro ao gerar PDF.', 'danger')
         return redirect(url_for('escala_ministerial.listar_escalas'))
 
 @escala_ministerial_bp.route('/api/escala-ministerial/autocomplete/<campo>')
@@ -253,7 +270,9 @@ def autocomplete_obreiros(campo):
 def buscar_dados_evento(evento_id):
     """API para buscar dados do evento selecionado"""
     try:
-        evento = AgendaSemanal.query.get_or_404(evento_id)
+        evento = AgendaSemanal.query.filter_by(id=evento_id, ativo=True).first()
+        if evento is None:
+            return jsonify({'sucesso': False, 'erro': 'Evento não encontrado.'}), 404
         
         return jsonify({
             'sucesso': True,
@@ -261,11 +280,12 @@ def buscar_dados_evento(evento_id):
                 'id': evento.id,
                 'titulo': evento.titulo,
                 'data_evento': evento.data_evento.strftime('%Y-%m-%d'),
-                'horario': evento.horario.strftime('%H:%M') if evento.horario else None,
+                'horario': evento.hora_inicio.strftime('%H:%M') if evento.hora_inicio else None,
                 'local': evento.local,
                 'descricao': evento.descricao
             }
         })
         
     except Exception as e:
-        return jsonify({'sucesso': False, 'erro': str(e)})
+        current_app.logger.error("Erro ao consultar evento da escala (%s)", type(e).__name__)
+        return jsonify({'sucesso': False, 'erro': 'Não foi possível consultar o evento.'}), 500

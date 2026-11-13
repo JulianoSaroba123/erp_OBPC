@@ -96,7 +96,7 @@
                                                 <br><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ escala.evento.local }}</small>
                                             {% endif %}
                                         {% else %}
-                                            <span class="text-muted">{{ escala.titulo_evento or '-' }}</span>
+                                            <span class="text-muted">-</span>
                                         {% endif %}
                                     </td>
                                     <td>{{ escala.pregador or '-' }}</td>
@@ -106,11 +106,12 @@
                                     <td>{{ escala.diaconia or '-' }}</td>
                                     <td class="text-center">
                                         <div class="btn-group btn-group-sm">
-                                            <a href="{{ url_for('escala_ministerial.editar_escala', escala_id=escala.id) }}" 
+                                            <a href="{{ url_for('escala_ministerial.editar_escala', id=escala.id) }}"
                                                class="btn btn-outline-primary" title="Editar">
                                                 <i class="fas fa-edit"></i>
                                             </a>
-                                            <form method="POST" action="{{ url_for('escala_ministerial.excluir_escala', escala_id=escala.id) }}" class="d-inline">
+                                            <form method="POST" action="{{ url_for('escala_ministerial.excluir_escala', id=escala.id) }}" class="d-inline">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="btn btn-outline-danger" title="Excluir"
                                                         onclick="return confirm('Confirma exclusão da escala de {{ escala.data_formatada }}?')">
                                                     <i class="fas fa-trash"></i>
